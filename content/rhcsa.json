@@ -1,0 +1,792 @@
+{
+  "slug": "rhcsa",
+  "title": "RHCSA (EX200)",
+  "tagline": "Red Hat system administration",
+  "vendor": {
+    "name": "Red Hat",
+    "certs": "EX200",
+    "docs": "https://www.redhat.com"
+  },
+  "disclaimer": "Independent practice material by Interstitium Labs. Not affiliated with, endorsed by, or sponsored by Red Hat. Confers no certificate. All scenarios are original; no exam content is reproduced.",
+  "domains": [
+    {
+      "id": "core-tools",
+      "name": "Core Tools",
+      "scenarios": [
+        {
+          "id": "rh-vim-rescue",
+          "title": "Stuck in the editor",
+          "situation": "You SSH into a server, run 'visudo' to fix sudo access, and land in an unfamiliar full-screen editor. Typing does odd things and you can't figure out how to save or quit.",
+          "prompt": "You're in vim. What is the minimal key sequence to save and exit, and how do you avoid the trap next time?",
+          "evidence": [],
+          "choices": [
+            "Press Esc, then type :wq and Enter — and set EDITOR=nano if you prefer nano",
+            "Press Ctrl+S to save, then Ctrl+Q to quit, like a GUI editor",
+            "Type exit and press Enter — vim understands shell commands directly",
+            "Close the terminal — vim auto-saves on disconnect"
+          ],
+          "answer": 0,
+          "why": "Vim is modal: Esc returns to normal mode, and :wq writes and quits. Ctrl+S in a terminal freezes output (XOFF) — the opposite of saving. Setting EDITOR (or VISUAL) to your preferred editor changes what visudo and similar tools open. Never close the terminal on visudo: a half-written sudoers file can lock out sudo.",
+          "hint": "What does the Esc key do in a modal editor?",
+          "objectives": ["Text editors", "vim basics"],
+          "mins": 5
+        },
+        {
+          "id": "rh-sed-config",
+          "title": "The commented-out setting",
+          "situation": "A config file has '#PasswordAuthentication yes' and you must ensure the active line reads 'PasswordAuthentication no'. There are 200 similar files across hosts and you want a one-liner.",
+          "prompt": "Which sed command does this correctly?",
+          "evidence": [
+            ["sshd_config (excerpt)", "#PasswordAuthentication yes\n#PermitRootLogin yes"]
+          ],
+          "choices": [
+            "sed -i 's/^#\\?PasswordAuthentication.*/PasswordAuthentication no/' sshd_config",
+            "sed 's/PasswordAuthentication/no/' sshd_config > sshd_config",
+            "sed -i 'd/PasswordAuthentication/' sshd_config",
+            "sed -i 's/yes/no/' sshd_config"
+          ],
+          "answer": 0,
+          "why": "The pattern anchors to line start, optionally matches the '#', then replaces the whole PasswordAuthentication line regardless of its current value. -i edits in place. Redirecting sed output back into the same file truncates it (the shell empties the file before sed reads it). The bare 's/yes/no/' would also mangle unrelated 'yes' values like PermitRootLogin.",
+          "hint": "Which lines should match — commented, uncommented, or both?",
+          "objectives": ["Text processing", "sed"],
+          "mins": 6
+        },
+        {
+          "id": "rh-rsync-slash",
+          "title": "The doubled directory",
+          "situation": "You run 'rsync -av /srv/www/ /backup/www/' nightly. After a manual run of 'rsync -av /srv/www /backup/www/' you find /backup/www/www/ with a full duplicate tree.",
+          "prompt": "What does the trailing slash on the source change, and how do you fix the layout?",
+          "evidence": [],
+          "choices": [
+            "A trailing slash copies the directory's contents; without it, rsync copies the directory itself — rerun with the slash and remove the nested copy",
+            "The trailing slash enables compression; rerun without -z to fix it",
+            "The trailing slash means 'dry run'; the duplicate came from something else",
+            "Rsync always duplicates one level — this is expected behavior"
+          ],
+          "answer": 0,
+          "why": "This is rsync's most famous gotcha: 'src/' transfers the contents of src into dest, while 'src' transfers the directory src itself into dest (creating dest/src). The fix is to rerun with the trailing slash for future syncs and delete the accidental nested /backup/www/www tree.",
+          "hint": "Compare what 'cp -r src/ dest' vs 'cp -r src dest' would do.",
+          "objectives": ["File sync", "rsync semantics"],
+          "mins": 5
+        },
+        {
+          "id": "rh-dnf-provides",
+          "title": "Which package owns this file?",
+          "situation": "A monitoring script fails because /usr/bin/jq is missing on a fresh RHEL install. You need the package name to install it, but you're not sure which package provides jq.",
+          "prompt": "What is the right dnf query?",
+          "evidence": [],
+          "choices": [
+            "dnf provides /usr/bin/jq — then dnf install the owning package",
+            "dnf search jq — only searches package names, which is enough",
+            "rpm -qa | grep jq — lists only installed packages, so it can't help",
+            "dnf install /usr/bin/jq — dnf cannot install by file path"
+          ],
+          "answer": 0,
+          "why": "'dnf provides <path>' (or '*/jq') maps a file path to the package that ships it, querying repository metadata — not just installed packages. 'dnf install <filepath>' actually also works via provides, but 'provides' is the explicit discovery step. rpm -qa only sees what's already installed.",
+          "hint": "Which tool can search the repositories, not just the local RPM database?",
+          "objectives": ["Package management", "dnf queries"],
+          "mins": 5
+        },
+        {
+          "id": "rh-journalctl-web",
+          "title": "The web server died at 2 AM",
+          "situation": "httpd stopped overnight. You need its logs from the failure window, the most recent entries first isn't helpful — you want to follow new entries live while you restart it.",
+          "prompt": "Which journalctl invocation fits?",
+          "evidence": [],
+          "choices": [
+            "journalctl -u httpd --since '02:00' -f — unit logs since 2 AM, following live",
+            "journalctl /var/log/httpd/error_log — journalctl reads flat files directly",
+            "dmesg | grep httpd — kernel ring buffer holds service logs",
+            "journalctl -u httpd > /dev/null — discarding output refreshes the log"
+          ],
+          "answer": 0,
+          "why": "-u filters by systemd unit, --since bounds the window, and -f follows new entries like tail -f. journalctl queries the systemd journal, not flat files (that's what -u is for). dmesg shows kernel messages only, and redirecting to /dev/null just throws output away.",
+          "hint": "Which flags select a service, a time window, and live-follow?",
+          "objectives": ["Logging", "journalctl"],
+          "mins": 5
+        },
+        {
+          "id": "rh-systemctl-enable",
+          "title": "Works until reboot",
+          "situation": "You run 'systemctl start nginx' and the site works — until the next reboot, when it's down again. The service file exists in /usr/lib/systemd/system.",
+          "prompt": "What was missed, and what's the one command that does both?",
+          "evidence": [],
+          "choices": [
+            "The service was started but not enabled — 'systemctl enable --now nginx' does both",
+            "The service needs 'systemctl load nginx' before it survives reboot",
+            "Nginx can't start at boot without a cron @reboot entry",
+            "The unit file must be copied to /etc/systemd/system to persist"
+          ],
+          "answer": 0,
+          "why": "start affects the current runtime only; enable creates the symlink (typically into multi-user.target.wants) that pulls the service in at boot. 'enable --now' combines both in one command. Unit files in /usr/lib/systemd/system are the packaged defaults — enabling never requires copying them.",
+          "hint": "Which systemctl verb controls boot-time behavior vs right-now behavior?",
+          "objectives": ["systemd", "Service persistence"],
+          "mins": 5
+        }
+      ]
+    },
+    {
+      "id": "users-groups",
+      "name": "Users & Groups",
+      "scenarios": [
+        {
+          "id": "rh-useradd-web",
+          "title": "Onboarding the web developer",
+          "situation": "A new developer needs an account: home directory, bash shell, membership in the 'webdev' group, and a comment with her full name.",
+          "prompt": "Which useradd invocation does all of this?",
+          "evidence": [],
+          "choices": [
+            "useradd -m -s /bin/bash -G webdev -c 'Ana Torres' ana",
+            "useradd ana (then hand-edit /etc/passwd for the rest)",
+            "adduser --no-home --shell /bin/sh ana",
+            "useradd -G webdev ana (groups imply home and shell)"
+          ],
+          "answer": 0,
+          "why": "-m creates the home directory (skel files included), -s sets the login shell, -G adds supplementary groups, -c sets the GECOS/comment field. Hand-editing /etc/passwd bypasses validation — use the tools. Verify with 'id ana'.",
+          "hint": "Which flags control home, shell, groups, and comment separately?",
+          "objectives": ["useradd", "Account creation"],
+          "mins": 5
+        },
+        {
+          "id": "rh-usermod-append",
+          "title": "The vanishing groups",
+          "situation": "You run 'usermod -G docker ana' to give Ana docker access. She reports she can use docker now — but lost access to the webdev group she had before.",
+          "prompt": "What happened, and what's the fix?",
+          "evidence": [],
+          "choices": [
+            "-G without -a REPLACES the supplementary group list — use 'usermod -aG docker ana' to append",
+            "Users can only be in one group — remove webdev permanently",
+            "usermod requires a reboot to take effect — wait and recheck",
+            "Group changes need 'newgrp' run as root first"
+          ],
+          "answer": 0,
+          "why": "usermod -G sets the complete supplementary group list, wiping previous memberships — the classic footgun. -aG appends instead. Always verify with 'id ana' or 'groups ana' after changes. (Also note: group membership changes apply at next login.)",
+          "hint": "Does -G add to the list, or replace the list?",
+          "objectives": ["usermod", "Supplementary groups"],
+          "mins": 5
+        },
+        {
+          "id": "rh-chage-expiry",
+          "title": "The contractor account",
+          "situation": "A contractor's account must stop working on 2027-01-15, and her password must expire every 60 days with a 7-day warning.",
+          "prompt": "Which commands implement this?",
+          "evidence": [],
+          "choices": [
+            "chage -E 2027-01-15 contractor && chage -M 60 -W 7 contractor",
+            "passwd -e contractor (sets both account and password expiry)",
+            "usermod -L contractor (locks until the date passes)",
+            "Edit /etc/shadow by hand — chage can't set dates"
+          ],
+          "answer": 0,
+          "why": "chage manages aging: -E sets the account expiry date (login disabled after), -M max password lifetime in days, -W warning days before expiry. passwd -e only forces password change at next login; usermod -L locks the account immediately. 'chage -l user' lists the current policy.",
+          "hint": "Which tool manages both account expiry dates and password aging?",
+          "objectives": ["chage", "Account aging"],
+          "mins": 5
+        },
+        {
+          "id": "rh-acl-project",
+          "title": "One extra reader, no new group",
+          "situation": "Directory /srv/project is owned by group 'eng' (rwx). An auditor needs read access to one file — but must NOT be added to eng, and permissions on the file must stay 640.",
+          "prompt": "What mechanism grants this exception?",
+          "evidence": [],
+          "choices": [
+            "A POSIX ACL: 'setfacl -m u:auditor:r /srv/project/report.txt' — verify with getfacl",
+            "chmod 644 — simplest and good enough",
+            "chown auditor — ownership transfer is the only way",
+            "Add auditor to eng temporarily, then remove her"
+          ],
+          "answer": 0,
+          "why": "ACLs (setfacl/getfacl) attach per-user/per-group permission entries beyond the owner/group/other triple — the '+' in ls -l flags their presence. chmod 644 would expose the file to everyone; chown changes ownership semantics. Note the ACL mask: the entry's effective permission is ANDed with the mask.",
+          "hint": "What extends the classic three permission triples with named-user entries?",
+          "objectives": ["ACLs", "setfacl"],
+          "mins": 6
+        },
+        {
+          "id": "rh-sudoers-dropin",
+          "title": "Let deploy restart nginx",
+          "situation": "The 'deploy' user must run only 'systemctl restart nginx' as root, without a password. Directly editing /etc/sudoers is discouraged.",
+          "prompt": "What is the safe approach?",
+          "evidence": [],
+          "choices": [
+            "Create /etc/sudoers.d/deploy with 'deploy ALL=(root) NOPASSWD: /usr/bin/systemctl restart nginx' and validate with 'visudo -c'",
+            "Add 'deploy ALL=(ALL) NOPASSWD: ALL' to /etc/sudoers directly",
+            "Set the setuid bit on systemctl so deploy can run it",
+            "Give deploy the root password — simplest"
+          ],
+          "answer": 0,
+          "why": "/etc/sudoers.d/ drop-in files keep custom rules separate from the packaged sudoers file (which updates won't clobber). The rule grants one exact command as root with no password. 'visudo -c' syntax-checks before the change goes live — a sudoers syntax error can lock out all sudo access, which is why direct editing without visudo is dangerous.",
+          "hint": "Where do you put a sudo rule so a package update won't overwrite it?",
+          "objectives": ["sudo", "sudoers.d", "Least privilege"],
+          "mins": 6
+        },
+        {
+          "id": "rh-su-vs-su-dash",
+          "title": "Root's PATH mystery",
+          "situation": "You 'su' to root and run a sbin tool — 'command not found'. Your colleague does 'su -', runs the same tool, and it works.",
+          "prompt": "What differs between su and su -?",
+          "evidence": [],
+          "choices": [
+            "'su -' starts a login shell with root's full environment (including /usr/sbin in PATH); plain 'su' keeps your environment",
+            "'su' is an alias for sudo — it doesn't actually change users",
+            "The tool only exists in the colleague's home directory",
+            "su - enables SELinux; su doesn't"
+          ],
+          "answer": 0,
+          "why": "'su -' (or 'su -l') simulates a full login: root's profile scripts run, giving root's PATH (with /usr/sbin, /sbin), HOME, and working directory. Plain 'su' keeps your environment — convenient but a classic source of 'command not found' for admin tools and a subtle security consideration.",
+          "hint": "Whose PATH do you have after each variant?",
+          "objectives": ["su", "Login shell environment"],
+          "mins": 4
+        }
+      ]
+    },
+    {
+      "id": "storage",
+      "name": "Storage (LVM/Stratis)",
+      "scenarios": [
+        {
+          "id": "rh-fstab-uuid",
+          "title": "The disk that moved",
+          "situation": "After adding a new disk, /dev/sdb became /dev/sdc and the data volume failed to mount at boot. The fstab entry used /dev/sdb1.",
+          "prompt": "What is the robust fix?",
+          "evidence": [
+            ["fstab (excerpt)", "/dev/sdb1  /data  xfs  defaults  0 2"]
+          ],
+          "choices": [
+            "Mount by UUID (or LABEL) instead of device name — UUIDs are stable across rescans; get it from 'blkid'",
+            "Rename the device back with mv /dev/sdc1 /dev/sdb1",
+            "Use /dev/disk/by-path — it's shorter",
+            "Remove the fstab entry and mount manually after each boot"
+          ],
+          "answer": 0,
+          "why": "Kernel device names (sda, sdb) are assigned in discovery order and can shift when hardware changes. UUIDs and LABELs are written on the filesystem and never change — 'UUID=xxx /data xfs defaults 0 2' survives rescans. Always run 'mount -a' to validate fstab before rebooting.",
+          "hint": "What identifies the filesystem itself rather than its plug-in order?",
+          "objectives": ["fstab", "UUID mounting"],
+          "mins": 5
+        },
+        {
+          "id": "rh-lvm-extend",
+          "title": "/var is full — extend it live",
+          "situation": "/var on logical volume vg0/lv_var (xfs) hit 100%. The volume group has 20G free. The filesystem must stay online.",
+          "prompt": "What is the correct sequence?",
+          "evidence": [],
+          "choices": [
+            "lvextend -r -L +10G /dev/vg0/lv_var — extends the LV and grows xfs online in one step",
+            "umount /var, lvextend, mkfs.xfs, mount — the safe full cycle",
+            "lvextend then xfs_shrink — XFS grows automatically",
+            "Add a second mount on top of /var — overlay doubles the space"
+          ],
+          "answer": 0,
+          "why": "lvextend grows the block device; '-r/--resizefs' then grows the filesystem appropriately (xfs_growfs for XFS, resize2fs for ext4) — online, no unmount. XFS can only grow, never shrink; ext4 can do both (shrinking requires unmount + e2fsck). 'vgs'/'lvs' confirm free space first.",
+          "hint": "Which single flag makes lvextend handle the filesystem too?",
+          "objectives": ["LVM", "lvextend"],
+          "mins": 6
+        },
+        {
+          "id": "rh-lvm-create",
+          "title": "New disk for the database",
+          "situation": "A fresh /dev/sdc (100G) must become a 60G logical volume 'lv_db' in a new volume group 'vg_db', formatted xfs and mounted at /db.",
+          "prompt": "What is the correct order of operations?",
+          "evidence": [],
+          "choices": [
+            "pvcreate /dev/sdc → vgcreate vg_db /dev/sdc → lvcreate -n lv_db -L 60G vg_db → mkfs.xfs → mount + fstab entry",
+            "mkfs.xfs /dev/sdc → pvcreate → mount — format first",
+            "vgcreate then pvcreate — groups come before physical volumes",
+            "lvcreate directly on /dev/sdc — LVM auto-creates PV/VG"
+          ],
+          "answer": 0,
+          "why": "LVM layers bottom-up: PV (physical volume on the disk/partition) → VG (pool) → LV (carved from the pool) → filesystem → mount. pvcreate labels the device, vgcreate pools it, lvcreate carves the LV, mkfs creates the filesystem, then mount/fstab. Skipping layers breaks the abstraction.",
+          "hint": "Which layer must exist before you can carve a logical volume from it?",
+          "objectives": ["LVM", "PV/VG/LV stack"],
+          "mins": 6
+        },
+        {
+          "id": "rh-xfs-noshrink",
+          "title": "Can we shrink /var?",
+          "situation": "/var (xfs, 50G, 10G used) is overprovisioned. The team wants to shrink it to 20G and give the space to /home (also xfs).",
+          "prompt": "What do you tell them?",
+          "evidence": [],
+          "choices": [
+            "XFS cannot be shrunk, period — back up /var, recreate the LV smaller, restore; or take space from elsewhere",
+            "Use lvreduce -r — it handles XFS shrinking automatically",
+            "xfs_growfs with a negative size shrinks it",
+            "Shrink while mounted — XFS supports online shrink"
+          ],
+          "answer": 0,
+          "why": "XFS is grow-only by design — there is no shrink support (xfs_growfs only grows). To reclaim space: back up the data, recreate the filesystem smaller, restore. This is a planning lesson: size XFS volumes conservatively, or use ext4/stratis where shrinkability matters. lvreduce on an XFS LV corrupts data.",
+          "hint": "What does xfs_growfs do — and what tool would do the opposite?",
+          "objectives": ["XFS", "Filesystem limits"],
+          "mins": 5
+        },
+        {
+          "id": "rh-stratis-basic",
+          "title": "Trying Stratis for the file share",
+          "situation": "You want pooled storage with thin provisioning and snapshots for /srv/share, without hand-managing LVM. The disk is /dev/sdd.",
+          "prompt": "What is the Stratis workflow?",
+          "evidence": [],
+          "choices": [
+            "stratis pool create pool1 /dev/sdd → stratis filesystem create pool1 share → mount the /dev/stratis/pool1/share device; snapshots via 'stratis filesystem snapshot'",
+            "stratis is a filesystem type — mkfs.stratis /dev/sdd",
+            "Stratis pools are created with vgcreate — it's just LVM",
+            "Mount /dev/sdd directly — Stratis works without setup"
+          ],
+          "answer": 0,
+          "why": "Stratis is a storage manager (daemon + CLI) simplifying pool/filesystem/snapshot management atop device-mapper+XFS: create a pool from block devices, create thin filesystems in it, mount via /dev/stratis/<pool>/<fs>. Snapshots are first-class ('filesystem snapshot'). Ensure stratisd is running and enabled.",
+          "hint": "What are Stratis's three layers — pool, filesystem, and what operation for point-in-time copies?",
+          "objectives": ["Stratis", "Pools and snapshots"],
+          "mins": 6
+        },
+        {
+          "id": "rh-swap-file",
+          "title": "Adding emergency swap",
+          "situation": "A VM with no swap partition is under memory pressure. You have disk space but can't repartition right now.",
+          "prompt": "How do you add a 2G swap file correctly?",
+          "evidence": [],
+          "choices": [
+            "fallocate -l 2G /swapfile; chmod 600 /swapfile; mkswap /swapfile; swapon /swapfile; add fstab entry",
+            "dd a file and swapon it — permissions don't matter for swap",
+            "mkswap on a directory — swap works on any path",
+            "Swap files aren't supported on Linux — only partitions"
+          ],
+          "answer": 0,
+          "why": "Swap files work like swap partitions: allocate (fallocate/dd), chmod 600 (a world-readable swap file leaks memory contents), mkswap to format, swapon to activate, fstab entry ('/swapfile swap swap defaults 0 0') for persistence. 'swapon -s'/'free' verifies. Prefer a partition for hibernation, but files are fine for pressure relief.",
+          "hint": "Why would a swap file need restrictive permissions?",
+          "objectives": ["Swap", "Swap files"],
+          "mins": 5
+        }
+      ]
+    },
+    {
+      "id": "services-boot",
+      "name": "Services & Boot",
+      "scenarios": [
+        {
+          "id": "rh-systemd-timer",
+          "title": "Replacing cron with a timer",
+          "situation": "A cron job runs /usr/local/bin/backup.sh daily at 2 AM, but cron emails failures into a void and you want journal-integrated logging plus 'run if the machine was off at 2 AM'.",
+          "prompt": "What are the two unit files, and what does the timer add?",
+          "evidence": [],
+          "choices": [
+            "backup.service (the job) + backup.timer (OnCalendar=daily, Persistent=true) — timers give journal logging, dependencies, and Persistent catches up missed runs",
+            "A .timer alone — it embeds the command",
+            "cron can't be replaced — timers are only for boot tasks",
+            "One .service with Cron= enabled — systemd reads crontabs"
+          ],
+          "answer": 0,
+          "why": "systemd timers split schedule (.timer: OnCalendar=*-*-* 02:00:00, Persistent=true, Unit=) from work (.service: ExecStart=). Advantages over cron: logs in the journal (journalctl -u backup), dependency ordering, randomized delays (RandomizedDelaySec), and Persistent=true runs the job once if the window was missed (laptops/VMs that were off). 'systemctl list-timers' shows the schedule.",
+          "hint": "Which unit holds the schedule, and which holds the command?",
+          "objectives": ["systemd timers", "cron replacement"],
+          "mins": 6
+        },
+        {
+          "id": "rh-boot-target",
+          "title": "Server boots to a GUI",
+          "situation": "A RHEL server boots into the graphical login, wasting RAM on a headless box. You want text-mode multi-user boot.",
+          "prompt": "What is the fix, and how do targets relate to runlevels?",
+          "evidence": [],
+          "choices": [
+            "systemctl set-default multi-user.target — targets are systemd's runlevels; multi-user ≈ runlevel 3, graphical ≈ 5",
+            "Delete the GUI packages — the only way",
+            "systemctl disable gdm — that changes the default target",
+            "Edit /etc/inittab — still the authoritative file"
+          ],
+          "answer": 0,
+          "why": "Targets group units like SysV runlevels did: rescue (≈1), multi-user (≈3), graphical (≈5). set-default symlinks default.target. 'systemctl isolate multi-user.target' switches now without reboot. Disabling gdm alone doesn't change the default target — set-default is the correct persistent change.",
+          "hint": "Which command changes the boot-time default target persistently?",
+          "objectives": ["Boot targets", "set-default"],
+          "mins": 5
+        },
+        {
+          "id": "rh-rdbreak",
+          "title": "Locked out of root",
+          "situation": "The root password is lost on a RHEL VM (console access available). You need to reset it.",
+          "prompt": "What is the rd.break procedure?",
+          "evidence": [],
+          "choices": [
+            "Interrupt GRUB, append rd.break to the linux line, boot; mount -o remount,rw /sysroot; chroot /sysroot; passwd; touch /.autorelabel; exit twice",
+            "Boot normally and run passwd — it doesn't need the old password",
+            "Reinstall — lost root passwords are unrecoverable",
+            "rd.break only works on Ubuntu"
+          ],
+          "answer": 0,
+          "why": "rd.break drops to a shell in the initramfs before the real root mounts: remount /sysroot read-write, chroot into it, passwd resets root, and /.autorelabel is critical — without it, SELinux denies login after the password file change. Then exit the chroot and exit again to continue boot. This is why console/bootloader access must be physically secured.",
+          "hint": "Why is the /.autorelabel step essential on an SELinux system?",
+          "objectives": ["Root recovery", "rd.break", "SELinux relabel"],
+          "mins": 6
+        },
+        {
+          "id": "rh-cron-fields",
+          "title": "Reading the crontab",
+          "situation": "You inherit '*/15 9-17 * * 1-5 /opt/report.sh' in a crontab and need to explain when it runs.",
+          "prompt": "Decode the schedule.",
+          "evidence": [],
+          "choices": [
+            "Every 15 minutes, between 09:00–17:59, Monday–Friday — fields are minute hour day-of-month month day-of-week",
+            "Every 15 seconds during business hours",
+            "At 9:15 AM and 5:15 PM on weekdays",
+            "Every 15 minutes all day, every day"
+          ],
+          "answer": 0,
+          "why": "Crontab fields: minute(0-59) hour(0-23) dom(1-31) month(1-12) dow(0-7). */15 = every 15 min, 9-17 = hours 9–17, * = any dom/month, 1-5 = Mon–Fri. User crontabs (crontab -e) run as that user; /etc/crontab and /etc/cron.d add a user field. Remember cron's minimal PATH and that output is mailed (or configure logging).",
+          "hint": "How many time fields are there, and what order?",
+          "objectives": ["cron", "Schedule syntax"],
+          "mins": 5
+        },
+        {
+          "id": "rh-mask-service",
+          "title": "The service that keeps coming back",
+          "situation": "You disabled cups, but a dependency keeps starting it. 'systemctl disable' isn't enough.",
+          "prompt": "What stronger measure exists, and when is it appropriate?",
+          "evidence": [],
+          "choices": [
+            "systemctl mask cups — symlinks the unit to /dev/null so it can't be started even manually; use for services that must never run",
+            "systemctl stop — stronger than disable",
+            "Delete the unit file — the clean approach",
+            "mask is the same as disable — the dependency is a bug"
+          ],
+          "answer": 0,
+          "why": "disable removes boot-time symlinks but the unit can still be started manually or pulled in as a dependency. mask links it to /dev/null, making any start attempt fail. Use masking for services that must never run (security hardening); unmask to restore. Deleting unit files breaks package updates — never do that.",
+          "hint": "What is stronger than 'don't start at boot'?",
+          "objectives": ["mask", "Service control"],
+          "mins": 4
+        },
+        {
+          "id": "rh-journal-persist",
+          "title": "Logs gone after reboot",
+          "situation": "After a crash-reboot, 'journalctl --since \"1 hour ago\"' shows nothing from before the reboot. The team needs persistent journals for post-crash forensics.",
+          "prompt": "How do you make the journal survive reboots?",
+          "evidence": [],
+          "choices": [
+            "Create /var/log/journal (systemd-journald then persists to disk) and/or set Storage=persistent in journald.conf",
+            "Journals are always persistent — the crash corrupted them",
+            "Install rsyslog — journald can't persist",
+            "journalctl --persist — enables it per query"
+          ],
+          "answer": 0,
+          "why": "By default journald keeps logs in /run (tmpfs) — lost on reboot. Creating /var/log/journal flips it to persistent disk storage (or Storage=persistent in /etc/systemd/journald.conf). Also consider SystemMaxUse/MaxRetentionSec to bound disk usage, and ForwardToSyslog if you also run rsyslog. Verify with 'journalctl --list-boots'.",
+          "hint": "Where does the journal live by default — disk or RAM?",
+          "objectives": ["journald", "Persistent logging"],
+          "mins": 5
+        }
+      ]
+    },
+    {
+      "id": "networking",
+      "name": "Networking",
+      "scenarios": [
+        {
+          "id": "rh-nmcli-static",
+          "title": "Setting a static IP",
+          "situation": "Server db1 needs static IP 10.0.5.20/24, gateway 10.0.5.1, DNS 10.0.5.2 on connection 'eth0'. No GUI available.",
+          "prompt": "What is the nmcli sequence?",
+          "evidence": [],
+          "choices": [
+            "nmcli con mod eth0 ipv4.addresses 10.0.5.20/24 ipv4.gateway 10.0.5.1 ipv4.dns 10.0.5.2 ipv4.method manual && nmcli con up eth0",
+            "ifconfig eth0 10.0.5.20 — persistent and sufficient",
+            "Edit /etc/resolv.conf — that sets the IP address",
+            "nmcli con mod eth0 ip 10.0.5.20 — the key is 'ip'"
+          ],
+          "answer": 0,
+          "why": "nmcli con mod sets properties on the connection profile: ipv4.addresses (CIDR), ipv4.gateway, ipv4.dns, ipv4.method manual (vs auto/DHCP). Changes apply on 'nmcli con up'. ifconfig is deprecated (use 'ip addr') and non-persistent. Verify with 'ip addr show' and 'nmcli con show eth0'.",
+          "hint": "Which subcommand modifies a connection profile, and which activates it?",
+          "objectives": ["nmcli", "Static IP"],
+          "mins": 6
+        },
+        {
+          "id": "rh-firewalld-http",
+          "title": "Opening the web port",
+          "situation": "nginx serves locally (curl localhost works) but remote clients time out. The server uses firewalld, zone 'public'.",
+          "prompt": "How do you open HTTP persistently?",
+          "evidence": [],
+          "choices": [
+            "firewall-cmd --permanent --add-service=http && firewall-cmd --reload (or --add-port=80/tcp)",
+            "firewall-cmd --add-service=http — permanent by default",
+            "iptables -A INPUT -j ACCEPT — firewalld is just a frontend, edit iptables directly",
+            "systemctl stop firewalld — simplest fix"
+          ],
+          "answer": 0,
+          "why": "firewalld runtime changes vanish on reload unless --permanent (then --reload applies them). --add-service=http opens 80/tcp via the service definition; --add-port=8080/tcp for custom ports. Verify with --list-all --zone=public. Disabling the firewall 'fixes' connectivity by removing security — never the answer.",
+          "hint": "What makes a firewall-cmd change survive a reload?",
+          "objectives": ["firewalld", "Zones and services"],
+          "mins": 5
+        },
+        {
+          "id": "rh-selinux-context",
+          "title": "403 after moving the web root",
+          "situation": "You move the website from /var/www to /srv/www, update nginx, and get 403 Forbidden. Permissions are 755, nginx runs as nginx user, and the error log says 'Permission denied'.",
+          "prompt": "What is the likely cause and the persistent fix?",
+          "evidence": [],
+          "choices": [
+            "SELinux file context — /srv/www lacks httpd_sys_content_t; fix persistently with 'semanage fcontext -a -t httpd_sys_content_t \"/srv/www(/.*)?\" && restorecon -Rv /srv/www'",
+            "chmod 777 /srv/www — SELinux doesn't affect nginx",
+            "chcon -t httpd_sys_content_t — persistent across relabels",
+            "Disable SELinux — the standard fix for 403s"
+          ],
+          "answer": 0,
+          "why": "'Permission denied' with correct Unix permissions screams SELinux (check /var/log/audit/audit.log or 'ausearch -m avc'). chcon changes context temporarily — a filesystem relabel or restorecon reverts it. semanage fcontext writes the policy mapping so the context persists. Never disable SELinux to fix a context problem.",
+          "hint": "Which tool makes a context change survive a relabel?",
+          "objectives": ["SELinux", "File contexts"],
+          "mins": 6
+        },
+        {
+          "id": "rh-selinux-boolean",
+          "title": "nginx can't reach the app server",
+          "situation": "nginx (as reverse proxy) gets 'Permission denied' connecting to the app on 127.0.0.1:3000. Curl from the shell works. AVC denials mention httpd and name_connect.",
+          "prompt": "What is the targeted fix?",
+          "evidence": [],
+          "choices": [
+            "setsebool -P httpd_can_network_connect on — allows httpd scripts/modules to make network connections, persistently",
+            "setenforce 0 — quick and permanent",
+            "Allow all: setsebool -P httpd_can_network_connect_db on is the same thing",
+            "Open port 3000 in firewalld — SELinux follows firewall rules"
+          ],
+          "answer": 0,
+          "why": "SELinux booleans toggle policy capabilities: httpd_can_network_connect lets the web server initiate outbound connections (reverse proxying). -P makes it persistent (without -P it's runtime-only). The _db variant is narrower (database ports only). 'getsebool -a | grep httpd' lists them. setenforce 0 is runtime-only AND disables protection — not a fix.",
+          "hint": "Which boolean governs httpd-initiated network connections?",
+          "objectives": ["SELinux", "Booleans"],
+          "mins": 6
+        },
+        {
+          "id": "rh-hostnamectl",
+          "title": "Renaming the server",
+          "situation": "Server 'localhost' needs to become 'web1.example.com' persistently, and other hosts should resolve it.",
+          "prompt": "What are the two steps?",
+          "evidence": [],
+          "choices": [
+            "hostnamectl set-hostname web1.example.com (persistent) + add '10.0.5.10 web1.example.com web1' to /etc/hosts (or DNS)",
+            "hostname web1 — persistent across reboots",
+            "Edit /etc/hostname by hand — hostnamectl is deprecated",
+            "/etc/hosts alone renames the machine"
+          ],
+          "answer": 0,
+          "why": "hostnamectl set-hostname writes /etc/hostname persistently (transient 'hostname' doesn't survive reboot). Name resolution is separate: /etc/hosts for small setups or real DNS. Check with 'hostnamectl' and 'getent hosts web1.example.com'.",
+          "hint": "Which command persists the hostname, and where does resolution come from?",
+          "objectives": ["hostname", "Name resolution"],
+          "mins": 4
+        },
+        {
+          "id": "rh-sshd-harden",
+          "title": "Hardening SSH",
+          "situation": "Audit flags: root login allowed, password auth on, default port 22 getting brute-forced. You need key-only auth for a deploy user, no root login.",
+          "prompt": "What sshd_config changes, and how do you apply them safely?",
+          "evidence": [],
+          "choices": [
+            "PermitRootLogin no, PasswordAuthentication no (with keys deployed first!), then 'sshd -t && systemctl reload sshd' — test config before reloading",
+            "Port 2222 alone — obscurity is sufficient security",
+            "Delete /etc/ssh/sshd_config — defaults are secure",
+            "systemctl restart sshd without testing — reload is for cowards"
+          ],
+          "answer": 0,
+          "why": "Harden in /etc/ssh/sshd_config: PermitRootLogin no (or prohibit-password), PasswordAuthentication no ONLY after verifying key auth works (lock yourself out otherwise!), consider AllowUsers. 'sshd -t' validates syntax; 'systemctl reload sshd' applies without dropping existing sessions (restart would too, but reload is gentler). Keep one spare session open while testing.",
+          "hint": "What must you verify BEFORE disabling password authentication?",
+          "objectives": ["sshd", "Hardening"],
+          "mins": 6
+        }
+      ]
+    },
+    {
+      "id": "containers-security",
+      "name": "Containers & Security",
+      "scenarios": [
+        {
+          "id": "rh-podman-run",
+          "title": "First container on RHEL",
+          "situation": "You need nginx running detached, port 8080→80, with persistent data in a named volume, on RHEL where Docker isn't the default.",
+          "prompt": "What is the podman command, and how does podman differ from Docker here?",
+          "evidence": [],
+          "choices": [
+            "podman run -d --name web -p 8080:80 -v webdata:/usr/share/nginx/html nginx — podman is daemonless and CLI-compatible with Docker",
+            "podman needs a daemon started first — systemctl start docker",
+            "Docker commands don't work with podman — learn a new CLI",
+            "Containers can't run unprivileged — use sudo for everything"
+          ],
+          "answer": 0,
+          "why": "Podman mirrors the Docker CLI (alias docker=podman is common) but runs daemonless — containers are child processes, and rootless Podman runs entirely as your user. -d detached, -p publish, -v volume. 'podman images/containers/ps' all work. On RHEL, podman + buildah + skopeo replace the Docker engine.",
+          "hint": "What daemon does podman need running?",
+          "objectives": ["podman", "Daemonless containers"],
+          "mins": 5
+        },
+        {
+          "id": "rh-podman-systemd",
+          "title": "Container must survive reboot",
+          "situation": "Your podman container runs fine, but after reboot it's gone (well — exited). You need it managed like a service.",
+          "prompt": "How do you run a rootless container under systemd?",
+          "evidence": [],
+          "choices": [
+            "podman generate systemd --new --name web > ~/.config/systemd/user/container-web.service, then systemctl --user enable --now (with lingering enabled)",
+            "Add it to /etc/rc.local — the traditional way",
+            "podman run --restart=always — podman has Docker-style restart policies built in",
+            "Containers can't auto-start — start them manually"
+          ],
+          "answer": 0,
+          "why": "podman generate systemd creates a unit that runs 'podman start/stop' for the container; --new uses 'podman run' so the container is recreated. As a user unit it needs 'loginctl enable-linger <user>' to run without an active session. Quadlets (.container files) are the newer declarative alternative. (Recent podman does support --restart policies too, but systemd integration is the RHEL-native answer.)",
+          "hint": "Who manages services that must start at boot?",
+          "objectives": ["podman", "systemd integration"],
+          "mins": 6
+        },
+        {
+          "id": "rh-selinux-volume",
+          "title": "Permission denied inside the container",
+          "situation": "You mount /srv/data into a podman container. The app gets permission denied, though host permissions look fine. 'ls -Z' shows the files labeled default_t.",
+          "prompt": "What is the SELinux-aware fix?",
+          "evidence": [],
+          "choices": [
+            "Append :z (shared) or :Z (private) to the -v mount — podman relabels the content to container_file_t so the container can access it",
+            "setenforce 0 — containers and SELinux don't mix",
+            "chmod 777 /srv/data — SELinux follows Unix permissions",
+            "Run with --privileged — the standard fix"
+          ],
+          "answer": 0,
+          "why": "Container processes run under a confined SELinux domain and can only touch container_file_t labeled content. :z relabels for shared access (multiple containers), :Z for exclusive (private unshared) access. --privileged disables nearly all isolation — a sledgehammer for a labeling problem. Check denials with ausearch -m avc.",
+          "hint": "What label must mounted content carry for the container domain to read it?",
+          "objectives": ["SELinux", "Container volumes", ":z/:Z"],
+          "mins": 6
+        },
+        {
+          "id": "rh-cockpit",
+          "title": "Web-based server check",
+          "situation": "You're away from your SSH keys but have a browser. You need to check service status, storage, and logs on the RHEL server.",
+          "prompt": "What is available natively, and on which port?",
+          "evidence": [],
+          "choices": [
+            "Cockpit — the web console on port 9090 (cockpit.socket), covering services, storage, logs, networking, and containers",
+            "RHEL has no web console — install third-party software",
+            "Port 80 — the web server doubles as admin console",
+            "Cockpit is a separate paid product"
+          ],
+          "answer": 0,
+          "why": "Cockpit ships with RHEL: 'systemctl enable --now cockpit.socket' serves https://server:9090 with system login. It manages systemd services, storage (incl. LVM/Stratis views), journals, networking, user accounts, and podman containers — ideal for quick checks and for junior admins. It's included, not an add-on.",
+          "hint": "Which port does the built-in web console listen on?",
+          "objectives": ["Cockpit", "Web console"],
+          "mins": 4
+        },
+        {
+          "id": "rh-rootless-limits",
+          "title": "Rootless port binding fails",
+          "situation": "Running rootless podman, '-p 80:80' fails with permission denied, but '-p 8080:80' works.",
+          "prompt": "Why, and what are the options?",
+          "evidence": [],
+          "choices": [
+            "Unprivileged users can't bind ports < 1024 — use a high port, or set net.ipv4.ip_unprivileged_port_start=80 via sysctl",
+            "Podman can't publish ports at all rootless",
+            "Port 80 is always in use — pick another",
+            "Rootless containers have no network — expected"
+          ],
+          "answer": 0,
+          "why": "The kernel restricts sub-1024 binds to privileged processes — rootless containers inherit this. Options: publish high ports (8080→80), or lower net.ipv4.ip_unprivileged_port_start (e.g., to 80) via sysctl. This is a security feature, not a podman limitation — the same applies to any unprivileged process.",
+          "hint": "Which port numbers are privileged, and who enforces that?",
+          "objectives": ["Rootless", "Privileged ports"],
+          "mins": 5
+        },
+        {
+          "id": "rh-hardening-basics",
+          "title": "New server checklist",
+          "situation": "A fresh RHEL server will face the internet. You need the baseline hardening pass.",
+          "prompt": "What are the essential first steps?",
+          "evidence": [],
+          "choices": [
+            "Update all packages, enable firewalld with minimal open ports, SSH key-only + no root login, enable SELinux enforcing, enable automatic updates or a patch cadence",
+            "Disable the firewall for easier debugging, then harden later",
+            "Change the SSH port — that's sufficient hardening",
+            "Hardening is optional on cloud VMs — the provider handles it"
+          ],
+          "answer": 0,
+          "why": "Baseline: dnf update (patch known CVEs), firewalld default-deny with only needed services, sshd hardening (keys, no root, no password auth), SELinux enforcing (confinement when something breaks in), and a sustained patch process (dnf-automatic or scheduled). Port changes are obscurity, not security — do them only atop real controls.",
+          "hint": "Which of these actually reduces attack surface vs just hiding it?",
+          "objectives": ["Hardening", "Baseline security"],
+          "mins": 6
+        }
+      ]
+    }
+  ],
+  "behavioral": [
+    {
+      "prompt": "Tell me about a time you troubleshot a production Linux issue under pressure.",
+      "framework": "STAR",
+      "points": ["How you scoped the problem fast", "Tools and logs you used", "Outcome and what you changed afterwards"],
+      "pitfalls": ["Random commands with no method", "No follow-up prevention"]
+    },
+    {
+      "prompt": "Describe a situation where you automated a manual system-administration task.",
+      "framework": "STAR",
+      "points": ["The manual pain", "What you built", "Time saved or errors avoided"],
+      "pitfalls": ["Automation nobody uses", "No measurable benefit"]
+    },
+    {
+      "prompt": "Tell me about a time a change you made caused an outage or near-miss.",
+      "framework": "STAR",
+      "points": ["Honest ownership", "How you detected and rolled back", "Safeguards added"],
+      "pitfalls": ["Minimizing the impact", "Blaming the platform"]
+    },
+    {
+      "prompt": "Describe how you approach learning an unfamiliar subsystem (e.g., SELinux, LVM, systemd).",
+      "framework": "STAR",
+      "points": ["Your learning method", "A concrete example", "How you validated understanding"],
+      "pitfalls": ["'I just Google it' with no depth", "Avoiding hard topics"]
+    },
+    {
+      "prompt": "Tell me about a time you had to say no to a risky request (e.g., chmod 777, disabling SELinux).",
+      "framework": "STAR",
+      "points": ["The request and the risk", "How you communicated the no", "The alternative you offered"],
+      "pitfalls": ["Just saying no with no alternative", "Caving under pressure"]
+    },
+    {
+      "prompt": "Describe a time you improved system reliability or security beyond your assigned tasks.",
+      "framework": "STAR",
+      "points": ["What you noticed", "What you changed", "Measurable improvement"],
+      "pitfalls": ["Vague claims", "Taking credit for team work"]
+    },
+    {
+      "prompt": "Tell me about collaborating with developers or other teams on a system issue.",
+      "framework": "STAR",
+      "points": ["The shared problem", "How you bridged the knowledge gap", "Resolution"],
+      "pitfalls": ["Us-vs-them framing", "Doing it all alone"]
+    },
+    {
+      "prompt": "Where do you see your sysadmin skills going next, and what are you doing about it?",
+      "framework": "Present-Past-Future",
+      "points": ["Direction (automation, cloud, etc.)", "Steps already taken", "How it serves the team"],
+      "pitfalls": ["No direction", "Learning with no application"]
+    }
+  ],
+  "chat": {
+    "persona": "You are a friendly but rigorous RHCSA-style interviewer running a mock assessment. Ask one focused scenario at a time, demand exact commands and reasoning, and give concise keyword-driven feedback.",
+    "topics": [
+      {
+        "id": "core-tools",
+        "name": "Core Tools",
+        "key_points": ["vim save/quit", "sed in-place edits", "rsync trailing slash", "dnf provides", "journalctl filters", "systemctl enable --now"],
+        "followups": ["Give me the exact command.", "What would happen if you forgot...?"]
+      },
+      {
+        "id": "users-groups",
+        "name": "Users & Groups",
+        "key_points": ["useradd flags", "usermod -aG vs -G", "chage aging", "setfacl/getfacl", "sudoers.d drop-ins", "su vs su -"],
+        "followups": ["What's the dangerous variant of that command?", "How do you verify?"]
+      },
+      {
+        "id": "storage",
+        "name": "Storage (LVM/Stratis)",
+        "key_points": ["fstab UUID mounting", "pvcreate/vgcreate/lvcreate order", "lvextend -r", "XFS cannot shrink", "stratis pool/filesystem", "swap files"],
+        "followups": ["What order do the layers go in?", "What breaks if you skip a step?"]
+      },
+      {
+        "id": "services-boot",
+        "name": "Services & Boot",
+        "key_points": ["systemd timers vs cron", "set-default targets", "rd.break recovery", "crontab fields", "mask vs disable", "persistent journals"],
+        "followups": ["Walk me through the recovery steps.", "Why not the simpler option?"]
+      },
+      {
+        "id": "networking",
+        "name": "Networking",
+        "key_points": ["nmcli static IP", "firewalld --permanent", "SELinux contexts and booleans", "hostnamectl", "sshd hardening"],
+        "followups": ["Is that change persistent?", "How do you apply it safely?"]
+      },
+      {
+        "id": "containers-security",
+        "name": "Containers & Security",
+        "key_points": ["podman run flags", "systemd user units for containers", ":z vs :Z relabeling", "cockpit port 9090", "rootless port limits", "hardening baseline"],
+        "followups": ["How does that differ from Docker?", "What's the security trade-off?"]
+      }
+    ]
+  }
+}

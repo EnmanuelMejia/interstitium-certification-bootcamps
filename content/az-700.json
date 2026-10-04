@@ -1,0 +1,1026 @@
+{
+  "slug": "az-700",
+  "title": "Azure Network Engineer (AZ-700)",
+  "tagline": "Design and operate Azure networking",
+  "vendor": {
+    "name": "Microsoft",
+    "certs": "AZ-700",
+    "docs": "https://learn.microsoft.com"
+  },
+  "disclaimer": "Independent practice material by Interstitium Labs. Not affiliated with, endorsed by, or sponsored by Microsoft. Confers no certificate. All scenarios are original; no exam content is reproduced.",
+  "domains": [
+    {
+      "id": "vnet-design",
+      "name": "VNet Design",
+      "scenarios": [
+        {
+          "id": "az700-addr-plan",
+          "title": "The overlapping acquisition",
+          "situation": "Contoso's hub VNet uses 10.0.0.0/16. An acquired company's VNet also uses 10.0.0.0/16, and both must peer with the hub.",
+          "prompt": "What must happen before peering?",
+          "evidence": [],
+          "choices": [
+            "Re-address one side — peered VNets cannot have overlapping address spaces",
+            "Peer anyway; Azure resolves overlaps automatically",
+            "Use a VPN gateway instead of peering",
+            "Enable IP forwarding on all VMs"
+          ],
+          "answer": 0,
+          "why": "VNet peering requires non-overlapping address spaces; Azure blocks peering creation when ranges overlap. Address planning (non-overlapping RFC 1918 space per VNet, room for growth) is the foundational design step — renumbering after the fact is painful.",
+          "hint": "Can two peered networks both claim 10.0.0.0/16?",
+          "objectives": [
+            "Address space planning",
+            "Peering prerequisites"
+          ],
+          "mins": 6
+        },
+        {
+          "id": "az700-subnet-size",
+          "title": "The gateway subnet",
+          "situation": "An admin tries to deploy a VPN gateway into a /29 subnet and the deployment fails.",
+          "prompt": "Why?",
+          "evidence": [],
+          "choices": [
+            "Gateway subnets need room for the gateway instances — Microsoft recommends /27 or larger (a /29 is too small)",
+            "Gateways can't use dedicated subnets",
+            "The subnet needs an NSG first",
+            "VPN gateways require /16 subnets"
+          ],
+          "answer": 0,
+          "why": "The gateway subnet hosts active/standby gateway instances plus platform addresses; Microsoft recommends /27 or larger. A /29 leaves no room after the 5 reserved addresses. Note: gateway subnets must be named exactly 'GatewaySubnet' and carry no NSG/UDR.",
+          "hint": "How much address room does a gateway subnet need, and what must it be named?",
+          "objectives": [
+            "Gateway subnet",
+            "Subnet sizing"
+          ],
+          "mins": 6
+        },
+        {
+          "id": "az700-hub-spoke",
+          "title": "The NVA inspection",
+          "situation": "All spoke-to-spoke and spoke-to-internet traffic must be inspected by a firewall NVA in the hub.",
+          "prompt": "How is traffic forced through the hub?",
+          "evidence": [],
+          "choices": [
+            "User-defined routes (UDRs) in each spoke with 0.0.0.0/0 pointing to the hub NVA/firewall",
+            "VNet peering alone — it forces transit automatically",
+            "An NSG on the hub",
+            "BGP from the spokes"
+          ],
+          "answer": 0,
+          "why": "Peering connects spokes to the hub but doesn't route spoke-to-spoke through it (non-transitive). UDRs with a default route to the hub firewall/NVA override system routes and force inspection — the classic forced-tunneling/hub inspection design.",
+          "hint": "Peering connects; what steers the packets through the firewall?",
+          "objectives": [
+            "UDR",
+            "Forced tunneling"
+          ],
+          "mins": 7
+        },
+        {
+          "id": "az700-nat-gw",
+          "title": "The SNAT exhaustion",
+          "situation": "A spoke with 500 VMs behind a standard load balancer sees intermittent outbound connection failures under load.",
+          "prompt": "What is the likely cause and fix?",
+          "evidence": [],
+          "choices": [
+            "SNAT port exhaustion — attach Azure NAT Gateway to the subnet for scalable outbound connectivity",
+            "The VMs need public IPs each",
+            "A bigger load balancer SKU",
+            "More NSG rules"
+          ],
+          "answer": 0,
+          "why": "Outbound SNAT ports are finite per public IP; hundreds of VMs sharing a few ports exhaust them. NAT Gateway provides up to 64k SNAT ports per public IP (up to 16 IPs) at the subnet level — the designed fix for large-scale outbound.",
+          "hint": "Hundreds of VMs sharing few outbound ports — what runs out, and what scales it?",
+          "objectives": [
+            "NAT Gateway",
+            "SNAT exhaustion"
+          ],
+          "mins": 7
+        },
+        {
+          "id": "az700-dns-private",
+          "title": "The Private Link name",
+          "situation": "After creating a private endpoint for a storage account, apps resolve the public name to the public IP instead of the private IP.",
+          "prompt": "What's missing?",
+          "evidence": [
+            [
+              "nslookup",
+              "mystorage.blob.core.windows.net → 20.150.x.x (public) — expected 10.1.4.5"
+            ]
+          ],
+          "choices": [
+            "A private DNS zone (privatelink.blob.core.windows.net) linked to the VNet with the correct A record",
+            "A public DNS change",
+            "An NSG rule allowing DNS",
+            "A second private endpoint"
+          ],
+          "answer": 0,
+          "why": "Private endpoints need private DNS resolution: the privatelink.* zone linked to the VNet maps the service's public FQDN to the private endpoint IP. Without it, clients resolve the public IP and traffic leaves the VNet — silently defeating the purpose.",
+          "hint": "The endpoint exists but names still resolve publicly. Which DNS piece completes Private Link?",
+          "objectives": [
+            "Private DNS zones",
+            "Private Link DNS"
+          ],
+          "mins": 7
+        },
+        {
+          "id": "az700-ipam",
+          "title": "The spreadsheet chaos",
+          "situation": "Five teams allocate VNet address space from a shared spreadsheet; overlaps and exhaustion keep happening.",
+          "prompt": "What brings order to IP address management?",
+          "evidence": [],
+          "choices": [
+            "Azure IPAM / Virtual Network Manager with centrally planned pools and verification",
+            "A bigger spreadsheet",
+            "Using only /16s for everything",
+            "Disabling peering"
+          ],
+          "answer": 0,
+          "why": "IP address management (IPAM) — planning non-overlapping pools per region/environment, reserving growth space, and verifying before deployment — prevents the overlap/exhaustion cycle. Azure Virtual Network Manager can centrally manage connectivity and security configs across VNets.",
+          "hint": "What's the process fix for spreadsheet-driven address chaos?",
+          "objectives": [
+            "IPAM",
+            "Address planning"
+          ],
+          "mins": 5
+        }
+      ]
+    },
+    {
+      "id": "connectivity",
+      "name": "Connectivity",
+      "scenarios": [
+        {
+          "id": "az700-s2s",
+          "title": "The branch office link",
+          "situation": "A branch office with a static public IP needs its LAN to reach Azure VNets over an encrypted tunnel.",
+          "prompt": "Which connectivity fits?",
+          "evidence": [],
+          "choices": [
+            "Site-to-site VPN — IPsec tunnel between the on-premises VPN device and the Azure VPN gateway",
+            "Point-to-site VPN per user",
+            "ExpressRoute for a single branch",
+            "VNet peering to the branch"
+          ],
+          "answer": 0,
+          "why": "Site-to-site VPN connects entire on-premises networks to Azure via IPsec from the site's VPN device. Point-to-site is per-client; ExpressRoute is dedicated private connectivity (overkill for one small branch); peering is Azure-to-Azure only.",
+          "hint": "Whole branch LAN to Azure, encrypted — which VPN type?",
+          "objectives": [
+            "Site-to-site VPN",
+            "Hybrid connectivity"
+          ],
+          "mins": 5
+        },
+        {
+          "id": "az700-p2s",
+          "title": "The remote admins",
+          "situation": "Twenty remote admins need encrypted access to Azure VNets from their laptops — no site VPN device involved.",
+          "prompt": "Which connectivity fits?",
+          "evidence": [],
+          "choices": [
+            "Point-to-site VPN — per-client VPN to the Azure VPN gateway",
+            "Site-to-site VPN",
+            "ExpressRoute",
+            "Public IPs on all VMs"
+          ],
+          "answer": 0,
+          "why": "Point-to-site VPN gives individual clients (laptops) an encrypted tunnel to the VNet via the VPN gateway — no on-premises VPN hardware needed. It's the remote-admin answer; site-to-site needs a site device.",
+          "hint": "Individual laptops, no site hardware — which VPN type?",
+          "objectives": [
+            "Point-to-site VPN",
+            "Remote access"
+          ],
+          "mins": 5
+        },
+        {
+          "id": "az700-expressroute",
+          "title": "The replication pipe",
+          "situation": "A hospital replicates 8 TB nightly to Azure and needs consistent throughput, private connectivity, and an SLA.",
+          "prompt": "Which connectivity fits?",
+          "evidence": [],
+          "choices": [
+            "ExpressRoute — private dedicated circuit with predictable bandwidth and SLA",
+            "Site-to-site VPN over the internet",
+            "Point-to-site VPN",
+            "Increasing the VPN gateway SKU"
+          ],
+          "answer": 0,
+          "why": "ExpressRoute provides private, dedicated bandwidth (up to 100 Gbps) with SLA-backed latency/throughput — the choice for bulk, compliance-sensitive, or latency-sensitive traffic. VPN over the internet can't guarantee throughput.",
+          "hint": "Bulk nightly replication needing guaranteed private throughput — which circuit?",
+          "objectives": [
+            "ExpressRoute",
+            "Dedicated connectivity"
+          ],
+          "mins": 6
+        },
+        {
+          "id": "az700-vwan",
+          "title": "The thirty branches",
+          "situation": "A retailer has 30 branches, each needing connectivity to Azure and to each other, managed centrally.",
+          "prompt": "What simplifies this hub-and-spoke at scale?",
+          "evidence": [],
+          "choices": [
+            "Azure Virtual WAN — managed hub with integrated VPN/ExpressRoute/P2S and branch-to-branch transit",
+            "30 separate site-to-site VPNs with manual routing",
+            "30 ExpressRoute circuits",
+            "One giant VNet per branch"
+          ],
+          "answer": 0,
+          "why": "Virtual WAN provides a Microsoft-managed hub (vpn/ER/P2S gateways built in) with any-to-any branch connectivity and centralized routing/security policy — far simpler than meshing 30 site VPNs manually.",
+          "hint": "Thirty sites needing any-to-any through Azure — which managed hub?",
+          "objectives": [
+            "Virtual WAN",
+            "Branch connectivity"
+          ],
+          "mins": 6
+        },
+        {
+          "id": "az700-globalreach",
+          "title": "The two clouds",
+          "situation": "A company has ExpressRoute to Azure and a private connection to another cloud, and needs the two environments to talk privately via the providers' networks.",
+          "prompt": "What connects them?",
+          "evidence": [],
+          "choices": [
+            "ExpressRoute Global Reach — links two ExpressRoute circuits through Microsoft's network",
+            "VNet peering between clouds",
+            "A site-to-site VPN over the internet",
+            "Public endpoints with IP whitelisting"
+          ],
+          "answer": 0,
+          "why": "Global Reach connects ExpressRoute circuits together over Microsoft's backbone — e.g., Azure to another cloud's private interconnect — without traversing the public internet. It's circuit-to-circuit, not VNet peering.",
+          "hint": "Two private circuits needing to meet privately — which feature links circuits?",
+          "objectives": [
+            "Global Reach",
+            "Inter-circuit connectivity"
+          ],
+          "mins": 7
+        },
+        {
+          "id": "az700-er-peering",
+          "title": "The Office 365 path",
+          "situation": "An admin enables Microsoft peering on ExpressRoute expecting all Azure VNet traffic to use it.",
+          "prompt": "What is the misunderstanding?",
+          "evidence": [],
+          "choices": [
+            "Microsoft peering is for Microsoft 365/Dynamics and public services; VNet traffic uses private peering",
+            "Microsoft peering carries VNet traffic",
+            "Private peering is for Office 365",
+            "Peering types are interchangeable"
+          ],
+          "answer": 0,
+          "why": "ExpressRoute has two peering types: private peering (RFC 1918 traffic to your VNets) and Microsoft peering (public Microsoft services like M365). Enabling Microsoft peering doesn't route VNet traffic — that's private peering's job.",
+          "hint": "Which peering type carries traffic to your VNets versus to M365?",
+          "objectives": [
+            "ExpressRoute peering",
+            "Private vs Microsoft peering"
+          ],
+          "mins": 6
+        }
+      ]
+    },
+    {
+      "id": "routing",
+      "name": "Routing",
+      "scenarios": [
+        {
+          "id": "az700-system-routes",
+          "title": "The default internet path",
+          "situation": "A VM in a VNet reaches the internet directly. The admin wants all outbound traffic inspected by the hub firewall instead.",
+          "prompt": "What overrides the default behavior?",
+          "evidence": [],
+          "choices": [
+            "A UDR with 0.0.0.0/0 pointing to the firewall's private IP — it overrides the system default route",
+            "An NSG rule — NSGs filter but don't route",
+            "A route table without any routes",
+            "Deleting the internet gateway"
+          ],
+          "answer": 0,
+          "why": "Azure system routes send internet-bound traffic directly out; a UDR default route (0.0.0.0/0 → firewall/NVA) overrides it — forced tunneling. NSGs filter traffic but never change its path; routing and filtering are separate mechanisms.",
+          "hint": "What overrides a system route to steer traffic elsewhere?",
+          "objectives": [
+            "UDR",
+            "Route override"
+          ],
+          "mins": 6
+        },
+        {
+          "id": "az700-bgp",
+          "title": "The asymmetric routing",
+          "situation": "With a VPN gateway and ExpressRoute both connected, return traffic sometimes takes a different path than outbound, breaking stateful inspection.",
+          "prompt": "What routing feature fixes path consistency?",
+          "evidence": [],
+          "choices": [
+            "BGP — dynamic routing lets both sides agree on best paths and fail over consistently",
+            "Static routes only",
+            "Disabling one connection",
+            "A bigger gateway SKU"
+          ],
+          "answer": 0,
+          "why": "BGP exchanges routes dynamically between on-premises and Azure, enabling consistent path selection and automatic failover across redundant connections. Static routes can't adapt, causing asymmetric paths that break stateful firewalls.",
+          "hint": "What makes both sides agree on routes dynamically?",
+          "objectives": [
+            "BGP",
+            "Dynamic routing"
+          ],
+          "mins": 7
+        },
+        {
+          "id": "az700-longest-prefix",
+          "title": "The overlapping routes",
+          "situation": "A route table has 10.0.0.0/16 → firewall and 10.0.1.0/24 → VNet peering. A packet for 10.0.1.50 arrives.",
+          "prompt": "Which route wins?",
+          "evidence": [
+            [
+              "effective routes for 10.0.1.50",
+              "10.0.1.0/24 → VNet peering (UDR)",
+              "10.0.0.0/16 → 10.0.0.4 firewall (UDR)"
+            ]
+          ],
+          "choices": [
+            "10.0.1.0/24 — longest prefix match wins over the broader /16",
+            "10.0.0.0/16 — it was created first",
+            "Neither; the packet is dropped",
+            "The system route wins over UDRs"
+          ],
+          "answer": 0,
+          "why": "Longest prefix match: the most specific matching route wins, regardless of creation order. UDRs override system routes of equal specificity; among UDRs, specificity decides.",
+          "hint": "Two routes match. Which selection rule decides?",
+          "objectives": [
+            "Longest prefix match",
+            "Route selection"
+          ],
+          "mins": 6
+        },
+        {
+          "id": "az700-nva-ha",
+          "title": "The single firewall",
+          "situation": "All spoke traffic routes through one firewall NVA. During its maintenance, all outbound traffic stops.",
+          "prompt": "What design removes this single point of failure?",
+          "evidence": [],
+          "choices": [
+            "An NVA cluster / Azure Firewall with availability zones — redundant inspection path",
+            "A bigger NVA VM",
+            "A second UDR",
+            "Removing the forced tunnel"
+          ],
+          "answer": 0,
+          "why": "Forced tunneling concentrates traffic on the inspection point, so it must be highly available: Azure Firewall is zone-redundant by default; third-party NVAs need active-active clustering behind a load balancer. Redundancy at the choke point is non-negotiable.",
+          "hint": "The choke point must not be a single VM. What makes inspection highly available?",
+          "objectives": [
+            "NVA high availability",
+            "Choke-point design"
+          ],
+          "mins": 6
+        },
+        {
+          "id": "az700-service-endpoint-rt",
+          "title": "The storage detour",
+          "situation": "After enabling a service endpoint for Storage on a subnet, traffic to the storage account still hairpins through the hub firewall.",
+          "prompt": "Why?",
+          "evidence": [],
+          "choices": [
+            "Service endpoints inject a system route that takes precedence appropriately — check whether a UDR 0.0.0.0/0 is forcing it; service endpoint routes are more specific and should win for the service prefixes",
+            "Service endpoints don't work with UDRs at all",
+            "The firewall must be deleted",
+            "Service endpoints require ExpressRoute"
+          ],
+          "answer": 0,
+          "why": "Service endpoints add system routes for the service's public prefixes, which are more specific than a 0.0.0.0/0 UDR — so service traffic should bypass the firewall. If it doesn't, verify the endpoint is enabled on the right subnet and the storage firewall allows the VNet.",
+          "hint": "Which route should win for service traffic, and what would break it?",
+          "objectives": [
+            "Service endpoints",
+            "Routing interaction"
+          ],
+          "mins": 7
+        },
+        {
+          "id": "az700-vnet-flow",
+          "title": "The effective routes tool",
+          "situation": "An admin can't tell which of three route tables actually applies to a VM's NIC.",
+          "prompt": "What shows the final computed routes?",
+          "evidence": [],
+          "choices": [
+            "Network Watcher's 'effective routes' view for the NIC — subnet + NIC route tables merged with system routes",
+            "The VNet address space blade",
+            "The NSG rules list",
+            "The gateway subnet config"
+          ],
+          "answer": 0,
+          "why": "Effective routes (portal or Get-AzEffectiveRouteTable) shows the merged result: NIC route table + subnet route table + system routes, with the winning route per prefix. It's the authoritative answer to 'where will this packet go?'",
+          "hint": "Which view shows the merged, final routing decision for a NIC?",
+          "objectives": [
+            "Effective routes",
+            "Route troubleshooting"
+          ],
+          "mins": 5
+        }
+      ]
+    },
+    {
+      "id": "private-access",
+      "name": "Private Access",
+      "scenarios": [
+        {
+          "id": "az700-pe-vs-se",
+          "title": "The compliance mandate",
+          "situation": "Regulators require that database traffic never traverse a public endpoint — not even with IP restrictions.",
+          "prompt": "Which option truly removes the public endpoint from the path?",
+          "evidence": [],
+          "choices": [
+            "Private endpoint — traffic goes to a private IP in the VNet; the public endpoint can be disabled",
+            "Service endpoint — keeps the public endpoint, only extends VNet identity",
+            "IP firewall rules",
+            "A VPN to the database's public IP"
+          ],
+          "answer": 0,
+          "why": "Only private endpoints move traffic to a private IP inside the VNet and allow disabling public access entirely. Service endpoints keep the service's public endpoint (traffic stays on the backbone but the endpoint is still public) — insufficient for this mandate.",
+          "hint": "Which option eliminates the public endpoint rather than just restricting it?",
+          "objectives": [
+            "Private vs service endpoints",
+            "Compliance design"
+          ],
+          "mins": 7
+        },
+        {
+          "id": "az700-pls",
+          "title": "The partner service",
+          "situation": "A company wants to expose an internal API to a partner's VNet privately — without either side peering VNets or exposing public IPs.",
+          "prompt": "What enables this?",
+          "evidence": [],
+          "choices": [
+            "Private Link Service — publishes the internal load balancer as a private-link service the partner consumes via their own private endpoint",
+            "VNet peering between companies",
+            "A public load balancer with IP whitelist",
+            "A site-to-site VPN to the partner"
+          ],
+          "answer": 0,
+          "why": "Private Link Service (the provider side of Private Link) exposes your internal standard load balancer to consumers who create private endpoints in their own VNets — private connectivity with no peering, no public IPs, and consumer-driven approval.",
+          "hint": "How do you offer a private service to another tenant's VNet without peering?",
+          "objectives": [
+            "Private Link Service",
+            "Provider-side Private Link"
+          ],
+          "mins": 7
+        },
+        {
+          "id": "az700-dns-pls",
+          "title": "The partner's DNS",
+          "situation": "The partner's private endpoint resolves the service name to a public IP from their VNet.",
+          "prompt": "What's missing on the consumer side?",
+          "evidence": [],
+          "choices": [
+            "Their own private DNS zone linked to their VNet mapping the service FQDN to the private endpoint IP",
+            "A change on the provider side",
+            "An NSG rule",
+            "A bigger private endpoint SKU"
+          ],
+          "answer": 0,
+          "why": "Each consumer VNet needs its own private DNS zone linked locally — DNS resolution is per-VNet. The provider can't fix the consumer's resolution; the consumer links the privatelink zone (or a custom zone) to their VNet.",
+          "hint": "Whose DNS must map the name to the private IP?",
+          "objectives": [
+            "Private Link DNS",
+            "Consumer-side DNS"
+          ],
+          "mins": 6
+        },
+        {
+          "id": "az700-appgw-private",
+          "title": "The internal app gateway",
+          "situation": "An application gateway must serve an internal HR app with no public exposure at all.",
+          "prompt": "How is this deployed?",
+          "evidence": [],
+          "choices": [
+            "Application Gateway with a private frontend IP only (no public frontend)",
+            "Application Gateway always requires a public IP",
+            "Use Azure Front Door instead",
+            "Put the gateway in the gateway subnet"
+          ],
+          "answer": 0,
+          "why": "Application Gateway supports private-only frontend IPs for internal apps (WAF still available). It needs its own dedicated subnet — not the gateway subnet, which is reserved for VPN/ExpressRoute gateways.",
+          "hint": "Can an app gateway be fully private, and where does it live?",
+          "objectives": [
+            "App Gateway",
+            "Private frontends"
+          ],
+          "mins": 6
+        },
+        {
+          "id": "az700-bastion-net",
+          "title": "The jump box replacement",
+          "situation": "The network team wants admins to reach VMs without public IPs, without a VPN client, and without managing jump boxes.",
+          "prompt": "What fits the network design?",
+          "evidence": [],
+          "choices": [
+            "Azure Bastion in the hub VNet (dedicated AzureBastionSubnet /26+) peered to spokes",
+            "A VPN gateway per spoke",
+            "Public IPs with NSG restrictions",
+            "An NVA jump box per spoke"
+          ],
+          "answer": 0,
+          "why": "Bastion deployed once in the hub (in its own AzureBastionSubnet, /26 or larger) serves peered spokes — no public IPs on VMs, no VPN clients, no jump boxes to patch. It's the hub-and-spoke admin access pattern.",
+          "hint": "One deployment serving all peered spokes, no jump boxes — which service and subnet?",
+          "objectives": [
+            "Bastion design",
+            "Hub admin access"
+          ],
+          "mins": 6
+        },
+        {
+          "id": "az700-secure-transfer",
+          "title": "The storage transit",
+          "situation": "A security review requires that all storage account traffic use encrypted transit and private networking.",
+          "prompt": "Which two settings combine to meet this?",
+          "evidence": [],
+          "choices": [
+            "'Secure transfer required' (HTTPS-only) plus private endpoints with public access disabled",
+            "HTTPS-only alone — still a public endpoint",
+            "Private endpoints alone — still allows HTTP",
+            "A resource lock"
+          ],
+          "answer": 0,
+          "why": "Secure transfer required enforces HTTPS (encryption in transit); private endpoints with public network access disabled enforce private paths. Compliance needs both axes: encrypted AND private.",
+          "hint": "Which setting encrypts transit and which privatizes the path?",
+          "objectives": [
+            "Defense in depth",
+            "Storage security"
+          ],
+          "mins": 6
+        }
+      ]
+    },
+    {
+      "id": "monitoring",
+      "name": "Monitoring",
+      "scenarios": [
+        {
+          "id": "az700-conn-monitor",
+          "title": "The flaky branch link",
+          "situation": "A branch reports intermittent slowness to Azure. The team needs continuous latency/loss measurement, not a one-time test.",
+          "prompt": "What provides ongoing path monitoring?",
+          "evidence": [],
+          "choices": [
+            "Connection Monitor — synthetic tests on a schedule with latency, loss, and topology insights",
+            "A one-time ping",
+            "NSG flow logs — show allowed/denied, not latency",
+            "Packet capture — point-in-time only"
+          ],
+          "answer": 0,
+          "why": "Connection Monitor runs scheduled synthetic probes between endpoints and tracks latency, packet loss, and hop topology over time — the tool for intermittent issues that one-time tests miss.",
+          "hint": "Which tool watches path health continuously over time?",
+          "objectives": [
+            "Connection Monitor",
+            "Path monitoring"
+          ],
+          "mins": 6
+        },
+        {
+          "id": "az700-flow-logs",
+          "title": "The denied traffic mystery",
+          "situation": "An app fails intermittently. The team suspects an NSG is dropping traffic but can't prove which rule.",
+          "prompt": "What provides the evidence?",
+          "evidence": [
+            [
+              "Traffic Analytics query result",
+              "flow: 10.1.2.8 → 10.2.0.9:443 DENIED by rule 'DenyAll-In' (priority 4096)"
+            ]
+          ],
+          "choices": [
+            "NSG flow logs (via Traffic Analytics) — 5-tuple flows with allow/deny decisions",
+            "Connection Monitor — measures latency, not rule decisions",
+            "Packet capture on the VM — sees packets, not NSG verdicts",
+            "The activity log"
+          ],
+          "answer": 0,
+          "why": "NSG flow logs record every flow's allow/deny verdict per rule through the NSG, stored in Log Analytics via Traffic Analytics for KQL querying. It's the authoritative record of what the NSG did.",
+          "hint": "Which log records the NSG's allow/deny verdict per flow?",
+          "objectives": [
+            "NSG flow logs",
+            "Traffic Analytics"
+          ],
+          "mins": 6
+        },
+        {
+          "id": "az700-packet-capture",
+          "title": "The malformed handshake",
+          "situation": "TLS handshakes to a backend fail. The team needs the actual packets to see what's malformed.",
+          "prompt": "Which Network Watcher tool captures them?",
+          "evidence": [],
+          "choices": [
+            "Packet capture — captures VM NIC traffic to a storage account for Wireshark analysis",
+            "IP flow verify — simulates, doesn't capture",
+            "Next hop — shows routing only",
+            "Connection troubleshoot — end-to-end check, no packets"
+          ],
+          "answer": 0,
+          "why": "Network Watcher packet capture records real packets from a VM (or gateway) to blob storage for deep protocol analysis. It's the escalation when flow logs and verifiers can't explain the failure.",
+          "hint": "You need the actual bytes on the wire. Which tool captures them?",
+          "objectives": [
+            "Packet capture",
+            "Deep diagnostics"
+          ],
+          "mins": 6
+        },
+        {
+          "id": "az700-traffic-analytics",
+          "title": "The top talkers",
+          "situation": "The CISO asks: which external IPs talk most to our VNets, and are any data transfers suspiciously large?",
+          "prompt": "What answers this from flow data?",
+          "evidence": [],
+          "choices": [
+            "Traffic Analytics — aggregates NSG flow logs into top talkers, geo distribution, and traffic patterns",
+            "Raw flow logs read manually",
+            "Connection Monitor",
+            "Bastion session logs"
+          ],
+          "answer": 0,
+          "why": "Traffic Analytics processes raw NSG flow logs into visual insights: top talkers, application ports, data-center/DC traffic distribution, and malicious-flow flagging — the analysis layer over flow logs.",
+          "hint": "Which layer turns raw flow logs into 'top talkers' insights?",
+          "objectives": [
+            "Traffic Analytics",
+            "Flow analysis"
+          ],
+          "mins": 5
+        },
+        {
+          "id": "az700-topology",
+          "title": "The undocumented estate",
+          "situation": "A new engineer inherits 40 VNets with unknown peering and gateway relationships.",
+          "prompt": "What visualizes the topology?",
+          "evidence": [],
+          "choices": [
+            "Network Watcher topology view — VNets, peerings, gateways, and connections mapped",
+            "The subscription list",
+            "Effective routes per NIC",
+            "The activity log"
+          ],
+          "answer": 0,
+          "why": "Network Watcher's topology generates a map of VNets, subnets, peerings, gateways, and NICs — the fastest way to comprehend an undocumented estate before making changes.",
+          "hint": "Which view draws the map of VNets, peerings, and gateways?",
+          "objectives": [
+            "Topology",
+            "Network discovery"
+          ],
+          "mins": 5
+        },
+        {
+          "id": "az700-vpn-diag",
+          "title": "The down tunnel",
+          "situation": "A site-to-site VPN tunnel is down. The on-premises team insists their device is fine.",
+          "prompt": "What is the systematic triage order?",
+          "evidence": [],
+          "choices": [
+            "Check gateway health and connection status in Azure → verify shared key/IPsec parameters match → review gateway diagnostics and IKE logs",
+            "Reboot the on-premises device first",
+            "Delete and recreate the gateway immediately",
+            "Increase the gateway SKU"
+          ],
+          "answer": 0,
+          "why": "Triage VPN methodically: Azure connection status and gateway health first, then the usual culprits — mismatched pre-shared key, IKE/IPsec proposal mismatch, or NAT-T issues — using gateway diagnostics. Recreating the gateway is a last resort, not a first step.",
+          "hint": "What's the ordered triage for a down IPsec tunnel?",
+          "objectives": [
+            "VPN troubleshooting",
+            "Triage methodology"
+          ],
+          "mins": 7
+        }
+      ]
+    },
+    {
+      "id": "security",
+      "name": "Security",
+      "scenarios": [
+        {
+          "id": "az700-azfw",
+          "title": "The egress control",
+          "situation": "Compliance requires all internet-bound traffic from workloads to be filtered by FQDN (only approved domains) with TLS inspection.",
+          "prompt": "Which firewall meets this?",
+          "evidence": [],
+          "choices": [
+            "Azure Firewall Premium — FQDN filtering in network rules plus TLS inspection",
+            "NSG — filters by IP/port, not FQDN, no TLS inspection",
+            "Azure Firewall Basic — no TLS inspection",
+            "A UDR alone"
+          ],
+          "answer": 0,
+          "why": "Only Azure Firewall Premium offers TLS inspection; Standard and Premium both do FQDN-based filtering in network rules (layer 7 awareness NSGs lack). The tier choice hinges on the TLS inspection requirement.",
+          "hint": "FQDN filtering plus TLS inspection — which tier has both?",
+          "objectives": [
+            "Azure Firewall",
+            "Tiers and features"
+          ],
+          "mins": 7
+        },
+        {
+          "id": "az700-fw-policy",
+          "title": "The fifty firewalls",
+          "situation": "An enterprise runs many Azure Firewalls and needs one place to define rule collections inherited by all of them.",
+          "prompt": "What centralizes firewall policy?",
+          "evidence": [],
+          "choices": [
+            "Azure Firewall Manager with firewall policies — hierarchical rule inheritance across firewalls and Virtual WAN hubs",
+            "Configuring each firewall manually",
+            "An NSG per subnet",
+            "A route table per VNet"
+          ],
+          "answer": 0,
+          "why": "Firewall Manager with Azure Firewall Policies lets you define rule collections once (including hierarchical base + local policies) and assign them across firewalls and secured virtual hubs — centralized governance for distributed enforcement.",
+          "hint": "What provides one policy definition inherited by many firewalls?",
+          "objectives": [
+            "Firewall Manager",
+            "Centralized policy"
+          ],
+          "mins": 6
+        },
+        {
+          "id": "az700-waf",
+          "title": "The SQL injection attempt",
+          "situation": "A web app faces automated SQL injection and XSS probes. The team wants managed rule sets blocking OWASP Top 10 patterns at the edge.",
+          "prompt": "Where should the WAF run?",
+          "evidence": [],
+          "choices": [
+            "WAF on Application Gateway (regional) or Azure Front Door (global) with managed OWASP rule sets",
+            "Azure Firewall alone — L3/L4 + FQDN, not HTTP WAF rules",
+            "An NSG",
+            "Bastion"
+          ],
+          "answer": 0,
+          "why": "Web Application Firewall (on App Gateway for regional, Front Door for global) inspects HTTP/S payloads against managed rule sets (OWASP CRS) blocking injection and XSS. Azure Firewall filters network traffic but isn't an HTTP WAF.",
+          "hint": "Blocking SQLi/XSS in HTTP payloads at the edge — which service?",
+          "objectives": [
+            "WAF",
+            "OWASP protection"
+          ],
+          "mins": 6
+        },
+        {
+          "id": "az700-ddos-net",
+          "title": "The gaming launch",
+          "situation": "A multiplayer game backend with public IPs expects volumetric DDoS attacks at launch and needs adaptive mitigation plus cost protection.",
+          "prompt": "Which protection fits?",
+          "evidence": [],
+          "choices": [
+            "DDoS Network Protection on the VNet — adaptive tuning, attack analytics, and cost protection for scaled-out resources",
+            "Basic (automatic) protection alone — no tuning or cost protection",
+            "An NSG rate limit",
+            "A WAF rule"
+          ],
+          "answer": 0,
+          "why": "DDoS Network Protection (paid tier) adds adaptive per-app tuning, detailed attack telemetry, and cost protection against scale-out billing during attacks — beyond the always-on basic mitigation every VNet gets.",
+          "hint": "Adaptive tuning plus cost protection during an attack — which tier?",
+          "objectives": [
+            "DDoS Protection",
+            "Network Protection tier"
+          ],
+          "mins": 6
+        },
+        {
+          "id": "az700-nsg-design",
+          "title": "The three-tier rules",
+          "situation": "A three-tier app (web/app/db subnets) needs: internet → web on 443 only; web → app on 8080; app → db on 1433; nothing else between tiers.",
+          "prompt": "What is the correct NSG approach?",
+          "evidence": [],
+          "choices": [
+            "Subnet-level NSGs with explicit allow rules per tier flow plus default deny — least-privilege segmentation",
+            "One NSG allowing everything between subnets",
+            "NIC-level NSGs only on the web tier",
+            "No NSGs; rely on the firewall alone"
+          ],
+          "answer": 0,
+          "why": "Subnet-level NSGs implementing explicit allow rules for required tier-to-tier flows (with the default deny-all doing the rest) is textbook micro-segmentation. Each tier's NSG encodes exactly the flows that tier needs — nothing more.",
+          "hint": "How do NSGs enforce least-privilege between tiers?",
+          "objectives": [
+            "NSG design",
+            "Micro-segmentation"
+          ],
+          "mins": 7
+        },
+        {
+          "id": "az700-private-dns-sec",
+          "title": "The DNS exfiltration",
+          "situation": "A security review worries that compromised VMs could use DNS tunneling to exfiltrate data past the firewall.",
+          "prompt": "What mitigates DNS-based exfiltration in the design?",
+          "evidence": [],
+          "choices": [
+            "Azure Firewall DNS proxy with FQDN filtering + monitoring/alerting on anomalous DNS — DNS can't be simply blocked without breaking resolution",
+            "Blocking all DNS",
+            "Removing private DNS zones",
+            "Disabling the firewall's DNS proxy"
+          ],
+          "answer": 0,
+          "why": "DNS is essential, so the answer isn't blocking it: route DNS through the firewall's DNS proxy for FQDN policy enforcement and alert on anomalous query volumes/patterns (Defender for Cloud also flags DNS anomalies). Design acknowledges DNS as a control point, not just plumbing.",
+          "hint": "You can't block DNS outright. How do you control and watch it?",
+          "objectives": [
+            "DNS security",
+            "Exfiltration controls"
+          ],
+          "mins": 7
+        }
+      ]
+    }
+  ],
+  "behavioral": [
+    {
+      "prompt": "Tell me about a time you diagnosed a complex network outage across hybrid connectivity.",
+      "framework": "STAR",
+      "points": [
+        "Symptoms and isolation steps",
+        "Tools and evidence used",
+        "Resolution and hardening"
+      ],
+      "pitfalls": [
+        "Guessing without evidence",
+        "No post-incident hardening"
+      ]
+    },
+    {
+      "prompt": "Describe a network design you created that had to satisfy conflicting requirements.",
+      "framework": "STAR",
+      "points": [
+        "The conflicting requirements",
+        "Trade-offs you evaluated",
+        "The design and its rationale"
+      ],
+      "pitfalls": [
+        "Ignoring one requirement",
+        "No documented rationale"
+      ]
+    },
+    {
+      "prompt": "Tell me about a time you caught a security gap in a network design before it caused harm.",
+      "framework": "STAR",
+      "points": [
+        "The gap and its potential impact",
+        "How you found it",
+        "The fix and verification"
+      ],
+      "pitfalls": [
+        "Finding it after an incident",
+        "Fix with no verification"
+      ]
+    },
+    {
+      "prompt": "Describe a migration of network connectivity (VPN, ExpressRoute, or peering change) you led.",
+      "framework": "STAR",
+      "points": [
+        "The change and its risk",
+        "Your cutover plan",
+        "How you validated success"
+      ],
+      "pitfalls": [
+        "No rollback plan",
+        "No validation step"
+      ]
+    },
+    {
+      "prompt": "Tell me about a time you had to explain a routing or DNS problem to non-network engineers.",
+      "framework": "STAR",
+      "points": [
+        "The problem in plain terms",
+        "Your explanation approach",
+        "Their understanding afterward"
+      ],
+      "pitfalls": [
+        "Jargon without translation",
+        "No confirmation of understanding"
+      ]
+    },
+    {
+      "prompt": "Describe a time you automated network configuration or validation.",
+      "framework": "STAR",
+      "points": [
+        "The manual process",
+        "What you automated",
+        "Errors prevented or time saved"
+      ],
+      "pitfalls": [
+        "Automation with no testing",
+        "No measurable benefit"
+      ]
+    },
+    {
+      "prompt": "Tell me about a disagreement over a network architecture choice and how you resolved it.",
+      "framework": "STAR",
+      "points": [
+        "Both options fairly",
+        "Data or testing that decided it",
+        "The outcome"
+      ],
+      "pitfalls": [
+        "Deciding on seniority alone",
+        "No data behind the choice"
+      ]
+    },
+    {
+      "prompt": "Why are you pursuing the Azure Network Engineer certification, and what network responsibilities are you targeting?",
+      "framework": "PAR",
+      "points": [
+        "Your motivation",
+        "The network scope you want to own",
+        "What comes after"
+      ],
+      "pitfalls": [
+        "Generic answers",
+        "No connection to real duties"
+      ]
+    }
+  ],
+  "chat": {
+    "persona": "You are a precise, demanding network-engineer interviewer running a mock AZ-700 assessment. Insist on exact mechanics: route selection order, peering rules, DNS resolution paths, and tier/feature distinctions. Make the candidate reason packet-by-packet.",
+    "topics": [
+      {
+        "id": "vnet-design",
+        "name": "VNet Design",
+        "key_points": [
+          "address space planning and overlaps",
+          "gateway subnet sizing and naming",
+          "hub-and-spoke with UDRs",
+          "NAT Gateway and SNAT",
+          "private DNS zones for Private Link",
+          "IPAM discipline"
+        ],
+        "followups": [
+          "Where does this packet go and why?",
+          "What breaks if address spaces overlap?"
+        ]
+      },
+      {
+        "id": "connectivity",
+        "name": "Connectivity",
+        "key_points": [
+          "site-to-site vs point-to-site VPN",
+          "ExpressRoute use cases",
+          "Virtual WAN hubs",
+          "Global Reach",
+          "private vs Microsoft peering"
+        ],
+        "followups": [
+          "Which connectivity fits this traffic profile?",
+          "What does each peering type carry?"
+        ]
+      },
+      {
+        "id": "routing",
+        "name": "Routing",
+        "key_points": [
+          "system routes vs UDRs",
+          "longest prefix match",
+          "BGP for dynamic routing",
+          "NVA high availability",
+          "service endpoint route interaction",
+          "effective routes"
+        ],
+        "followups": [
+          "Which route wins for this destination?",
+          "What steers traffic through the firewall?"
+        ]
+      },
+      {
+        "id": "private-access",
+        "name": "Private Access",
+        "key_points": [
+          "private vs service endpoints",
+          "Private Link Service provider side",
+          "consumer-side DNS",
+          "private App Gateway frontends",
+          "secure transfer plus private endpoints",
+          "Bastion hub design"
+        ],
+        "followups": [
+          "Does the public endpoint still exist?",
+          "Whose DNS resolves the private IP?"
+        ]
+      },
+      {
+        "id": "monitoring",
+        "name": "Monitoring",
+        "key_points": [
+          "Connection Monitor",
+          "NSG flow logs and Traffic Analytics",
+          "packet capture",
+          "topology views",
+          "VPN triage methodology"
+        ],
+        "followups": [
+          "Which tool proves the NSG verdict?",
+          "What shows continuous path health?"
+        ]
+      },
+      {
+        "id": "security",
+        "name": "Security",
+        "key_points": [
+          "Azure Firewall tiers and TLS inspection",
+          "Firewall Manager policies",
+          "WAF on App Gateway vs Front Door",
+          "DDoS Network Protection",
+          "NSG micro-segmentation",
+          "DNS exfiltration controls"
+        ],
+        "followups": [
+          "Which tier has this feature?",
+          "Where does HTTP inspection happen?"
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,994 @@
+{
+  "slug": "comptia-infra",
+  "title": "CompTIA Infra: Cloud+ / Linux+ / Server+ / Data+",
+  "tagline": "Infrastructure and data analyst certifications",
+  "vendor": {
+    "name": "CompTIA",
+    "certs": "Cloud+ (CV0-004), Linux+ (XK0-006), Server+ (SK0-005), Data+",
+    "docs": "https://www.comptia.org"
+  },
+  "disclaimer": "Independent practice material by Interstitium Labs. Not affiliated with, endorsed by, or sponsored by CompTIA. Confers no certificate. All scenarios are original; no exam content is reproduced.",
+  "domains": [
+    {
+      "id": "cloud-arch",
+      "name": "Cloud Architecture",
+      "scenarios": [
+        {
+          "id": "infra-cloud-shared",
+          "title": "Whose patch is it?",
+          "situation": "A VM running in a public cloud IaaS account is breached through an unpatched operating system. The customer argues the cloud provider should have patched it.",
+          "prompt": "Who is responsible for patching the guest OS under the shared-responsibility model?",
+          "choices": [
+            "The customer — in IaaS the provider secures the physical layer and hypervisor; the guest OS is yours",
+            "The cloud provider — they own everything below your data",
+            "Nobody — shared means neither side",
+            "The OS vendor, automatically"
+          ],
+          "answer": 0,
+          "why": "Shared responsibility splits at the hypervisor for IaaS: the provider secures facilities, hardware, and virtualization; you own the OS, middleware, apps, and data. The line moves up the stack with PaaS and SaaS, but IaaS guests are always the customer's job.",
+          "hint": "In IaaS, where does the provider's job end?",
+          "objectives": [
+            "Shared responsibility",
+            "IaaS vs PaaS vs SaaS"
+          ],
+          "mins": 5
+        },
+        {
+          "id": "infra-cloud-scale",
+          "title": "The spiky web app",
+          "situation": "An e-commerce app idles most of the day but gets 20x traffic spikes during flash sales. It currently runs on one oversized VM, 24/7.",
+          "prompt": "What architecture handles this most cost-effectively?",
+          "choices": [
+            "A load balancer with auto-scaling: add instances as traffic rises, remove them as it falls",
+            "A single even bigger VM running all the time",
+            "Vertical scaling by hand before each sale",
+            "Move it back on-premises"
+          ],
+          "answer": 0,
+          "why": "Auto-scaling matches capacity to demand automatically, and the load balancer spreads traffic across the fleet. Paying for peak capacity around the clock wastes money; manual vertical scaling is slow and error-prone under flash-sale pressure.",
+          "hint": "What matches capacity to demand without a human watching?",
+          "objectives": [
+            "Auto-scaling",
+            "Load balancing"
+          ],
+          "mins": 6
+        },
+        {
+          "id": "infra-cloud-storage",
+          "title": "Picking the storage tier",
+          "situation": "An app needs storage for two things: millions of user-uploaded images, and a relational database with heavy random reads and writes.",
+          "prompt": "Which pairing is correct?",
+          "choices": [
+            "Object storage for the images; block storage volumes for the database",
+            "Block storage for everything",
+            "File storage for everything",
+            "Archive tape for the database"
+          ],
+          "answer": 0,
+          "why": "Object storage is built for massive numbers of flat, immutable blobs (images, backups) with HTTP access; databases need low-latency block devices that look like local disks. Matching the access pattern to the storage type is a core Cloud+ skill.",
+          "hint": "What storage is built for billions of flat files?",
+          "objectives": [
+            "Storage types",
+            "Object vs block vs file"
+          ],
+          "mins": 5
+        },
+        {
+          "id": "infra-cloud-migrate",
+          "title": "The deadline migration",
+          "situation": "A legacy app must leave a colo data center before the contract ends in three months. There is no time for a rewrite.",
+          "prompt": "Which migration strategy fits, and what is the trade-off?",
+          "choices": [
+            "Lift-and-shift (rehost) now to meet the deadline, then plan modernization later — it carries tech debt into the cloud",
+            "Refactor to cloud-native first, deadline or not",
+            "Stay and renegotiate at any cost",
+            "Rewrite from scratch in three months"
+          ],
+          "answer": 0,
+          "why": "Rehosting moves the app as-is: fastest, lowest risk to the deadline, but you inherit on-prem architectures (and costs) in the cloud. Refactoring is better long-term but cannot fit the timeline — so rehost now, replatform/refactor in phases.",
+          "hint": "What gets you moved before the contract ends?",
+          "objectives": [
+            "Migration strategies",
+            "Rehost vs refactor"
+          ],
+          "mins": 6
+        },
+        {
+          "id": "infra-cloud-hybrid",
+          "title": "The residency requirement",
+          "situation": "A healthcare company wants cloud elasticity, but regulations require patient records to stay in-country in facilities it controls.",
+          "prompt": "Which deployment model fits?",
+          "choices": [
+            "Hybrid cloud: regulated data on the private side, elastic workloads bursting to public",
+            "All-public cloud — regulations are just paperwork",
+            "All on-premises — give up elasticity",
+            "Ignore the residency rule"
+          ],
+          "answer": 0,
+          "why": "Hybrid keeps sensitive data where the law demands while using public cloud for scale where it is allowed. Data residency and sovereignty requirements are hard constraints that architecture must satisfy, not risks to accept.",
+          "hint": "Where must regulated data physically live?",
+          "objectives": [
+            "Deployment models",
+            "Data sovereignty"
+          ],
+          "mins": 5
+        },
+        {
+          "id": "infra-cloud-cost",
+          "title": "The surprise bill",
+          "situation": "The monthly cloud bill doubled. Investigation shows dozens of idle dev VMs running 24/7 and untagged resources nobody claims.",
+          "prompt": "What is the systematic fix?",
+          "choices": [
+            "Rightsizing, mandatory tagging with ownership, and auto-shutdown schedules for non-production",
+            "Pay the bill and hope next month is better",
+            "Buy a bigger discount plan and change nothing",
+            "Move to another cloud"
+          ],
+          "answer": 0,
+          "why": "Cloud waste is an operational discipline problem: tagging establishes ownership for chargeback, rightsizing matches instances to actual use, and schedules kill idle dev spend. FinOps basics beat provider-hopping every time.",
+          "hint": "What identifies who owns each resource?",
+          "objectives": [
+            "Cost optimization",
+            "Tagging"
+          ],
+          "mins": 5
+        }
+      ]
+    },
+    {
+      "id": "linux-admin",
+      "name": "Linux Administration",
+      "scenarios": [
+        {
+          "id": "infra-lx-perms",
+          "title": "The unreadable web files",
+          "situation": "After a restore, the web server returns 403 Forbidden on every page. The files are owned by the deploy user.",
+          "prompt": "What is wrong and what is the fix?",
+          "choices": [
+            "Files are 600 — the web server user cannot read them; set files to 644 and directories to 755",
+            "Set everything to 777 so nothing is ever blocked",
+            "Change ownership to root",
+            "Reinstall the web server"
+          ],
+          "answer": 0,
+          "why": "600 gives read/write to the owner only; the web server runs as a different user and needs read on files plus read+execute on directories to traverse them. 644/755 is the standard; 777 hands write access to everyone — a vulnerability, not a fix.",
+          "hint": "What does the web server user need — read, write, or both?",
+          "objectives": [
+            "Linux permissions",
+            "chmod"
+          ],
+          "mins": 5,
+          "evidence": [
+            [
+              "terminal",
+              "$ ls -l /var/www/html/index.html\n-rw------- 1 deploy deploy 1832 Oct 3 09:00 index.html"
+            ]
+          ]
+        },
+        {
+          "id": "infra-lx-systemd",
+          "title": "The failed service",
+          "situation": "After a reboot, the application service did not start. The config file was edited yesterday.",
+          "prompt": "What is the correct diagnostic sequence?",
+          "choices": [
+            "systemctl status app.service, then journalctl -u app.service to read the failure logs",
+            "Reboot again and hope",
+            "Reinstall the application",
+            "kill -9 the service"
+          ],
+          "answer": 0,
+          "why": "systemctl status shows the state and the most recent log lines; journalctl -u gives the full story, usually a config syntax error from yesterday's edit. Guessing with reinstalls wastes the evidence systemd already collected.",
+          "hint": "Where does systemd keep the service's last words?",
+          "objectives": [
+            "systemd",
+            "journalctl"
+          ],
+          "mins": 5
+        },
+        {
+          "id": "infra-lx-disk",
+          "title": "Root filesystem full",
+          "situation": "A Linux host alerts: the root filesystem is at 100%. The application data lives on a separate mounted volume with free space.",
+          "prompt": "How do you find and fix it?",
+          "choices": [
+            "Use du to find the growth (often /var/log), then rotate, compress, or archive — never delete blindly",
+            "Run rm -rf /var to clear space fast",
+            "Add RAM",
+            "Reboot and hope the filesystem recovers"
+          ],
+          "answer": 0,
+          "why": "df identifies the full filesystem, du -sh /* drills into the culprit — typically unrotated logs. Deleting system directories breaks the OS; logrotate plus archival fixes the cause and prevents recurrence.",
+          "hint": "Which command shows where the gigabytes actually are?",
+          "objectives": [
+            "Disk management",
+            "du/df"
+          ],
+          "mins": 6
+        },
+        {
+          "id": "infra-lx-ssh",
+          "title": "The brute-force noise",
+          "situation": "Auth logs show thousands of SSH password attempts per hour against your public-facing Linux server.",
+          "prompt": "What is the strongest mitigation set?",
+          "choices": [
+            "Key-only authentication (disable PasswordAuthentication), plus fail2ban and no direct root login",
+            "Just change the SSH port and call it done",
+            "Allow root login for convenience",
+            "Use longer passwords and keep password auth"
+          ],
+          "answer": 0,
+          "why": "Keys cannot be guessed, so disabling password auth kills brute force entirely; fail2ban adds rate-limiting, and PermitRootLogin no stops the highest-value target. Changing ports is obscurity — it reduces log noise, not risk.",
+          "hint": "What authentication method cannot be guessed?",
+          "objectives": [
+            "SSH hardening",
+            "Key authentication"
+          ],
+          "mins": 6
+        },
+        {
+          "id": "infra-lx-cron",
+          "title": "The silent cron job",
+          "situation": "A backup script runs perfectly by hand but never runs from cron. There are no errors anywhere obvious.",
+          "prompt": "What is the most likely cause?",
+          "choices": [
+            "Cron's minimal environment — missing PATH or env vars the script relied on from your shell",
+            "Cron is broken on this server",
+            "The server needs a reboot",
+            "Run it manually forever instead"
+          ],
+          "answer": 0,
+          "why": "Cron runs with a sparse environment: no interactive PATH, no aliases, no sourced profiles. Scripts that assume your shell's environment fail silently. Fixes: absolute paths, explicit env vars in the crontab, and logging output to a file.",
+          "hint": "What environment does cron NOT give your script?",
+          "objectives": [
+            "cron",
+            "Scheduling"
+          ],
+          "mins": 5
+        },
+        {
+          "id": "infra-lx-pkg",
+          "title": "Installing from the wild",
+          "situation": "A blog post says to install a monitoring agent with curl | sudo bash from the author's personal site.",
+          "prompt": "What is the safe alternative?",
+          "choices": [
+            "Install from the official distro repository or the vendor's signed repo via apt/dnf, verifying signatures",
+            "Pipe the script — the blog has many likes",
+            "Download a random tarball and compile as root",
+            "Disable GPG checking to make installs faster"
+          ],
+          "answer": 0,
+          "why": "curl|bash executes unaudited code as root from whoever controls that server today. Official repositories provide signed, versioned, updatable packages — the supply-chain-safe path. Convenience is not a security control.",
+          "hint": "Who signed that package — and who controls the download server?",
+          "objectives": [
+            "Package management",
+            "Supply chain"
+          ],
+          "mins": 5
+        }
+      ]
+    },
+    {
+      "id": "server-hw",
+      "name": "Server Hardware",
+      "scenarios": [
+        {
+          "id": "infra-srv-raid",
+          "title": "Four disks, speed plus safety",
+          "situation": "A database server has four identical disks. Requirements: good performance AND survive at least one disk failure.",
+          "prompt": "Which RAID level is the best fit?",
+          "choices": [
+            "RAID 10",
+            "RAID 0",
+            "RAID 5",
+            "JBOD"
+          ],
+          "answer": 0,
+          "why": "RAID 10 is a stripe of mirrors: mirroring survives disk failures (and rebuilds fast), striping delivers performance. RAID 0 has no redundancy, and RAID 5's parity rebuilds on large disks are slow and risky — RAID 10 is the standard answer for performance + redundancy.",
+          "hint": "Which level is a stripe of mirrors?",
+          "objectives": [
+            "RAID levels",
+            "Storage design"
+          ],
+          "mins": 5
+        },
+        {
+          "id": "infra-srv-ecc",
+          "title": "The random crashes",
+          "situation": "A server crashes randomly with no useful logs — sometimes kernel panics, sometimes application faults, never the same error twice.",
+          "prompt": "What hardware cause should you suspect, and what is server-grade prevention?",
+          "choices": [
+            "Failing RAM / cosmic-bit flips — use ECC memory, which detects and corrects single-bit errors, and test the DIMMs",
+            "The OS needs reinstalling",
+            "The PSU is too big",
+            "Ignore it; random crashes are normal"
+          ],
+          "answer": 0,
+          "why": "Inconsistent, unlogged crashes are the classic signature of memory errors. ECC RAM corrects single-bit errors in hardware and logs them — which is why servers use it and desktops usually do not. Memtest plus DIMM isolation finds the bad stick.",
+          "hint": "What flips bits silently with no log entry?",
+          "objectives": [
+            "ECC memory",
+            "Hardware diagnostics"
+          ],
+          "mins": 6
+        },
+        {
+          "id": "infra-srv-psu",
+          "title": "The dead power supply",
+          "situation": "Monitoring alerts: one of two redundant PSUs has failed, but the server is still running.",
+          "prompt": "What is the correct action?",
+          "choices": [
+            "Hot-swap the failed PSU now — that is what redundancy is for — and verify the redundancy configuration",
+            "Power the server down first to be safe",
+            "Ignore it since the server is up",
+            "Replace both PSUs"
+          ],
+          "answer": 0,
+          "why": "Redundant hot-swappable PSUs exist so a failure is a maintenance event, not an outage — but redundancy is now gone, so the next failure is fatal. Replace promptly during a planned moment, and confirm the PSUs are on separate circuits.",
+          "hint": "What is the second PSU for?",
+          "objectives": [
+            "Power redundancy",
+            "Hot-swap"
+          ],
+          "mins": 4
+        },
+        {
+          "id": "infra-srv-thermal",
+          "title": "The hot aisle",
+          "situation": "Temperature sensors show a steady climb in one rack row over two weeks. Servers there are thermal-throttling.",
+          "prompt": "What do you check first?",
+          "choices": [
+            "Airflow and cooling: HVAC function, blanking panels, hot/cold aisle containment, blocked vents",
+            "Install more servers in the row",
+            "Open all the rack doors permanently",
+            "Ignore it until something shuts down"
+          ],
+          "answer": 0,
+          "why": "Heat problems are airflow problems first: missing blanking panels let hot exhaust recirculate into intakes, defeating the HVAC. Hot/cold aisle discipline plus sealed racks keeps cooling effective; adding load or opening doors makes it worse.",
+          "hint": "Where does the hot exhaust air go?",
+          "objectives": [
+            "Data center cooling",
+            "Environmental controls"
+          ],
+          "mins": 5
+        },
+        {
+          "id": "infra-srv-mem",
+          "title": "POST reports memory errors",
+          "situation": "A server fails to boot, and POST reports memory errors on DIMM B2.",
+          "prompt": "What is the correct procedure?",
+          "choices": [
+            "Reseat the DIMMs, then test one at a time to isolate the faulty stick and replace it",
+            "Update the BIOS and hope",
+            "Reinstall the OS",
+            "Ignore POST errors"
+          ],
+          "answer": 0,
+          "why": "POST memory errors localize the fault to a slot or stick. Reseating fixes contact issues; single-stick testing isolates the failure; replace only the bad DIMM. Firmware updates do not fix bad RAM, and the OS is irrelevant before boot.",
+          "hint": "What is the cheapest test you can run first?",
+          "objectives": [
+            "Memory diagnostics",
+            "POST"
+          ],
+          "mins": 4
+        },
+        {
+          "id": "infra-srv-remote",
+          "title": "The hung server 200 miles away",
+          "situation": "A branch-office server is completely hung — no SSH, no services. Driving there takes four hours.",
+          "prompt": "What capability resolves this remotely?",
+          "choices": [
+            "Out-of-band management (BMC / iDRAC / iLO) for console access and power control independent of the OS",
+            "Wait for it to fix itself",
+            "Ask a non-technical employee to pull the plug",
+            "Reinstall the OS remotely"
+          ],
+          "answer": 0,
+          "why": "Baseboard management controllers run independently of the host OS: they give KVM console, power cycle, and hardware sensors even when the OS is dead. It is the standard answer for lights-out remote sites — no BMC means a truck roll.",
+          "hint": "What manages the server when the OS is dead?",
+          "objectives": [
+            "Out-of-band management",
+            "BMC"
+          ],
+          "mins": 5
+        }
+      ]
+    },
+    {
+      "id": "virtualization",
+      "name": "Virtualization",
+      "scenarios": [
+        {
+          "id": "infra-virt-snapshot",
+          "title": "Snapshots are not backups",
+          "situation": "An admin proudly reports the VMs are 'backed up' — they take a snapshot of each VM every night and keep them for a month.",
+          "prompt": "What is wrong with this picture?",
+          "choices": [
+            "Snapshots are not backups: they live on the same storage, grow into performance problems, and die with the datastore",
+            "Nothing — snapshots are a complete backup strategy",
+            "They should take more snapshots",
+            "They should delete old snapshots to save space and call it done"
+          ],
+          "answer": 0,
+          "why": "A snapshot is a delta file chained to the base disk on the same storage: lose the datastore and you lose base plus snapshots. Long snapshot chains also degrade performance. Real backups are independent, restorable copies — ideally offsite and tested.",
+          "hint": "What happens to the snapshots when the datastore dies?",
+          "objectives": [
+            "Snapshots vs backups",
+            "Data protection"
+          ],
+          "mins": 5
+        },
+        {
+          "id": "infra-virt-cpu",
+          "title": "The sluggish VMs",
+          "situation": "VMs on a host are sluggish though the host's CPU graphs look fine. The hypervisor reports high CPU ready time.",
+          "prompt": "What is the cause and fix?",
+          "choices": [
+            "vCPU overprovisioning — VMs are waiting for physical CPU; right-size vCPUs and check contention",
+            "Give every VM more vCPUs",
+            "Add more RAM to the host",
+            "Reboot the host weekly"
+          ],
+          "answer": 0,
+          "why": "CPU ready time measures how long a VM waits for a physical core: over-allocated vCPUs make scheduling harder, not faster. Adding vCPUs to contended hosts worsens it. Right-sizing plus DRS-style balancing restores performance.",
+          "hint": "What does CPU ready time actually measure?",
+          "objectives": [
+            "Resource contention",
+            "vCPU sizing"
+          ],
+          "mins": 6
+        },
+        {
+          "id": "infra-virt-containers",
+          "title": "Fifty microservices",
+          "situation": "A team needs to run fifty small microservices that scale up and down frequently. Full VMs feel heavy and slow to start.",
+          "prompt": "Why are containers the better fit here?",
+          "choices": [
+            "Containers share the host kernel, so they start in milliseconds with far less overhead than full VMs",
+            "Containers are just faster VMs with their own kernels",
+            "One VM per microservice is simpler",
+            "Bare metal for each service"
+          ],
+          "answer": 0,
+          "why": "Containers package the app with its dependencies but share the host OS kernel — no guest OS per instance, no hypervisor boot. That means sub-second starts and dense packing, ideal for elastic microservices. VMs still win where strong isolation or different kernels are needed.",
+          "hint": "What do containers share that VMs do not?",
+          "objectives": [
+            "Containers vs VMs",
+            "Workload placement"
+          ],
+          "mins": 5
+        },
+        {
+          "id": "infra-virt-motion",
+          "title": "Patching without downtime",
+          "situation": "A hypervisor host needs firmware patches, but its twenty VMs cannot have downtime.",
+          "prompt": "What is the correct procedure?",
+          "choices": [
+            "Live-migrate (vMotion) the running VMs to another host, patch the empty host, then migrate back",
+            "Shut everything down for the patch window",
+            "Patch the host with VMs running on it",
+            "Skip the firmware patches"
+          ],
+          "answer": 0,
+          "why": "Live migration moves running VMs between hosts with no downtime, letting you evacuate a host for maintenance. It requires shared storage and compatible hosts — the standard enterprise maintenance workflow.",
+          "hint": "What moves a running VM without stopping it?",
+          "objectives": [
+            "Live migration",
+            "Maintenance"
+          ],
+          "mins": 5
+        },
+        {
+          "id": "infra-virt-type",
+          "title": "Choosing the hypervisor",
+          "situation": "You are designing a new virtualization cluster for production workloads needing near-native performance and strong isolation.",
+          "prompt": "Which hypervisor type fits, and why?",
+          "choices": [
+            "Type 1 (bare-metal) — runs directly on hardware with minimal overhead and strong isolation",
+            "Type 2 (hosted) — runs on top of a desktop OS",
+            "No hypervisor — containers replace everything",
+            "Type 2 for production performance"
+          ],
+          "answer": 0,
+          "why": "Type 1 hypervisors (ESXi, Hyper-V, KVM) sit directly on hardware: lower overhead, better isolation, built for data centers. Type 2 (VirtualBox, Workstation) rides on a host OS — fine for labs, wrong for production clusters.",
+          "hint": "What sits directly on the hardware?",
+          "objectives": [
+            "Hypervisor types",
+            "Architecture"
+          ],
+          "mins": 4
+        },
+        {
+          "id": "infra-virt-sprawl",
+          "title": "The VM graveyard",
+          "situation": "The cluster has 300 VMs. Nobody can say who owns forty of them, and half have not been powered on in a year.",
+          "prompt": "What is the systematic fix?",
+          "choices": [
+            "Tagging with ownership, lifecycle policies, and chargeback/showback so orphans get reclaimed",
+            "Delete VMs at random",
+            "Buy more hosts",
+            "Ignore the orphans"
+          ],
+          "answer": 0,
+          "why": "VM sprawl wastes licenses, backup windows, and attack surface. Mandatory tags (owner, purpose, expiry) plus automated reclamation workflows turn sprawl into a managed lifecycle instead of a graveyard.",
+          "hint": "Who owns that VM from 2019?",
+          "objectives": [
+            "VM sprawl",
+            "Lifecycle management"
+          ],
+          "mins": 4
+        }
+      ]
+    },
+    {
+      "id": "data",
+      "name": "Data Concepts",
+      "scenarios": [
+        {
+          "id": "infra-data-types",
+          "title": "Sorting the data zoo",
+          "situation": "A project involves three datasets: transaction records, server log files, and product photos.",
+          "prompt": "How do you classify them?",
+          "choices": [
+            "Transactions are structured (rows/columns); logs are semi-structured; photos are unstructured",
+            "Everything is structured data",
+            "Everything is big data regardless of form",
+            "Classification does not matter"
+          ],
+          "answer": 0,
+          "why": "Structured data fits relational tables; semi-structured (JSON logs) has tags but no fixed schema; unstructured (images, video) has no predefined model. The classification drives storage, tooling, and analysis choices.",
+          "hint": "Which dataset fits neatly in rows and columns?",
+          "objectives": [
+            "Data types",
+            "Structured vs unstructured"
+          ],
+          "mins": 4
+        },
+        {
+          "id": "infra-data-sql",
+          "title": "Combining the tables",
+          "situation": "You need each customer's name alongside their order totals. Customers live in one table, orders in another.",
+          "prompt": "What is the correct approach?",
+          "choices": [
+            "JOIN the tables on the shared customer_id key, then aggregate with GROUP BY",
+            "Run two separate queries and merge them by hand in a spreadsheet",
+            "Export both tables to CSV and eyeball it",
+            "Use SELECT * with no join condition"
+          ],
+          "answer": 0,
+          "why": "A JOIN combines related rows via the key they share; GROUP BY with SUM then rolls orders up per customer. A join without a condition creates a Cartesian product — every customer times every order — which is never what you want.",
+          "hint": "What relates the two tables to each other?",
+          "objectives": [
+            "SQL",
+            "JOINs"
+          ],
+          "mins": 6,
+          "evidence": [
+            [
+              "tables",
+              "customers(customer_id, name)\norders(order_id, customer_id, total)\n-- need: name + SUM(total) per customer"
+            ]
+          ]
+        },
+        {
+          "id": "infra-data-etl",
+          "title": "Garbage in",
+          "situation": "Source systems feed your warehouse dirty data: duplicate rows, wrong date formats, nulls in required fields.",
+          "prompt": "Where do you fix it?",
+          "choices": [
+            "In the ETL pipeline: validate, cleanse, and transform before loading into the warehouse",
+            "Load it raw and let analysts fix it in every report",
+            "Skip validation to load faster",
+            "Fix it by hand each morning"
+          ],
+          "answer": 0,
+          "why": "The transform stage exists to enforce quality once, upstream: standardize formats, dedupe, reject or quarantine bad rows. Cleaning downstream means every report reinvents (and disagrees on) the fixes.",
+          "hint": "When is bad data cheapest to catch?",
+          "objectives": [
+            "ETL",
+            "Data quality"
+          ],
+          "mins": 5
+        },
+        {
+          "id": "infra-data-norm",
+          "title": "The duplicated customer",
+          "situation": "Customer addresses are stored in every order row. A customer moves, one row gets updated, and now reports show two addresses.",
+          "prompt": "What database design principle prevents this?",
+          "choices": [
+            "Normalization: store the customer once in a customer table and reference it by ID",
+            "Store even more copies for safety",
+            "Buy a bigger database",
+            "Delete the old rows by hand"
+          ],
+          "answer": 0,
+          "why": "Update anomalies come from duplicated facts: normalization keeps each fact in one place, referenced by key, so a change happens once. Denormalization has performance uses, but it trades away this integrity.",
+          "hint": "What happens when the address changes in only one copy?",
+          "objectives": [
+            "Normalization",
+            "Data integrity"
+          ],
+          "mins": 5
+        },
+        {
+          "id": "infra-data-pii",
+          "title": "Analytics on customer data",
+          "situation": "Analysts want to study purchasing patterns in production customer data that includes names, emails, and card numbers.",
+          "prompt": "What is the correct handling?",
+          "choices": [
+            "Mask or anonymize PII, work on the minimum necessary fields, and enforce retention limits",
+            "Give analysts raw production data — they are employees",
+            "Email CSV extracts around for convenience",
+            "No controls needed for internal use"
+          ],
+          "answer": 0,
+          "why": "Analytics rarely needs real identities: masking/anonymization plus least-privilege access preserves utility while limiting breach impact and meeting privacy obligations. Raw PII in spreadsheets is how breaches happen.",
+          "hint": "Does the analyst need real names and card numbers?",
+          "objectives": [
+            "PII",
+            "Data privacy"
+          ],
+          "mins": 5
+        },
+        {
+          "id": "infra-data-viz",
+          "title": "Showing the trend",
+          "situation": "Leadership wants to see monthly revenue over the past two years to judge growth.",
+          "prompt": "Which visualization is appropriate?",
+          "choices": [
+            "A line chart — it shows change over continuous time",
+            "A pie chart of all 24 months",
+            "A 3D exploding pie chart",
+            "A raw data table with no chart"
+          ],
+          "answer": 0,
+          "why": "Line charts encode time on an axis so trends, seasonality, and inflection points are visible at a glance. Pie charts compare parts of a whole at one moment — 24 slices communicate nothing about growth.",
+          "hint": "What shows change across months best?",
+          "objectives": [
+            "Data visualization",
+            "Chart selection"
+          ],
+          "mins": 4
+        }
+      ]
+    },
+    {
+      "id": "ops-sec",
+      "name": "Operations & Security",
+      "scenarios": [
+        {
+          "id": "infra-ops-backup",
+          "title": "The database backup",
+          "situation": "A critical database is backed up nightly to disk on the same server. Restores have never been tested.",
+          "prompt": "What must change to meet a 4-hour RPO?",
+          "choices": [
+            "Follow 3-2-1 with offsite copies, back up at least every 4 hours, and test restores regularly",
+            "Keep the single nightly copy — RAID protects it",
+            "Back up weekly to save space",
+            "Trust that backups work without testing"
+          ],
+          "answer": 0,
+          "why": "RPO is the maximum tolerable data loss: a 4-hour RPO needs backups at least every 4 hours. Same-server copies die with the server (RAID is not backup), and untested restores are unproven — test on a schedule.",
+          "hint": "What does a 4-hour RPO demand of your backup frequency?",
+          "objectives": [
+            "Backups",
+            "RPO"
+          ],
+          "mins": 6
+        },
+        {
+          "id": "infra-ops-patch",
+          "title": "Patch Tuesday for production",
+          "situation": "Security patches are released for your production hypervisors and guest servers.",
+          "prompt": "What is the correct patching workflow?",
+          "choices": [
+            "Test in staging first, then deploy in a maintenance window with a rollback plan",
+            "Patch production directly — speed matters most",
+            "Never patch production",
+            "Enable auto-patching on everything with no oversight"
+          ],
+          "answer": 0,
+          "why": "Patches fix vulnerabilities but can break workloads: staging catches regressions, windows bound the blast radius, and rollback plans bound the outage. Untested production patching trades one risk for another.",
+          "hint": "Where do bad patches go first?",
+          "objectives": [
+            "Patch management",
+            "Change control"
+          ],
+          "mins": 5
+        },
+        {
+          "id": "infra-ops-monitor",
+          "title": "Drowning in alerts",
+          "situation": "The monitoring system sends 500 emails a day. Engineers now ignore all of them — including real outages.",
+          "prompt": "What is the fix?",
+          "choices": [
+            "Tune thresholds, aggregate related alerts, and tier severities so critical pages are rare and real",
+            "Add more checks for coverage",
+            "Ignore everything until something breaks",
+            "Disable monitoring to stop the noise"
+          ],
+          "answer": 0,
+          "why": "Alert fatigue is a tuning failure: when everything is critical, nothing is. Baselines drive thresholds, aggregation kills storms, and severity tiers protect the paging channel for genuine emergencies.",
+          "hint": "What happens when everything is critical?",
+          "objectives": [
+            "Monitoring",
+            "Alert fatigue"
+          ],
+          "mins": 5
+        },
+        {
+          "id": "infra-ops-change",
+          "title": "The firewall rule request",
+          "situation": "A developer needs a new firewall rule opened for a production deployment tonight.",
+          "prompt": "What is the correct process?",
+          "choices": [
+            "Submit a change request: business justification, risk review, approval, implementation, and verification",
+            "Add the rule now, document later",
+            "Email the firewall admin after adding it",
+            "Freeze all firewall changes forever"
+          ],
+          "answer": 0,
+          "why": "Firewall changes alter the security boundary: they need the same change control as any production change — justification, approval, testing, and a backout plan. 'Temporary' undocumented rules become permanent holes.",
+          "hint": "What stops a temporary rule from becoming permanent?",
+          "objectives": [
+            "Change management",
+            "Firewall governance"
+          ],
+          "mins": 5
+        },
+        {
+          "id": "infra-ops-fw",
+          "title": "Auditing the ruleset",
+          "situation": "You inherit a firewall with 400 rules, many years old, in random order with no comments.",
+          "prompt": "What principles guide the cleanup?",
+          "choices": [
+            "Default-deny, least privilege, remove unused rules, and order specific rules before general ones",
+            "Allow all traffic both directions for simplicity",
+            "Rule order does not matter",
+            "Stop logging to improve performance"
+          ],
+          "answer": 0,
+          "why": "Firewalls evaluate top-down: specific allows/denies must precede general ones, and an explicit deny-all closes the bottom. Stale rules accumulate risk — each unused allow is an unreviewed hole. Document every rule's owner and purpose.",
+          "hint": "What should the last rule in the list be?",
+          "objectives": [
+            "Firewall rules",
+            "Default deny"
+          ],
+          "mins": 6
+        },
+        {
+          "id": "infra-ops-incident",
+          "title": "The compromised web server",
+          "situation": "You confirm a public web server is compromised and beaconing out. It also hosts the company's main site.",
+          "prompt": "What are the correct FIRST actions?",
+          "choices": [
+            "Isolate the host from the network, preserve logs and memory for forensics, and invoke the incident response plan",
+            "Keep it running to watch the attacker",
+            "Wipe and rebuild it immediately",
+            "Hide the incident to avoid embarrassment"
+          ],
+          "answer": 0,
+          "why": "Isolation stops spread and exfiltration; preserving volatile evidence (memory, logs) enables forensics and legal action; the IR plan coordinates the rest. Wiping first destroys evidence, and watching an active compromise risks the whole network.",
+          "hint": "What does wiping destroy besides the malware?",
+          "objectives": [
+            "Incident response",
+            "Evidence preservation"
+          ],
+          "mins": 6
+        }
+      ]
+    }
+  ],
+  "behavioral": [
+    {
+      "prompt": "Tell me about a production outage you helped resolve. What was your role?",
+      "framework": "STAR",
+      "points": [
+        "Your specific diagnostic steps",
+        "How you communicated during the outage",
+        "The preventive change afterward"
+      ],
+      "pitfalls": [
+        "No timeline of actions",
+        "Skipping the post-mortem"
+      ]
+    },
+    {
+      "prompt": "Describe an automation or script you built that saved real time or reduced errors.",
+      "framework": "STAR",
+      "points": [
+        "The manual pain it replaced",
+        "How you built and tested it safely",
+        "Measurable impact"
+      ],
+      "pitfalls": [
+        "Automation with no testing",
+        "No measurable result"
+      ]
+    },
+    {
+      "prompt": "Tell me about a time you had to explain downtime or a failed change to stakeholders.",
+      "framework": "STAR",
+      "points": [
+        "Plain-language explanation",
+        "How you handled frustration or pressure",
+        "What you committed to next"
+      ],
+      "pitfalls": [
+        "Blaming others",
+        "Technical jargon as a shield"
+      ]
+    },
+    {
+      "prompt": "Describe a change that went wrong in production. How did you recover?",
+      "framework": "STAR",
+      "points": [
+        "Owning your part plainly",
+        "The rollback or fix under pressure",
+        "The process improvement that followed"
+      ],
+      "pitfalls": [
+        "Hiding the failure",
+        "No rollback plan mentioned"
+      ]
+    },
+    {
+      "prompt": "Tell me about a time you had to learn a new platform or tool quickly.",
+      "framework": "STAR",
+      "points": [
+        "What you needed to learn and why",
+        "Your method: docs, labs, peers",
+        "How you proved competence"
+      ],
+      "pitfalls": [
+        "Claiming mastery without evidence",
+        "Learning nothing and winging it"
+      ]
+    },
+    {
+      "prompt": "Describe how you planned capacity for growth — servers, storage, or cloud spend.",
+      "framework": "STAR",
+      "points": [
+        "The data you based projections on",
+        "How you balanced headroom vs. cost",
+        "Whether the plan held up"
+      ],
+      "pitfalls": [
+        "Guessing without data",
+        "Ignoring cost entirely"
+      ]
+    },
+    {
+      "prompt": "Tell me about your worst on-call week. How did you handle it?",
+      "framework": "STAR",
+      "points": [
+        "How you triaged competing pages",
+        "How you stayed effective under fatigue",
+        "What changed to reduce the load"
+      ],
+      "pitfalls": [
+        "Heroics with no systemic fix",
+        "Complaining without action"
+      ]
+    },
+    {
+      "prompt": "Describe a time you mentored a junior admin or engineer.",
+      "framework": "STAR",
+      "points": [
+        "What they were stuck on",
+        "How you guided without just doing it",
+        "Their progress afterward"
+      ],
+      "pitfalls": [
+        "Doing their work for them",
+        "No concrete example"
+      ]
+    }
+  ],
+  "chat": {
+    "persona": "You are a friendly but rigorous infrastructure interviewer running a mock Cloud+/Linux+/Server+/Data+ assessment. Probe on architecture trade-offs, Linux fluency, and operational discipline; stay Socratic.",
+    "topics": [
+      {
+        "id": "cloud-arch",
+        "name": "Cloud Architecture",
+        "key_points": [
+          "shared responsibility",
+          "IaaS/PaaS/SaaS",
+          "auto-scaling",
+          "object vs block storage",
+          "migration strategies",
+          "hybrid cloud"
+        ],
+        "followups": [
+          "Where does the provider's responsibility end in IaaS?",
+          "When would you lift-and-shift vs refactor?",
+          "How do you control cloud costs?"
+        ]
+      },
+      {
+        "id": "linux-admin",
+        "name": "Linux Administration",
+        "key_points": [
+          "permissions and chmod",
+          "systemd and journalctl",
+          "df/du",
+          "SSH hardening",
+          "cron environments",
+          "package trust"
+        ],
+        "followups": [
+          "Why does a script work by hand but fail in cron?",
+          "How do you diagnose a failed service?",
+          "What makes SSH brute force impossible?"
+        ]
+      },
+      {
+        "id": "server-hw",
+        "name": "Server Hardware",
+        "key_points": [
+          "RAID 10 vs 5",
+          "ECC memory",
+          "redundant PSUs",
+          "cooling and airflow",
+          "POST diagnostics",
+          "out-of-band management"
+        ],
+        "followups": [
+          "When is RAID 10 the right call?",
+          "Why do servers use ECC RAM?",
+          "How do you manage a server with a dead OS?"
+        ]
+      },
+      {
+        "id": "virtualization",
+        "name": "Virtualization",
+        "key_points": [
+          "snapshots vs backups",
+          "CPU ready time",
+          "containers vs VMs",
+          "live migration",
+          "Type 1 vs Type 2",
+          "VM sprawl"
+        ],
+        "followups": [
+          "Why aren't snapshots backups?",
+          "What does high CPU ready time mean?",
+          "When do containers beat VMs?"
+        ]
+      },
+      {
+        "id": "data",
+        "name": "Data Concepts",
+        "key_points": [
+          "structured vs unstructured",
+          "SQL JOINs",
+          "ETL and quality",
+          "normalization",
+          "PII handling",
+          "chart selection"
+        ],
+        "followups": [
+          "How do you combine two related tables?",
+          "Where do you fix dirty data?",
+          "What chart shows a trend over time?"
+        ]
+      },
+      {
+        "id": "ops-sec",
+        "name": "Operations & Security",
+        "key_points": [
+          "3-2-1 backups and RPO",
+          "patch workflows",
+          "alert tuning",
+          "change management",
+          "firewall default-deny",
+          "incident first response"
+        ],
+        "followups": [
+          "What does your RPO demand of backups?",
+          "How do you fix alert fatigue?",
+          "What is your first move on a compromised host?"
+        ]
+      }
+    ]
+  }
+}

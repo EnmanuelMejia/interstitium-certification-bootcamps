@@ -1,0 +1,788 @@
+{
+  "slug": "sre-platform",
+  "title": "SRE & Platform Engineering",
+  "tagline": "Reliability, platforms, and production operations",
+  "vendor": {
+    "name": "Vendor-neutral",
+    "certs": "",
+    "docs": ""
+  },
+  "disclaimer": "Independent vendor-neutral practice material by Interstitium Labs. Not affiliated with, endorsed by, or sponsored by any vendor. Confers no certificate. All scenarios are original.",
+  "domains": [
+    {
+      "id": "slis-slos",
+      "name": "SLIs/SLOs",
+      "scenarios": [
+        {
+          "id": "sre-sli-vs-slo",
+          "title": "SLI, SLO, SLA — untangled",
+          "situation": "A contract promises customers 99.9% uptime with credits if breached. Internally, the team targets 99.95% and measures 'successful requests / total requests' monthly.",
+          "prompt": "Label each: which is the SLI, the SLO, and the SLA?",
+          "evidence": [],
+          "choices": [
+            "SLI: the measured ratio of successful requests; SLO: the internal 99.95% target; SLA: the contractual 99.9% promise with credits",
+            "SLI: 99.9%; SLO: the credit policy; SLA: the measurement query",
+            "They're synonyms — pick whichever term the customer prefers",
+            "SLI: the contract; SLO: the measurement; SLA: the internal target"
+          ],
+          "answer": 0,
+          "why": "SLI (indicator) is the measurement — what you actually quantify. SLO (objective) is the internal target you aim for, set tighter than any contract. SLA (agreement) is the external commitment with consequences. Keeping SLO > SLA gives you a buffer: you can miss the SLO and still honor the SLA.",
+          "hint": "Which one is a number you measure, which is a goal you set, which is a promise you sign?",
+          "objectives": ["SLI/SLO/SLA", "Definitions"],
+          "mins": 5
+        },
+        {
+          "id": "sre-error-budget-math",
+          "title": "How much downtime is 99.9%?",
+          "situation": "Your SLO is 99.9% monthly availability. Product wants to know exactly how much downtime that allows before the error budget is blown.",
+          "prompt": "What is the monthly error budget, and what does exhausting it imply?",
+          "evidence": [],
+          "choices": [
+            "About 43 minutes — 0.1% of ~43,200 minutes/month; exhausting it should freeze risky releases until the budget recovers",
+            "About 7 hours — 1% of a 30-day month",
+            "About 4 minutes — 99.9% leaves almost no room",
+            "It depends on traffic — downtime can't be computed from a percentage"
+          ],
+          "answer": 0,
+          "why": "Error budget = 1 − SLO = 0.1% of the window. A 30-day month ≈ 43,200 minutes; 0.1% ≈ 43.2 minutes. The budget is a policy tool: while budget remains, teams may take release risks; when it's exhausted, the deal is to prioritize reliability work over features until it recovers. That's the core SRE bargain.",
+          "hint": "What is 0.1% of 43,200 minutes?",
+          "objectives": ["Error budgets", "Budget math"],
+          "mins": 5
+        },
+        {
+          "id": "sre-burn-rate",
+          "title": "Fast burn at 3 AM",
+          "situation": "Your error budget burns at 14x the sustainable rate — at this pace the monthly budget is gone in ~2 days. The alert fired 10 minutes ago. A slower alert would have fired in 6 hours at 2x burn.",
+          "prompt": "How should burn-rate alerting treat these two cases differently?",
+          "evidence": [],
+          "choices": [
+            "Fast burn pages immediately (urgent, budget-exhausting); slow burn opens a ticket for business hours (needs attention but not a page)",
+            "Both should page — any burn above 1x is an emergency",
+            "Neither should page — budgets are monthly, so wait until month end",
+            "Page on slow burn only — fast burn resolves itself"
+          ],
+          "answer": 0,
+          "why": "Multiwindow burn-rate alerting distinguishes urgency: fast burn (e.g., 14x over 1h/5m windows) exhausts budget in days → page now. Slow burn (e.g., 2–6x over longer windows) exhausts in weeks → ticket for investigation during work hours. This is how you page on user-impacting budget consumption without alert fatigue.",
+          "hint": "How quickly does each burn rate consume the monthly budget?",
+          "objectives": ["Burn rate", "Alerting strategy"],
+          "mins": 6
+        },
+        {
+          "id": "sre-choosing-slis",
+          "title": "The vanity SLI",
+          "situation": "The team proposes 'CPU utilization below 70%' as an SLI with a 95% SLO. The dashboard is green while users complain the checkout is slow.",
+          "prompt": "Why is this a bad SLI, and what should replace it?",
+          "evidence": [],
+          "choices": [
+            "CPU doesn't measure user experience — SLIs should capture what users feel: request success rate and latency percentiles at the service edge",
+            "CPU is hard to measure — pick something easier like disk space",
+            "The threshold is wrong — 70% should be 90%",
+            "SLIs must be infrastructure metrics — user metrics belong in product analytics"
+          ],
+          "answer": 0,
+          "why": "Good SLIs measure user-visible outcomes (availability, latency, correctness, throughput) as experienced at the service boundary — not internal resource gauges that can look healthy during an outage. Latency percentiles (p95/p99) and success ratios on real user journeys are the canonical choices; CPU is at best a supporting signal.",
+          "hint": "Can a user tell what your CPU utilization is?",
+          "objectives": ["SLI selection", "User-centric metrics"],
+          "mins": 5
+        },
+        {
+          "id": "sre-slo-consequence",
+          "title": "Budget exhausted — now what?",
+          "situation": "The team burned the entire error budget by the 12th of the month after three risky launches. Product still wants two more feature launches this month.",
+          "prompt": "What does the error-budget policy say, and why does the deal work?",
+          "evidence": [],
+          "choices": [
+            "Freeze feature launches and spend remaining capacity on reliability work — the deal works because both sides agreed to the budget rules in advance",
+            "Keep launching — budgets are advisory and product decides",
+            "Lower the SLO retroactively so the budget isn't exhausted",
+            "Blame the on-call engineer for the incidents"
+          ],
+          "answer": 0,
+          "why": "The error budget is a joint policy: product gets launch velocity while budget remains; engineering gets reliability investment when it's gone. It works because it's agreed upfront, data-driven (not political), and symmetric — it protects launches when reliability is good too. Retroactively moving the SLO destroys trust in the whole system.",
+          "hint": "What was agreed before the month started about an exhausted budget?",
+          "objectives": ["Error budget policy", "Org dynamics"],
+          "mins": 5
+        },
+        {
+          "id": "sre-slo-too-many",
+          "title": "Forty-seven SLOs",
+          "situation": "Every microservice team defined 5–6 SLOs. Nobody can say which ones matter; alerts fire constantly and get ignored.",
+          "prompt": "What is the fix?",
+          "evidence": [],
+          "choices": [
+            "Consolidate on a few user-journey SLOs per critical path — fewer, meaningful SLOs that people actually honor beat dozens that everyone ignores",
+            "Add more SLOs so every metric is covered",
+            "Raise all thresholds to 99.99% so alerts fire less",
+            "Delete SLOs entirely and rely on uptime pings"
+          ],
+          "answer": 0,
+          "why": "SLOs are attention-directing instruments: each one implies alerting, policy, and on-call burden. A handful of SLOs on critical user journeys (checkout works, search is fast) that the org genuinely defends beats a sprawling catalog nobody trusts. Unused SLOs are worse than none — they train people to ignore the system.",
+          "hint": "If everything is critical, what is?",
+          "objectives": ["SLO scope", "Alert fatigue"],
+          "mins": 5
+        }
+      ]
+    },
+    {
+      "id": "incident-response",
+      "name": "Incident Response",
+      "scenarios": [
+        {
+          "id": "sre-sev-levels",
+          "title": "Is this a SEV-1?",
+          "situation": "Checkout is down for all users (revenue impact), but the status page still shows green because the SEV wasn't declared. Engineers are debugging in a side thread with no coordination.",
+          "prompt": "What should happen in the first 10 minutes?",
+          "evidence": [],
+          "choices": [
+            "Declare the incident with a severity, page the on-call, establish an incident commander and a comms channel — coordination before heroics",
+            "Keep debugging quietly — declaring incidents creates paperwork",
+            "Wait for the monitoring to auto-declare — humans shouldn't declare",
+            "Fix it first, then decide if it was a SEV"
+          ],
+          "answer": 0,
+          "why": "Declaring early is cheap and reversible; declaring late costs coordination. SEV levels (e.g., SEV-1 = critical user/business impact) set response urgency. The incident commander coordinates (not necessarily the fixer), comms owns status updates — this structure prevents 15 people debugging the same thing blind.",
+          "hint": "What costs more: a false-alarm declaration, or 30 minutes of uncoordinated debugging?",
+          "objectives": ["Incident declaration", "SEV levels"],
+          "mins": 5
+        },
+        {
+          "id": "sre-commander",
+          "title": "Too many cooks",
+          "situation": "During an outage, six engineers are all SSHing into prod, running conflicting commands — one restarts the DB while another is mid-diagnosis on it.",
+          "prompt": "Which incident role fixes this, and how?",
+          "evidence": [],
+          "choices": [
+            "The Incident Commander — single decision-maker who coordinates actions, tracks state, and keeps everyone else from stepping on each other",
+            "More engineers — the problem is understaffing",
+            "The most senior engineer should just fix it alone",
+            "Disable SSH for everyone except one person permanently"
+          ],
+          "answer": 0,
+          "why": "The IC's job is coordination, not fixing: maintain shared state (what we know, what we're trying), serialize high-risk actions, and manage comms. Responders propose actions; the IC approves and sequences them. This is why 'all hands on keyboards' without an IC makes outages longer, not shorter.",
+          "hint": "Who decides what happens next when everyone disagrees?",
+          "objectives": ["Incident roles", "Incident Commander"],
+          "mins": 5
+        },
+        {
+          "id": "sre-blameless",
+          "title": "The deploy that broke prod",
+          "situation": "Ana's deploy caused a 40-minute outage. The postmortem draft says 'Root cause: Ana deployed without checking the dashboard.'",
+          "prompt": "Why is this postmortem framing harmful, and what replaces it?",
+          "evidence": [],
+          "choices": [
+            "It blames the person instead of the system — rewrite around 'how did our process allow an unchecked deploy to reach prod' with systemic action items",
+            "It's accurate — accountability means naming who caused it",
+            "Skip the postmortem — the fix is to tell Ana to be careful",
+            "Blameless means no action items — just move on"
+          ],
+          "answer": 0,
+          "why": "Blameless postmortems assume people act reasonably given their context; failures reveal system gaps (missing deploy gates, no canary, unclear dashboards). 'Be more careful' isn't an action item — 'add a pre-deploy checklist gate in CI, owner + date' is. Blame drives incidents underground; systems thinking prevents recurrence.",
+          "hint": "If Ana left tomorrow, would the same outage be possible?",
+          "objectives": ["Blameless postmortems", "Systems thinking"],
+          "mins": 6
+        },
+        {
+          "id": "sre-runbook",
+          "title": "The runbook from 2019",
+          "situation": "The 'database failover' runbook references servers decommissioned in 2021 and commands for a version two majors old. On-call engineers ignore runbooks entirely now.",
+          "prompt": "What makes a runbook trustworthy?",
+          "evidence": [],
+          "choices": [
+            "Tested regularly (game days), version-controlled with the service, with preconditions, exact commands, expected outputs, and rollback steps — owned by someone",
+            "Longer runbooks — detail equals quality",
+            "Runbooks written once by the original author and never touched",
+            "Replace runbooks with a Slack channel — docs are obsolete"
+          ],
+          "answer": 0,
+          "why": "A runbook is production code for humans: it rots like code. Trust comes from regular testing (chaos/game days), co-versioning with the service it covers, clear preconditions ('only if X'), copy-pasteable commands with expected output, and an explicit owner. Untrusted runbooks are worse than none — they waste incident time.",
+          "hint": "When was the last time anyone verified these steps work?",
+          "objectives": ["Runbooks", "Operational docs"],
+          "mins": 5
+        },
+        {
+          "id": "sre-comms-cadence",
+          "title": "Silence during the outage",
+          "situation": "The outage lasts 2 hours. Engineering is heads-down fixing; customers hear nothing until the all-clear. Support is flooded with 'is it down?' tickets.",
+          "prompt": "What comms discipline was missing?",
+          "evidence": [],
+          "choices": [
+            "A dedicated comms lead posting regular status updates (e.g., every 15–30 min) on the status page — even 'still investigating' beats silence",
+            "Faster fixing — comms don't matter if you fix quickly",
+            "Only the CEO should communicate during incidents",
+            "Post-mortems replace status updates"
+          ],
+          "answer": 0,
+          "why": "Separate the comms role from the fixers: stakeholders need predictable updates (impact, what's being done, next update time) on a cadence, starting within minutes. Silence breeds speculation and duplicate tickets. 'No new information' is itself an update — it tells people the situation is being worked, not ignored.",
+          "hint": "What do customers assume when they hear nothing for an hour?",
+          "objectives": ["Incident comms", "Status updates"],
+          "mins": 5
+        },
+        {
+          "id": "sre-oncall-health",
+          "title": "Pager burnout",
+          "situation": "The on-call engineer got paged 31 times last week, mostly for non-urgent issues and flapping alerts. They're threatening to quit the rotation.",
+          "prompt": "What are the systemic fixes?",
+          "evidence": [],
+          "choices": [
+            "Page only on urgent, actionable, user-impacting conditions; tune or ticket the rest; track paging load per person and compensate rotations",
+            "Pay the engineer more — burnout is a compensation problem",
+            "Rotate faster — daily rotations spread the pain",
+            "Mute the pager — alerts are optional"
+          ],
+          "answer": 0,
+          "why": "Pager health is a reliability input: every page should be urgent (needs a human now), actionable, and ideally user-impacting — everything else becomes a ticket or gets fixed/tuned. Track pages per on-call shift; sustained overload means the alerting needs work, not the engineer. Google's SRE guidance treats excessive paging as a bug in the system.",
+          "hint": "Which of those 31 pages truly needed a human at 3 AM?",
+          "objectives": ["On-call", "Alert quality"],
+          "mins": 5
+        }
+      ]
+    },
+    {
+      "id": "observability",
+      "name": "Observability",
+      "scenarios": [
+        {
+          "id": "sre-three-pillars",
+          "title": "Which pillar for which question?",
+          "situation": "Three questions: (1) 'Is error rate elevated right now?' (2) 'What did the failing request do step by step?' (3) 'Show me one slow request's journey across 5 services.'",
+          "prompt": "Map each to metrics, logs, or traces.",
+          "evidence": [],
+          "choices": [
+            "Metrics → (1) real-time aggregates and alerting; Logs → (2) discrete event detail; Traces → (3) cross-service request journey",
+            "Logs answer all three — metrics and traces are redundant",
+            "Metrics → (3), Traces → (1), Logs → (2)",
+            "Only APM vendors provide these — open source can't"
+          ],
+          "answer": 0,
+          "why": "Metrics are aggregated numbers over time (rates, percentiles) — ideal for dashboards and alerts. Logs are discrete timestamped events with context — ideal for 'what happened' forensics. Traces follow one request across service boundaries via spans — ideal for latency attribution. Mature observability correlates all three (exemplars link metrics to traces, trace IDs in logs).",
+          "hint": "Which signal aggregates, which narrates, and which follows a request?",
+          "objectives": ["Three pillars", "Signal selection"],
+          "mins": 5
+        },
+        {
+          "id": "sre-cardinality",
+          "title": "The metric that ate Prometheus",
+          "situation": "Someone adds user_id as a Prometheus label on http_requests_total. With 2M users, Prometheus OOMs within an hour.",
+          "prompt": "What went wrong, and what's the rule for labels?",
+          "evidence": [],
+          "choices": [
+            "Label cardinality explosion — every unique label combination is a new time series; keep labels to bounded dimensions (method, status, endpoint), never unbounded IDs",
+            "Prometheus can't handle 2M series — use fewer metrics",
+            "Labels are free — the OOM is a Prometheus bug",
+            "user_id is required — buy a bigger server"
+          ],
+          "answer": 0,
+          "why": "Prometheus stores one time series per unique label set — 2M user_ids × methods × statuses = tens of millions of series, each with memory/index cost. Rule: labels must be bounded, low-cardinality dimensions. High-cardinality identifiers belong in logs/traces (or exemplars linking a metric series to trace IDs), not metric labels.",
+          "hint": "What does each unique label value multiply?",
+          "objectives": ["Cardinality", "Prometheus labels"],
+          "mins": 6
+        },
+        {
+          "id": "sre-use-red",
+          "title": "USE vs RED",
+          "situation": "You're building dashboards for (a) a Kubernetes node and (b) the checkout API service. Someone suggests the same dashboard template for both.",
+          "prompt": "Which method fits each, and why?",
+          "evidence": [],
+          "choices": [
+            "USE (Utilization, Saturation, Errors) for the node/resource; RED (Rate, Errors, Duration) for the request-driven service",
+            "RED for both — USE is deprecated",
+            "USE for both — services are resources too",
+            "Neither — dashboards should be ad hoc"
+          ],
+          "answer": 0,
+          "why": "USE targets resources: how full (utilization), how queued (saturation), error counts. RED targets services: request rate, error rate, duration (latency distribution). Node dashboards get CPU/memory/disk-queue panels; service dashboards get RPS, error %, p50/p95/p99 latency. The four golden signals (latency, traffic, errors, saturation) blend both views.",
+          "hint": "Is a node more like a resource or a request-driven service?",
+          "objectives": ["USE", "RED", "Golden signals"],
+          "mins": 5
+        },
+        {
+          "id": "sre-actionable-alerts",
+          "title": "The alert nobody acts on",
+          "situation": "'CPU above 80% for 5m' pages weekly. Every time, the responder looks, sees nothing wrong, and goes back to sleep. It's now muted — along with, people fear, something important.",
+          "prompt": "What makes an alert pageable vs ticket-worthy?",
+          "evidence": [],
+          "choices": [
+            "Page only when it's urgent, actionable, and user-impacting (or budget-burning); 'CPU 80%' is a symptom-free threshold — alert on the SLO/burn rate instead, ticket the CPU trend",
+            "Lower the threshold to 60% — earlier pages catch more",
+            "Page on everything — muting is the real problem",
+            "Delete all CPU alerts — CPU never matters"
+          ],
+          "answer": 0,
+          "why": "Every page should pass: does a human need to act NOW, and is there something they CAN do? Symptom-based alerting (error budget burn, latency SLO breach) pages; cause-based signals (CPU trend, disk growth) become tickets/dashboards. Alert fatigue is a reliability bug — each ignored page trains the team to ignore the next real one.",
+          "hint": "At 3 AM, what would the responder actually DO about 'CPU 80%'?",
+          "objectives": ["Alerting", "Symptom vs cause"],
+          "mins": 5
+        },
+        {
+          "id": "sre-log-sampling",
+          "title": "Too many logs, too much money",
+          "situation": "Debug-level logs from 500 Pods cost $40k/month in ingestion. Dropping to error-only loses the context needed for debugging.",
+          "prompt": "What are the principled options?",
+          "evidence": [],
+          "choices": [
+            "Structured info-level by default, dynamic debug toggling, tail-based trace sampling, and dropping noisy health-check logs at the collector",
+            "Log everything — observability has no cost ceiling",
+            "Delete logs older than 1 hour — recency is all that matters",
+            "Turn off logging in production — metrics suffice"
+          ],
+          "answer": 0,
+          "why": "Cost control without blindness: log at info in prod (debug behind a runtime toggle for incidents), sample traces tail-based (keep the interesting ones — errors, slow), filter known-noise at the collector (kube-probe 200s), and set retention tiers (hot 7d, cold archive). Logging is a budget line item to manage, not an unlimited tap.",
+          "hint": "Which logs do you actually need when nothing is wrong?",
+          "objectives": ["Log volume", "Sampling"],
+          "mins": 6
+        },
+        {
+          "id": "sre-slo-dashboards",
+          "title": "Dashboard for the error budget",
+          "situation": "Leadership wants 'a reliability dashboard'. The team proposes 40 graphs of CPU, memory, and network per service.",
+          "prompt": "What should the top-level reliability dashboard actually show?",
+          "evidence": [],
+          "choices": [
+            "Per-service SLO compliance, error budget remaining + burn rate, and the golden signals — business-relevant reliability first, infra metrics one click down",
+            "40 infra graphs — more data is more reliable",
+            "Only uptime percentages — one number suffices",
+            "Dashboards are vanity — skip them"
+          ],
+          "answer": 0,
+          "why": "The reliability dashboard answers 'are we meeting our promises and how fast are we consuming the budget': SLO status per user journey, budget remaining, burn-rate trend, annotated with deploys/incidents. Infra metrics support diagnosis but don't belong at the top — nobody's promise to customers is 'CPU under 70%'.",
+          "hint": "What question does leadership actually need answered?",
+          "objectives": ["Dashboards", "SLO visualization"],
+          "mins": 5
+        }
+      ]
+    },
+    {
+      "id": "capacity-performance",
+      "name": "Capacity & Performance",
+      "scenarios": [
+        {
+          "id": "sre-capacity-headroom",
+          "title": "How much headroom?",
+          "situation": "The checkout service runs at 75% CPU at peak. Traffic grows 8% monthly. Finance asks whether you need new capacity this quarter.",
+          "prompt": "How do you do the capacity math?",
+          "evidence": [],
+          "choices": [
+            "Project growth to peak, keep N+1 headroom (survive one zone/node failure), and trigger provisioning before utilization hits the danger zone — not after",
+            "Run at 100% — headroom is waste",
+            "Buy 10x capacity — growth is unpredictable",
+            "Capacity planning is guesswork — skip it"
+          ],
+          "answer": 0,
+          "why": "Capacity planning: model peak (not average) load, project growth, maintain headroom for failure (N+1: full load sustainable minus one failure domain) and for deploy/rollout overhead. Provision on leading indicators (trend crossing threshold in X weeks), because procurement/provisioning has lead time. Autoscaling handles variance; planning handles the baseline.",
+          "hint": "What happens to the 75%-utilized service when one zone fails?",
+          "objectives": ["Capacity planning", "Headroom"],
+          "mins": 6
+        },
+        {
+          "id": "sre-load-testing",
+          "title": "What kind of load test?",
+          "situation": "You need to (a) validate the SLO at expected peak, (b) find the breaking point, (c) check for slow leaks over time.",
+          "prompt": "Which test types map to each goal?",
+          "evidence": [],
+          "choices": [
+            "Load test (a — expected peak), stress test (b — beyond peak to failure), soak test (c — sustained load for hours/days)",
+            "One test covers all three — types are marketing",
+            "Spike test for (a), load for (b), stress for (c)",
+            "Load testing is only for launches — skip it otherwise"
+          ],
+          "answer": 0,
+          "why": "Load: expected-peak traffic, validates SLOs under normal extremes. Stress: push past peak to find the breaking point and observe failure mode (graceful degradation?). Soak: moderate load for extended time to catch leaks (memory, connections, disk). Spike: sudden surges (flash sales). Run in prod-like envs; never surprise-test prod without coordination.",
+          "hint": "Which test finds the breaking point, and which finds the slow leak?",
+          "objectives": ["Load testing", "Test types"],
+          "mins": 5
+        },
+        {
+          "id": "sre-autoscaling-limits",
+          "title": "HPA isn't saving us",
+          "situation": "The HPA scales Pods on CPU, but during a traffic spike latency explodes before new Pods are ready (5-min image pull + warmup).",
+          "prompt": "What are the fixes beyond 'scale faster'?",
+          "evidence": [],
+          "choices": [
+            "Scale on leading signals (requests-per-second, queue depth), keep warm headroom (minReplicas buffer), shrink startup time (smaller images, pre-warming), and consider predictive/proactive scaling",
+            "Set maxReplicas higher — that fixes latency",
+            "HPA can't help — disable it",
+            "CPU is the only valid HPA metric"
+          ],
+          "answer": 0,
+          "why": "Reactive CPU-based scaling lags spikes: by the time CPU rises, latency has already blown. Better: scale on the actual demand signal (RPS, queue length via custom metrics), maintain a warm buffer for spikes, cut cold-start time, and use VPA for right-sizing requests. KEDA extends this to event sources. Autoscaling complements capacity planning — it doesn't replace the baseline.",
+          "hint": "What signal rises BEFORE cpu does when traffic spikes?",
+          "objectives": ["Autoscaling", "HPA"],
+          "mins": 6
+        },
+        {
+          "id": "sre-saturation",
+          "title": "The queue is the warning",
+          "situation": "CPU looks fine (60%), but p99 latency tripled. You find the DB connection pool exhausted — requests queue for connections.",
+          "prompt": "What observability concept explains 'fine CPU, terrible latency'?",
+          "evidence": [],
+          "choices": [
+            "Saturation — some resource (pool, queue, threads) is the bottleneck; USE method says check saturation, not just utilization",
+            "CPU is the only real bottleneck — the pool theory is wrong",
+            "Latency can't triple without CPU rising",
+            "Add more app servers — that fixes pool exhaustion"
+          ],
+          "answer": 0,
+          "why": "Saturation (queued work waiting for a constrained resource) kills latency long before utilization looks scary — connection pools, thread pools, disk I/O queues, network buffers. The USE method: check Utilization, Saturation, and Errors for every resource. Instrument pool stats (in-use, queued, wait time) — queue depth is the leading indicator.",
+          "hint": "What does a request do when no DB connection is free?",
+          "objectives": ["Saturation", "USE method"],
+          "mins": 5
+        },
+        {
+          "id": "sre-chaos",
+          "title": "First game day",
+          "situation": "You want to run a chaos experiment (kill a zone) to validate failover. Leadership fears causing a real outage.",
+          "prompt": "How do you run it safely?",
+          "evidence": [],
+          "choices": [
+            "Start tiny (one Pod in staging), define steady-state hypothesis + abort conditions, run in business hours with the team watching, expand blast radius gradually",
+            "Kill production on Friday night — real conditions or nothing",
+            "Chaos engineering is reckless — never do it",
+            "Run it secretly so nobody panics"
+          ],
+          "answer": 0,
+          "why": "Disciplined chaos: hypothesis ('we believe failover completes in <60s'), minimal blast radius first, automated abort/rollback conditions, business-hours with observers, game-day format. It validates what you believe about resilience — most first experiments reveal the failover was broken. Expand from staging to prod, Pod to zone, over time. This is how 'hope' becomes 'evidence'.",
+          "hint": "What is the smallest experiment that still tests the hypothesis?",
+          "objectives": ["Chaos engineering", "Game days"],
+          "mins": 6
+        },
+        {
+          "id": "sre-perf-budget",
+          "title": "The page that gained 2 MB",
+          "situation": "The checkout page's JS bundle grew from 300KB to 2.3MB over six months. Conversion dropped. Each team says 'our feature needed it.'",
+          "prompt": "What process prevents this drift?",
+          "evidence": [],
+          "choices": [
+            "Performance budgets — CI-enforced limits (bundle size, LCP, TTI) that fail builds exceeding them, owned by the team",
+            "Ban JavaScript — the only fix",
+            "Performance is QA's job at release time",
+            "Budgets slow shipping — accept the bloat"
+          ],
+          "answer": 0,
+          "why": "Performance budgets make speed a CI gate like tests: bundle-size limits, Core Web Vitals thresholds (LCP, INP, CLS), API p99 budgets — enforced per PR with clear ownership and an exception process. Without budgets, every local optimization ('just one more library') degrades the global experience. Measure in CI, guard the user experience.",
+          "hint": "What would have failed the PR that added the 2MB?",
+          "objectives": ["Performance budgets", "Web performance"],
+          "mins": 5
+        }
+      ]
+    },
+    {
+      "id": "platform-design",
+      "name": "Platform Design",
+      "scenarios": [
+        {
+          "id": "sre-golden-path",
+          "title": "Paved road, not dirt track",
+          "situation": "Every team builds its own CI pipeline, picks its own base images, and hand-rolls deploy scripts. Security findings and outages trace back to these snowflakes.",
+          "prompt": "What is the platform answer?",
+          "evidence": [],
+          "choices": [
+            "Golden paths / paved roads — opinionated, supported defaults (templates, base images, pipelines) that are easy to adopt and hard to get wrong, with escape hatches",
+            "Ban all custom tooling — mandate one rigid pipeline",
+            "Let teams do anything — autonomy beats standards",
+            "Paved roads mean no choices at all"
+          ],
+          "answer": 0,
+          "why": "Golden paths make the secure, reliable way the EASY way: templated services with baked-in scanning, logging, SLOs, and deploy pipelines. Teams can diverge (escape hatches exist) but then own the extra burden. Adoption is the metric — a paved road nobody uses is just documentation. This is the IDP's core product.",
+          "hint": "How do you make the right way also the easy way?",
+          "objectives": ["Golden paths", "Paved roads"],
+          "mins": 5
+        },
+        {
+          "id": "sre-platform-product",
+          "title": "Treating the platform as a product",
+          "situation": "The platform team ships features nobody uses and learns about pain from escalations. Developers call the platform 'the team that says no.'",
+          "prompt": "What changes when you run platform as a product?",
+          "evidence": [],
+          "choices": [
+            "Developers become customers: research their workflows, measure adoption and time-to-first-deploy, publish a roadmap, and support the platform like a product",
+            "More features — volume wins users",
+            "Platforms shouldn't have users — they're infrastructure",
+            "Chargeback billing — money fixes adoption"
+          ],
+          "answer": 0,
+          "why": "Platform-as-product: user research with dev teams, paved-road offerings with docs/SLAs, success metrics (adoption %, lead time, toil reduction), and a feedback loop (office hours, RFCs). The DORA metrics (deploy frequency, lead time, MTTR, change failure rate) measure whether the platform actually accelerates delivery. Mandates without empathy produce shadow platforms.",
+          "hint": "Who are the platform's users, and when did you last watch them work?",
+          "objectives": ["Platform as product", "DORA"],
+          "mins": 6
+        },
+        {
+          "id": "sre-multitenancy",
+          "title": "Noisy neighbor on the platform",
+          "situation": "Team A's load test starves Team B's production workloads on the shared cluster. There are no quotas, no priority, no network policy.",
+          "prompt": "What are the multitenancy controls?",
+          "evidence": [],
+          "choices": [
+            "Namespaces per tenant + ResourceQuotas/LimitRanges (compute fairness), NetworkPolicies (traffic isolation), PriorityClasses (preemption order), and RBAC scoping",
+            "One cluster per team — sharing is impossible",
+            "Trust teams to behave — controls are overhead",
+            "Quotas alone solve everything"
+          ],
+          "answer": 0,
+          "why": "Shared-platform fairness is layered: namespaces scope identity/RBAC; ResourceQuota caps aggregates per tenant; LimitRange sets sane defaults; NetworkPolicy isolates traffic; PriorityClasses let prod preempt batch; node pools/taints separate noisy workloads physically. No single control covers all dimensions — that's why it's a stack.",
+          "hint": "Which control caps CPU, which isolates traffic, which decides who gets evicted first?",
+          "objectives": ["Multitenancy", "Fair sharing"],
+          "mins": 6
+        },
+        {
+          "id": "sre-gitops-platform",
+          "title": "Click-ops on the platform",
+          "situation": "Platform engineers provision tenant namespaces, quotas, and databases via console clicks and tickets. Nothing is auditable; reproducing an environment takes days.",
+          "prompt": "How does GitOps change platform operations?",
+          "evidence": [],
+          "choices": [
+            "Every platform change becomes a declarative PR (tenant templates, quotas, addons) applied by automation — auditable, reviewable, reproducible, rollbackable",
+            "GitOps is for apps — platforms are special",
+            "Tickets are more auditable than git",
+            "Automation removes the need for review"
+          ],
+          "answer": 0,
+          "why": "GitOps for platforms: tenant onboarding = PR against a template (namespace, quotas, network policies, RBAC); cluster addons managed by the same pull-based sync; everything in git history with reviewers. It turns tribal click-knowledge into code and makes 'rebuild the platform' a real disaster-recovery option instead of a fantasy.",
+          "hint": "What would 'recreate this tenant environment from scratch' require today?",
+          "objectives": ["GitOps", "Platform operations"],
+          "mins": 5
+        },
+        {
+          "id": "sre-guardrails",
+          "title": "Guardrails, not gates",
+          "situation": "Security wants every deployment reviewed by a committee (2-week delay). Developers want to ship daily. Both cite real risks.",
+          "prompt": "What is the guardrails-over-gates approach?",
+          "evidence": [],
+          "choices": [
+            "Automated policy checks (admission control, pipeline gates: image scanning, no root, signed images) that block only violations — fast by default, safe by construction",
+            "Remove all checks — speed wins",
+            "Keep the committee — safety requires humans",
+            "Automated checks are theater — committees catch everything"
+          ],
+          "answer": 0,
+          "why": "Guardrails encode policy as code: OPA/Kyverno admission policies (require non-root, approved registries, resource limits), pipeline checks (CVE scanning, SAST) — evaluated in seconds on every deploy. Gates (human committees) become the exception for genuinely novel risks. Developers ship fast within safe boundaries; security gets continuous enforcement instead of sampled reviews.",
+          "hint": "What enforces the policy on every deploy without a meeting?",
+          "objectives": ["Policy as code", "Guardrails"],
+          "mins": 5
+        },
+        {
+          "id": "sre-cognitive-load",
+          "title": "The team that owns everything",
+          "situation": "One team owns the Kubernetes platform, the CI system, the databases, the network, and on-call for all of it. They're drowning; nothing improves.",
+          "prompt": "What does Team Topologies say about this?",
+          "evidence": [],
+          "choices": [
+            "Cognitive load is finite — split into focused teams (platform team as enabling/complicated-subsystem), with clear ownership boundaries and thinnest viable interfaces",
+            "Hire more people into the same team — scale solves load",
+            "One team owning everything is ideal — no handoffs",
+            "Outsource it all — ownership is the problem"
+          ],
+          "answer": 0,
+          "why": "Team Topologies: teams have finite cognitive load; exceeding it means nothing gets done well. Patterns: stream-aligned teams (own a product slice end-to-end), platform teams (reduce others' load via self-service), enabling teams (temporary coaching). The fix isn't headcount into one mega-team — it's boundaries that keep each team's load sustainable.",
+          "hint": "Can one team deeply understand five complex domains at once?",
+          "objectives": ["Team Topologies", "Cognitive load"],
+          "mins": 5
+        }
+      ]
+    },
+    {
+      "id": "toil-automation",
+      "name": "Toil & Automation",
+      "scenarios": [
+        {
+          "id": "sre-toil-def",
+          "title": "Is this toil?",
+          "situation": "Four candidates: (a) manually provisioning VMs from tickets, (b) designing a new sharding scheme, (c) copy-pasting dashboard JSON per service, (d) debugging a novel cascading failure.",
+          "prompt": "Which are toil, by the SRE definition?",
+          "evidence": [],
+          "choices": [
+            "(a) and (c) — manual, repetitive, automatable, tactical, no enduring value, scaling linearly with service growth",
+            "(b) and (d) — engineering work is toil",
+            "All four — all operational work is toil",
+            "None — toil is just a synonym for hard work"
+          ],
+          "answer": 0,
+          "why": "Toil's criteria: manual, repetitive, automatable, tactical (not strategic), no enduring value, and growing with the service (O(n)). Provisioning tickets and dashboard copy-paste qualify; novel design and unprecedented debugging are engineering. The SRE prescription: cap toil at 50% of time and systematically automate the rest away.",
+          "hint": "Which tasks would still exist in the same form after automation?",
+          "objectives": ["Toil definition", "Criteria"],
+          "mins": 5
+        },
+        {
+          "id": "sre-toil-budget",
+          "title": "The 50% rule",
+          "situation": "Your team spends 80% of its time on toil (manual deploys, ticket-driven ops). Feature teams demand more operational support.",
+          "prompt": "What does the SRE model prescribe?",
+          "evidence": [],
+          "choices": [
+            "Cap toil at 50%: if exceeded, halt feature/ops intake and invest in automation until toil drops — toil is the signal, not the job",
+            "Hire more people to do the toil — it's the job",
+            "Work longer hours — 80% is normal",
+            "Stop measuring — the number causes anxiety"
+          ],
+          "answer": 0,
+          "why": "Google's SRE rule: max 50% of anyone's time on toil; beyond that the team must spend the surplus eliminating toil (automation, self-service) even at the cost of feature velocity. It's a forcing function: without the cap, toil grows unboundedly and engineering becomes pure operations. Measure toil honestly (surveys/time tracking) to enforce it.",
+          "hint": "What happens to engineering capacity if toil grows unchecked?",
+          "objectives": ["Toil budget", "50% rule"],
+          "mins": 5
+        },
+        {
+          "id": "sre-automate-runbook",
+          "title": "From runbook to self-service",
+          "situation": "The 'scale up the workers' runbook is 40 manual steps run 3x/week. You've automated it into a script — but only you can run it safely.",
+          "prompt": "What is the progression from script to toil elimination?",
+          "evidence": [],
+          "choices": [
+            "Docs → script → hardened automation (guardrails, dry-run) → self-service (ChatOps/portal button) → autonomous (autoscaling) — each step removes human involvement",
+            "The script is enough — stop there",
+            "Delete the runbook — scripts replace docs",
+            "Automation increases toil — avoid it"
+          ],
+          "answer": 0,
+          "why": "The toil-elimination ladder: document (runbook), script (repeatable), automate with safety (idempotent, dry-run, rollback), self-service (anyone can trigger safely via portal/ChatOps), autonomous (system does it — autoscaling). Each rung reduces human touch. A script only you can run is step 2 of 5 — keep climbing until the toil is gone, not just faster.",
+          "hint": "Who can safely run your script today — and who should be able to?",
+          "objectives": ["Automation ladder", "Self-service"],
+          "mins": 6
+        },
+        {
+          "id": "sre-automation-safety",
+          "title": "The automation that made it worse",
+          "situation": "An auto-remediation script restarts 'unhealthy' services — but its health check was wrong, so it restart-looped the entire fleet during a partial outage, amplifying it.",
+          "prompt": "What safety properties must automation have?",
+          "evidence": [],
+          "choices": [
+            "Blast-radius limits (canary/percentage rollouts), dry-run modes, automatic abort on unexpected signals, idempotency, and human override — automation needs circuit breakers too",
+            "Automation should never touch production — keep it advisory",
+            "More automation — the script just needed to be faster",
+            "Delete the health check — checks cause the problem"
+          ],
+          "answer": 0,
+          "why": "Automation amplifies both good and bad: unsafe automation fails at machine speed. Required properties: limited blast radius (percentage/canary), dry-run/preview, abort conditions (stop if the world looks weird), idempotency (safe to rerun), observability (what did it do and why), and a big red button. Auto-remediation earns trust gradually — start advisory, then semi-auto, then auto with tight bounds.",
+          "hint": "What stops the script when its assumptions are wrong?",
+          "objectives": ["Automation safety", "Circuit breakers"],
+          "mins": 6
+        },
+        {
+          "id": "sre-measuring-toil",
+          "title": "Proving toil is shrinking",
+          "situation": "Leadership asks 'is the automation investment working?' You need evidence that toil is actually decreasing.",
+          "prompt": "How do you measure toil reduction?",
+          "evidence": [],
+          "choices": [
+            "Track toil hours (surveys/time logs), ticket volumes and MTTR for automated workflows, manual intervention counts, and deployment lead times — trends, not vanity totals",
+            "Count lines of automation code — more code means less toil",
+            "Ask the team vibes — measurement is overhead",
+            "Toil can't be measured — it's subjective"
+          ],
+          "answer": 0,
+          "why": "Measure the work, not the code: % time on toil (Google's metric), tickets/requests per week for automated flows, manual steps per deploy, MTTR before/after runbook automation, lead time. Trends over quarters prove the investment. Vanity metrics (scripts written, dashboards built) don't — a script nobody uses is not toil reduction.",
+          "hint": "What would change in the team's week if toil truly shrank?",
+          "objectives": ["Measuring toil", "Metrics"],
+          "mins": 5
+        },
+        {
+          "id": "sre-toil-vs-engineering",
+          "title": "Protecting engineering time",
+          "situation": "Every sprint, 'urgent' operational requests consume the engineering backlog. The team hasn't shipped a reliability improvement in 6 months.",
+          "prompt": "What structural fix protects project work?",
+          "evidence": [],
+          "choices": [
+            "Explicit capacity split (e.g., 50% toil cap, protected project time), an ops rotation absorbing interrupts, and saying no to non-urgent requests with a queue",
+            "Work weekends — capacity is elastic",
+            "Do project work 'when there's time' — it appears eventually",
+            "Hire contractors for projects — the team does ops"
+          ],
+          "answer": 0,
+          "why": "Interrupt-driven teams need structure: an on-call/ops rotation takes the interrupts (shielding the rest), project time is calendar-protected, and incoming requests go through triage (urgent vs queue). Without this, the urgent always eats the important — and reliability work, which prevents future interrupts, never happens. The toil budget and the rotation are the two mechanisms.",
+          "hint": "Who handles this week's interrupts while others do project work?",
+          "objectives": ["Capacity protection", "Ops rotation"],
+          "mins": 5
+        }
+      ]
+    }
+  ],
+  "behavioral": [
+    {
+      "prompt": "Tell me about a time you eliminated toil through automation. What was the before and after?",
+      "framework": "STAR",
+      "points": ["The manual pain quantified", "What you built", "Measured toil reduction"],
+      "pitfalls": ["No quantification", "Automation nobody adopted"]
+    },
+    {
+      "prompt": "Describe a production incident you led or participated in. What did you learn?",
+      "framework": "STAR",
+      "points": ["Your role", "What the postmortem found", "Systemic fixes shipped"],
+      "pitfalls": ["Blame-focused", "No systemic fix"]
+    },
+    {
+      "prompt": "Tell me about setting or working with SLOs. How did they change behavior?",
+      "framework": "STAR",
+      "points": ["The SLOs chosen and why", "How error budgets affected decisions", "Outcome"],
+      "pitfalls": ["SLOs nobody honored", "Vanity metrics"]
+    },
+    {
+      "prompt": "Describe a time you had to push back on shipping a feature for reliability reasons.",
+      "framework": "STAR",
+      "points": ["The data you brought", "How you framed it", "The decision and result"],
+      "pitfalls": ["No data", "Adversarial framing"]
+    },
+    {
+      "prompt": "Tell me about building or improving an internal platform for other engineers.",
+      "framework": "STAR",
+      "points": ["The user pain", "What you shipped", "Adoption evidence"],
+      "pitfalls": ["Built without users", "No adoption"]
+    },
+    {
+      "prompt": "Describe a capacity or performance problem you solved.",
+      "framework": "STAR",
+      "points": ["How you found it", "Your analysis", "The fix and validation"],
+      "pitfalls": ["Guessing", "No validation under load"]
+    },
+    {
+      "prompt": "Tell me about a disagreement on reliability priorities with product or leadership.",
+      "framework": "STAR",
+      "points": ["Both positions", "How you used data", "Resolution"],
+      "pitfalls": ["No data brought", "Caving or stonewalling"]
+    },
+    {
+      "prompt": "How do you stay effective as systems grow more complex? What's your approach to managing cognitive load?",
+      "framework": "Present-Past-Future",
+      "points": ["Concrete practices", "An example", "What you're improving"],
+      "pitfalls": ["No practices", "Heroics as strategy"]
+    }
+  ],
+  "chat": {
+    "persona": "You are a friendly but rigorous SRE interviewer running a mock assessment. Pose reliability scenarios, expect quantitative reasoning, and give concise keyword-driven feedback.",
+    "topics": [
+      {
+        "id": "slis-slos",
+        "name": "SLIs/SLOs",
+        "key_points": ["SLI vs SLO vs SLA", "error budget math", "burn-rate alerting", "user-centric SLIs", "budget exhaustion policy", "fewer meaningful SLOs"],
+        "followups": ["How much downtime is that?", "What happens when the budget is gone?"]
+      },
+      {
+        "id": "incident-response",
+        "name": "Incident Response",
+        "key_points": ["declare early", "incident commander", "blameless postmortems", "runbook trust", "comms cadence", "page only actionable"],
+        "followups": ["What do you do in the first 10 minutes?", "Who decides?"]
+      },
+      {
+        "id": "observability",
+        "name": "Observability",
+        "key_points": ["three pillars", "cardinality", "USE vs RED", "actionable alerts", "log cost control", "SLO dashboards"],
+        "followups": ["Which signal answers that?", "What would you alert on?"]
+      },
+      {
+        "id": "capacity-performance",
+        "name": "Capacity & Performance",
+        "key_points": ["headroom and N+1", "load/stress/soak tests", "autoscaling signals", "saturation", "chaos game days", "performance budgets"],
+        "followups": ["How much headroom and why?", "What signal leads?"]
+      },
+      {
+        "id": "platform-design",
+        "name": "Platform Design",
+        "key_points": ["golden paths", "platform as product", "multitenancy controls", "GitOps for platforms", "guardrails vs gates", "cognitive load"],
+        "followups": ["Who are the users?", "What enforces it without a meeting?"]
+      },
+      {
+        "id": "toil-automation",
+        "name": "Toil & Automation",
+        "key_points": ["toil criteria", "50% rule", "automation ladder", "automation safety", "measuring toil", "protecting project time"],
+        "followups": ["Is that toil by the definition?", "What stops it when wrong?"]
+      }
+    ]
+  }
+}

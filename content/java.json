@@ -1,0 +1,860 @@
+{
+  "slug": "java",
+  "title": "Java SE",
+  "tagline": "Java 21 developer concepts — OCP 1Z0-830-concept prep",
+  "vendor": {
+    "name": "Oracle",
+    "certs": "1Z0-830",
+    "docs": "https://education.oracle.com"
+  },
+  "disclaimer": "Independent practice material by Interstitium Labs. Not affiliated with, endorsed by, or sponsored by Oracle. Confers no certificate. All scenarios are original; no exam content is reproduced.",
+  "domains": [
+    {
+      "id": "language-core",
+      "name": "Language Core",
+      "scenarios": [
+        {
+          "id": "java-string-eq",
+          "title": "The login check that never matches",
+          "situation": "A username comparison with == works for literals in unit tests but fails for input read from the console.",
+          "prompt": "Why does == fail, and what is the correct comparison?",
+          "evidence": [
+            ["Login.java", "String input = scanner.nextLine();\nif (input == \"admin\") { grant(); }  // false for runtime strings"]
+          ],
+          "choices": [
+            "== compares object references — use input.equals(\"admin\"); literals may be interned, which is why tests accidentally passed",
+            "Strings from I/O are char[] — convert with new String(input) first",
+            "== works for strings but not for scanner input — call scanner.next() instead",
+            "String comparison requires compareTo — equals() only works for enums"
+          ],
+          "answer": 0,
+          "why": "== on objects tests reference identity. String literals are interned (one shared instance per distinct literal), so == can appear to work in tests, but a runtime-built string is a different object with equal content. equals() compares content — always use it for value comparison. (For null-safety, \"admin\".equals(input) avoids NPE.)",
+          "hint": "What does == compare for objects — the characters, or which objects they are?",
+          "objectives": ["String equality", "equals vs ==", "Interning"],
+          "mins": 5
+        },
+        {
+          "id": "java-int-division",
+          "title": "The percentage that is always zero",
+          "situation": "A progress reporter computes done/total*100 as ints and always displays 0% until the very end.",
+          "prompt": "Why is the percentage zero, and how do you fix it?",
+          "evidence": [
+            ["Progress.java", "int pct = done / total * 100;  // done < total -> 0 * 100 = 0"]
+          ],
+          "choices": [
+            "done/total is integer division, truncating to 0 before the multiplication — cast first: (int)(done * 100.0 / total)",
+            "int arithmetic overflows at 100 — use long for pct",
+            "Multiplication must come first textually — write 100 * done / total as int math",
+            "The expression is evaluated right-to-left — add parentheses around done/total"
+          ],
+          "answer": 0,
+          "why": "With int operands, done/total truncates toward zero — any proper fraction becomes 0, and 0*100 stays 0. Promoting one operand to double before dividing (done * 100.0 / total) performs floating-point division; cast back to int for display. (100 * done / total also works in int math but risks overflow for huge values.)",
+          "hint": "What is the value of done/total before the *100 ever runs?",
+          "objectives": ["Integer division", "Numeric promotion"],
+          "mins": 4
+        },
+        {
+          "id": "java-switch-expr",
+          "title": "The switch that must produce a value",
+          "situation": "A refactored method needs a switch to yield a value. The old statement-switch with a mutable result variable is verbose and error-prone.",
+          "prompt": "How do switch expressions (Java 14+) improve this?",
+          "evidence": [
+            ["Rate.java", "String label = switch (level) {\n    case 1, 2 -> \"low\";\n    case 3 -> \"medium\";\n    default -> \"high\";\n};  // expression: exhaustive, no fallthrough, yields a value"]
+          ],
+          "choices": [
+            "Arrow-case switch expressions yield a value, forbid fallthrough, and the compiler checks exhaustiveness",
+            "Switch expressions are slower — keep the statement form for hot paths",
+            "Arrow syntax only works for enums — int switches must use colons",
+            "Switch expressions cannot have a default — every case must be listed"
+          ],
+          "answer": 0,
+          "why": "A switch expression is an expression: it produces a value, so no mutable accumulator is needed. Arrow cases (->) do not fall through, comma-separated labels group cases, and the compiler enforces exhaustiveness (all cases covered or a default present). yield is available for colon-style blocks that compute the value.",
+          "hint": "What three things does the arrow form give you that the colon form does not?",
+          "objectives": ["Switch expressions", "Exhaustiveness", "Arrow syntax"],
+          "mins": 6
+        },
+        {
+          "id": "java-var-limits",
+          "title": "The var that will not compile",
+          "situation": "A developer sprinkles var everywhere — on fields, method parameters, and a null initializer — and gets three different compile errors.",
+          "prompt": "Where is var actually allowed?",
+          "evidence": [
+            ["Limits.java", "var count = 0;        // OK: local with initializer\nvar name = null;      // error: cannot infer from null\n// var as a field or parameter: error"]
+          ],
+          "choices": [
+            "var is only for local variables with an initializer the compiler can infer a type from — not fields, parameters, or null initializers",
+            "var works anywhere a type appears — the errors are a compiler bug",
+            "var requires the initializer to be a literal — method calls are not allowed",
+            "var infers Object for null — the code compiles with a warning"
+          ],
+          "answer": 0,
+          "why": "var is not dynamic typing — it is compile-time type inference for local variables, and the compiler needs an initializer with a concrete type. Fields and parameters are part of a class's API contract, so they require explicit types. (var x = null gives the compiler nothing to infer.)",
+          "hint": "What information does the compiler need to fill in for var — and where is that information missing?",
+          "objectives": ["var", "Local variable type inference"],
+          "mins": 5
+        },
+        {
+          "id": "java-records",
+          "title": "The DTO with 60 lines of boilerplate",
+          "situation": "A data-carrier class has final fields, a constructor, getters, equals, hashCode, and toString — all hand-written, with a copy-paste bug in equals.",
+          "prompt": "Which Java 16+ feature generates all of this correctly?",
+          "evidence": [
+            ["Point.java", "record Point(int x, int y) {}  // canonical constructor, accessors, equals/hashCode/toString generated"]
+          ],
+          "choices": [
+            "A record — the compiler generates the canonical constructor, accessors, equals, hashCode, and toString from the header",
+            "An interface with default methods — it generates the boilerplate at runtime",
+            "A sealed class — sealing triggers boilerplate generation",
+            "Records are syntax sugar for HashMap — put the fields in a map instead"
+          ],
+          "answer": 0,
+          "why": "record Point(int x, int y) declares an immutable data carrier: the compiler synthesizes the constructor, x()/y() accessors, and value-based equals/hashCode/toString. Records are final (cannot be extended) and their components are final — custom validation goes in the compact constructor. Use them for DTOs, tuples, and value objects.",
+          "hint": "Which declaration turns a field list directly into a complete immutable value class?",
+          "objectives": ["Records", "Data carriers", "Compact constructors"],
+          "mins": 5
+        },
+        {
+          "id": "java-pattern-instanceof",
+          "title": "The cast after instanceof",
+          "situation": "Legacy code checks instanceof then casts on the next line — verbose, and a rename once left the cast pointing at the wrong type.",
+          "prompt": "How does pattern matching for instanceof (Java 16+) remove the cast?",
+          "evidence": [
+            ["Shape.java", "if (shape instanceof Circle c) {\n    System.out.println(c.radius());  // c is bound and already a Circle\n}"]
+          ],
+          "choices": [
+            "Pattern matching binds the cast variable in the same expression — no explicit cast, and the variable is in scope where the test passed",
+            "instanceof now returns the cast object instead of boolean — assign it directly",
+            "The pattern form is slower — keep the explicit cast in hot code",
+            "Pattern variables are always nullable — add a null check after binding"
+          ],
+          "answer": 0,
+          "why": "shape instanceof Circle c tests and casts in one step, introducing c as a Circle wherever the pattern matched (flow scoping). It eliminates the duplicated type name where cast bugs hide, and the compiler rejects impossible patterns. (instanceof is false for null, so no NPE on the test.)",
+          "hint": "What two things did the old code do on two lines that the pattern does on one?",
+          "objectives": ["Pattern matching", "instanceof patterns"],
+          "mins": 5
+        }
+      ]
+    },
+    {
+      "id": "oop-design",
+      "name": "OOP & Design",
+      "scenarios": [
+        {
+          "id": "java-override-annotation",
+          "title": "The overload that pretended to override",
+          "situation": "A subclass meant to override notify(String) but declared notify(Object). The base version kept running with no compiler complaint.",
+          "prompt": "Which annotation turns this silent bug into a compile error?",
+          "evidence": [
+            ["Alert.java", "class EmailAlert extends Alert {\n    public void notify(Object msg) { ... }  // overloads, does not override\n}"]
+          ],
+          "choices": [
+            "@Override — the compiler verifies an actual overridden method exists and fails the build otherwise",
+            "@Deprecated — marks the method as legacy so callers avoid it",
+            "@SuppressWarnings — hides the accidental overload warning",
+            "No annotation can help — rename the method to avoid confusion"
+          ],
+          "answer": 0,
+          "why": "Without @Override, notify(Object) is just an overload — legal Java that silently does not participate in polymorphism. @Override asks the compiler to prove a matching supertype method exists; a signature mismatch becomes an error at the declaration. Apply it to every intended override, including interface implementations.",
+          "hint": "Which annotation makes the compiler check your intent to override, rather than trusting you?",
+          "objectives": ["@Override", "Overriding vs overloading"],
+          "mins": 5
+        },
+        {
+          "id": "java-default-method",
+          "title": "The interface that grew a method",
+          "situation": "A library interface needs a new method, but adding an abstract method would break every existing implementation.",
+          "prompt": "How do default methods evolve interfaces safely?",
+          "evidence": [
+            ["Repo.java", "interface Repository {\n    void save(Entity e);\n    default void saveAll(List<Entity> es) { es.forEach(this::save); }  // new, non-breaking\n}"]
+          ],
+          "choices": [
+            "default methods carry an implementation in the interface — existing implementers inherit it and keep compiling",
+            "Default methods are static — call them as Repository.saveAll(...)",
+            "Interfaces cannot have method bodies — use an abstract class instead",
+            "Mark the new method abstract and ship a migration guide"
+          ],
+          "answer": 0,
+          "why": "A default method provides an implementation inside the interface, so adding one does not break existing implementers — they inherit it. Implementers may still override it. (Diamond conflicts — two interfaces providing the same default — must be resolved explicitly by the implementing class, which is the one sharp edge.)",
+          "hint": "What kind of interface method can add behavior without forcing every implementer to change?",
+          "objectives": ["Default methods", "Interface evolution"],
+          "mins": 6
+        },
+        {
+          "id": "java-defensive-copy",
+          "title": "The immutable class that was not",
+          "situation": "An 'immutable' config class stores a Date passed by the caller. Callers mutate the Date afterward and the config silently changes.",
+          "prompt": "How do you make the class genuinely immutable?",
+          "evidence": [
+            ["Config.java", "public final class Config {\n    private final Date created;  // final reference, mutable object!\n    public Config(Date d) { this.created = d; }  // caller keeps aliasing it\n}"]
+          ],
+          "choices": [
+            "Defensively copy on the way in (and on the way out of getters) — new Date(d.getTime()); better, use immutable java.time types",
+            "final already guarantees immutability — the callers are misusing the API",
+            "Make the field static so all instances share one canonical Date",
+            "Clone is broken in Java — immutability of Dates is impossible"
+          ],
+          "answer": 0,
+          "why": "final protects the reference, not the object: a final Date field still aliases a mutable Date the caller can change. True immutability requires copying mutable inputs at construction and returning copies (or immutable views) from getters. The modern fix is avoiding legacy mutable types entirely — java.time.Instant is immutable by design.",
+          "hint": "What does final lock down — the reference, or the object it points to?",
+          "objectives": ["Immutability", "Defensive copying", "java.time"],
+          "mins": 6
+        },
+        {
+          "id": "java-equals-hashcode",
+          "title": "The key that cannot be found",
+          "situation": "A class overrides equals but not hashCode. Equal instances stored as HashMap keys cannot be retrieved.",
+          "prompt": "Why does the map lose entries with equal keys?",
+          "evidence": [
+            ["Key.java", "class Key {\n    String id;\n    public boolean equals(Object o) { ... }  // no hashCode override!\n}\nmap.put(new Key(\"a\"), 1);\nmap.get(new Key(\"a\"));  // null"]
+          ],
+          "choices": [
+            "HashMap buckets by hashCode first — equal objects with different identity hash codes land in different buckets, so equals is never consulted; always override hashCode with equals",
+            "HashMap uses == for keys — equals is irrelevant to maps",
+            "The map needs a custom Comparator — equals/hashCode are for sets only",
+            "String ids are interned — the bug is the new Key allocation"
+          ],
+          "answer": 0,
+          "why": "Hash-based collections hash first and compare with equals only within a bucket. The contract is: equal objects must have equal hash codes. Overriding equals without hashCode leaves the default identity hash, so logically-equal keys scatter across buckets and lookups miss. IDEs generate both together for exactly this reason.",
+          "hint": "What does a HashMap check before it ever calls equals?",
+          "objectives": ["equals/hashCode contract", "HashMap"],
+          "mins": 6
+        },
+        {
+          "id": "java-sealed",
+          "title": "The hierarchy that must stay closed",
+          "situation": "A payment-type hierarchy must allow exactly Card, Bank, and Crypto — no surprise subclasses from other teams that break an exhaustive switch.",
+          "prompt": "How do sealed classes (Java 17+) enforce a closed hierarchy?",
+          "evidence": [
+            ["Pay.java", "public sealed interface Payment permits Card, Bank, Crypto { }\n// any other implementer: compile error"]
+          ],
+          "choices": [
+            "sealed with permits lists every allowed subtype — the compiler rejects all others, and switches over the hierarchy can be exhaustive",
+            "Sealed classes cannot be implemented at all — use an enum instead",
+            "permits is documentation only — reflection can still add subtypes",
+            "Final classes already prevent extension — sealed adds nothing"
+          ],
+          "answer": 0,
+          "why": "sealed declares a closed set of permitted direct subtypes; anything else is a compile error. Each permitted subtype must itself be final, sealed, or non-sealed (explicit choice). Combined with pattern-matching switch, the compiler can verify exhaustiveness — adding a new payment type breaks the switch loudly instead of silently.",
+          "hint": "Which modifier lets a type name exactly who may extend or implement it?",
+          "objectives": ["Sealed classes", "permits", "Exhaustive hierarchies"],
+          "mins": 6
+        },
+        {
+          "id": "java-abstract-vs-interface",
+          "title": "The wrong abstraction",
+          "situation": "A team models 'can fly' as an abstract class, then discovers Penguins need swimming too — and Java has no multiple inheritance of classes.",
+          "prompt": "When do you choose an interface over an abstract class?",
+          "evidence": [
+            ["Model.java", "abstract class Bird { abstract void fly(); }  // Penguin cannot extend Bird AND Swimmer\n// interface Flyable { void fly(); } -- a class can implement many"]
+          ],
+          "choices": [
+            "Interfaces model capabilities (can-do) and support multiple inheritance of type — abstract classes model is-a hierarchies with shared state",
+            "Abstract classes are faster — always prefer them for performance",
+            "Interfaces cannot have fields — use abstract classes whenever data is involved",
+            "There is no difference since Java 8 default methods — pick randomly"
+          ],
+          "answer": 0,
+          "why": "A class extends exactly one class but implements many interfaces, so capabilities (Flyable, Swimmable) belong in interfaces while a true is-a backbone with shared state and constructor logic belongs in an abstract class. Default methods narrowed the gap, but state, constructors, and single-inheritance still distinguish them.",
+          "hint": "How many of each can one class have — and what does that imply for modeling capabilities versus identity?",
+          "objectives": ["Abstract classes vs interfaces", "Modeling"],
+          "mins": 5
+        }
+      ]
+    },
+    {
+      "id": "collections-generics",
+      "name": "Collections & Generics",
+      "scenarios": [
+        {
+          "id": "java-erasure-array",
+          "title": "The generic array that will not compile",
+          "situation": "A generic cache tries to allocate new T[capacity] and the compiler refuses.",
+          "prompt": "Why can you not create arrays of a type parameter?",
+          "evidence": [
+            ["Cache.java", "class Cache<T> {\n    T[] items = new T[16];  // error: generic array creation"]
+          ],
+          "choices": [
+            "Type erasure: T does not exist at runtime, and arrays need a reifiable component type — use ArrayList<T> or Object[] with casts",
+            "Arrays of generics are allowed since Java 10 — upgrade the JDK",
+            "T[] requires T to be final — bound it as <T extends Final>",
+            "The syntax is new T[](16) — the brackets are misplaced"
+          ],
+          "answer": 0,
+          "why": "Generics are erased at compile time: at runtime a Cache<String> is just Cache, so the JVM could not enforce new T[]'s type safety (arrays are covariant and reified, generics are invariant and erased — the combination is unsound). ArrayList<T> is the idiomatic replacement; internally it uses Object[] with checked casts.",
+          "hint": "What does T become after compilation — and what does an array need to know at runtime?",
+          "objectives": ["Type erasure", "Generic array creation", "Reifiable types"],
+          "mins": 7
+        },
+        {
+          "id": "java-pecs",
+          "title": "The producer list you cannot add to",
+          "situation": "A method accepts List<? extends Number> to read numbers, but a teammate tries to add an Integer and the compiler rejects it.",
+          "prompt": "Why does the wildcard bound forbid adding?",
+          "evidence": [
+            ["Stats.java", "double sum(List<? extends Number> ns) {\n    // ns.add(1);  // error: cannot add to a producer\n    double s = 0; for (Number n : ns) s += n.doubleValue(); return s;\n}"]
+          ],
+          "choices": [
+            "PECS: ? extends Number is a producer — the list could be List<Double>, so adding an Integer would corrupt it; use ? super Integer for consumers",
+            "Wildcard lists are immutable — wrap with Collections.unmodifiableList first",
+            "The compiler cannot verify autoboxing through wildcards — add ((Number)(Integer)1)",
+            "? extends Number means List<Number> exactly — the caller's List<Integer> should not compile"
+          ],
+          "answer": 0,
+          "why": "? extends Number means 'a List of some specific subtype of Number, we know not which' — it could be List<Double>, where an Integer does not belong. The compiler therefore forbids adds (except null). PECS: producer-extends (read from it), consumer-super (write to it — List<? super Integer> accepts Integer adds).",
+          "hint": "If the actual list is a List<Double>, what goes wrong when someone adds an Integer through your reference?",
+          "objectives": ["Wildcards", "PECS", "Producer extends"],
+          "mins": 7
+        },
+        {
+          "id": "java-compute-if-absent",
+          "title": "The cache with a race-shaped hole",
+          "situation": "A hand-rolled cache does get-then-put with a null check. Under load, the expensive loader runs multiple times for the same key.",
+          "prompt": "Which Map method makes the check-and-load atomic?",
+          "evidence": [
+            ["Memo.java", "Value v = cache.get(key);\nif (v == null) { v = load(key); cache.put(key, v); }  // racy on ConcurrentHashMap too"]
+          ],
+          "choices": [
+            "computeIfAbsent(key, k -> load(k)) — the mapping function runs at most once per key atomically",
+            "putIfAbsent after a separate load — two calls are still atomic together",
+            "Synchronize the whole method — the only correct fix",
+            "getOrDefault with a precomputed default — defaults are lazy in Java"
+          ],
+          "answer": 0,
+          "why": "computeIfAbsent performs the check-and-compute as one atomic operation (on ConcurrentHashMap, properly synchronized): if the key is absent, the mapping function runs and its result is installed — no window for a second thread to duplicate the load. The get/put pair has a check-then-act race even on concurrent maps.",
+          "hint": "What happens between your get and your put when two threads arrive at once?",
+          "objectives": ["computeIfAbsent", "Atomic map operations", "Check-then-act"],
+          "mins": 6
+        },
+        {
+          "id": "java-list-of",
+          "title": "The immutable list someone mutated",
+          "situation": "A method returns List.of(...) and a caller adds to it, getting UnsupportedOperationException at runtime.",
+          "prompt": "What is the contract of List.of, and how do you get a modifiable copy?",
+          "evidence": [
+            ["Api.java", "List<String> tags = List.of(\"a\", \"b\");\ntags.add(\"c\");  // UnsupportedOperationException"]
+          ],
+          "choices": [
+            "List.of returns an unmodifiable list — wrap it: new ArrayList<>(List.of(...)) for a mutable copy",
+            "List.of returns null for empty input — check for null before adding",
+            "The exception means the list is full — use List.of with a larger capacity",
+            "Unmodifiable is a compile-time property — the code should not compile"
+          ],
+          "answer": 0,
+          "why": "The List.of/Set.of/Map.of factories (Java 9+) return structurally immutable collections — any mutator throws UnsupportedOperationException. They also reject null elements outright. When callers need to mutate, copy into an ArrayList (or collect with Collectors.toList(), whose mutability is the implementation's documented choice).",
+          "hint": "Is the immutability of List.of enforced by the type system, or at runtime — and what does that imply for the caller?",
+          "objectives": ["Unmodifiable collections", "List.of", "Defensive copies"],
+          "mins": 5
+        },
+        {
+          "id": "java-concurrent-mod",
+          "title": "The loop that removes and explodes",
+          "situation": "A cleanup loop removes expired sessions from a list with list.remove() inside a for-each, throwing ConcurrentModificationException.",
+          "prompt": "Why does the for-each fail, and what are the two correct patterns?",
+          "evidence": [
+            ["Sess.java", "for (Session s : sessions) {\n    if (s.expired()) sessions.remove(s);  // ConcurrentModificationException\n}"]
+          ],
+          "choices": [
+            "Structural modification during iteration invalidates the iterator — use iterator.remove() explicitly, or removeIf(s -> s.expired())",
+            "For-each loops are read-only — convert to an indexed for loop and remove by index",
+            "The exception is thrown only for ArrayList — switch to LinkedList",
+            "Catch the exception and retry the loop until it completes"
+          ],
+          "answer": 0,
+          "why": "Collection iterators are fail-fast: any structural change not made through the iterator itself trips ConcurrentModificationException on the next iterator operation. iterator.remove() is the sanctioned in-loop removal; Collection.removeIf (Java 8+) expresses the whole pass declaratively and handles the iterator protocol internally.",
+          "hint": "Who is allowed to structurally modify a collection mid-iteration — the loop body directly, or someone else?",
+          "objectives": ["Fail-fast iterators", "removeIf", "ConcurrentModificationException"],
+          "mins": 6
+        },
+        {
+          "id": "java-comparator",
+          "title": "The sort that contradicts equals",
+          "situation": "A TreeSet of employees sorted by name silently drops two different employees who share a name.",
+          "prompt": "Why does the set treat them as duplicates?",
+          "evidence": [
+            ["Hr.java", "Set<Employee> byName = new TreeSet<>(Comparator.comparing(Employee::name));\nbyName.add(new Employee(\"amy\", 1));\nbyName.add(new Employee(\"amy\", 2));  // second add silently ignored!"]
+          ],
+          "choices": [
+            "TreeSet uses the comparator (not equals) to decide duplication — comparing only by name makes same-named employees 'equal'; chain a tiebreaker (thenComparing(Employee::id))",
+            "TreeSet requires equals/hashCode — the comparator is ignored for duplicates",
+            "comparing() is unstable — use a hand-written Comparator class",
+            "Sets cannot hold duplicates by definition — use a List instead"
+          ],
+          "answer": 0,
+          "why": "Sorted collections define equality via the comparator: compare(a,b)==0 means 'duplicate', regardless of equals(). With a name-only comparator, two Amys compare as 0 and the second add is dropped. The fix is a comparator consistent with equals — thenComparing(Employee::id) breaks the tie. The general rule: comparators used in sorted sets/maps should be consistent with equals.",
+          "hint": "How does a TreeSet decide two elements are the same — equals(), or something else?",
+          "objectives": ["Comparator consistency", "TreeSet", "Sorted collections"],
+          "mins": 7
+        }
+      ]
+    },
+    {
+      "id": "streams-lambdas",
+      "name": "Streams & Lambdas",
+      "scenarios": [
+        {
+          "id": "java-stream-lazy",
+          "title": "The pipeline that never runs",
+          "situation": "A stream pipeline with filter and map produces no output and the mapped function's side effects never happen.",
+          "prompt": "Why does nothing execute?",
+          "evidence": [
+            ["Pipe.java", "orders.stream()\n    .filter(o -> o.total() > 100)\n    .map(o -> { audit(o); return o; });  // no terminal op: nothing runs"]
+          ],
+          "choices": [
+            "Intermediate operations are lazy — without a terminal operation (forEach, collect, count) the pipeline never executes",
+            "Streams are single-threaded — the pipeline needs .parallel() to run",
+            "map with a block lambda is illegal — use a method reference",
+            "filter short-circuits the stream — remove the filter to see output"
+          ],
+          "answer": 0,
+          "why": "filter/map/peek are intermediate: they only describe the pipeline. Execution is triggered by a terminal operation like forEach, collect, reduce, or count. This laziness enables fusion and short-circuiting (findFirst stops early), but a pipeline with no terminal op is dead code. (Also: side effects belong in forEach/peek for debugging, not in map.)",
+          "hint": "Which operations in the pipeline actually demand a result — and what happens if none is present?",
+          "objectives": ["Lazy evaluation", "Intermediate vs terminal ops"],
+          "mins": 5
+        },
+        {
+          "id": "java-effectively-final",
+          "title": "The variable the lambda cannot see",
+          "situation": "A lambda inside a loop tries to use the loop counter after it is reassigned, and the compiler rejects it.",
+          "prompt": "What restriction applies to captured local variables?",
+          "evidence": [
+            ["Cap.java", "int total = 0;\nitems.forEach(i -> total += i);  // error: total must be final or effectively final\ntotal = 5;  // reassignment breaks effective finality"]
+          ],
+          "choices": [
+            "Captured locals must be final or effectively final — use an AtomicInteger, a single-element array, or restructure with reduce()",
+            "Lambdas cannot access locals at all — make total a field",
+            "forEach lambdas run on other threads — locals are thread-confined",
+            "The restriction was removed in Java 17 — upgrade the JDK"
+          ],
+          "answer": 0,
+          "why": "Lambdas capture local variables by value (a copy), so allowing later mutation would create two divergent truths. Java enforces this by requiring captured locals to be final or effectively final (never reassigned). For genuine accumulation, reduce() expresses the fold functionally, or an AtomicInteger provides a mutable holder.",
+          "hint": "Does the lambda see the variable, or a copy of its value — and what would reassignment mean for the copy?",
+          "objectives": ["Effectively final", "Lambda capture"],
+          "mins": 6
+        },
+        {
+          "id": "java-optional-get",
+          "title": "The Optional that threw anyway",
+          "situation": "Code wraps a lookup in Optional but calls get() unconditionally, throwing NoSuchElementException on misses — the same crash Optional was meant to prevent.",
+          "prompt": "What is the correct way to consume an Optional?",
+          "evidence": [
+            ["Find.java", "Optional<User> u = repo.find(id);\nreturn u.get().name();  // throws when empty"]
+          ],
+          "choices": [
+            "Never call get() blindly — use orElseThrow/map/orElse: return u.map(User::name).orElse(\"unknown\")",
+            "Optional.get() is deprecated — the code should not compile",
+            "Wrap get() in try/catch NoSuchElementException — that is the intended pattern",
+            "Optional is only for streams — use null checks for repository lookups"
+          ],
+          "answer": 0,
+          "why": "Optional is a container signaling 'value or absence' — calling get() without checking reintroduces the exact null-dereference-style crash it replaces. The API's combinators (map, flatMap, filter, orElse, orElseGet, orElseThrow) handle both cases declaratively. (Also note orElse evaluates its argument eagerly — orElseGet takes a Supplier for lazy defaults.)",
+          "hint": "If you call get() without checking, what have you gained over a raw null check?",
+          "objectives": ["Optional", "orElse vs orElseGet", "Null handling"],
+          "mins": 6
+        },
+        {
+          "id": "java-tomap-merge",
+          "title": "The duplicate key that crashed collect",
+          "situation": "Collectors.toMap crashes with IllegalStateException: Duplicate key when two orders share a customer ID.",
+          "prompt": "How do you handle key collisions in toMap?",
+          "evidence": [
+            ["Grp.java", "orders.stream().collect(Collectors.toMap(Order::customerId, o -> o));  // boom on duplicates"]
+          ],
+          "choices": [
+            "Supply a merge function: toMap(Order::customerId, o -> o, (a, b) -> a) — or use groupingBy for one-to-many",
+            "toMap requires unique keys by contract — deduplicate the stream first with distinct()",
+            "Wrap the collect in try/catch and retry with a HashMap",
+            "Duplicate keys are impossible — the data must be corrupt"
+          ],
+          "answer": 0,
+          "why": "The two-arg toMap throws on duplicate keys by design — silent overwriting would hide data loss. The three-arg overload takes a BinaryOperator merge function deciding which value wins (keep-first (a,b)->a, keep-last (a,b)->b, or combine). When one key maps to many values, Collectors.groupingBy(keyMapper) builds the Map<K, List<V>> directly.",
+          "hint": "Should a collector silently discard data on collision — and if not, who should decide the winner?",
+          "objectives": ["Collectors.toMap", "Merge functions", "groupingBy"],
+          "mins": 6
+        },
+        {
+          "id": "java-parallel-stateful",
+          "title": "The parallel stream that lost data",
+          "situation": "A parallel stream appends results to a shared ArrayList. Items go missing and the list sometimes corrupts.",
+          "prompt": "Why is the shared list unsafe, and what is the correct pattern?",
+          "evidence": [
+            ["Par.java", "List<Result> out = new ArrayList<>();\nitems.parallelStream().map(this::compute).forEach(out::add);  // racy, unordered"]
+          ],
+          "choices": [
+            "forEach with a shared mutable ArrayList is a data race — use collect(Collectors.toList()), which partitions and merges safely",
+            "parallelStream is broken for map — use sequential streams only",
+            "ArrayList.add is atomic — the missing items are a visibility issue; add volatile",
+            "forEachOrdered fixes thread safety — just switch the terminal op"
+          ],
+          "answer": 0,
+          "why": "parallelStream splits work across threads; mutating a shared non-thread-safe ArrayList from forEach is a data race (lost updates, corruption). collect() is designed for this: each thread accumulates into its own container, then results merge. (forEachOrdered only fixes encounter order, not safety — and collect preserves order for ordered streams anyway.)",
+          "hint": "How many threads call out::add concurrently — and what does ArrayList promise about concurrent mutation?",
+          "objectives": ["Parallel streams", "collect", "Thread safety"],
+          "mins": 7
+        },
+        {
+          "id": "java-method-refs",
+          "title": "The lambda that is just a method call",
+          "situation": "A codebase is full of x -> helper.process(x) lambdas that add noise without adding logic.",
+          "prompt": "When can a lambda become a method reference, and what are the four forms?",
+          "evidence": [
+            ["Ref.java", "names.stream().map(s -> s.toUpperCase())  // -> names.stream().map(String::toUpperCase)\nlist.forEach(x -> System.out.println(x))  // -> list.forEach(System.out::println)"]
+          ],
+          "choices": [
+            "When the lambda only forwards to one method — the four forms are Class::staticMethod, obj::instanceMethod, Class::instanceMethod, Class::new",
+            "Method references are always faster — replace every lambda with one",
+            "Only static methods can be referenced — instance methods need lambdas",
+            "Method references cannot take arguments — they work only for suppliers"
+          ],
+          "answer": 0,
+          "why": "A lambda that does nothing but call a method (s -> s.toUpperCase()) is exactly a method reference (String::toUpperCase). The four forms: static (Integer::parseInt), bound instance (System.out::println), unbound instance (String::length — the stream element becomes the receiver), and constructor (ArrayList::new). They are equivalent in behavior to the lambda — the win is readability, not performance.",
+          "hint": "If the lambda body is a single method call forwarding its parameters, what shorter syntax says the same thing?",
+          "objectives": ["Method references", "Lambda equivalence"],
+          "mins": 5
+        }
+      ]
+    },
+    {
+      "id": "concurrency-virtual-threads",
+      "name": "Concurrency & Virtual Threads",
+      "scenarios": [
+        {
+          "id": "java-race-counter",
+          "title": "The counter that loses counts",
+          "situation": "A hit counter incremented by many threads reports fewer hits than the access log shows.",
+          "prompt": "Why do increments go missing, and what is the minimal fix?",
+          "evidence": [
+            ["Hits.java", "static int hits = 0;\n// in request handler:\nhits++;  // read-modify-write: not atomic"]
+          ],
+          "choices": [
+            "hits++ is three operations (read, add, write) — interleavings lose updates; use AtomicInteger.incrementAndGet()",
+            "int increments are atomic on 64-bit — the log must be double-counting",
+            "Static fields are thread-local — each thread has its own hits",
+            "The JIT reorders the increment — disable optimization with -Xint"
+          ],
+          "answer": 0,
+          "why": "hits++ compiles to load, increment, store — between any two steps another thread can interleave and its update gets overwritten (lost update). AtomicInteger uses CAS (compare-and-set) hardware instructions to make the whole read-modify-write indivisible. (synchronized would also work but is heavier for a simple counter.)",
+          "hint": "How many machine steps does hits++ take — and what can another thread do between them?",
+          "objectives": ["Race conditions", "AtomicInteger", "Lost updates"],
+          "mins": 6
+        },
+        {
+          "id": "java-deadlock-order",
+          "title": "The deadlock that strikes on Fridays",
+          "situation": "Two services lock account A then B, and B then A. Under load the system freezes with both threads waiting forever.",
+          "prompt": "What causes the deadlock, and what ordering rule prevents it?",
+          "evidence": [
+            ["Xfer.java", "// thread 1: synchronized(a) { synchronized(b) { transfer(a, b); } }\n// thread 2: synchronized(b) { synchronized(a) { transfer(b, a); } }  // deadlock"]
+          ],
+          "choices": [
+            "Circular wait — one of the Coffman conditions; enforce a global lock ordering (always lock the lower-id account first) to break the cycle",
+            "Synchronized blocks cannot nest — flatten them into one block",
+            "Deadlocks require three threads — two threads cannot deadlock",
+            "The fix is Thread.sleep between the locks to let the other thread finish"
+          ],
+          "answer": 0,
+          "why": "Deadlock needs four conditions (mutual exclusion, hold-and-wait, no preemption, circular wait). Acquiring locks in opposite orders creates the circular wait. A global ordering — e.g., always lock the account with the smaller id first — makes cycles impossible. Alternatives: tryLock with timeout and backoff, or a single coarse lock when contention is low.",
+          "hint": "Draw the 'waits-for' graph of the two threads. What shape is it, and which acquisition rule prevents that shape?",
+          "objectives": ["Deadlock", "Lock ordering", "Coffman conditions"],
+          "mins": 7
+        },
+        {
+          "id": "java-virtual-threads",
+          "title": "The pool sized for blocking calls",
+          "situation": "A service makes blocking HTTP calls on a 200-thread platform pool. Under spike load, requests queue and latency explodes.",
+          "prompt": "How do virtual threads (Java 21) change the sizing math?",
+          "evidence": [
+            ["Svc.java", "try (var exec = Executors.newVirtualThreadPerTaskExecutor()) {\n    for (var req : requests) exec.submit(() -> handle(req));\n}  // a virtual thread per task: blocking is cheap"]
+          ],
+          "choices": [
+            "Virtual threads are cheap (KBs) and mount on carrier threads — blocking calls park the virtual thread without wasting a carrier, so thread-per-task replaces tuned pools",
+            "Virtual threads are faster CPUs — the same 200 threads do more work",
+            "Virtual threads eliminate the need for executors — call handle(req) directly",
+            "Blocking calls are forbidden on virtual threads — rewrite everything async"
+          ],
+          "answer": 0,
+          "why": "Platform threads are expensive (~MB stacks, OS threads), so blocking I/O on them wastes a scarce resource — hence pool sizing. Virtual threads are JVM-managed and cheap; when one blocks, its carrier thread is freed for another virtual thread. Thread-per-task becomes viable again: no pool sizing, no queue tuning. (Do not pool virtual threads, and avoid pinning carriers with synchronized blocks around long I/O — use ReentrantLock instead.)",
+          "hint": "What is the scarce resource wasted when a platform thread blocks — and does a virtual thread waste it?",
+          "objectives": ["Virtual threads", "Thread-per-task", "Blocking I/O"],
+          "mins": 7
+        },
+        {
+          "id": "java-executor-shutdown",
+          "title": "The JVM that would not exit",
+          "situation": "A batch job's main method finishes, but the process hangs forever instead of exiting.",
+          "prompt": "Why does the executor keep the JVM alive, and what is the correct shutdown?",
+          "evidence": [
+            ["Batch.java", "var exec = Executors.newFixedThreadPool(4);\nexec.submit(job);\n// missing shutdown: pool threads are non-daemon -> JVM never exits"]
+          ],
+          "choices": [
+            "Pool threads are non-daemon — call exec.shutdown() and awaitTermination, or use try-with-resources (ExecutorService is AutoCloseable since Java 19)",
+            "Executors must be static — local executors cannot be shut down",
+            "Call System.exit(0) at the end of main — the standard fix",
+            "Fixed pools cannot be shut down — use a cached pool instead"
+          ],
+          "answer": 0,
+          "why": "The JVM exits only when all non-daemon threads finish; executor pool threads are non-daemon and idle-wait forever. shutdown() stops accepting tasks and lets submitted ones finish; awaitTermination bounds the wait. Since Java 19, ExecutorService extends AutoCloseable, so try (var exec = ...) { } shuts down automatically — the modern idiom.",
+          "hint": "What keeps a JVM alive after main returns — and whose threads are those?",
+          "objectives": ["ExecutorService", "shutdown", "Daemon threads"],
+          "mins": 5
+        },
+        {
+          "id": "java-volatile",
+          "title": "The flag the thread never saw",
+          "situation": "A worker loop checks a boolean stop flag set by another thread, but the worker never stops — it seems to read a stale cached value forever.",
+          "prompt": "Why is the update invisible, and what does volatile guarantee?",
+          "evidence": [
+            ["Worker.java", "boolean running = true;  // written by main thread, read by worker\nwhile (running) { work(); }  // may never observe the write"]
+          ],
+          "choices": [
+            "Without synchronization the write may sit in a CPU cache or be hoisted by the JIT — volatile establishes happens-before visibility for the flag",
+            "Booleans are not thread-safe in Java — use AtomicBoolean for any shared flag",
+            "The JIT caches running in a register — volatile prevents all JIT optimization",
+            "Visibility is guaranteed for all fields — the bug must be in work()"
+          ],
+          "answer": 0,
+          "why": "The Java Memory Model allows threads to cache field values; without a happens-before edge, a write in one thread may never become visible to another (the JIT may even hoist the read out of the loop). volatile gives each read/write volatile semantics with happens-before ordering — the standard tool for a simple stop flag. (For read-modify-write like counters, volatile is not enough — that needs atomicity, i.e., AtomicInteger.)",
+          "hint": "What ordering guarantee connects a write in one thread to a read in another — and which keyword creates it for a simple flag?",
+          "objectives": ["volatile", "Visibility", "Java Memory Model"],
+          "mins": 7
+        },
+        {
+          "id": "java-threadlocal-vt",
+          "title": "The ThreadLocal that ate the heap",
+          "situation": "After migrating to virtual threads, a ThreadLocal cache that was fine with 200 platform threads now holds a million entries and memory balloons.",
+          "prompt": "Why does ThreadLocal scale badly with virtual threads?",
+          "evidence": [
+            ["Cache.java", "static final ThreadLocal<Buffer> BUF = ThreadLocal.withInitial(Buffer::new);\n// 200 platform threads: 200 buffers. 1M virtual threads: up to 1M buffers."]
+          ],
+          "choices": [
+            "ThreadLocal multiplies by thread count — with a virtual thread per task, per-thread state becomes per-task state; use explicit context parameters or scoped values instead",
+            "ThreadLocals leak on virtual threads — call remove() in a finally block and keep the pattern",
+            "Virtual threads share one ThreadLocal map — the entries collide and duplicate",
+            "ThreadLocal is deprecated for virtual threads — the code will not compile"
+          ],
+          "answer": 0,
+          "why": "ThreadLocal was designed for expensive, long-lived platform threads where per-thread state is bounded. Virtual threads are cheap and numerous — a thread-per-task server can have millions over its life, turning each ThreadLocal into an unbounded per-task cache. Prefer passing context explicitly, or ScopedValue (Java 21+) for immutable request-scoped data with structured lifetime.",
+          "hint": "What did ThreadLocal cost multiply by when the thread count went from hundreds to millions?",
+          "objectives": ["ThreadLocal", "Virtual thread pitfalls", "ScopedValue"],
+          "mins": 6
+        }
+      ]
+    },
+    {
+      "id": "modules-jars-io",
+      "name": "Modules, JARs & I/O",
+      "scenarios": [
+        {
+          "id": "java-module-exports",
+          "title": "The package the module would not share",
+          "situation": "A modularized app fails at startup: 'package com.acme.internal is not visible' when another module touches an internal package.",
+          "prompt": "How do modules control package visibility?",
+          "evidence": [
+            ["module-info.java", "module com.acme.app {\n    requires com.acme.lib;\n    exports com.acme.api;        // visible to others\n    // com.acme.internal NOT exported -> encapsulated\n}"]
+          ],
+          "choices": [
+            "Modules encapsulate by default — only exported packages are visible to other modules; internal packages stay hidden even though they are public classes",
+            "All public classes are visible across modules — the error means the JAR is corrupt",
+            "exports is documentation — use requires transitive to fix visibility",
+            "Internal packages must be deleted — modules forbid non-exported code"
+          ],
+          "answer": 0,
+          "why": "The module system (JPMS) enforces strong encapsulation: a public class in a non-exported package is inaccessible outside its module, even via reflection (without opens). exports declares the module's public API surface; everything else is implementation detail. This is the fix for JAR hell's 'everything public is public everywhere'.",
+          "hint": "What does a module hide by default — and what declaration opts a package out of hiding?",
+          "objectives": ["JPMS", "exports", "Strong encapsulation"],
+          "mins": 6
+        },
+        {
+          "id": "java-jar-manifest",
+          "title": "The JAR that will not launch",
+          "situation": "java -jar app.jar fails with 'no main manifest attribute' though the Main class exists and compiles.",
+          "prompt": "What does the executable JAR need?",
+          "evidence": [
+            ["shell", "$ java -jar app.jar\nno main manifest attribute, in app.jar"]
+          ],
+          "choices": [
+            "The manifest needs Main-Class: com.acme.Main (plus Class-Path for dependencies) — build tools generate it, or jar cfe app.jar com.acme.Main *.class",
+            "JARs cannot be executed — extract and run java -cp with the class files",
+            "The Main class must be in the default package — move it out of com.acme",
+            "java -jar requires a signed JAR — sign it with jarsigner first"
+          ],
+          "answer": 0,
+          "why": "java -jar locates the entry point through the JAR manifest's Main-Class attribute (META-INF/MANIFEST.MF). Without it the JVM does not know which class to run. jar cfe sets it at packaging time; Maven/Gradle plugins (shade/spring-boot) generate full manifests including Class-Path. (Fat/uber JARs additionally unpack dependencies into the single archive.)",
+          "hint": "How does java -jar know which of your fifty classes contains main()?",
+          "objectives": ["Executable JARs", "Manifest", "Main-Class"],
+          "mins": 5
+        },
+        {
+          "id": "java-try-resources",
+          "title": "The stream left open on exception",
+          "situation": "File handles leak when a read throws midway — the close() at the method's end is skipped.",
+          "prompt": "Which construct guarantees resource closure?",
+          "evidence": [
+            ["Read.java", "try (var in = Files.newBufferedReader(path)) {\n    return in.lines().filter(...).toList();\n}  // in.close() automatic, even on exception"]
+          ],
+          "choices": [
+            "try-with-resources — any AutoCloseable declared in the try header is closed automatically, with suppressed-exception handling",
+            "A finally block calling close() — the only reliable pattern",
+            "Closeable resources are closed by the garbage collector — no code needed",
+            "Declare the reader outside try and close it after the catch blocks"
+          ],
+          "answer": 0,
+          "why": "try-with-resources closes each resource in reverse declaration order when the block exits — normally, via return, or by exception. If both the body and close() throw, the close exception is suppressed (retrievable via getSuppressed()) rather than masking the original. Any class implementing AutoCloseable participates, including custom resources.",
+          "hint": "Which try header form ties a resource's lifetime to the block — and what happens to an exception thrown during close?",
+          "objectives": ["try-with-resources", "AutoCloseable", "Suppressed exceptions"],
+          "mins": 5
+        },
+        {
+          "id": "java-serialization-version",
+          "title": "The deserialization that broke after a deploy",
+          "situation": "A serialized object written by v1 cannot be read by v2 after a field was added — InvalidClassException: local class incompatible.",
+          "prompt": "What controls serialization compatibility, and what is the real fix?",
+          "evidence": [
+            ["Order.java", "class Order implements Serializable {\n    private static final long serialVersionUID = 1L;  // explicit version\n}"]
+          ],
+          "choices": [
+            "serialVersionUID versions the class's serialized form — declare it explicitly and evolve classes compatibly (added fields are tolerated); better, prefer a schema-based format (JSON) for long-lived data",
+            "Serialization is version-agnostic — the exception means the file is corrupt",
+            "Delete serialVersionUID — the JVM then accepts any version",
+            "Serializable classes cannot gain fields — keep the class frozen forever"
+          ],
+          "answer": 0,
+          "why": "Without an explicit serialVersionUID, the JVM computes one from the class structure — any field change alters it and breaks deserialization. Declaring it explicitly opts into compatible evolution (added fields default, removed fields ignored). For durable storage or wire protocols, Java serialization is fragile and insecure-by-default; JSON/Avro/ProtoBuf with explicit schemas are the robust choice.",
+          "hint": "What identifies 'the same class' across versions during deserialization — and who should control that identifier?",
+          "objectives": ["Serialization", "serialVersionUID", "Compatible evolution"],
+          "mins": 7
+        },
+        {
+          "id": "java-classpath-resource",
+          "title": "The config file found in the IDE but not in the JAR",
+          "situation": "new File(\"config/app.properties\") works when run from the IDE but fails from the packaged JAR.",
+          "prompt": "Why does the file path break, and how do you load packaged resources?",
+          "evidence": [
+            ["Load.java", "// broken: new FileInputStream(\"config/app.properties\")\n// fixed:\ntry (var in = App.class.getResourceAsStream(\"/config/app.properties\")) { ... }"]
+          ],
+          "choices": [
+            "File paths are filesystem-relative; inside a JAR the resource is not a file — load it from the classpath with getResourceAsStream",
+            "JARs cannot contain properties files — move config outside the archive",
+            "The working directory differs — set -Duser.dir to the config folder",
+            "getResourceAsStream only works for images — properties need the File API"
+          ],
+          "answer": 0,
+          "why": "new File(...) addresses the OS filesystem relative to the working directory — inside a JAR there is no config/app.properties file on disk. Classpath resources (getResource/getResourceAsStream) are resolved by the class loader, which reads them from directories or JAR entries transparently. Leading '/' means absolute within the classpath; without it, relative to the class's package.",
+          "hint": "Is the properties file a filesystem file when the app ships as a JAR — and what API reads 'from the classpath' regardless of packaging?",
+          "objectives": ["Classpath resources", "getResourceAsStream", "Packaging"],
+          "mins": 6
+        },
+        {
+          "id": "java-http-client",
+          "title": "The HTTP call with 40 lines of boilerplate",
+          "situation": "Legacy code uses HttpURLConnection with manual stream handling, timeouts set in two places, and no clean async option.",
+          "prompt": "What does java.net.http (Java 11+) provide?",
+          "evidence": [
+            ["Fetch.java", "var client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();\nvar req = HttpRequest.newBuilder(URI.create(url)).GET().build();\nvar res = client.send(req, HttpResponse.BodyHandlers.ofString());"]
+          ],
+          "choices": [
+            "A fluent modern client: builders for client/request, BodyHandlers for response conversion, and sendAsync returning CompletableFuture",
+            "HttpClient is synchronous-only — async still needs raw threads",
+            "The new API only supports HTTP/1.1 — keep HttpURLConnection for HTTP/2",
+            "BodyHandlers.ofString loads the whole body — streaming is impossible"
+          ],
+          "answer": 0,
+          "why": "java.net.http.HttpClient replaces the 1990s HttpURLConnection: immutable builders, first-class timeouts, HTTP/2 support by default, and BodyHandlers (ofString, ofInputStream, ofFile, discarding) separating transport from body conversion. sendAsync returns CompletableFuture<HttpResponse<T>> for non-blocking pipelines that compose with the rest of the async API.",
+          "hint": "Which API gives you builders, body handlers, and a CompletableFuture-based async send in one package?",
+          "objectives": ["java.net.http", "HttpClient", "sendAsync"],
+          "mins": 6
+        }
+      ]
+    }
+  ],
+  "behavioral": [
+    {
+      "prompt": "Tell me about a time you debugged a difficult concurrency issue (race, deadlock, visibility).",
+      "framework": "STAR",
+      "points": ["Symptoms and reproduction strategy", "How you identified the root cause", "The fix", "Tests or tooling added to prevent recurrence"],
+      "pitfalls": ["Adding synchronized everywhere without diagnosis", "No verification story"]
+    },
+    {
+      "prompt": "Describe a time you had to learn a new Java version's features (records, virtual threads, pattern matching) and apply them.",
+      "framework": "STAR",
+      "points": ["What was new and why it mattered", "How you learned it", "Where you applied it", "Measured benefit"],
+      "pitfalls": ["Feature list with no application", "Adopting features for novelty"]
+    },
+    {
+      "prompt": "Tell me about a disagreement over API or abstraction design.",
+      "framework": "STAR",
+      "points": ["Both positions fairly stated", "Trade-offs weighed", "Resolution", "What you learned"],
+      "pitfalls": ["Dismissing the other view", "No clear decision criteria"]
+    },
+    {
+      "prompt": "Describe a production incident you helped resolve. What was your role?",
+      "framework": "STAR",
+      "points": ["Your specific responsibilities", "Diagnosis steps", "Resolution", "Preventive follow-ups you owned"],
+      "pitfalls": ["Sole credit for team work", "No preventive action"]
+    },
+    {
+      "prompt": "Tell me about a time you improved the reliability of a service (error handling, retries, observability).",
+      "framework": "STAR",
+      "points": ["The weakness you found", "Why it mattered", "The change", "Measurable effect"],
+      "pitfalls": ["Vague improvements with no measurement", "Gold-plating without need"]
+    },
+    {
+      "prompt": "Describe a time you refactored a large, tangled codebase safely.",
+      "framework": "STAR",
+      "points": ["The starting state", "Your incremental strategy", "How you kept it working (tests, feature flags)", "Outcome"],
+      "pitfalls": ["Big-bang rewrite narrative", "No safety net described"]
+    },
+    {
+      "prompt": "Tell me about receiving tough code-review feedback. How did you respond?",
+      "framework": "STAR",
+      "points": ["The feedback plainly stated", "Your response", "What changed", "Lasting lesson"],
+      "pitfalls": ["Defensiveness", "No behavior change"]
+    },
+    {
+      "prompt": "Describe a situation with ambiguous requirements. How did you keep delivery on track?",
+      "framework": "STAR",
+      "points": ["The ambiguity", "How you clarified or hedged", "Delivery strategy", "Result"],
+      "pitfalls": ["Blaming stakeholders", "No concrete coping strategy"]
+    }
+  ],
+  "chat": {
+    "persona": "You are a friendly but rigorous Java interviewer running a mock assessment. Probe understanding with follow-ups, give keyword-heuristic feedback, and ground every question in real Java semantics — the JLS, the memory model, and the standard library.",
+    "topics": [
+      {
+        "id": "language-core",
+        "name": "Language Core",
+        "key_points": ["equals vs ==", "integer division", "switch expressions", "var limits", "records", "pattern matching instanceof"],
+        "followups": ["What does == compare for objects?", "Where is var actually allowed?"]
+      },
+      {
+        "id": "oop-design",
+        "name": "OOP & Design",
+        "key_points": ["@Override checking", "default methods", "defensive copying", "equals/hashCode contract", "sealed hierarchies"],
+        "followups": ["What does the map check before equals?", "Which modifier closes a hierarchy?"]
+      },
+      {
+        "id": "collections-generics",
+        "name": "Collections & Generics",
+        "key_points": ["type erasure", "PECS wildcards", "computeIfAbsent", "unmodifiable factories", "fail-fast iterators", "comparator consistency"],
+        "followups": ["What does T become after compilation?", "Who may modify the collection mid-iteration?"]
+      },
+      {
+        "id": "streams-lambdas",
+        "name": "Streams & Lambdas",
+        "key_points": ["lazy intermediates", "effectively final capture", "Optional combinators", "toMap merge functions", "parallel collect", "method reference forms"],
+        "followups": ["Which operations demand a result?", "What does the lambda capture — the variable or its value?"]
+      },
+      {
+        "id": "concurrency-virtual-threads",
+        "name": "Concurrency & Virtual Threads",
+        "key_points": ["lost updates and AtomicInteger", "deadlock and lock ordering", "virtual threads for blocking I/O", "executor shutdown", "volatile visibility", "ThreadLocal with virtual threads"],
+        "followups": ["How many steps is that increment?", "What keeps the JVM alive after main returns?"]
+      },
+      {
+        "id": "modules-jars-io",
+        "name": "Modules, JARs & I/O",
+        "key_points": ["module exports", "manifest Main-Class", "try-with-resources", "serialVersionUID", "classpath resources", "HttpClient"],
+        "followups": ["What does a module hide by default?", "Is that resource a file inside the JAR?"]
+      }
+    ]
+  }
+}

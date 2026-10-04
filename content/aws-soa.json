@@ -1,0 +1,1175 @@
+{
+ "disclaimer": "Independent practice material by Interstitium Labs. Not affiliated with, endorsed by, or sponsored by Amazon Web Services. Confers no certificate. All scenarios are original; no exam content is reproduced.",
+ "domains": [
+  {
+   "id": "monitoring-reporting",
+   "name": "Monitoring & Reporting",
+   "scenarios": [
+    {
+     "answer": 1,
+     "choices": [
+      "Increase the CloudWatch alarm period to 1 hour",
+      "Create a CloudWatch alarm on the metric with an SNS notification",
+      "Check the billing dashboard daily",
+      "Enable VPC Flow Logs"
+     ],
+     "evidence": [
+      [
+       "metric.txt",
+       "Metric: CPUUtilization > 90%\nfor 3 datapoints.\nCurrent: nobody is notified."
+      ]
+     ],
+     "hint": "Which two services combine for metric-threshold alerting?",
+     "id": "soa-mr-01",
+     "mins": 5,
+     "objectives": [
+      "CloudWatch alarms",
+      "SNS"
+     ],
+     "prompt": "What notifies the team?",
+     "situation": "An EC2 fleet's CPU exceeds 90% repeatedly, but nobody finds out until users complain.",
+     "title": "Nobody knew the CPU was pegged",
+     "why": "A CloudWatch alarm on the CPUUtilization metric triggers an SNS notification when the threshold breaches — the standard metric-alerting pattern. Longer periods delay detection; billing dashboards don't monitor CPU; Flow Logs capture network traffic, not CPU."
+    },
+    {
+     "answer": 0,
+     "choices": [
+      "Enable CloudTrail in all regions with log file validation, delivered to a locked-down S3 bucket",
+      "Enable CloudWatch Logs only",
+      "Rely on the console's event history (90 days)",
+      "Ask developers to log API calls in the app"
+     ],
+     "evidence": [
+      [
+       "audit.md",
+       "Requirement: immutable record of\nwho called which API, when, from where.\nRetention: 1 year."
+      ]
+     ],
+     "hint": "Which service exists specifically to log AWS API activity?",
+     "id": "soa-mr-02",
+     "mins": 6,
+     "objectives": [
+      "CloudTrail",
+      "Audit logging"
+     ],
+     "prompt": "Which design meets the audit requirement?",
+     "situation": "Compliance requires an immutable one-year record of every AWS API call: who, what, when, from where.",
+     "title": "Who called what, when",
+     "why": "CloudTrail logs AWS API activity; enabling it in all regions with log file validation into a restricted S3 bucket gives a tamper-evident audit trail. Console event history is only 90 days and not immutable; app-level logging misses console/CLI calls."
+    },
+    {
+     "answer": 2,
+     "choices": [
+      "The default EC2 metrics",
+      "The CloudWatch agent for memory and disk metrics",
+      "CloudTrail",
+      "AWS Config"
+     ],
+     "evidence": [
+      [
+       "disk.txt",
+       "Outage: /var filled up.\nCloudWatch showed CPU/network fine.\nNo disk or memory metrics existed."
+      ]
+     ],
+     "hint": "Which metrics does EC2 NOT publish by default?",
+     "id": "soa-mr-03",
+     "mins": 5,
+     "objectives": [
+      "CloudWatch agent",
+      "Custom metrics"
+     ],
+     "prompt": "What would have caught the disk-full outage?",
+     "situation": "An outage was caused by a full disk, but CloudWatch only showed CPU and network — no disk or memory metrics existed.",
+     "title": "The metrics you don't get for free",
+     "why": "EC2 publishes hypervisor-visible metrics (CPU, network, disk I/O) by default, but memory and disk-space utilization require the CloudWatch agent installed on the instance. CloudTrail logs API calls; Config tracks configuration changes — neither monitors disk space."
+    },
+    {
+     "answer": 1,
+     "choices": [
+      "CloudWatch Logs Insights",
+      "S3 access logs",
+      "VPC Flow Logs",
+      "AWS X-Ray"
+     ],
+     "evidence": [
+      [
+       "logs.txt",
+       "10 GB/day of app logs in\nCloudWatch Logs. Need: find all\nERROR lines with trace IDs, fast."
+      ]
+     ],
+     "hint": "Which tool queries CloudWatch Logs with a SQL-like language?",
+     "id": "soa-mr-04",
+     "mins": 5,
+     "objectives": [
+      "CloudWatch Logs Insights"
+     ],
+     "prompt": "Which tool answers the query fastest?",
+     "situation": "10 GB/day of application logs land in CloudWatch Logs; the team needs to find all ERROR lines with trace IDs quickly.",
+     "title": "Searching 10 GB of logs",
+     "why": "CloudWatch Logs Insights provides an interactive query language purpose-built for searching and aggregating log data at scale. S3 access logs and Flow Logs are different data sources; X-Ray traces requests but doesn't query log text."
+    },
+    {
+     "answer": 3,
+     "choices": [
+      "CloudWatch",
+      "CloudTrail",
+      "AWS Config",
+      "AWS Systems Manager OpsCenter"
+     ],
+     "evidence": [
+      [
+       "ops.md",
+       "50+ operational issues/week.\nNeed: aggregate, deduplicate,\nassign, and track to resolution."
+      ]
+     ],
+     "hint": "Which service is the operational 'to-do list' that aggregates OpsItems?",
+     "id": "soa-mr-05",
+     "mins": 6,
+     "objectives": [
+      "OpsCenter",
+      "Operations management"
+     ],
+     "prompt": "Which service centralizes operational work items?",
+     "situation": "Dozens of operational issues per week need aggregation, deduplication, assignment, and tracking to resolution.",
+     "title": "The ops to-do list",
+     "why": "Systems Manager OpsCenter aggregates operational issues as OpsItems from CloudWatch, Config, and other sources, with deduplication and investigation workflows. CloudWatch/Trail/Config generate signals; OpsCenter manages the work."
+    },
+    {
+     "answer": 0,
+     "choices": [
+      "A CloudWatch dashboard with key metrics and alarms",
+      "The EC2 console instance list",
+      "Cost Explorer",
+      "Trusted Advisor"
+     ],
+     "evidence": [
+      [
+       "noc.md",
+       "NOC wants: one screen, fleet health,\nerror rates, latency, red/green status."
+      ]
+     ],
+     "hint": "Which CloudWatch feature is the single-pane-of-glass?",
+     "id": "soa-mr-06",
+     "mins": 4,
+     "objectives": [
+      "CloudWatch dashboards"
+     ],
+     "prompt": "What gives the NOC its single screen?",
+     "situation": "The NOC wants one screen showing fleet health, error rates, and latency with red/green status.",
+     "title": "One screen for the NOC",
+     "why": "CloudWatch dashboards provide customizable single-pane views of metrics, alarms, and logs. The EC2 console lists instances without health aggregation; Cost Explorer shows spend; Trusted Advisor shows best-practice checks — none is an ops dashboard."
+    }
+   ]
+  },
+  {
+   "id": "high-availability",
+   "name": "High Availability",
+   "scenarios": [
+    {
+     "answer": 1,
+     "choices": [
+      "A larger single instance",
+      "An Auto Scaling group across multiple AZs behind an ALB",
+      "A single instance with an Elastic IP",
+      "Two instances in one AZ"
+     ],
+     "evidence": [
+      [
+       "ha.txt",
+       "Single EC2 in AZ-a.\nAZ-a outage: 3h downtime.\nRequirement: survive AZ failure."
+      ]
+     ],
+     "hint": "What replaces failed instances automatically across fault domains?",
+     "id": "soa-ha-01",
+     "mins": 5,
+     "objectives": [
+      "Auto Scaling",
+      "Multi-AZ"
+     ],
+     "prompt": "Which design survives the AZ outage?",
+     "situation": "A single EC2 instance in one AZ caused a 3-hour outage during an AZ event.",
+     "title": "Beyond the single instance",
+     "why": "An Auto Scaling group spanning multiple AZs behind an ALB replaces unhealthy instances and routes around failed AZs automatically. Bigger single instances still fail with their AZ; Elastic IPs don't add capacity; two instances in one AZ share the same fault domain."
+    },
+    {
+     "answer": 0,
+     "choices": [
+      "RDS Multi-AZ with automated failover",
+      "RDS read replica promoted manually",
+      "A larger RDS instance",
+      "Daily manual snapshots"
+     ],
+     "evidence": [
+      [
+       "db.txt",
+       "DB on single EC2.\nFailure: 6h restore from snapshot.\nRTO requirement: < 10 min."
+      ]
+     ],
+     "hint": "Which RDS feature fails over automatically in minutes?",
+     "id": "soa-ha-02",
+     "mins": 5,
+     "objectives": [
+      "RDS Multi-AZ",
+      "Automatic failover"
+     ],
+     "prompt": "Which database design meets the 10-minute RTO?",
+     "situation": "A database on a single EC2 instance took 6 hours to restore from snapshot; the RTO requirement is under 10 minutes.",
+     "title": "Failover in minutes, not hours",
+     "why": "RDS Multi-AZ maintains a synchronous standby and fails over automatically, typically within minutes. Manual replica promotion and snapshot restores can't meet a 10-minute RTO; bigger instances don't add redundancy."
+    },
+    {
+     "answer": 2,
+     "choices": [
+      "Health checks on the instances only",
+      "ALB target group health checks plus Auto Scaling health checks",
+      "DNS health checks only",
+      "No health checks; replace on a schedule"
+     ],
+     "evidence": [
+      [
+       "hc.txt",
+       "Instance hung (app dead, OS alive).\nALB kept sending traffic: 500s.\nASG considered it healthy."
+      ]
+     ],
+     "hint": "OS-alive but app-dead — which health check catches that?",
+     "id": "soa-ha-03",
+     "mins": 6,
+     "objectives": [
+      "Health checks",
+      "ALB target groups"
+     ],
+     "prompt": "Which health-check design catches the hung app?",
+     "situation": "An instance hung with the app dead but the OS alive; the ALB kept sending traffic and Auto Scaling considered it healthy.",
+     "title": "Alive but not healthy",
+     "why": "ALB target group health checks probe the application endpoint (catching app-dead/OS-alive), and Auto Scaling can use ELB health checks to replace such instances. Instance-level checks only verify the OS; DNS checks don't see app state; scheduled replacement is blind."
+    },
+    {
+     "answer": 1,
+     "choices": [
+      "Active-active with Route 53 latency routing",
+      "Pilot light",
+      "Backup and restore",
+      "Warm standby with manual failover"
+     ],
+     "evidence": [
+      [
+       "dr.txt",
+       "RTO: 15 min. RPO: 5 min.\nBudget: moderate.\nThreat: region loss."
+      ]
+     ],
+     "hint": "15-minute RTO rules out restore-from-backup; 5-minute RPO rules out pilot light — what's left?",
+     "id": "soa-ha-04",
+     "mins": 7,
+     "objectives": [
+      "DR strategies",
+      "Warm standby"
+     ],
+     "prompt": "Which DR strategy fits the RTO/RPO and budget?",
+     "situation": "Region-loss DR needs 15-minute RTO and 5-minute RPO on a moderate budget.",
+     "title": "Fifteen minutes to recover",
+     "why": "Warm standby keeps a scaled-down live copy replicating data (meeting the 5-minute RPO) that scales up within the 15-minute RTO — the cost/RTO sweet spot here. Backup-and-restore and pilot light can't meet these targets; active-active meets them but costs far more."
+    },
+    {
+     "answer": 3,
+     "choices": [
+      "An SQS queue with a 30-second visibility timeout",
+      "An SQS queue with a dead-letter queue and a long visibility timeout",
+      "Direct HTTP calls between services",
+      "An SNS topic with no queue"
+     ],
+     "evidence": [
+      [
+       "poison.txt",
+       "One malformed message crashes\nthe worker every time.\nQueue backs up; good messages stuck."
+      ]
+     ],
+     "hint": "What isolates repeatedly-failing messages so the queue keeps flowing?",
+     "id": "soa-ha-05",
+     "mins": 6,
+     "objectives": [
+      "SQS",
+      "Dead-letter queues"
+     ],
+     "prompt": "Which design keeps good messages flowing?",
+     "situation": "A single malformed 'poison' message crashes the worker on every retry, blocking the whole queue.",
+     "title": "The poison message",
+     "why": "A dead-letter queue (DLQ) moves messages that fail repeatedly out of the main queue after max receives, so one poison message can't block everything. Visibility timeout alone just delays the next crash; direct calls and SNS-without-queue lose the message or the buffering."
+    },
+    {
+     "answer": 0,
+     "choices": [
+      "Enable S3 Versioning and Cross-Region Replication",
+      "Rely on a single bucket in one region",
+      "Copy objects manually each week",
+      "Use EBS snapshots of the app servers"
+     ],
+     "evidence": [
+      [
+       "data.txt",
+       "Critical uploads in S3, single region.\nRequirement: survive region loss\nwith version history."
+      ]
+     ],
+     "hint": "Which two S3 features combine durability, history, and geographic redundancy?",
+     "id": "soa-ha-06",
+     "mins": 5,
+     "objectives": [
+      "S3 durability",
+      "CRR"
+     ],
+     "prompt": "Which S3 design meets the requirement?",
+     "situation": "Critical uploads live in one S3 bucket in one region; they must survive region loss with version history.",
+     "title": "Data that survives a region",
+     "why": "S3 Versioning preserves history (protecting against overwrites/deletes) and Cross-Region Replication copies objects to another region for geographic redundancy. A single bucket is a regional fate-share; manual copies miss the RPO; EBS snapshots don't cover S3 data."
+    }
+   ]
+  },
+  {
+   "id": "deployment-provisioning",
+   "name": "Deployment & Provisioning",
+   "scenarios": [
+    {
+     "answer": 2,
+     "choices": [
+      "ClickOps in the console",
+      "CloudFormation with change sets",
+      "Bash scripts with hardcoded values",
+      "Manual runbooks in a wiki"
+     ],
+     "evidence": [
+      [
+       "drift.txt",
+       "3 environments diverged.\nNobody knows which console clicks\nbuilt staging."
+      ]
+     ],
+     "hint": "Which approach makes infrastructure reviewable, repeatable, and diffable?",
+     "id": "soa-dp-01",
+     "mins": 6,
+     "objectives": [
+      "IaC",
+      "CloudFormation"
+     ],
+     "prompt": "What prevents the next divergence?",
+     "situation": "Three environments have diverged and nobody can reconstruct how staging was built from console clicks.",
+     "title": "ClickOps leaves no trail",
+     "why": "CloudFormation templates make infrastructure code — versioned, reviewable, repeatable — and change sets preview modifications before applying. Console ClickOps is unrepeatable; hardcoded bash scripts are fragile; wiki runbooks drift from reality."
+    },
+    {
+     "answer": 1,
+     "choices": [
+      "Blue/green with CodeDeploy",
+      "In-place deployment to all servers at once",
+      "Manual SCP of binaries",
+      "Rolling deploys with no health checks"
+     ],
+     "evidence": [
+      [
+       "deploy.txt",
+       "Fleet: 60 instances.\nRequirement: zero downtime,\ninstant rollback."
+      ]
+     ],
+     "hint": "Which strategy keeps the old fleet live until the new one proves healthy?",
+     "id": "soa-dp-02",
+     "mins": 6,
+     "objectives": [
+      "Blue/green deployments",
+      "CodeDeploy"
+     ],
+     "prompt": "Which deployment strategy fits?",
+     "situation": "60 instances need zero-downtime deploys with instant rollback.",
+     "title": "Zero downtime, instant rollback",
+     "why": "Blue/green with CodeDeploy provisions the new (green) fleet, validates it, then shifts traffic — the old (blue) fleet stays ready for instant rollback. In-place all-at-once maximizes blast radius; manual SCP doesn't scale; rolling without health checks ships bad builds fleet-wide."
+    },
+    {
+     "answer": 0,
+     "choices": [
+      "Systems Manager Patch Manager with maintenance windows",
+      "SSH into each instance monthly",
+      "User data that patches at boot",
+      "Disabling automatic updates"
+     ],
+     "evidence": [
+      [
+       "patch.txt",
+       "300 instances, mixed OS.\nCompliance: patches within 14 days.\nCurrent: ad-hoc SSH, 40% miss."
+      ]
+     ],
+     "hint": "Which service automates patching fleets on a schedule with compliance reporting?",
+     "id": "soa-dp-03",
+     "mins": 6,
+     "objectives": [
+      "Patch Manager",
+      "Maintenance windows"
+     ],
+     "prompt": "What systematizes patching?",
+     "situation": "300 mixed-OS instances need patching within 14 days; ad-hoc SSH misses 40%.",
+     "title": "Patching 300 instances",
+     "why": "Patch Manager automates patching across fleets with baselines, maintenance windows, and compliance reporting. Manual SSH doesn't scale; boot-time patching slows every launch; disabling updates is a compliance violation."
+    },
+    {
+     "answer": 3,
+     "choices": [
+      "Long-lived instances you SSH into",
+      "Golden AMIs built by EC2 Image Builder in a pipeline",
+      "Manual snapshot of a dev laptop",
+      "Containers on a single host"
+     ],
+     "evidence": [
+      [
+       "img.txt",
+       "Deploys install deps at boot: 25 min.\nConfig drift between instances."
+      ]
+     ],
+     "hint": "What bakes a tested, versioned image automatically?",
+     "id": "soa-dp-04",
+     "mins": 6,
+     "objectives": [
+      "Image Builder",
+      "Golden AMIs"
+     ],
+     "prompt": "What gives consistent, fast-launching instances?",
+     "situation": "Boot-time installs take 25 minutes and instances drift from each other.",
+     "title": "Bake, don't install at boot",
+     "why": "EC2 Image Builder automates building, testing, and versioning golden AMIs in a pipeline — fast launches, no drift. Long-lived pets accumulate drift; laptop snapshots aren't reproducible; single-host containers don't address the fleet."
+    },
+    {
+     "answer": 1,
+     "choices": [
+      "aws:username with wildcards",
+      "Attribute-based access control (ABAC) with tags",
+      "One IAM role per developer",
+      "Root credentials for automation"
+     ],
+     "evidence": [
+      [
+       "scale-iam.txt",
+       "200 developers, 40 projects.\nNeed: devs access only their\nproject's resources."
+      ]
+     ],
+     "hint": "Which approach scales permissions by attribute instead of by identity?",
+     "id": "soa-dp-05",
+     "mins": 7,
+     "objectives": [
+      "ABAC",
+      "IAM scaling"
+     ],
+     "prompt": "Which IAM design scales?",
+     "situation": "200 developers across 40 projects; each developer should access only their project's resources.",
+     "title": "Permissions for 200 developers",
+     "why": "ABAC with tags lets one policy grant access based on matching tags (e.g., project tag on user = project tag on resource) — scaling without per-developer roles. Per-developer roles explode administratively; username wildcards are fragile; root for automation is never acceptable."
+    },
+    {
+     "answer": 2,
+     "choices": [
+      "Environment variables in plain text",
+      "AWS Systems Manager Parameter Store (SecureString) or Secrets Manager",
+      "A shared Google Doc",
+      "Hardcoded in the AMI"
+     ],
+     "evidence": [
+      [
+       "cfg.txt",
+       "DB passwords in 30 AMIs.\nRotation requires rebuilding\nall images."
+      ]
+     ],
+     "hint": "Which services are built for secrets lifecycle, including rotation?",
+     "id": "soa-dp-06",
+     "mins": 5,
+     "objectives": [
+      "Parameter Store",
+      "Secrets management"
+     ],
+     "prompt": "Where should the credentials live?",
+     "situation": "Database passwords baked into 30 AMIs; rotation requires rebuilding every image.",
+     "title": "Secrets don't belong in images",
+     "why": "Parameter Store SecureString or Secrets Manager centralize secrets outside images, with rotation support — no rebuilds needed. Plaintext env vars and shared docs leak; hardcoded AMI secrets are the current failure."
+    }
+   ]
+  },
+  {
+   "id": "storage-data",
+   "name": "Storage & Data",
+   "scenarios": [
+    {
+     "answer": 0,
+     "choices": [
+      "EBS gp3 volumes for the database",
+      "EBS io2 for the database; S3 for the media",
+      "Instance store for the database",
+      "EFS for everything"
+     ],
+     "evidence": [
+      [
+       "store.txt",
+       "DB: needs 20k IOPS, persists.\nMedia: 50 TB, served via CDN."
+      ]
+     ],
+     "hint": "Match each workload to its storage class: provisioned IOPS for the DB, object storage for media.",
+     "id": "soa-sd-01",
+     "mins": 6,
+     "objectives": [
+      "EBS vs S3",
+      "Storage selection"
+     ],
+     "prompt": "Which storage pairing fits?",
+     "situation": "A database needs 20k sustained IOPS with persistence; 50 TB of media is served via CDN.",
+     "title": "Right storage for each workload",
+     "why": "io2 provides provisioned IOPS for the database's performance needs while S3 handles massive media storage with CDN integration. gp3 can't sustain 20k IOPS efficiently; instance store is ephemeral; EFS is a file system, not a media origin."
+    },
+    {
+     "answer": 1,
+     "choices": [
+      "Copy files over the public internet",
+      "AWS DataSync to S3/EFS/FSx",
+      "Snowcone for 500 GB",
+      "FTP to an EC2 instance"
+     ],
+     "evidence": [
+      [
+       "mig.txt",
+       "On-prem NAS: 40 TB.\nNeed: one-time migration to S3,\nwith checksums and scheduling."
+      ]
+     ],
+     "hint": "Which service is the managed migration tool with validation?",
+     "id": "soa-sd-02",
+     "mins": 5,
+     "objectives": [
+      "DataSync",
+      "Data migration"
+     ],
+     "prompt": "Which service handles the migration?",
+     "situation": "A 40 TB on-prem NAS needs a one-time migration to S3 with checksums and scheduling.",
+     "title": "40 TB, one trip",
+     "why": "DataSync is the managed service for online data transfer to S3/EFS/FSx with scheduling, bandwidth controls, and data validation. Public-internet copies lack validation; Snowcone/Snowball suit offline/petabyte scale, not 40 TB online; FTP to EC2 is manual and fragile."
+    },
+    {
+     "answer": 2,
+     "choices": [
+      "S3 Standard forever",
+      "S3 Lifecycle policies to transition to Glacier",
+      "Manual moves each quarter",
+      "Delete after 90 days"
+     ],
+     "evidence": [
+      [
+       "life.txt",
+       "Compliance logs: hot 30 days,\nwarm 90 days, archive 7 years.\nVolume: 1 TB/day."
+      ]
+     ],
+     "hint": "Which S3 feature moves objects between classes on a schedule automatically?",
+     "id": "soa-sd-03",
+     "mins": 5,
+     "objectives": [
+      "S3 Lifecycle policies"
+     ],
+     "prompt": "What automates the tiering?",
+     "situation": "Compliance logs are hot for 30 days, warm for 90, then archived 7 years, at 1 TB/day.",
+     "title": "Lifecycle of a log file",
+     "why": "S3 Lifecycle policies automatically transition objects between storage classes (and expire them) on age-based rules — zero ongoing effort. Keeping everything in Standard wastes money; manual moves don't scale at 1 TB/day; deletion violates the 7-year retention."
+    },
+    {
+     "answer": 0,
+     "choices": [
+      "AWS Backup with a backup plan across services",
+      "Manual snapshots per service",
+      "A cron job on one EC2 instance",
+      "Relying on Multi-AZ"
+     ],
+     "evidence": [
+      [
+       "bkp.txt",
+       "EC2, RDS, EFS, DynamoDB.\nRequirement: centralized 3-2-1\npolicy, 30-day retention."
+      ]
+     ],
+     "hint": "Which service centralizes backup policies across AWS services?",
+     "id": "soa-sd-04",
+     "mins": 6,
+     "objectives": [
+      "AWS Backup"
+     ],
+     "prompt": "What centralizes the backup policy?",
+     "situation": "EC2, RDS, EFS, and DynamoDB need one centralized backup policy with 30-day retention.",
+     "title": "One backup policy to rule them all",
+     "why": "AWS Backup provides centralized backup plans, scheduling, retention, and cross-region copy across supported services. Per-service manual snapshots fragment policy; cron on EC2 is fragile; Multi-AZ is availability, not backup."
+    },
+    {
+     "answer": 3,
+     "choices": [
+      "EBS",
+      "EFS with default settings",
+      "Amazon FSx for Windows File Server",
+      "S3"
+     ],
+     "evidence": [
+      [
+       "win.txt",
+       "Windows app needs SMB shares\nwith AD integration and\nWindows ACLs."
+      ]
+     ],
+     "hint": "Which managed file service speaks native SMB with Active Directory integration?",
+     "id": "soa-sd-05",
+     "mins": 5,
+     "objectives": [
+      "FSx",
+      "Windows workloads"
+     ],
+     "prompt": "Which file storage fits?",
+     "situation": "A Windows application needs SMB shares with Active Directory integration and Windows ACLs.",
+     "title": "SMB with Active Directory",
+     "why": "FSx for Windows File Server provides native SMB with AD integration and Windows ACLs as a managed service. EBS is block storage; EFS is NFS (Linux-oriented); S3 is object storage without SMB semantics."
+    },
+    {
+     "answer": 1,
+     "choices": [
+      "Public S3 website hosting",
+      "S3 with CloudFront OAC and WAF",
+      "EBS-backed web servers only",
+      "FTP server on EC2"
+     ],
+     "evidence": [
+      [
+       "web.txt",
+       "Static marketing site.\nRequirement: HTTPS, DDoS protection,\nno public S3 access."
+      ]
+     ],
+     "hint": "Which pattern keeps the bucket private while CloudFront serves it?",
+     "id": "soa-sd-06",
+     "mins": 6,
+     "objectives": [
+      "CloudFront OAC",
+      "Static hosting"
+     ],
+     "prompt": "Which design meets all requirements?",
+     "situation": "A static marketing site needs HTTPS, DDoS protection, and no public S3 access.",
+     "title": "Static site, locked-down bucket",
+     "why": "CloudFront with Origin Access Control (OAC) serves the private S3 bucket over HTTPS with Shield Standard DDoS protection built in; WAF adds application-layer filtering. Public S3 website hosting exposes the bucket; EBS/FTP are unnecessary moving parts for static content."
+    }
+   ]
+  },
+  {
+   "id": "security-compliance",
+   "name": "Security & Compliance",
+   "scenarios": [
+    {
+     "answer": 2,
+     "choices": [
+      "IAM users with long-term keys",
+      "IAM roles for EC2 with instance profiles",
+      "Sharing one admin key",
+      "Hardcoded keys in the AMI"
+     ],
+     "evidence": [
+      [
+       "keys.txt",
+       "App on EC2 calls S3/DynamoDB.\nCurrently: hardcoded access key\nin the AMI, rotated never."
+      ]
+     ],
+     "hint": "Which mechanism gives EC2 temporary credentials automatically?",
+     "id": "soa-sc-01",
+     "mins": 5,
+     "objectives": [
+      "IAM roles",
+      "Instance profiles"
+     ],
+     "prompt": "What replaces the hardcoded key?",
+     "situation": "An app on EC2 uses a hardcoded access key in the AMI to call S3 and DynamoDB.",
+     "title": "Keys that rotate themselves",
+     "why": "IAM roles with instance profiles give EC2 temporary, automatically-rotated credentials — no keys to manage or leak. Long-term user keys reintroduce the same problem; sharing keys destroys accountability; hardcoded AMI keys are the current failure."
+    },
+    {
+     "answer": 0,
+     "choices": [
+      "AWS Config rules with automatic remediation (e.g., revoke on non-compliant)",
+      "Monthly manual audits",
+      "CloudTrail alone",
+      "Trusted Advisor emails"
+     ],
+     "evidence": [
+      [
+       "sg.txt",
+       "Requirement: no security group\nopen to 0.0.0.0/0 on port 22.\nCurrent: violations appear weekly."
+      ]
+     ],
+     "hint": "Which service continuously evaluates configuration and can auto-remediate?",
+     "id": "soa-sc-02",
+     "mins": 6,
+     "objectives": [
+      "AWS Config",
+      "Auto remediation"
+     ],
+     "prompt": "What enforces the rule continuously?",
+     "situation": "Security groups open to the world on SSH keep appearing; monthly audits catch them too late.",
+     "title": "Closing port 22, automatically",
+     "why": "AWS Config rules continuously evaluate resource configuration against the desired state and can trigger automatic remediation (e.g., revoke the rule via Lambda/SSM). Manual audits are too slow; CloudTrail records but doesn't evaluate; Trusted Advisor is advisory, not enforcement."
+    },
+    {
+     "answer": 1,
+     "choices": [
+      "AWS Shield Standard",
+      "AWS WAF with managed rules",
+      "Security groups",
+      "NACLs"
+     ],
+     "evidence": [
+      [
+       "waf.txt",
+       "Attack: SQL injection probes\nand credential stuffing against\nthe login endpoint."
+      ]
+     ],
+     "hint": "Which service filters HTTP requests at Layer 7?",
+     "id": "soa-sc-03",
+     "mins": 5,
+     "objectives": [
+      "WAF",
+      "Application-layer protection"
+     ],
+     "prompt": "Which service mitigates the attack?",
+     "situation": "SQL injection probes and credential stuffing hit the login endpoint.",
+     "title": "Filtering the application layer",
+     "why": "AWS WAF inspects HTTP requests at Layer 7 with managed rule groups for SQLi, XSS, and bot/credential-stuffing patterns. Shield handles network-layer DDoS; security groups/NACLs filter packets, not HTTP payloads."
+    },
+    {
+     "answer": 3,
+     "choices": [
+      "The default AWS-managed key",
+      "A customer managed key (CMK) with key policies and rotation",
+      "SSE-S3",
+      "No encryption"
+     ],
+     "evidence": [
+      [
+       "ebs.txt",
+       "Regulated workload on EBS.\nNeed: control who can use the key,\naudit key use, rotate annually."
+      ]
+     ],
+     "hint": "Which KMS key type gives you policies, rotation, and CloudTrail audit?",
+     "id": "soa-sc-04",
+     "mins": 6,
+     "objectives": [
+      "KMS",
+      "Customer managed keys"
+     ],
+     "prompt": "Which encryption design meets the requirements?",
+     "situation": "Regulated EBS volumes need customer-controlled key policies, audited key use, and annual rotation.",
+     "title": "Keys you control",
+     "why": "Customer managed keys (CMKs) in KMS provide key policies for access control, automatic rotation, and CloudTrail logging of every use. AWS-managed keys don't offer key policies; SSE-S3 is for S3; no encryption fails compliance."
+    },
+    {
+     "answer": 0,
+     "choices": [
+      "Enable GuardDuty in all regions with findings sent to Security Hub",
+      "Install antivirus on every instance",
+      "Manually review CloudTrail weekly",
+      "Rely on security groups"
+     ],
+     "evidence": [
+      [
+       "threat.txt",
+       "Need: detect compromised instances,\ncrypto-mining, unusual API calls.\nTeam: 2 people."
+      ]
+     ],
+     "hint": "Which service does threat detection so a 2-person team doesn't have to build it?",
+     "id": "soa-sc-05",
+     "mins": 5,
+     "objectives": [
+      "GuardDuty",
+      "Threat detection"
+     ],
+     "prompt": "What provides the detection?",
+     "situation": "A two-person team needs detection of compromised instances, crypto-mining, and anomalous API calls.",
+     "title": "Threat detection for a tiny team",
+     "why": "GuardDuty provides ML- and threat-intel-based detection across CloudTrail, VPC Flow Logs, and DNS — a managed detective control a small team can actually operate. Antivirus is endpoint-only; manual log review doesn't scale; security groups are preventive, not detective."
+    },
+    {
+     "answer": 1,
+     "choices": [
+      "IAM password policy only",
+      "AWS IAM Identity Center with MFA enforcement and permission sets",
+      "Shared admin credentials with MFA",
+      "One IAM user per app"
+     ],
+     "evidence": [
+      [
+       "sso.txt",
+       "50 employees, 12 AWS accounts.\nNeed: single sign-on, MFA required,\nleast-privilege per team."
+      ]
+     ],
+     "hint": "Which service is AWS's SSO with permission sets across accounts?",
+     "id": "soa-sc-06",
+     "mins": 6,
+     "objectives": [
+      "IAM Identity Center",
+      "SSO"
+     ],
+     "prompt": "Which identity design fits?",
+     "situation": "50 employees across 12 AWS accounts need SSO with enforced MFA and least-privilege access per team.",
+     "title": "One login for twelve accounts",
+     "why": "IAM Identity Center provides workforce SSO across accounts with MFA enforcement and permission sets for least privilege. Per-account IAM users multiply management overhead; shared credentials destroy accountability; password policy alone isn't SSO."
+    }
+   ]
+  },
+  {
+   "id": "networking",
+   "name": "Networking",
+   "scenarios": [
+    {
+     "answer": 2,
+     "choices": [
+      "An internet gateway in the private subnet",
+      "A NAT gateway in a public subnet",
+      "VPC peering to another VPC",
+      "A VPN connection"
+     ],
+     "evidence": [
+      [
+       "out.txt",
+       "Private subnet instances need\nOS patches (outbound HTTPS).\nNo inbound from internet allowed."
+      ]
+     ],
+     "hint": "Which gateway gives outbound-only internet access?",
+     "id": "soa-nw-01",
+     "mins": 5,
+     "objectives": [
+      "NAT gateway",
+      "Private subnets"
+     ],
+     "prompt": "What provides outbound-only internet?",
+     "situation": "Private-subnet instances need outbound HTTPS for patches with no inbound internet access.",
+     "title": "Outbound only, please",
+     "why": "A NAT gateway in a public subnet lets private instances initiate outbound connections while blocking unsolicited inbound traffic. Internet gateways are bidirectional; VPC peering connects VPCs, not the internet; VPN connects on-premises networks."
+    },
+    {
+     "answer": 0,
+     "choices": [
+      "Interface VPC endpoints (PrivateLink)",
+      "A NAT gateway",
+      "An internet gateway",
+      "Public IPs on the instances"
+     ],
+     "evidence": [
+      [
+       "pl.txt",
+       "Workload must call a SaaS API\nover private connectivity —\nno internet traversal at all."
+      ]
+     ],
+     "hint": "Which AWS feature exposes services privately inside a VPC?",
+     "id": "soa-nw-02",
+     "mins": 6,
+     "objectives": [
+      "PrivateLink",
+      "Interface endpoints"
+     ],
+     "prompt": "What keeps the traffic off the internet?",
+     "situation": "A workload must reach a third-party SaaS API without any traffic traversing the public internet.",
+     "title": "PrivateLink to the SaaS",
+     "why": "Interface VPC endpoints (PrivateLink) expose services — AWS or SaaS-provider — as private IPs inside the VPC with no internet traversal. NAT/internet gateways still use the public internet; public IPs violate the requirement."
+    },
+    {
+     "answer": 1,
+     "choices": [
+      "Security groups",
+      "Network ACLs",
+      "Route tables",
+      "IAM policies"
+     ],
+     "evidence": [
+      [
+       "sub.txt",
+       "Need: block a malicious IP range\nat the subnet boundary, stateless,\nbefore it reaches instances."
+      ]
+     ],
+     "hint": "Stateless + subnet-level = which control?",
+     "id": "soa-nw-03",
+     "mins": 5,
+     "objectives": [
+      "NACLs",
+      "Subnet filtering"
+     ],
+     "prompt": "Which control fits?",
+     "situation": "A malicious IP range must be blocked at the subnet boundary, statelessly, before reaching instances.",
+     "title": "Blocking at the subnet edge",
+     "why": "Network ACLs are stateless subnet-level filters — the right tool for blocking IP ranges at the boundary. Security groups are stateful and instance-level; route tables direct traffic; IAM governs API access, not packets."
+    },
+    {
+     "answer": 3,
+     "choices": [
+      "VPC peering",
+      "A NAT gateway",
+      "AWS Transit Gateway",
+      "An internet gateway"
+     ],
+     "evidence": [
+      [
+       "mesh.txt",
+       "8 VPCs across 3 accounts.\nNeed: any-to-any connectivity\nwithout N-squared peering."
+      ]
+     ],
+     "hint": "Which service is the hub for multi-VPC, multi-account networks?",
+     "id": "soa-nw-04",
+     "mins": 6,
+     "objectives": [
+      "Transit Gateway"
+     ],
+     "prompt": "What simplifies the mesh?",
+     "situation": "Eight VPCs across three accounts need any-to-any connectivity without a full peering mesh.",
+     "title": "Eight VPCs, one hub",
+     "why": "Transit Gateway acts as a central hub routing between VPCs and VPN/Direct Connect across accounts — replacing an N-squared peering mesh. VPC peering is pairwise and doesn't scale here; NAT/internet gateways don't interconnect VPCs."
+    },
+    {
+     "answer": 0,
+     "choices": [
+      "AWS Site-to-Site VPN",
+      "AWS Direct Connect",
+      "VPC peering",
+      "An internet gateway"
+     ],
+     "evidence": [
+      [
+       "hybrid.txt",
+       "On-prem data center to AWS.\nNeed: private, consistent throughput\nfor nightly 5 TB syncs."
+      ]
+     ],
+     "hint": "Private + consistent throughput for heavy hybrid traffic = which dedicated connection?",
+     "id": "soa-nw-05",
+     "mins": 5,
+     "objectives": [
+      "Direct Connect",
+      "Hybrid networking"
+     ],
+     "prompt": "Which hybrid connectivity fits?",
+     "situation": "Nightly 5 TB syncs between an on-prem data center and AWS need private, consistent throughput.",
+     "title": "Five terabytes a night, privately",
+     "why": "Direct Connect provides dedicated private connectivity with consistent throughput for heavy hybrid workloads. Site-to-Site VPN runs over the public internet with variable throughput; peering is VPC-to-VPC; internet gateways aren't private."
+    },
+    {
+     "answer": 1,
+     "choices": [
+      "The default VPC",
+      "A custom VPC with public/private subnets across 2+ AZs",
+      "A single public subnet",
+      "The default VPC with all defaults"
+     ],
+     "evidence": [
+      [
+       "vpc.txt",
+       "New production workload.\nStandard: isolate tiers, survive\nAZ failure, no default shortcuts."
+      ]
+     ],
+     "hint": "Production VPC design 101: which layout gives tier isolation and AZ resilience?",
+     "id": "soa-nw-06",
+     "mins": 5,
+     "objectives": [
+      "VPC design"
+     ],
+     "prompt": "Which VPC design is production-appropriate?",
+     "situation": "A new production workload needs tier isolation, AZ resilience, and no reliance on default shortcuts.",
+     "title": "Designing the production VPC",
+     "why": "A custom VPC with public subnets (load balancers, NAT) and private subnets (app, data) across 2+ AZs gives tier isolation and AZ resilience. The default VPC is a single public-style network; a single subnet has no isolation or resilience."
+    }
+   ]
+  }
+ ],
+ "behavioral": [
+  {
+   "prompt": "Tell me about a time you responded to a production incident in AWS.",
+   "framework": "STAR",
+   "points": [
+    "How you detected it",
+    "Your triage steps",
+    "The resolution and follow-up"
+   ],
+   "pitfalls": [
+    "Panicking or freezing",
+    "No post-incident action"
+   ]
+  },
+  {
+   "prompt": "Describe a time you automated a manual operational task.",
+   "framework": "STAR",
+   "points": [
+    "The manual pain",
+    "What you automated",
+    "Time saved or errors avoided"
+   ],
+   "pitfalls": [
+    "Automating a broken process",
+    "No measurement of benefit"
+   ]
+  },
+  {
+   "prompt": "Tell me about a time you had to troubleshoot a tricky networking issue.",
+   "framework": "STAR",
+   "points": [
+    "The symptoms",
+    "How you isolated the layer",
+    "The root cause"
+   ],
+   "pitfalls": [
+    "Guessing without evidence",
+    "Skipping the OSI layers"
+   ]
+  },
+  {
+   "prompt": "Describe a time you improved monitoring or alerting.",
+   "framework": "STAR",
+   "points": [
+    "The gap (missed incident or noisy alert)",
+    "What you changed",
+    "How on-call life improved"
+   ],
+   "pitfalls": [
+    "Alert noise without tuning",
+    "Monitoring without action"
+   ]
+  },
+  {
+   "prompt": "Tell me about a deployment that went wrong and how you handled it.",
+   "framework": "STAR",
+   "points": [
+    "What went wrong",
+    "Your rollback or fix",
+    "The safeguard you added"
+   ],
+   "pitfalls": [
+    "Blaming the deployer",
+    "No rollback plan"
+   ]
+  },
+  {
+   "prompt": "Describe a time you had to enforce a security or compliance requirement.",
+   "framework": "STAR",
+   "points": [
+    "The requirement",
+    "How you implemented it",
+    "How you verified compliance"
+   ],
+   "pitfalls": [
+    "Checkbox compliance",
+    "No verification"
+   ]
+  },
+  {
+   "prompt": "Tell me about a time you managed costs for a growing AWS footprint.",
+   "framework": "STAR",
+   "points": [
+    "How you found the waste",
+    "The action you took",
+    "The savings"
+   ],
+   "pitfalls": [
+    "Cutting without understanding",
+    "No ongoing governance"
+   ]
+  },
+  {
+   "prompt": "Describe a time you documented or trained others on an operational procedure.",
+   "framework": "STAR",
+   "points": [
+    "The knowledge gap",
+    "What you created",
+    "How it reduced future incidents"
+   ],
+   "pitfalls": [
+    "Documentation nobody reads",
+    "No hands-on validation"
+   ]
+  }
+ ],
+ "chat": {
+  "persona": "You are a seasoned AWS SysOps interviewer running a mock SOA-C03 assessment. Focus on operations: monitoring, deployments, troubleshooting. Ask what they'd check first and why.",
+  "topics": [
+   {
+    "id": "monitoring-reporting",
+    "name": "Monitoring & Reporting",
+    "key_points": [
+     "CloudWatch alarms and SNS",
+     "CloudTrail audit logging",
+     "CloudWatch agent metrics",
+     "Logs Insights"
+    ],
+    "followups": [
+     "What would you check first?",
+     "How would you get alerted before users notice?"
+    ]
+   },
+   {
+    "id": "high-availability",
+    "name": "High Availability",
+    "key_points": [
+     "Auto Scaling multi-AZ",
+     "RDS Multi-AZ failover",
+     "DR strategies",
+     "SQS dead-letter queues"
+    ],
+    "followups": [
+     "What is the RTO/RPO of this design?",
+     "What happens when one AZ fails?"
+    ]
+   },
+   {
+    "id": "deployment-provisioning",
+    "name": "Deployment & Provisioning",
+    "key_points": [
+     "CloudFormation change sets",
+     "blue/green with CodeDeploy",
+     "Patch Manager",
+     "golden AMIs"
+    ],
+    "followups": [
+     "How would you roll back?",
+     "How do you prevent environment drift?"
+    ]
+   },
+   {
+    "id": "storage-data",
+    "name": "Storage & Data",
+    "key_points": [
+     "EBS vs S3 selection",
+     "DataSync migration",
+     "S3 Lifecycle policies",
+     "AWS Backup"
+    ],
+    "followups": [
+     "Why this storage service?",
+     "How do you automate the data lifecycle?"
+    ]
+   },
+   {
+    "id": "security-compliance",
+    "name": "Security & Compliance",
+    "key_points": [
+     "IAM roles vs keys",
+     "Config auto-remediation",
+     "WAF vs Shield",
+     "KMS customer managed keys"
+    ],
+    "followups": [
+     "How do you detect misconfiguration?",
+     "Where are the credentials stored?"
+    ]
+   },
+   {
+    "id": "networking",
+    "name": "Networking",
+    "key_points": [
+     "NAT gateway",
+     "PrivateLink",
+     "NACLs vs security groups",
+     "Transit Gateway",
+     "Direct Connect"
+    ],
+    "followups": [
+     "Trace the packet path for me.",
+     "Which layer does this control operate at?"
+    ]
+   }
+  ]
+ },
+ "slug": "aws-soa",
+ "title": "AWS SysOps Administrator",
+ "tagline": "SOA-C03: deploy, manage, and operate on AWS",
+ "vendor": {
+  "certs": "SOA-C03",
+  "docs": "https://aws.amazon.com/certification",
+  "name": "Amazon Web Services"
+ }
+}
