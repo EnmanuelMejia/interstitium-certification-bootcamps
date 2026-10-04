@@ -16,6 +16,9 @@ engine/
   chat.js                # shared AI-practice-companion engine (keyword-heuristic feedback)
   style.css              # shared theme (per-path accent via CSS variables)
   hub.js                 # hub search/filter enhancement
+  learn.js               # Learn view: domain lessons (concepts, worked examples, pitfalls)
+  terminal.js            # Terminal view: interactive command-practice emulator
+  labs.js                # Labs view: guided multi-step labs with command checks
 templates/               # hub.html, bootcamp.html, chat.html shells
 generator/build.py       # builds site/ from catalog.json + content/
 site/                    # deployable static output (generated, not hand-edited)

@@ -832,6 +832,213 @@
       ]
     }
   ],
+  "lessons": [
+    {
+      "domain_id": "identity",
+      "title": "Entra ID & Identity — Core concepts",
+      "concepts": [
+        "SSPR lets users reset their own passwords after verifying via registered authentication methods (Microsoft Authenticator, phone, etc.).",
+        "Authentication methods: it requires the methods be registered in advance and SSPR enabled for the users — the classic help-desk ticket reducer.",
+        "Dynamic groups evaluate membership rules against user attributes automatically — new hires with department=Sales join instantly, departures leave. Combined with dynamic groups, onboarding becomes zero-touch.",
+        "B2B collaboration: entra B2B lets external users authenticate with their own identity (even a Gmail-backed account) as guests, with access scoped to specific resources and governed by Conditional Access and access reviews.",
+        "Guest access: conditional Access evaluates signals (user/group, location, device, sign-in risk from Identity Protection) and enforces grants like require MFA or block."
+      ],
+      "example": {
+        "lang": "text",
+        "code": "user: ana@contoso.com | location: Lagos, NG | risk: High | 14:02",
+        "walkthrough": "Conditional Access evaluates signals (user/group, location, device, sign-in risk from Identity Protection) and enforces grants like require MFA or block. Risk-based policies are the standard response to impossible-travel and leaked-credential signals."
+      },
+      "pitfalls": [
+        "Common trap: conditional Access without any MFA grant.",
+        "Common trap: a Conditional Access policy blocking legacy auth.",
+        "Common trap: a Conditional Access policy per user.",
+        "Common trap: assigning licenses via Conditional Access."
+      ],
+      "try_it": "Work through this in the Terminal tab →"
+    },
+    {
+      "domain_id": "governance-compliance",
+      "title": "Governance & Compliance — Core concepts",
+      "concepts": [
+        "RBAC follows least privilege: grant the smallest role at the narrowest scope that still lets the person work. Custom roles define exact allowed actions (Actions/NotActions/DataActions) when built-in roles are too broad or too narrow.",
+        "RBAC definition: azure Policy's built-in 'Allowed locations' definition with deny effect blocks non-compliant deployments at creation time and flags existing ones as non-compliant.",
+        "Azure Policy's tag requirements (built-in 'Require a tag and its value') can deny untagged deployments or append the tag via modify, and the compliance dashboard lists every non-compliant resource for cleanup.",
+        "Deny only stops new deployments; remediation fixes the past."
+      ],
+      "example": {
+        "lang": "text",
+        "code": "Worked example — rbac roles and scope\nSetup: Azure Policy's tag requirements (built-in 'Require a tag and its value') can deny untagged deployments or append the tag via modify, and the…\nReasoning: RBAC follows least privilege: grant the smallest role at the narrowest scope that still lets the person work.\nTakeaway: Azure Policy's built-in 'Allowed locations' definition with deny effect blocks non-compliant deployments at creation time and flags existing ones as…",
+        "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."
+      },
+      "pitfalls": [
+        "Common trap: no locks; use RBAC Reader instead.",
+        "Common trap: an RBAC role called Tag Contributor.",
+        "Common trap: remove all roles and use shared admin credentials.",
+        "Common trap: keep Contributor but add a resource lock."
+      ],
+      "try_it": "Work through this in the Terminal tab →"
+    },
+    {
+      "domain_id": "storage",
+      "title": "Storage — Core concepts",
+      "concepts": [
+        "Storage redundancy: the storage account firewall (Firewalls and virtual networks) defaults to deny and whitelists VNets (via service endpoints/private endpoints) and IP ranges. Storage Explorer is fine for small interactive work but not 10 TB bulk migration.",
+        "ZRS synchronously replicates three copies across availability zones in the primary region — surviving a datacenter loss without paying for a second region.",
+        "Access tiers: shared access signatures grant constrained, time-limited access (permissions, IP, expiry) without exposing account keys.",
+        "Lifecycle management policies automate tier transitions by age — e.g., Hot→Cool after 30 days, →Archive after 180 — so nobody does it manually.",
+        "Least-privilege access: a service SAS on the container with write-only for 48 hours is the least-privilege answer; keys and RBAC are far too broad."
+      ],
+      "example": {
+        "lang": "text",
+        "code": "azcopy copy 'D:\\shares\\*' 'https://staccount.blob.core.windows.net/archive<SAS>' --recursive --overwrite=ifSourceNewer",
+        "walkthrough": "AzCopy is the purpose-built high-performance copy tool (azcopy copy/sync), multi-threaded with automatic resume on failure. Storage Explorer is fine for small interactive work but not 10 TB bulk migration."
+      },
+      "pitfalls": [
+        "Common trap: enable soft delete instead.",
+        "Common trap: the storage account key emailed to the partner.",
+        "Common trap: azure Storage Explorer for 10 TB bulk loads.",
+        "Common trap: az PowerShell New-AzStorageBlob one file at a time."
+      ],
+      "try_it": "Work through this in the Terminal tab →"
+    },
+    {
+      "domain_id": "compute",
+      "title": "Compute (VMs) — Core concepts",
+      "concepts": [
+        "Series selection: VM series encode their optimization: F = compute, E/D = memory (E has higher memory-to-CPU), L = storage, N = GPU.",
+        "VM SLA: azure's SLA for VMs reaches 99.99% with two or more instances across availability zones.",
+        "Availability sets provide fault/update domain spread but no scaling or identical-image management.",
+        "Scale sets: managed disk performance (IOPS and MB/s) is determined by disk type and size: Premium SSD tiers scale with provisioned size, Ultra Disk allows independent tuning.",
+        "Autoscale: VMSS manages identical VMs as a set with autoscale based on metrics (CPU, queue length), plus rolling upgrades."
+      ],
+      "example": {
+        "lang": "text",
+        "code": "Worked example — vm sizes\nSetup: Azure's SLA for VMs reaches 99.99% with two or more instances across availability zones.\nReasoning: Managed disk performance (IOPS and MB/s) is determined by disk type and size: Premium SSD tiers scale with provisioned size, Ultra Disk allows…\nTakeaway: VM extensions install and configure software post-deployment (Custom Script Extension runs scripts; Azure Monitor Agent ships telemetry), deployable…",
+        "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."
+      },
+      "pitfalls": [
+        "Common trap: all VM series are identical; the app needs more disks.",
+        "Common trap: a VPN gateway for every admin laptop.",
+        "Common trap: enable page file on the temp disk.",
+        "Common trap: the VM needs an availability set, not a resize."
+      ],
+      "try_it": "Work through this in the Terminal tab →"
+    },
+    {
+      "domain_id": "networking",
+      "title": "Virtual Networking — Core concepts",
+      "concepts": [
+        "Rule priority: NSG rules are processed in priority order, lowest number first; the first match decides.",
+        "VNet peering: a-to-C needs its own peering (or a hub VNet with routing/NVA). Private endpoints bring the PaaS service into your VNet with a private IP (resolving via private DNS zone), eliminating public endpoint exposure.",
+        "ExpressRoute vs VPN: S2S VPN rides the public internet with variable throughput; peering only connects Azure VNets."
+      ],
+      "example": {
+        "lang": "text",
+        "code": "no public IP on SQL logical server; app VMs in VNet 'prod-vnet' only",
+        "walkthrough": "Private endpoints bring the PaaS service into your VNet with a private IP (resolving via private DNS zone), eliminating public endpoint exposure. Service endpoints extend VNet identity to the service but the public endpoint remains."
+      },
+      "pitfalls": [
+        "Common trap: peering requires identical address spaces.",
+        "Common trap: vNet peering to the on-premises network.",
+        "Common trap: create a private endpoint for DNS.",
+        "Common trap: priority numbers are ignored for inbound rules."
+      ],
+      "try_it": "Work through this in the Terminal tab →"
+    },
+    {
+      "domain_id": "monitoring",
+      "title": "Monitoring — Core concepts",
+      "concepts": [
+        "Metrics are lightweight numeric time-series (great for charts and metric alerts); logs are rich records stored in Log Analytics workspaces and queried with KQL (great for forensic search). Metric alert rules evaluate platform/guest metrics on a frequency and fire action groups (email, SMS, webhooks, Logic Apps).",
+        "Azure Monitor data: disk space is a guest metric (via Azure Monitor Agent); the action group delivers the notification. Service Health reports Azure platform incidents and planned maintenance per region — the first stop when many resources fail together with no config change.",
+        "KQL pipelines: filter with where, aggregate with summarize ... by, rank with top.",
+        "Alert rules: network Watcher's IP flow verify simulates a packet against NSG rules, and 'next hop' reveals the effective route (system, UDR, or peering)."
+      ],
+      "example": {
+        "lang": "text",
+        "code": "TimeGenerated, UserPrincipalName, ResultType, IPAddress",
+        "walkthrough": "KQL pipelines: filter with where, aggregate with summarize ... by, rank with top. ResultType != 0 means failure in sign-in logs. SQL syntax doesn't work in Log Analytics."
+      },
+      "pitfalls": [
+        "Common trap: azure Service Health alert.",
+        "Common trap: a log alert running every 15 minutes on boot diagnostics.",
+        "Common trap: per-resource health, better for single-resource issues.",
+        "Common trap: SELECT TOP 10 * FROM SigninLogs WHERE failures."
+      ],
+      "try_it": "Work through this in the Terminal tab →"
+    }
+  ],
+  "sections": [
+    {
+      "id": "foundations",
+      "title": "Foundations",
+      "kind": "foundation",
+      "lectures": [
+        "f-cloud-concepts-0",
+        "f-cloud-concepts-1",
+        "f-cloud-concepts-2",
+        "f-networking-0",
+        "f-networking-1",
+        "f-networking-2",
+        "f-networking-3"
+      ],
+      "lab_ids": [],
+      "drill_domain_ids": []
+    },
+    {
+      "id": "core",
+      "title": "Core",
+      "kind": "core",
+      "lectures": [
+        "c-identity",
+        "c-storage",
+        "c-compute",
+        "c-networking",
+        "c-monitoring"
+      ],
+      "lab_ids": [
+        "az-104-lab-1",
+        "az-104-lab-2"
+      ],
+      "drill_domain_ids": [
+        "identity",
+        "storage",
+        "compute",
+        "networking",
+        "monitoring"
+      ]
+    },
+    {
+      "id": "advanced",
+      "title": "Advanced",
+      "kind": "advanced",
+      "lectures": [
+        "c-governance-compliance"
+      ],
+      "lab_ids": [
+        "az-104-lab-3",
+        "az-104-lab-4"
+      ],
+      "drill_domain_ids": [
+        "governance-compliance"
+      ]
+    },
+    {
+      "id": "exam-prep",
+      "title": "Exam Prep",
+      "kind": "exam-prep",
+      "lectures": [],
+      "lab_ids": [],
+      "drill_domain_ids": [
+        "identity",
+        "governance-compliance",
+        "storage",
+        "compute",
+        "networking",
+        "monitoring"
+      ]
+    }
+  ],
   "behavioral": [
     {
       "prompt": "Tell me about a time you troubleshot a production outage involving Azure infrastructure.",
@@ -1037,6 +1244,863 @@
           "What must be enabled before the incident?"
         ]
       }
+    ]
+  },
+  "labs": [
+    {
+      "id": "az-104-lab-1",
+      "title": "SSPR — Azure CLI drill",
+      "objective": "Run a short sequence of Azure CLI commands that demonstrates SSPR, then verify each result against the expected output.",
+      "steps": [
+        "This lab reworks the Entra ID & Identity practice scenario \"Locked out at 2 AM\" into commands you run yourself — same concept, hands-on instead of multiple choice.",
+        "Open the Terminal tab for this bootcamp — every command below runs there.",
+        "Type exactly: az account show — the account document includes the subscription name",
+        "Type exactly: az group list — each resource group entry carries a name",
+        "Type exactly: az vm list — each VM entry carries a name",
+        "In your own words, say what each command's output taught you about SSPR."
+      ],
+      "checks": [
+        {
+          "command_pattern": "az account show",
+          "expect_contains": "name",
+          "hint": "In the Terminal tab, run `az account show`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+        },
+        {
+          "command_pattern": "az group list",
+          "expect_contains": "name",
+          "hint": "In the Terminal tab, run `az group list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+        },
+        {
+          "command_pattern": "az vm list",
+          "expect_contains": "name",
+          "hint": "In the Terminal tab, run `az vm list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+        }
+      ],
+      "success_message": "Lab complete — SSPR practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."
+    },
+    {
+      "id": "az-104-lab-2",
+      "title": "RBAC roles and scope — Azure CLI drill",
+      "objective": "Use the Azure CLI to explore RBAC roles and scope hands-on: type each command, read what comes back, and connect the output to the concept.",
+      "steps": [
+        "Inspired by the Governance & Compliance scenario \"The over-privileged intern\": take its core idea and prove it live in the terminal instead of answering on paper.",
+        "Open the Terminal tab for this bootcamp — every command below runs there.",
+        "Type exactly: az vm list — each VM entry carries a name",
+        "Type exactly: az account show — the account document includes the subscription name",
+        "Type exactly: az group list — each resource group entry carries a name",
+        "In your own words, say what each command's output taught you about RBAC roles and scope."
+      ],
+      "checks": [
+        {
+          "command_pattern": "az vm list",
+          "expect_contains": "name",
+          "hint": "In the Terminal tab, run `az vm list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+        },
+        {
+          "command_pattern": "az account show",
+          "expect_contains": "name",
+          "hint": "In the Terminal tab, run `az account show`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+        },
+        {
+          "command_pattern": "az group list",
+          "expect_contains": "name",
+          "hint": "In the Terminal tab, run `az group list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+        }
+      ],
+      "success_message": "Lab complete — RBAC roles and scope practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."
+    },
+    {
+      "id": "az-104-lab-3",
+      "title": "Storage redundancy — Azure CLI drill",
+      "objective": "Prove you can apply storage redundancy in the Azure CLI — follow the steps, watch the output, and confirm every check passes.",
+      "steps": [
+        "The Storage scenario \"The datacenter fire\" tests this concept as a question. This lab makes you demonstrate it with real commands.",
+        "Open the Terminal tab for this bootcamp — every command below runs there.",
+        "Type exactly: az group list — each resource group entry carries a name",
+        "Type exactly: az vm list — each VM entry carries a name",
+        "Type exactly: az account show — the account document includes the subscription name",
+        "In your own words, say what each command's output taught you about storage redundancy."
+      ],
+      "checks": [
+        {
+          "command_pattern": "az group list",
+          "expect_contains": "name",
+          "hint": "In the Terminal tab, run `az group list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+        },
+        {
+          "command_pattern": "az vm list",
+          "expect_contains": "name",
+          "hint": "In the Terminal tab, run `az vm list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+        },
+        {
+          "command_pattern": "az account show",
+          "expect_contains": "name",
+          "hint": "In the Terminal tab, run `az account show`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+        }
+      ],
+      "success_message": "Lab complete — storage redundancy practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."
+    },
+    {
+      "id": "az-104-lab-4",
+      "title": "VM sizes — Azure CLI drill",
+      "objective": "Run a short sequence of Azure CLI commands that demonstrates VM sizes, then verify each result against the expected output.",
+      "steps": [
+        "This lab reworks the Compute (VMs) practice scenario \"The wrong VM size\" into commands you run yourself — same concept, hands-on instead of multiple choice.",
+        "Open the Terminal tab for this bootcamp — every command below runs there.",
+        "Type exactly: az account show — the account document includes the subscription name",
+        "Type exactly: az group list — each resource group entry carries a name",
+        "Type exactly: az vm list — each VM entry carries a name",
+        "In your own words, say what each command's output taught you about VM sizes."
+      ],
+      "checks": [
+        {
+          "command_pattern": "az account show",
+          "expect_contains": "name",
+          "hint": "In the Terminal tab, run `az account show`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+        },
+        {
+          "command_pattern": "az group list",
+          "expect_contains": "name",
+          "hint": "In the Terminal tab, run `az group list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+        },
+        {
+          "command_pattern": "az vm list",
+          "expect_contains": "name",
+          "hint": "In the Terminal tab, run `az vm list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+        }
+      ],
+      "success_message": "Lab complete — VM sizes practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."
+    },
+    {
+      "id": "az104-lab-identity",
+      "title": "Prove the admin identity",
+      "objective": "Azure administration starts with identity. Show the account, confirm the sign-in, and read the tenant.",
+      "difficulty": 1,
+      "steps": [
+        "Open the Terminal tab for this bootcamp.",
+        "Type exactly: az account show — subscription, tenant id, and signed-in user",
+        "Type exactly: az login — confirm the session identity",
+        "In your own words, say why every admin action should be traceable to an identity."
+      ],
+      "checks": [
+        {
+          "command_pattern": "^az account show$",
+          "expect_contains": "candidate@interstitium",
+          "hint": "In the Terminal tab, run `az account show`. If the check fails, confirm you typed it exactly and that the output contains \"candidate@interstitium\"."
+        },
+        {
+          "command_pattern": "^az login$",
+          "expect_contains": "candidate@interstitium",
+          "hint": "In the Terminal tab, run `az login`. If the check fails, confirm you typed it exactly and that the output contains \"candidate@interstitium\"."
+        }
+      ],
+      "success_message": "Lab complete — admin identity established."
+    },
+    {
+      "id": "az104-lab-rg-ops",
+      "title": "Resource group operations",
+      "objective": "Administer resource groups: list them, then create one for the lab following naming and region standards.",
+      "difficulty": 1,
+      "steps": [
+        "Open the Terminal tab for this bootcamp.",
+        "Type exactly: az group list — the existing groups and regions",
+        "Type exactly: az group create --name ilb-104-lab --location eastus — create the lab group",
+        "Type exactly: az group list — confirm ilb-104-lab now appears",
+        "In your own words, say what deploying into a dedicated resource group buys you at cleanup time."
+      ],
+      "checks": [
+        {
+          "command_pattern": "^az group list$",
+          "expect_contains": "ilb-rg",
+          "hint": "In the Terminal tab, run `az group list`. If the check fails, confirm you typed it exactly and that the output contains \"ilb-rg\"."
+        },
+        {
+          "command_pattern": "^az group create --name ilb-104-lab --location eastus$",
+          "expect_contains": "ilb-104-lab",
+          "hint": "In the Terminal tab, run `az group create --name ilb-104-lab --location eastus`. If the check fails, confirm you typed it exactly and that the output contains \"ilb-104-lab\"."
+        }
+      ],
+      "success_message": "Lab complete — you administered resource groups end to end."
+    },
+    {
+      "id": "az104-lab-vm-lifecycle",
+      "title": "VM lifecycle — stop and start",
+      "objective": "Administrators own the VM lifecycle. List the VMs, deallocate one, verify, and bring it back.",
+      "difficulty": 2,
+      "steps": [
+        "Open the Terminal tab for this bootcamp.",
+        "Type exactly: az vm list — record each VM's power state",
+        "Type exactly: az vm stop -n ilb-web-01 -g ilb-rg — deallocate the web VM",
+        "Type exactly: az vm list -g ilb-rg — confirm ilb-web-01 reads 'VM stopped'",
+        "Type exactly: az vm start -n ilb-web-01 -g ilb-rg — bring it back (leave the lab clean)",
+        "In your own words, say the difference between stopping and deallocating for billing."
+      ],
+      "checks": [
+        {
+          "command_pattern": "^az vm stop -n ilb-web-01 -g ilb-rg$",
+          "expect_contains": "deallocated",
+          "hint": "In the Terminal tab, run `az vm stop -n ilb-web-01 -g ilb-rg`. If the check fails, confirm you typed it exactly and that the output contains \"deallocated\"."
+        },
+        {
+          "command_pattern": "^az vm start -n ilb-web-01 -g ilb-rg$",
+          "expect_contains": "started",
+          "hint": "In the Terminal tab, run `az vm start -n ilb-web-01 -g ilb-rg`. If the check fails, confirm you typed it exactly and that the output contains \"started\"."
+        }
+      ],
+      "success_message": "Lab complete — you owned the VM lifecycle."
+    },
+    {
+      "id": "az104-lab-net-storage",
+      "title": "Network and storage administration",
+      "objective": "Finish the admin survey: virtual networks, address space, and the storage account backing the workloads.",
+      "difficulty": 3,
+      "steps": [
+        "Open the Terminal tab for this bootcamp.",
+        "Type exactly: az network vnet list — VNet name, resource group, address prefix",
+        "Type exactly: az storage account list — storage account name and SKU",
+        "In your own words, say why the VNet lives in a different resource group than the VMs."
+      ],
+      "checks": [
+        {
+          "command_pattern": "^az network vnet list$",
+          "expect_contains": "ilb-network-rg",
+          "hint": "In the Terminal tab, run `az network vnet list`. If the check fails, confirm you typed it exactly and that the output contains \"ilb-network-rg\"."
+        },
+        {
+          "command_pattern": "^az storage account list$",
+          "expect_contains": "ilbartifacts",
+          "hint": "In the Terminal tab, run `az storage account list`. If the check fails, confirm you typed it exactly and that the output contains \"ilbartifacts\"."
+        }
+      ],
+      "success_message": "Lab complete — network and storage surveyed like an administrator."
+    }
+  ],
+  "foundations": [
+    {
+      "track": "cloud-concepts",
+      "why_needed": "Azure administration assumes regions, resource groups, and the billing model. Learn the cloud concepts before the portal."
+    },
+    {
+      "track": "networking",
+      "why_needed": "Virtual networking is the heart of AZ-104: VNets are subnets, DNS, and routing applied."
+    }
+  ],
+  "math": [],
+  "simulations": [
+    {
+      "id": "az104-sim-vm-deallocated",
+      "title": "The VM that billed while stopped",
+      "kind": "troubleshoot",
+      "domain_id": "compute",
+      "difficulty": 2,
+      "brief": "Finance asks why ilb-web-01 still bills after being 'stopped' all month. The portal shows 'Stopped' — not 'Stopped (deallocated)'. Investigate.",
+      "steps": [
+        {
+          "symptom": "A 'stopped' VM still incurs compute charges.",
+          "evidence": [
+            [
+              "az vm list -g ilb-rg",
+              "ilb-web-01  ilb-rg  VM stopped  Standard_D2s_v3"
+            ]
+          ],
+          "options": [
+            "The VM was stopped but not deallocated — deallocate it to stop compute billing",
+            "The VM is haunted — delete it",
+            "Dispute the bill with Microsoft",
+            "It is normal — stopped VMs always bill full compute"
+          ],
+          "correct": 0,
+          "explain": "In Azure, 'Stopped' keeps the VM allocated on the host (and billing); 'Stopped (deallocated)' releases it. az vm stop deallocates — but a portal Stop without deallocate does not. The state string tells the story."
+        }
+      ],
+      "debrief": "You learned the AZ-104 billing trap: stopped is not deallocated. Always verify the deallocated state before promising savings.",
+      "points": 10
+    },
+    {
+      "id": "az104-sim-auth-choice",
+      "title": "How should the app authenticate?",
+      "kind": "branching",
+      "domain_id": "identity",
+      "difficulty": 2,
+      "brief": "The app team stores a storage key in app settings. As the identity admin, steer them to the secure pattern.",
+      "steps": [
+        {
+          "id": "s1",
+          "text": "The app needs to read blobs from ilbartifacts. The team proposes a shared access key in config. Your call?",
+          "choices": [
+            {
+              "label": "Approve the key — it is the fastest path",
+              "next": "s2a",
+              "points": 0,
+              "feedback": "Shared keys are long-lived secrets that leak into logs and repos. There is a better way."
+            },
+            {
+              "label": "Require managed identity with RBAC on the storage account",
+              "next": "s2",
+              "points": 2,
+              "feedback": "Correct — managed identity eliminates the secret entirely and RBAC scopes the access."
+            }
+          ]
+        },
+        {
+          "id": "s2a",
+          "text": "The key leaked in a public repo last quarter at a previous team. Reconsider:",
+          "choices": [
+            {
+              "label": "Managed identity with RBAC",
+              "next": "s2",
+              "points": 1,
+              "feedback": "Right — the best secret is the one that does not exist."
+            }
+          ]
+        },
+        {
+          "id": "s2",
+          "text": "The app now needs to call Microsoft Graph as itself. Which identity type?",
+          "choices": [
+            {
+              "label": "User-assigned managed identity — it outlives any single app instance",
+              "next": "END",
+              "points": 2,
+              "outcome": "good",
+              "feedback": "Correct — user-assigned managed identity is the independent, reusable identity for service-to-service calls."
+            },
+            {
+              "label": "The developer's personal account — simplest",
+              "next": "END",
+              "points": 0,
+              "outcome": "bad",
+              "feedback": "Personal accounts for service auth break when people leave and cannot be scoped properly."
+            }
+          ]
+        }
+      ],
+      "debrief": "You steered the team from shared secrets to managed identities — the AZ-104 identity answer for almost every 'how should this authenticate' question.",
+      "points": 15
+    },
+    {
+      "id": "az104-sim-vm-deploy-order",
+      "title": "Deploy the VM correctly",
+      "kind": "ordering",
+      "domain_id": "compute",
+      "difficulty": 1,
+      "brief": "A junior admin keeps deploying VMs that cannot be reached. Order the deployment prerequisites so the VM lands reachable.",
+      "steps": {
+        "context": "Deploy a reachable Azure VM: network first, then identity-adjacent pieces, then compute.",
+        "items": [
+          "Create the network interface in the subnet",
+          "Create the virtual network and subnet",
+          "Create the network security group with RDP/SSH rules",
+          "Deploy the VM attached to the NIC",
+          "Associate the NSG with the subnet or NIC"
+        ],
+        "correct_order": [
+          1,
+          2,
+          0,
+          4,
+          3
+        ]
+      },
+      "debrief": "You ordered the deployment: network, security rules, interface, association, then the VM. Unreachable VMs are almost always a skipped network step.",
+      "points": 10
+    },
+    {
+      "id": "az104-sim-nsg-config",
+      "title": "The NSG that blocks the app",
+      "kind": "config-check",
+      "domain_id": "networking",
+      "difficulty": 3,
+      "brief": "The app team says the new NSG 'broke everything'. Review the rules and click the lines causing the outage.",
+      "steps": {
+        "config": "nsg-ilb-app inbound:\n1. priority 100: deny 0.0.0.0/0 -> *\n2. priority 200: allow 10.0.1.0/24 -> 443\n3. priority 300: allow AzureLoadBalancer -> *\n4. priority 400: allow 10.0.0.0/8 -> 22",
+        "find": 2,
+        "issues": [
+          {
+            "line": 1,
+            "description": "A priority-100 deny-all sits above every allow rule — NSGs evaluate lowest priority number first, so nothing after line 1 is ever reached.",
+            "fix": "Move the deny-all to the highest priority number (evaluated last) or remove it; default deny already exists."
+          },
+          {
+            "line": 4,
+            "description": "SSH open to the entire 10.0.0.0/8 is far broader than the admin jump range the ticket specified.",
+            "fix": "Narrow 22 to the jump-host subnet (e.g. 10.0.99.0/28)."
+          }
+        ]
+      },
+      "debrief": "You caught the NSG priority trap: the lowest number wins, so a top deny-all silences every allow below it. Order is the whole game in NSGs.",
+      "points": 10
+    }
+  ],
+  "consoleSims": [
+    {
+      "id": "az104-console-portal-rbac-1",
+      "title": "Grant the reader role",
+      "console": "azure-portal",
+      "domain_id": "identity",
+      "difficulty": 2,
+      "brief": "The support engineer needs read access to ilb-rg — nothing more. Assign the Reader role at the resource-group scope.",
+      "tasks": [
+        {
+          "id": "t1",
+          "instruction": "Open Access control (IAM) on ilb-rg and add a role assignment.",
+          "validate": {
+            "action": "click",
+            "params": {
+              "target": "iam.add-assignment"
+            }
+          },
+          "hint": "Open the resource group's Access control blade and start a new role assignment."
+        },
+        {
+          "id": "t2",
+          "instruction": "Assign the Reader role to support@interstitium at the ilb-rg scope.",
+          "validate": {
+            "action": "set-field",
+            "params": {
+              "field": "role-assignment",
+              "value": "Reader:support@interstitium:ilb-rg"
+            }
+          },
+          "hint": "Choose the Reader role, the support identity, and confirm the scope is ilb-rg."
+        }
+      ],
+      "debrief": "You applied RBAC the admin way: least-privilege role, narrowest scope, named identity."
+    },
+    {
+      "id": "az104-console-portal-backup-1",
+      "title": "Enable VM backup",
+      "console": "azure-portal",
+      "domain_id": "governance-compliance",
+      "difficulty": 3,
+      "brief": "Compliance requires daily backups of ilb-web-01 with 30-day retention. Configure it in the portal.",
+      "tasks": [
+        {
+          "id": "t1",
+          "instruction": "Enable backup on ilb-web-01 using the existing Recovery Services vault.",
+          "validate": {
+            "action": "click",
+            "params": {
+              "target": "vm.ilb-web-01.backup.enable"
+            }
+          },
+          "hint": "Open the VM's Backup blade and enable protection with the existing vault."
+        },
+        {
+          "id": "t2",
+          "instruction": "Set the backup policy to daily with 30-day retention.",
+          "validate": {
+            "action": "set-field",
+            "params": {
+              "field": "vm.ilb-web-01.backup.policy",
+              "value": "daily-30d"
+            }
+          },
+          "hint": "Choose or create the daily policy with 30-day retention."
+        }
+      ],
+      "debrief": "You made the VM recoverable: backup enabled, policy set, retention compliant. Backups are configured before they are needed."
+    }
+  ],
+  "terminalMissions": [
+    {
+      "id": "az104-mission-subs",
+      "title": "List the subscriptions",
+      "domain_id": "identity",
+      "difficulty": 1,
+      "brief": "An admin knows every subscription in scope. List them.",
+      "objectives": [
+        "List all subscriptions"
+      ],
+      "checks": [
+        {
+          "command_pattern": "^az account list$",
+          "expect_contains": "ILB-Archive",
+          "hint": "In the Terminal tab, run `az account list`. If the check fails, confirm you typed it exactly and that the output contains \"ILB-Archive\"."
+        }
+      ],
+      "success_message": "Subscriptions listed — two in scope."
+    },
+    {
+      "id": "az104-mission-vmstates",
+      "title": "Read every power state",
+      "domain_id": "compute",
+      "difficulty": 1,
+      "brief": "List the VMs in ilb-rg and read each power state — the admin's morning check.",
+      "objectives": [
+        "List VMs in ilb-rg"
+      ],
+      "checks": [
+        {
+          "command_pattern": "^az vm list -g ilb-rg$",
+          "expect_contains": "ilb-build-01",
+          "hint": "In the Terminal tab, run `az vm list -g ilb-rg`. If the check fails, confirm you typed it exactly and that the output contains \"ilb-build-01\"."
+        }
+      ],
+      "success_message": "Power states read — the morning check is done."
+    },
+    {
+      "id": "az104-mission-rg",
+      "title": "Create the lab group",
+      "domain_id": "governance-compliance",
+      "difficulty": 2,
+      "brief": "Create the resource group for this mission's lab work.",
+      "objectives": [
+        "Create resource group ilb-104-mission in eastus2"
+      ],
+      "checks": [
+        {
+          "command_pattern": "^az group create --name ilb-104-mission --location eastus2$",
+          "expect_contains": "ilb-104-mission",
+          "hint": "In the Terminal tab, run `az group create --name ilb-104-mission --location eastus2`. If the check fails, confirm you typed it exactly and that the output contains \"ilb-104-mission\"."
+        }
+      ],
+      "success_message": "Resource group created."
+    },
+    {
+      "id": "az104-mission-aks",
+      "title": "Check the cluster",
+      "domain_id": "monitoring",
+      "difficulty": 2,
+      "brief": "List the AKS clusters backing the container workloads.",
+      "objectives": [
+        "List all AKS clusters"
+      ],
+      "checks": [
+        {
+          "command_pattern": "^az aks list$",
+          "expect_contains": "ilb-aks",
+          "hint": "In the Terminal tab, run `az aks list`. If the check fails, confirm you typed it exactly and that the output contains \"ilb-aks\"."
+        }
+      ],
+      "success_message": "Cluster confirmed — ilb-aks is registered."
+    },
+    {
+      "id": "az104-mission-version",
+      "title": "Verify the CLI",
+      "domain_id": "monitoring",
+      "difficulty": 2,
+      "brief": "Admins verify tooling versions before change windows. Check the Azure CLI version.",
+      "objectives": [
+        "Show the Azure CLI version"
+      ],
+      "checks": [
+        {
+          "command_pattern": "^az version$",
+          "expect_contains": "2.66.0",
+          "hint": "In the Terminal tab, run `az version`. If the check fails, confirm you typed it exactly and that the output contains \"2.66.0\"."
+        }
+      ],
+      "success_message": "CLI verified — 2.66.0 on the console."
+    },
+    {
+      "id": "az104-mission-cycle",
+      "title": "Cycle the web VM",
+      "domain_id": "compute",
+      "difficulty": 3,
+      "brief": "Deallocate ilb-web-01 and bring it back — the full lifecycle in one mission. Leave the lab clean.",
+      "objectives": [
+        "Deallocate ilb-web-01",
+        "Start ilb-web-01 again"
+      ],
+      "checks": [
+        {
+          "command_pattern": "^az vm stop -n ilb-web-01 -g ilb-rg$",
+          "expect_contains": "deallocated",
+          "hint": "In the Terminal tab, run `az vm stop -n ilb-web-01 -g ilb-rg`. If the check fails, confirm you typed it exactly and that the output contains \"deallocated\"."
+        },
+        {
+          "command_pattern": "^az vm start -n ilb-web-01 -g ilb-rg$",
+          "expect_contains": "started",
+          "hint": "In the Terminal tab, run `az vm start -n ilb-web-01 -g ilb-rg`. If the check fails, confirm you typed it exactly and that the output contains \"started\"."
+        }
+      ],
+      "success_message": "Lifecycle complete — the VM cycled cleanly."
+    }
+  ],
+  "media": [
+    {
+      "id": "az-104-identity-diag",
+      "kind": "diagram",
+      "title": "Microsoft Entra ID Sign-In",
+      "svg": "assets/diagrams/az-104-identity.svg",
+      "lesson_ref": "c-identity",
+      "caption": "Authenticate, evaluate policy, then issue tokens.",
+      "alt": "Microsoft Entra ID Sign-In. Shows: Sign-in, Entra ID auth, Conditional Access, Token, Resource."
+    },
+    {
+      "id": "az-104-governance-compliance-diag",
+      "kind": "diagram",
+      "title": "Governance & Compliance",
+      "svg": "assets/diagrams/az-104-governance-compliance.svg",
+      "lesson_ref": "c-governance-compliance",
+      "caption": "Keep subscriptions organized and compliant.",
+      "alt": "Governance & Compliance. Shows: Management groups, Azure Policy, RBAC, Locks, Tags."
+    },
+    {
+      "id": "az-104-storage-diag",
+      "kind": "diagram",
+      "title": "Azure Storage Types",
+      "svg": "assets/diagrams/az-104-storage.svg",
+      "lesson_ref": "c-storage",
+      "caption": "One account, five data services; blob tiers by access frequency.",
+      "alt": "Azure Storage Types. Table with 5 rows."
+    },
+    {
+      "id": "az-104-compute-diag",
+      "kind": "diagram",
+      "title": "Azure Compute Options",
+      "svg": "assets/diagrams/az-104-compute.svg",
+      "lesson_ref": "c-compute",
+      "caption": "From VMs to serverless — pick your control level.",
+      "alt": "Azure Compute Options. Table with 5 rows."
+    },
+    {
+      "id": "az-104-networking-diag",
+      "kind": "diagram",
+      "title": "Azure Virtual Network",
+      "svg": "assets/diagrams/az-104-networking.svg",
+      "lesson_ref": "c-networking",
+      "caption": "The software-defined network everything attaches to.",
+      "alt": "Azure Virtual Network. Covers: Subnets + NSGs, VNet peering, VPN Gateway, ExpressRoute, Private Endpoint, Azure Firewall."
+    },
+    {
+      "id": "az-104-monitoring-diag",
+      "kind": "diagram",
+      "title": "Azure Monitor",
+      "svg": "assets/diagrams/az-104-monitoring.svg",
+      "lesson_ref": "c-monitoring",
+      "caption": "Metrics, logs, and alerts across the estate.",
+      "alt": "Azure Monitor. Shows: Metrics, Log Analytics, Alerts, Action groups, Application Insights."
+    }
+  ],
+  "resources": {
+    "cheatsheet": {
+      "title": "Azure Administrator (AZ-104) — Cheat Sheet",
+      "sections": [
+        {
+          "heading": "Entra ID & Identity",
+          "items": [
+            "SSPR — SSPR lets users reset their own passwords after verifying via registered authentication methods (Microsoft Authenticator, phone, etc.).",
+            "Authentication methods — it requires the methods be registered in advance and SSPR enabled for the users — the classic help-desk ticket reducer.",
+            "Dynamic — Dynamic groups evaluate membership rules against user attributes automatically — new hires with department=Sales join instantly, departures leave. Combined with dynamic groups, onboarding becomes zero-touch.",
+            "B2B collaboration — entra B2B lets external users authenticate with their own identity (even a Gmail-backed account) as guests, with access scoped to specific resources and governed by Conditional Access and access reviews.",
+            "Guest access — conditional Access evaluates signals (user/group, location, device, sign-in risk from Identity Protection) and enforces grants like require MFA or block.",
+            "Common trap — conditional Access without any MFA grant.",
+            "Common trap — a Conditional Access policy blocking legacy auth.",
+            "Common trap — a Conditional Access policy per user.",
+            "Common trap — assigning licenses via Conditional Access.",
+            "Conditional Access — Conditional Access evaluates signals (user/group, location, device, sign-in risk from Identity Protection) and enforces grants like require MFA or block. Risk-based policies are the standard response to impossible-travel and leaked-credential signals."
+          ]
+        },
+        {
+          "heading": "Governance & Compliance",
+          "items": [
+            "RBAC follows least privilege — grant the smallest role at the narrowest scope that still lets the person work. Custom roles define exact allowed actions (Actions/NotActions/DataActions) when built-in roles are too broad or too narrow.",
+            "RBAC definition — azure Policy's built-in 'Allowed locations' definition with deny effect blocks non-compliant deployments at creation time and flags existing ones as non-compliant.",
+            "Azure Policy — Azure Policy's tag requirements (built-in 'Require a tag and its value') can deny untagged deployments or append the tag via modify, and the compliance dashboard lists every non-compliant resource for cleanup.",
+            "Deny — Deny only stops new deployments; remediation fixes the past.",
+            "Common trap — no locks; use RBAC Reader instead.",
+            "Common trap — an RBAC role called Tag Contributor.",
+            "Common trap — remove all roles and use shared admin credentials.",
+            "Common trap — keep Contributor but add a resource lock.",
+            "Read — Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."
+          ]
+        },
+        {
+          "heading": "Storage",
+          "items": [
+            "Storage redundancy — the storage account firewall (Firewalls and virtual networks) defaults to deny and whitelists VNets (via service endpoints/private endpoints) and IP ranges. Storage Explorer is fine for small interactive work but not 10 TB bulk migration.",
+            "ZRS — ZRS synchronously replicates three copies across availability zones in the primary region — surviving a datacenter loss without paying for a second region.",
+            "Access tiers — shared access signatures grant constrained, time-limited access (permissions, IP, expiry) without exposing account keys.",
+            "Lifecycle management policies automate tier transitions by age — e.g., Hot→Cool after 30 days, →Archive after 180 — so nobody does it manually.",
+            "Least-privilege access — a service SAS on the container with write-only for 48 hours is the least-privilege answer; keys and RBAC are far too broad.",
+            "Common trap — enable soft delete instead.",
+            "Common trap — the storage account key emailed to the partner.",
+            "Common trap — azure Storage Explorer for 10 TB bulk loads.",
+            "Common trap — az PowerShell New-AzStorageBlob one file at a time.",
+            "AzCopy — is the purpose-built high-performance copy tool (azcopy copy/sync), multi-threaded with automatic resume on failure. Storage Explorer is fine for small interactive work but not 10 TB bulk migration."
+          ]
+        },
+        {
+          "heading": "Compute (VMs)",
+          "items": [
+            "Series selection — VM series encode their optimization: F = compute, E/D = memory (E has higher memory-to-CPU), L = storage, N = GPU.",
+            "VM SLA — azure's SLA for VMs reaches 99.99% with two or more instances across availability zones.",
+            "Availability sets — provide fault/update domain spread but no scaling or identical-image management.",
+            "Scale sets — managed disk performance (IOPS and MB/s) is determined by disk type and size: Premium SSD tiers scale with provisioned size, Ultra Disk allows independent tuning.",
+            "Autoscale — VMSS manages identical VMs as a set with autoscale based on metrics (CPU, queue length), plus rolling upgrades.",
+            "Common trap — all VM series are identical; the app needs more disks.",
+            "Common trap — a VPN gateway for every admin laptop.",
+            "Common trap — enable page file on the temp disk.",
+            "Common trap — the VM needs an availability set, not a resize."
+          ]
+        },
+        {
+          "heading": "Virtual Networking",
+          "items": [
+            "Rule priority — NSG rules are processed in priority order, lowest number first; the first match decides.",
+            "VNet peering — a-to-C needs its own peering (or a hub VNet with routing/NVA). Private endpoints bring the PaaS service into your VNet with a private IP (resolving via private DNS zone), eliminating public endpoint exposure.",
+            "ExpressRoute vs VPN — S2S VPN rides the public internet with variable throughput; peering only connects Azure VNets.",
+            "Common trap — peering requires identical address spaces.",
+            "Common trap — vNet peering to the on-premises network.",
+            "Common trap — create a private endpoint for DNS.",
+            "Common trap — priority numbers are ignored for inbound rules.",
+            "Private — Private endpoints bring the PaaS service into your VNet with a private IP (resolving via private DNS zone), eliminating public endpoint exposure. Service endpoints extend VNet identity to the service but the public endpoint remains."
+          ]
+        },
+        {
+          "heading": "Monitoring",
+          "items": [
+            "Metrics — are lightweight numeric time-series (great for charts and metric alerts); logs are rich records stored in Log Analytics workspaces and queried with KQL (great for forensic search). Metric alert rules evaluate platform/guest metrics on a frequency and fire a…",
+            "Azure Monitor data — disk space is a guest metric (via Azure Monitor Agent); the action group delivers the notification. Service Health reports Azure platform incidents and planned maintenance per region — the first stop when many resources fail together with no config change.",
+            "KQL pipelines — filter with where, aggregate with summarize ... by, rank with top.",
+            "Alert rules — network Watcher's IP flow verify simulates a packet against NSG rules, and 'next hop' reveals the effective route (system, UDR, or peering).",
+            "Common trap — azure Service Health alert.",
+            "Common trap — a log alert running every 15 minutes on boot diagnostics.",
+            "Common trap — per-resource health, better for single-resource issues.",
+            "Common trap — SELECT TOP 10 * FROM SigninLogs WHERE failures.",
+            "KQL pipelines — filter with where, aggregate with summarize ... by, rank with top. ResultType != 0 means failure in sign-in logs. SQL syntax doesn't work in Log Analytics."
+          ]
+        }
+      ]
+    },
+    "glossary": [
+      {
+        "term": "RBAC",
+        "def": "Built-in roles don't fit. What RBAC construct lets you define exact permissions?"
+      },
+      {
+        "term": "VM",
+        "def": "Common trap: all VM series are identical; the app needs more disks."
+      },
+      {
+        "term": "NSG",
+        "def": "Rule priority: NSG rules are processed in priority order, lowest number first; the first match decides."
+      },
+      {
+        "term": "DNS",
+        "def": "Azure-provided DNS automatically resolves VM hostnames within the VNet. Pointing the VNet at an external DNS that lacks Azure records breaks internal resolution — fix by reverting to Azure DNS or configuring conditional forwarding for in…"
+      },
+      {
+        "term": "MFA",
+        "def": "MFA requires a second factor beyond the password, so a stolen password alone is useless. Not all MFA is equal: FIDO2 security keys and Windows Hello for Business resist phishing, while SMS codes can be intercepted — a key exam distinction."
+      },
+      {
+        "term": "IP",
+        "def": "Storage redundancy: the storage account firewall (Firewalls and virtual networks) defaults to deny and whitelists VNets (via service endpoints/private endpoints) and IP ranges. Storage Explorer is fine for small interactive work but not…"
+      },
+      {
+        "term": "SLA",
+        "def": "VM SLA: azure's SLA for VMs reaches 99.99% with two or more instances across availability zones."
+      },
+      {
+        "term": "SAS",
+        "def": "Least-privilege access: a service SAS on the container with write-only for 48 hours is the least-privilege answer; keys and RBAC are far too broad."
+      },
+      {
+        "term": "IOPS",
+        "def": "Scale sets: managed disk performance (IOPS and MB/s) is determined by disk type and size: Premium SSD tiers scale with provisioned size, Ultra Disk allows independent tuning."
+      },
+      {
+        "term": "Azure",
+        "def": "Azure Monitor data: disk space is a guest metric (via Azure Monitor Agent); the action group delivers the notification. Service Health reports Azure platform incidents and planned maintenance per region — the first stop when many resourc…"
+      },
+      {
+        "term": "SMS",
+        "def": "Metric alert rules evaluate platform/guest metrics on a frequency and fire action groups (email, SMS, webhooks, Logic Apps). Disk space is a guest metric (via Azure Monitor Agent); the action group delivers the notification."
+      },
+      {
+        "term": "Conditional Access",
+        "def": "Common trap: a Conditional Access policy blocking legacy auth."
+      },
+      {
+        "term": "VPN",
+        "def": "ExpressRoute vs VPN: S2S VPN rides the public internet with variable throughput; peering only connects Azure VNets."
+      },
+      {
+        "term": "Storage Explorer",
+        "def": "Storage redundancy: the storage account firewall (Firewalls and virtual networks) defaults to deny and whitelists VNets (via service endpoints/private endpoints) and IP ranges. Storage Explorer is fine for small interactive work but not…"
+      },
+      {
+        "term": "Service Health",
+        "def": "Common trap: azure Service Health alert."
+      },
+      {
+        "term": "MB",
+        "def": "Managed disk performance (IOPS and MB/s) is determined by disk type and size: Premium SSD tiers scale with provisioned size, Ultra Disk allows independent tuning. Compute changes don't fix a disk bottleneck."
+      },
+      {
+        "term": "CLI",
+        "def": "Bulk, resumable, parallel — which CLI tool is designed for exactly this?"
+      },
+      {
+        "term": "MB/s",
+        "def": "Managed disk performance (IOPS and MB/s) is determined by disk type and size: Premium SSD tiers scale with provisioned size, Ultra Disk allows independent tuning. Compute changes don't fix a disk bottleneck."
+      },
+      {
+        "term": "Bulk",
+        "def": "Bulk, resumable, parallel — which CLI tool is designed for exactly this?"
+      },
+      {
+        "term": "Custom",
+        "def": "Custom roles define exact allowed actions (Actions/NotActions/DataActions) when built-in roles are too broad or too narrow. The backup-operator scenario is the textbook custom-role case."
+      },
+      {
+        "term": "Metric",
+        "def": "Metrics are lightweight numeric time-series (great for charts and metric alerts); logs are rich records stored in Log Analytics workspaces and queried with KQL (great for forensic search). Metric alert rules evaluate platform/guest metri…"
+      },
+      {
+        "term": "Archive",
+        "def": "Archive is the cheapest tier for rarely-accessed data (rehydration takes hours). Lifecycle management policies automate tier transitions by age — e.g., Hot→Cool after 30 days, →Archive after 180 — so nobody does it manually."
+      },
+      {
+        "term": "Metrics",
+        "def": "Metrics are lightweight numeric time-series (great for charts and metric alerts); logs are rich records stored in Log Analytics workspaces and queried with KQL (great for forensic search). Metric alert rules evaluate platform/guest metri…"
+      },
+      {
+        "term": "Azure Policy",
+        "def": "Azure Policy's tag requirements (built-in 'Require a tag and its value') can deny untagged deployments or append the tag via modify, and the compliance dashboard lists every non-compliant resource for cleanup."
+      },
+      {
+        "term": "Availability",
+        "def": "Availability sets provide fault/update domain spread but no scaling or identical-image management."
+      }
+    ],
+    "links": [
+      {
+        "label": "Microsoft — official site",
+        "url": "https://learn.microsoft.com",
+        "note": "Official vendor documentation and certification information"
+      },
+      {
+        "label": "Microsoft Learn — Azure",
+        "url": "https://learn.microsoft.com/en-us/azure/",
+        "note": "Official Azure documentation"
+      },
+      {
+        "label": "Microsoft certifications",
+        "url": "https://learn.microsoft.com/en-us/certifications/",
+        "note": "Official certification paths and exam pages"
+      },
+      {
+        "label": "Azure status and architecture",
+        "url": "https://azure.microsoft.com/en-us/",
+        "note": "Official Azure product pages"
+      }
+    ],
+    "checklist": [
+      "Get 7–8 hours of sleep the night before — fatigue destroys recall faster than any topic gap.",
+      "Bring valid government-issued photo ID and arrive at the test center 30 minutes early.",
+      "Eat a real meal beforehand; bring water and a light snack if the center allows them.",
+      "Read every question twice before scanning the answer choices.",
+      "Flag uncertain questions and move on — return with fresh eyes at the end.",
+      "Eliminate the obviously wrong answers first, then compare the survivors.",
+      "Budget your time: answer steadily and keep a 10–15 minute review buffer.",
+      "Re-run your weakest-domain drill until mastery is at least 80%.",
+      "For Entra ID & Identity: restate the 'why' behind each scenario answer in your own words — if you can't explain it, you don't own it.",
+      "Redo one Governance & Compliance lab from scratch without looking at the steps.",
+      "Recite the key Storage terms from the glossary aloud from memory."
     ]
   }
 }

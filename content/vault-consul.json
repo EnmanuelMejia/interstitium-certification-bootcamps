@@ -28,7 +28,10 @@
           "answer": 0,
           "why": "kv-v2 versions every write: delete only soft-deletes (hides) the latest version, undelete restores it, and destroy permanently erases specific versions. kv-v1 has no versions — delete is final. This is why kv-v2 is the default choice for human-managed secrets, with check-and-set (CAS) for safe concurrent writes.",
           "hint": "Which kv version keeps history of every write?",
-          "objectives": ["KV engine", "kv-v2 versioning"],
+          "objectives": [
+            "KV engine",
+            "kv-v2 versioning"
+          ],
           "mins": 5
         },
         {
@@ -46,7 +49,10 @@
           "answer": 0,
           "why": "The CLI hides it, but kv-v2's HTTP API is mount + data/ + path for reads/writes and mount + metadata/ + path for version management. Policies match the real API paths, so kv-v2 policies must use secret/data/... (and secret/metadata/... for version ops). This is the single most common Vault policy bug.",
           "hint": "What does the CLI abstract away that policies must match exactly?",
-          "objectives": ["KV engine", "Policy paths"],
+          "objectives": [
+            "KV engine",
+            "Policy paths"
+          ],
           "mins": 6
         },
         {
@@ -64,7 +70,10 @@
           "answer": 0,
           "why": "The database engine generates per-client dynamic credentials (CREATE ROLE with TTL), so there's no shared password to rotate in lockstep — each lease simply expires and the service fetches a fresh one. Static roles can still rotate a stored password on a schedule, but dynamic creds remove the coordination problem entirely.",
           "hint": "What if every service had its own password that expired automatically?",
-          "objectives": ["Database engine", "Dynamic secrets"],
+          "objectives": [
+            "Database engine",
+            "Dynamic secrets"
+          ],
           "mins": 6
         },
         {
@@ -82,7 +91,10 @@
           "answer": 0,
           "why": "Vault's PKI engine acts as an internal CA: mount it, configure roles constraining what can be issued (allowed_domains, max_ttl, key_bits), and clients request certs via API. Short TTLs (hours/days) shrink the revocation problem — expired certs simply stop working. Transit does encryption-as-a-service, not certificates.",
           "hint": "Which engine's whole job is acting as a certificate authority?",
-          "objectives": ["PKI engine", "Certificate issuance"],
+          "objectives": [
+            "PKI engine",
+            "Certificate issuance"
+          ],
           "mins": 5
         },
         {
@@ -100,7 +112,10 @@
           "answer": 0,
           "why": "Transit is encryption-as-a-service: the app never handles key material, only ciphertext. Key rotation is versioned — new data encrypts with the latest version while previous versions remain available for decryption, so there's no big-bang re-encryption. Convergent encryption and datakey modes cover advanced needs.",
           "hint": "What if the app only ever saw ciphertext and never the key?",
-          "objectives": ["Transit engine", "Encryption as a service"],
+          "objectives": [
+            "Transit engine",
+            "Encryption as a service"
+          ],
           "mins": 6
         },
         {
@@ -118,7 +133,10 @@
           "answer": 0,
           "why": "Vault's isolation primitives are mounts and policy paths. Separate mounts give the strongest boundary (also separable audit and tune settings); path-scoped policies under one mount work fine for cooperative teams. Either way, least-privilege policies replace the broad shared one — never hand out root tokens.",
           "hint": "What are Vault's two levels of namespacing for secrets?",
-          "objectives": ["Mounts", "Isolation"],
+          "objectives": [
+            "Mounts",
+            "Isolation"
+          ],
           "mins": 5
         }
       ]
@@ -142,7 +160,10 @@
           "answer": 0,
           "why": "AppRole is designed for machines: role_id is non-secret identity, secret_id is the secret credential — delivered separately (ideally via different channels). The pair is exchanged for a short-lived token. Bound CIDRs, secret_id TTLs, and per-role policies scope it tightly. userpass is for humans; hardcoded tokens are the anti-pattern.",
           "hint": "Which method splits machine identity into a public half and a secret half?",
-          "objectives": ["AppRole", "Machine auth"],
+          "objectives": [
+            "AppRole",
+            "Machine auth"
+          ],
           "mins": 6
         },
         {
@@ -160,7 +181,10 @@
           "answer": 0,
           "why": "The K8s auth method: Vault is configured with the cluster's API endpoint and CA; the Pod presents its service-account token (JWT); Vault verifies it with the K8s TokenReview API and checks it against role bindings (bound_service_account_names, bound_service_account_namespaces). The Vault Agent injector or app then exchanges it for a Vault token — no static secrets in specs.",
           "hint": "What identity does every Pod already carry that a third party can verify?",
-          "objectives": ["Kubernetes auth", "Service accounts"],
+          "objectives": [
+            "Kubernetes auth",
+            "Service accounts"
+          ],
           "mins": 6
         },
         {
@@ -178,7 +202,10 @@
           "answer": 0,
           "why": "Batch tokens are encrypted blobs (not stored server-side): cheap to create at massive scale, ideal for ephemeral high-volume use. Trade-offs: fixed TTL (no renewal), lost on Vault restart, no child tokens, limited capabilities. Service tokens are the persistent, renewable default for interactive/long-lived use.",
           "hint": "What costs a storage write on every token creation?",
-          "objectives": ["Tokens", "Service vs batch"],
+          "objectives": [
+            "Tokens",
+            "Service vs batch"
+          ],
           "mins": 6
         },
         {
@@ -196,7 +223,11 @@
           "answer": 0,
           "why": "Humans should auth via the company IdP: LDAP (bind + group mapping) or OIDC (SSO with group claims mapped to policies via groups/roles). This gives per-person audit trails and instant deprovisioning. The root token should be revoked after initial setup (it can be regenerated via unseal keys if ever truly needed). AppRole is for machines, not people.",
           "hint": "Where do your engineers' identities already live?",
-          "objectives": ["LDAP", "OIDC", "Human auth"],
+          "objectives": [
+            "LDAP",
+            "OIDC",
+            "Human auth"
+          ],
           "mins": 5
         },
         {
@@ -214,7 +245,10 @@
           "answer": 0,
           "why": "Token TTL is the initial lifetime; each renewal extends it but never beyond max_ttl (explicit or mount/system default). Short TTLs (minutes–hours) + re-auth (e.g., Vault Agent auto-auth) mean a leaked token dies quickly. Periodic tokens have a fixed period; orphan tokens survive parent revocation — choose deliberately.",
           "hint": "What stops a token from being renewed forever?",
-          "objectives": ["TTLs", "Token lifecycle"],
+          "objectives": [
+            "TTLs",
+            "Token lifecycle"
+          ],
           "mins": 5
         },
         {
@@ -232,7 +266,10 @@
           "answer": 0,
           "why": "The initial root token is a bootstrap credential: log in, configure real auth (OIDC/LDAP), write least-privilege policies, then 'vault token revoke' the root token. Unseal keys must be safeguarded (Shamir split among key holders) — they're your recovery path. Daily root-token use destroys auditability.",
           "hint": "Is the root token a setup tool or a daily driver?",
-          "objectives": ["Bootstrap", "Root token hygiene"],
+          "objectives": [
+            "Bootstrap",
+            "Root token hygiene"
+          ],
           "mins": 5
         }
       ]
@@ -256,7 +293,10 @@
           "answer": 0,
           "why": "Vault policies are path + capabilities (create, read, update, delete, list, sudo, deny). kv-v2 splits data vs metadata paths: reads need secret/data/..., listing versions needs secret/metadata/... (list on data/ doesn't enumerate keys). Least privilege means scoping to exactly the paths needed — never path \"*\" for an app.",
           "hint": "Which two path prefixes does kv-v2 split reads and key-listing across?",
-          "objectives": ["Policy syntax", "Capabilities"],
+          "objectives": [
+            "Policy syntax",
+            "Capabilities"
+          ],
           "mins": 6
         },
         {
@@ -274,7 +314,10 @@
           "answer": 0,
           "why": "In Vault policy evaluation, an explicit deny on a path overrides all allows — it's the carve-out mechanism. Order: exact-path deny beats everything, then most-specific-path match wins among allows. This lets you grant broadly and except narrowly, which is far more maintainable than enumerating every allowed path.",
           "hint": "When allow and deny both match a path, which wins?",
-          "objectives": ["deny", "Policy evaluation"],
+          "objectives": [
+            "deny",
+            "Policy evaluation"
+          ],
           "mins": 5
         },
         {
@@ -292,7 +335,10 @@
           "answer": 0,
           "why": "Policy paths support templating with identity metadata: {{identity.entity.name}}, {{identity.entity.metadata.team}}, etc. One policy then scopes each authenticated entity to its own subtree — evaluated per-request against the caller's identity. This is the standard pattern for self-service secret spaces.",
           "hint": "What does Vault know about the caller that a policy could interpolate?",
-          "objectives": ["Templating", "Identity-based policies"],
+          "objectives": [
+            "Templating",
+            "Identity-based policies"
+          ],
           "mins": 6
         },
         {
@@ -310,7 +356,10 @@
           "answer": 0,
           "why": "The 'default' policy (attached to every token unless explicitly excluded) allows a token to look itself up, renew itself, and use its cubbyhole. Replacing it with only app-specific policies breaks self-renewal — a classic outage cause. Rule: default + app policies, never app policies alone.",
           "hint": "Which policy lets a token manage itself?",
-          "objectives": ["default policy", "Token self-management"],
+          "objectives": [
+            "default policy",
+            "Token self-management"
+          ],
           "mins": 5
         },
         {
@@ -328,7 +377,10 @@
           "answer": 0,
           "why": "'vault token capabilities' evaluates the token's attached policies against a path and prints the resulting capability set — the ground truth of 'can this token do X here'. 'vault policy read' just shows the HCL source. Test with a real token carrying the CI role's policies before wiring CI to it.",
           "hint": "Which command answers 'what CAN this token do at this path'?",
-          "objectives": ["Testing policies", "token capabilities"],
+          "objectives": [
+            "Testing policies",
+            "token capabilities"
+          ],
           "mins": 5
         },
         {
@@ -346,7 +398,10 @@
           "answer": 0,
           "why": "Some Vault API endpoints are marked sudo-protected (they're cluster-sensitive: mounts, auth tuning, audit devices). Accessing them needs the sudo capability in addition to the verb capability. It's not OS sudo — it's Vault's own 'this is extra sensitive' marker. Grant it sparingly, to admin roles only.",
           "hint": "What marks a Vault API endpoint as extra-sensitive beyond normal RBAC?",
-          "objectives": ["sudo capability", "Privileged endpoints"],
+          "objectives": [
+            "sudo capability",
+            "Privileged endpoints"
+          ],
           "mins": 5
         }
       ]
@@ -370,7 +425,10 @@
           "answer": 0,
           "why": "Dynamic secrets carry a lease: TTL (initial lifetime) + max_ttl (renewal ceiling). Clients should renew proactively (at ~70% of TTL) and handle re-read when max_ttl hits. Vault Agent automates this (auto-auth, caching, template rendering to files with SIGHUP/restart hooks). Apps that read-once break on every TTL — the #1 dynamic-secrets integration bug.",
           "hint": "What happens to the database user when the lease expires unrenewed?",
-          "objectives": ["Leases", "Renewal"],
+          "objectives": [
+            "Leases",
+            "Renewal"
+          ],
           "mins": 6
         },
         {
@@ -388,7 +446,10 @@
           "answer": 0,
           "why": "'vault lease revoke' executes the engine's revocation logic immediately (e.g., DROP USER in the DB) and invalidates the lease — no waiting for TTL. 'vault lease revoke -prefix <path>' revokes families of leases. Revoking the token also revokes its leases (token → lease hierarchy), which is the bulk path during incidents.",
           "hint": "What does the secrets engine know how to do when told a lease is dead?",
-          "objectives": ["Revocation", "Incident response"],
+          "objectives": [
+            "Revocation",
+            "Incident response"
+          ],
           "mins": 5
         },
         {
@@ -406,7 +467,10 @@
           "answer": 0,
           "why": "Response wrapping stores the real response in a cubbyhole behind a short-lived, single-use token. The orchestrator passes only the wrapper; the target unwraps (vault unwrap) to retrieve the secret. If intercepted, the interceptor gets one shot before the legitimate unwrap fails loudly (already-unwrapped) — and TTLs bound the window. It's the standard secure-introduction pattern.",
           "hint": "What if the delivery token could only be used once, and expired in minutes?",
-          "objectives": ["Response wrapping", "Secure introduction"],
+          "objectives": [
+            "Response wrapping",
+            "Secure introduction"
+          ],
           "mins": 6
         },
         {
@@ -424,7 +488,10 @@
           "answer": 0,
           "why": "Vault Agent centralizes the hard parts: auto-auth (AppRole/K8s/JWT), caching (reduces Vault load, survives brief outages), automatic renewal, and template stanza rendering secrets to files (with exec/restart hooks on change). Apps read files — no Vault client code at all. The K8s injector is Agent-as-sidecar for Pods.",
           "hint": "What if apps never talked to Vault directly at all?",
-          "objectives": ["Vault Agent", "Templates"],
+          "objectives": [
+            "Vault Agent",
+            "Templates"
+          ],
           "mins": 6
         },
         {
@@ -442,7 +509,10 @@
           "answer": 0,
           "why": "Database static roles manage a fixed username whose password Vault rotates automatically per rotation_period (and can rotate immediately on demand). Apps read the current password from the role's credentials endpoint. It bridges legacy static-credential apps into Vault-managed rotation — the pragmatic middle ground before full dynamic creds.",
           "hint": "Which role type keeps the username fixed but rotates the password for you?",
-          "objectives": ["Static roles", "Rotation"],
+          "objectives": [
+            "Static roles",
+            "Rotation"
+          ],
           "mins": 5
         },
         {
@@ -460,7 +530,10 @@
           "answer": 0,
           "why": "Tokens form a tree: children die with parents (revocation cascades) — useful for bounding session lifetimes. Orphan tokens break the link: they survive parent revocation, ideal for long-lived service identities. Trade-off: orphans need explicit lifecycle management (they won't die when the creator's token does). Choose per use case: sessions → hierarchical, service identities → orphan.",
           "hint": "What happens to children when a parent token is revoked?",
-          "objectives": ["Token hierarchy", "Orphan tokens"],
+          "objectives": [
+            "Token hierarchy",
+            "Orphan tokens"
+          ],
           "mins": 6
         }
       ]
@@ -484,7 +557,10 @@
           "answer": 0,
           "why": "Consul servers maintain the catalog via Raft consensus — quorum needs 2n+1 (3 tolerates 1 failure, 5 tolerates 2). Clients are lightweight agents on every node: they run health checks, gossip membership via Serf (fast failure detection), and forward requests to servers. Even numbers don't improve fault tolerance (4 tolerates 1, same as 3, with worse quorum math).",
           "hint": "How many failures can a 3-node Raft quorum survive?",
-          "objectives": ["Architecture", "Raft quorum"],
+          "objectives": [
+            "Architecture",
+            "Raft quorum"
+          ],
           "mins": 6
         },
         {
@@ -502,7 +578,10 @@
           "answer": 0,
           "why": "Consul serves DNS on port 8600 (service.consul domain: <service>.service.consul, with tag/datacenter variants) and a rich HTTP API (/v1/catalog, /v1/health). Both filter by health status — only passing instances are returned by default. DNS is the zero-code path; the API gives metadata, tags, and Connect info.",
           "hint": "What does payments.service.consul resolve to?",
-          "objectives": ["Service discovery", "DNS + API"],
+          "objectives": [
+            "Service discovery",
+            "DNS + API"
+          ],
           "mins": 5
         },
         {
@@ -520,7 +599,10 @@
           "answer": 0,
           "why": "Health checks (script/http/tcp/TTL/docker) should test the service itself cheaply — a deep check coupling to downstream deps causes cascading flaps. Tune interval vs timeout vs failures-before-critical; set deregister_critical_service_after to prune dead nodes. TTL checks let the app report its own health (heartbeat pattern). Flapping usually means the check is too strict or too deep.",
           "hint": "Should a health check fail because a downstream dependency is slow?",
-          "objectives": ["Health checks", "Flapping"],
+          "objectives": [
+            "Health checks",
+            "Flapping"
+          ],
           "mins": 6
         },
         {
@@ -538,7 +620,11 @@
           "answer": 0,
           "why": "Consul Connect is a service mesh: each service gets an Envoy sidecar; Consul's CA issues SPIFFE-compatible identities (spiffe://trust-domain/ns/default/dc/dc1/svc/payments); sidecars mutually authenticate and encrypt. Intentions (allow/deny by service identity) add L4/L7 authorization. The app is unaware — it dials localhost:proxy_port.",
           "hint": "What sits next to each service and handles the crypto for it?",
-          "objectives": ["Connect", "Service mesh", "mTLS"],
+          "objectives": [
+            "Connect",
+            "Service mesh",
+            "mTLS"
+          ],
           "mins": 6
         },
         {
@@ -556,7 +642,10 @@
           "answer": 0,
           "why": "Intentions are Connect's authorization layer: allow/deny rules between service identities (not IPs — identity survives rescheduling). Set the default intention to deny, then allow web→payments explicitly. They're enforced by the sidecars at L4 (and L7 with protocol config). This is zero-trust service segmentation without network topology changes.",
           "hint": "Are intentions based on IPs or on service identities?",
-          "objectives": ["Intentions", "Zero trust"],
+          "objectives": [
+            "Intentions",
+            "Zero trust"
+          ],
           "mins": 5
         },
         {
@@ -574,7 +663,10 @@
           "answer": 0,
           "why": "Consul KV is a simple, watched key-value store — ideal for dynamic config and coordination (with sessions for distributed locks/leader election). But values are stored unencrypted and replicated in Raft logs — it's not a secret manager. The HashiCorp pairing is deliberate: Consul for discovery/config, Vault for secrets (with Vault Agent templating from both).",
           "hint": "What does KV lack that a secret manager must have?",
-          "objectives": ["KV store", "Secrets warning"],
+          "objectives": [
+            "KV store",
+            "Secrets warning"
+          ],
           "mins": 5
         }
       ]
@@ -598,7 +690,10 @@
           "answer": 0,
           "why": "Vault seals when the master key leaves memory (restart, by request) — a security property: encrypted data is useless without it. Shamir's Secret Sharing splits the key: any threshold (3 of 5) reconstructs it. 'vault operator unseal' each shard until threshold. Auto-unseal (cloud KMS) removes the manual ceremony for production. Never store all shards together.",
           "hint": "How many shards does the threshold require — all, or a quorum?",
-          "objectives": ["Seal/unseal", "Shamir"],
+          "objectives": [
+            "Seal/unseal",
+            "Shamir"
+          ],
           "mins": 6
         },
         {
@@ -616,7 +711,10 @@
           "answer": 0,
           "why": "Integrated Raft storage is the recommended backend: Vault nodes replicate via Raft directly (3 or 5 nodes for quorum), snapshots via 'vault operator raft snapshot save/restore'. It removed the Consul-as-storage dependency (Consul is still great for service discovery alongside). Fewer components = fewer failure modes.",
           "hint": "Which backend lets Vault replicate without another system?",
-          "objectives": ["Raft storage", "HA"],
+          "objectives": [
+            "Raft storage",
+            "HA"
+          ],
           "mins": 5
         },
         {
@@ -634,7 +732,10 @@
           "answer": 0,
           "why": "Raft snapshots are the DR mechanism: scheduled 'snapshot save' (keep them encrypted/offsite — they contain everything), restore onto fresh nodes. Replication protects against node loss, not against logical disasters (bad policy change, deletion) — that's what backups are for. Test restores periodically; an untested backup is a hope.",
           "hint": "What protects against a bad change replicated to all nodes?",
-          "objectives": ["Backup", "Raft snapshots"],
+          "objectives": [
+            "Backup",
+            "Raft snapshots"
+          ],
           "mins": 5
         },
         {
@@ -652,7 +753,10 @@
           "answer": 0,
           "why": "Rolling upgrade: standby nodes first (they rejoin and catch up via Raft), then failover the active (step-down) and upgrade it. Snapshot before starting. Read the version's upgrade guide — some versions have storage or API changes needing extra steps. Never skip more than one minor version without checking the guide.",
           "hint": "Which node do you upgrade last, and why?",
-          "objectives": ["Upgrades", "Rolling upgrade"],
+          "objectives": [
+            "Upgrades",
+            "Rolling upgrade"
+          ],
           "mins": 5
         },
         {
@@ -670,7 +774,10 @@
           "answer": 0,
           "why": "Audit devices record authenticated requests and responses (sensitive fields HMAC'd, not plaintext) — the compliance trail for 'who accessed what'. At least one must be enabled (Vault errors otherwise in some configs); use multiple for redundancy. They don't backfill — enable before you need them. Ship them to immutable storage (SIEM).",
           "hint": "What records every Vault API call with the caller's identity?",
-          "objectives": ["Audit devices", "Compliance"],
+          "objectives": [
+            "Audit devices",
+            "Compliance"
+          ],
           "mins": 5
         },
         {
@@ -688,9 +795,217 @@
           "answer": 0,
           "why": "consul snapshot save captures the Raft state atomically (any server works — the request forwards to the leader). Automate with ACL'd tokens and offsite copies. Restore overwrites state — it's DR, not merge. Like Vault: replication ≠ backup; test the restore path before you need it.",
           "hint": "What captures Consul's Raft state atomically?",
-          "objectives": ["Consul backup", "Snapshots"],
+          "objectives": [
+            "Consul backup",
+            "Snapshots"
+          ],
           "mins": 4
         }
+      ]
+    }
+  ],
+  "lessons": [
+    {
+      "domain_id": "secrets-engines",
+      "title": "Secrets Engines — Core concepts",
+      "concepts": [
+        "KV engine: the database engine generates per-client dynamic credentials (CREATE ROLE with TTL), so there's no shared password to rotate in lockstep — each lease simply expires and the service fetches a fresh one.",
+        "kv-v2 versioning: this is why kv-v2 is the default choice for human-managed secrets, with check-and-set (CAS) for safe concurrent writes. Policies match the real API paths, so kv-v2 policies must use secret/data/...",
+        "Policy paths: vault's isolation primitives are mounts and policy paths. This is the single most common Vault policy bug.",
+        "Dynamic secrets: static roles can still rotate a stored password on a schedule, but dynamic creds remove the coordination problem entirely."
+      ],
+      "example": {
+        "lang": "text",
+        "code": "Worked example — kv engine\nSetup: The database engine generates per-client dynamic credentials (CREATE ROLE with TTL), so there's no shared password to rotate in lockstep — each lease…\nReasoning: Transit is encryption-as-a-service: the app never handles key material, only ciphertext.\nTakeaway: Vault's isolation primitives are mounts and policy paths.",
+        "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."
+      },
+      "pitfalls": [
+        "Common trap: transit encrypts the database volume itself.",
+        "Common trap: policies apply to mounts, not paths.",
+        "Common trap: rename the mount daily so nobody finds the other team's secrets.",
+        "Common trap: splitting the password across mounts improves rotation."
+      ],
+      "try_it": "Work through this in the Terminal tab →"
+    },
+    {
+      "domain_id": "auth-methods",
+      "title": "Auth Methods — Core concepts",
+      "concepts": [
+        "AppRole is designed for machines: role_id is non-secret identity, secret_id is the secret credential — delivered separately (ideally via different channels).",
+        "Machine auth: the initial root token is a bootstrap credential: log in, configure real auth (OIDC/LDAP), write least-privilege policies, then 'vault token revoke' the root token. Humans should auth via the company IdP: LDAP (bind + group mapping) or OIDC (SSO with group claims mapped to policies via groups/roles).",
+        "Kubernetes auth: the K8s auth method: Vault is configured with the cluster's API endpoint and CA; the Pod presents its service-account token (JWT); Vault verifies it with the K8s TokenReview API and checks it against role bindings (bound_service_account_names, bound_service_account_namespaces).",
+        "Service tokens are the persistent, renewable default for interactive/long-lived use.",
+        "Tokens: bound CIDRs, secret_id TTLs, and per-role policies scope it tightly. userpass is for humans; hardcoded tokens are the anti-pattern. Batch tokens are encrypted blobs (not stored server-side): cheap to create at massive scale, ideal for ephemeral high-volume use."
+      ],
+      "example": {
+        "lang": "text",
+        "code": "Worked example — approle\nSetup: The initial root token is a bootstrap credential: log in, configure real auth (OIDC/LDAP), write least-privilege policies, then 'vault token revoke'…\nReasoning: Humans should auth via the company IdP: LDAP (bind + group mapping) or OIDC (SSO with group claims mapped to policies via groups/roles).\nTakeaway: Token TTL is the initial lifetime; each renewal extends it but never beyond max_ttl (explicit or mount/system default).",
+        "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."
+      },
+      "pitfalls": [
+        "Common trap: longer TTLs on service tokens.",
+        "Common trap: mount the Vault root token as a Secret in every Pod.",
+        "Common trap: keep the shared root token but change it monthly.",
+        "Common trap: one shared service token for all requests."
+      ],
+      "try_it": "Work through this in the Terminal tab →"
+    },
+    {
+      "domain_id": "policies",
+      "title": "Policies — Core concepts",
+      "concepts": [
+        "Policy syntax: in Vault policy evaluation, an explicit deny on a path overrides all allows — it's the carve-out mechanism. The 'default' policy (attached to every token unless explicitly excluded) allows a token to look itself up, renew itself, and use its cubbyhole.",
+        "Capabilities: vault policies are path + capabilities (create, read, update, delete, list, sudo, deny). kv-v2 splits data vs metadata paths: reads need secret/data/..., listing versions needs secret/metadata/...",
+        "deny: order: exact-path deny beats everything, then most-specific-path match wins among allows.",
+        "Policy paths support templating with identity metadata: {{identity.entity.name}}, {{identity.entity.metadata.team}}, etc. 'vault policy read' just shows the HCL source.",
+        "Identity-based policies: rule: default + app policies, never app policies alone. Test with a real token carrying the CI role's policies before wiring CI to it."
+      ],
+      "example": {
+        "lang": "text",
+        "code": "Worked example — policy syntax\nSetup: Vault policies are path + capabilities (create, read, update, delete, list, sudo, deny). kv-v2 splits data vs metadata paths: reads need…\nReasoning: Rule: default + app policies, never app policies alone.\nTakeaway: 'vault token capabilities' evaluates the token's attached policies against a path and prints the resulting capability set — the ground truth of 'can…",
+        "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."
+      },
+      "pitfalls": [
+        "Common trap: token self-management requires the sudo capability.",
+        "Common trap: sudo capability means the policy was written by root.",
+        "Common trap: policies use allow/deny booleans, not capabilities.",
+        "Common trap: vault policy read shows effective permissions."
+      ],
+      "try_it": "Work through this in the Terminal tab →"
+    },
+    {
+      "domain_id": "dynamic-secrets",
+      "title": "Dynamic Secrets — Core concepts",
+      "concepts": [
+        "Leases: revoking the token also revokes its leases (token → lease hierarchy), which is the bulk path during incidents.",
+        "Renewal: vault Agent centralizes the hard parts: auto-auth (AppRole/K8s/JWT), caching (reduces Vault load, survives brief outages), automatic renewal, and template stanza rendering secrets to files (with exec/restart hooks on change).",
+        "Revocation: orphan tokens break the link: they survive parent revocation, ideal for long-lived service identities. 'vault lease revoke' executes the engine's revocation logic immediately (e.g., DROP USER in the DB) and invalidates the lease — no waiting for TTL.",
+        "Incident response: response wrapping stores the real response in a cubbyhole behind a short-lived, single-use token."
+      ],
+      "example": {
+        "lang": "text",
+        "code": "Worked example — leases\nSetup: Vault Agent centralizes the hard parts: auto-auth (AppRole/K8s/JWT), caching (reduces Vault load, survives brief outages), automatic renewal, and…\nReasoning: Dynamic secrets carry a lease: TTL (initial lifetime) + max_ttl (renewal ceiling).\nTakeaway: Revoking the token also revokes its leases (token → lease hierarchy), which is the bulk path during incidents.",
+        "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."
+      },
+      "pitfalls": [
+        "Common trap: token hierarchy only applies to root tokens.",
+        "Common trap: static secrets in env vars are simpler.",
+        "Common trap: wrapping encrypts the secret permanently.",
+        "Common trap: static passwords can't be rotated automatically."
+      ],
+      "try_it": "Work through this in the Terminal tab →"
+    },
+    {
+      "domain_id": "consul-service-mesh",
+      "title": "Consul Service Mesh — Core concepts",
+      "concepts": [
+        "Raft quorum: consul servers maintain the catalog via Raft consensus — quorum needs 2n+1 (3 tolerates 1 failure, 5 tolerates 2). But values are stored unencrypted and replicated in Raft logs — it's not a secret manager.",
+        "Service discovery: consul serves DNS on port 8600 (service.consul domain: <service>.service.consul, with tag/datacenter variants) and a rich HTTP API (/v1/catalog, /v1/health).",
+        "DNS is the zero-code path; the API gives metadata, tags, and Connect info.",
+        "Health checks (script/http/tcp/TTL/docker) should test the service itself cheaply — a deep check coupling to downstream deps causes cascading flaps. Clients are lightweight agents on every node: they run health checks, gossip membership via Serf (fast failure detection), and forward requests to servers.",
+        "Flapping usually means the check is too strict or too deep."
+      ],
+      "example": {
+        "lang": "text",
+        "code": "Worked example — architecture\nSetup: Consul serves DNS on port 8600 (service.consul domain: <service>.service.consul, with tag/datacenter variants) and a rich HTTP API (/v1/catalog…\nReasoning: Consul Connect is a service mesh: each service gets an Envoy sidecar; Consul's CA issues SPIFFE-compatible identities…\nTakeaway: Consul KV is a simple, watched key-value store — ideal for dynamic config and coordination (with sessions for distributed locks/leader election).",
+        "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."
+      },
+      "pitfalls": [
+        "Common trap: connect requires rewriting each service's HTTP client.",
+        "Common trap: health checks must test the database.",
+        "Common trap: use the KV store to distribute certificates manually.",
+        "Common trap: use an external DNS server."
+      ],
+      "try_it": "Work through this in the Terminal tab →"
+    },
+    {
+      "domain_id": "operations",
+      "title": "Operations — Core concepts",
+      "concepts": [
+        "Shamir's Secret Sharing splits the key: any threshold (3 of 5) reconstructs it.",
+        "Raft storage: integrated Raft storage is the recommended backend: Vault nodes replicate via Raft directly (3 or 5 nodes for quorum), snapshots via 'vault operator raft snapshot save/restore'. Rolling upgrade: standby nodes first (they rejoin and catch up via Raft), then failover the active (step-down) and upgrade it.",
+        "HA: audit devices record authenticated requests and responses (sensitive fields HMAC'd, not plaintext) — the compliance trail for 'who accessed what'. Raft snapshots are the DR mechanism: scheduled 'snapshot save' (keep them encrypted/offsite — they contain everything), restore onto fresh nodes.",
+        "Backup: test restores periodically; an untested backup is a hope. Like Vault: replication ≠ backup; test the restore path before you need it.",
+        "Raft snapshots: consul snapshot save captures the Raft state atomically (any server works — the request forwards to the leader)."
+      ],
+      "example": {
+        "lang": "text",
+        "code": "Worked example — seal/unseal\nSetup: Shamir's Secret Sharing splits the key: any threshold (3 of 5) reconstructs it.\nReasoning: Integrated Raft storage is the recommended backend: Vault nodes replicate via Raft directly (3 or 5 nodes for quorum), snapshots via 'vault operator…\nTakeaway: Rolling upgrade: standby nodes first (they rejoin and catch up via Raft), then failover the active (step-down) and upgrade it.",
+        "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."
+      },
+      "pitfalls": [
+        "Common trap: audit logs contain plaintext secrets.",
+        "Common trap: copy the data directory while Vault runs."
+      ],
+      "try_it": "Work through this in the Terminal tab →"
+    }
+  ],
+  "sections": [
+    {
+      "id": "foundations",
+      "title": "Foundations",
+      "kind": "foundation",
+      "lectures": [
+        "f-cli-basics-0",
+        "f-cli-basics-1",
+        "f-cloud-concepts-0",
+        "f-cloud-concepts-1",
+        "f-cloud-concepts-2"
+      ],
+      "lab_ids": [],
+      "drill_domain_ids": []
+    },
+    {
+      "id": "core",
+      "title": "Core",
+      "kind": "core",
+      "lectures": [
+        "c-secrets-engines",
+        "c-auth-methods",
+        "c-policies"
+      ],
+      "lab_ids": [
+        "vault-consul-lab-1",
+        "vault-consul-lab-2"
+      ],
+      "drill_domain_ids": [
+        "secrets-engines",
+        "auth-methods",
+        "policies"
+      ]
+    },
+    {
+      "id": "advanced",
+      "title": "Advanced",
+      "kind": "advanced",
+      "lectures": [
+        "c-dynamic-secrets",
+        "c-consul-service-mesh",
+        "c-operations"
+      ],
+      "lab_ids": [
+        "vault-consul-lab-3",
+        "vault-consul-lab-4"
+      ],
+      "drill_domain_ids": [
+        "dynamic-secrets",
+        "consul-service-mesh",
+        "operations"
+      ]
+    },
+    {
+      "id": "exam-prep",
+      "title": "Exam Prep",
+      "kind": "exam-prep",
+      "lectures": [],
+      "lab_ids": [],
+      "drill_domain_ids": [
+        "secrets-engines",
+        "auth-methods",
+        "policies",
+        "dynamic-secrets",
+        "consul-service-mesh",
+        "operations"
       ]
     }
   ],
@@ -698,50 +1013,106 @@
     {
       "prompt": "Tell me about a secrets-management problem you solved (sprawl, rotation, incident).",
       "framework": "STAR",
-      "points": ["The problem and its risk", "Your solution", "How you verified it"],
-      "pitfalls": ["Vague 'we used Vault'", "No risk framing"]
+      "points": [
+        "The problem and its risk",
+        "Your solution",
+        "How you verified it"
+      ],
+      "pitfalls": [
+        "Vague 'we used Vault'",
+        "No risk framing"
+      ]
     },
     {
       "prompt": "Describe a time you responded to a compromised credential or security incident.",
       "framework": "STAR",
-      "points": ["How you detected/scoped it", "Containment and rotation steps", "Prevention added"],
-      "pitfalls": ["Panic without method", "No prevention"]
+      "points": [
+        "How you detected/scoped it",
+        "Containment and rotation steps",
+        "Prevention added"
+      ],
+      "pitfalls": [
+        "Panic without method",
+        "No prevention"
+      ]
     },
     {
       "prompt": "Tell me about introducing Vault or Consul (or similar) to a team.",
       "framework": "STAR",
-      "points": ["The before-state", "How you drove adoption", "Current usage"],
-      "pitfalls": ["Mandate without enablement", "Tool nobody uses"]
+      "points": [
+        "The before-state",
+        "How you drove adoption",
+        "Current usage"
+      ],
+      "pitfalls": [
+        "Mandate without enablement",
+        "Tool nobody uses"
+      ]
     },
     {
       "prompt": "Describe a disagreement about security vs convenience (e.g., TTL lengths, access scope).",
       "framework": "STAR",
-      "points": ["Both sides", "How you found the balance", "The outcome"],
-      "pitfalls": ["Security absolutism", "Convenience always wins"]
+      "points": [
+        "Both sides",
+        "How you found the balance",
+        "The outcome"
+      ],
+      "pitfalls": [
+        "Security absolutism",
+        "Convenience always wins"
+      ]
     },
     {
       "prompt": "Tell me about automating certificate or credential rotation.",
       "framework": "STAR",
-      "points": ["The manual pain", "Your automation", "Incidents avoided"],
-      "pitfalls": ["Manual rotation forever", "No verification"]
+      "points": [
+        "The manual pain",
+        "Your automation",
+        "Incidents avoided"
+      ],
+      "pitfalls": [
+        "Manual rotation forever",
+        "No verification"
+      ]
     },
     {
       "prompt": "Describe operating a critical shared service (upgrades, backups, on-call).",
       "framework": "STAR",
-      "points": ["Your operational practices", "A specific challenge", "How you made it boring"],
-      "pitfalls": ["No operational story", "Heroics as strategy"]
+      "points": [
+        "Your operational practices",
+        "A specific challenge",
+        "How you made it boring"
+      ],
+      "pitfalls": [
+        "No operational story",
+        "Heroics as strategy"
+      ]
     },
     {
       "prompt": "Tell me about a time you had to explain zero-trust or service-mesh concepts to skeptics.",
       "framework": "STAR",
-      "points": ["The skepticism", "How you made it concrete", "Whether minds changed"],
-      "pitfalls": ["Jargon barrage", "Dismissing concerns"]
+      "points": [
+        "The skepticism",
+        "How you made it concrete",
+        "Whether minds changed"
+      ],
+      "pitfalls": [
+        "Jargon barrage",
+        "Dismissing concerns"
+      ]
     },
     {
       "prompt": "Where is secrets/service-mesh technology heading, and how are you keeping up?",
       "framework": "Present-Past-Future",
-      "points": ["Informed view", "Current learning", "Application"],
-      "pitfalls": ["Buzzwords only", "No action"]
+      "points": [
+        "Informed view",
+        "Current learning",
+        "Application"
+      ],
+      "pitfalls": [
+        "Buzzwords only",
+        "No action"
+      ]
     }
   ],
   "chat": {
@@ -750,39 +1121,1046 @@
       {
         "id": "secrets-engines",
         "name": "Secrets Engines",
-        "key_points": ["kv-v2 versioning and undelete", "data/ vs metadata/ paths", "database dynamic creds", "PKI roles", "transit encrypt/decrypt", "mount isolation"],
-        "followups": ["Which engine fits this need?", "How do you recover?"]
+        "key_points": [
+          "kv-v2 versioning and undelete",
+          "data/ vs metadata/ paths",
+          "database dynamic creds",
+          "PKI roles",
+          "transit encrypt/decrypt",
+          "mount isolation"
+        ],
+        "followups": [
+          "Which engine fits this need?",
+          "How do you recover?"
+        ]
       },
       {
         "id": "auth-methods",
         "name": "Auth Methods",
-        "key_points": ["AppRole role_id/secret_id", "Kubernetes auth JWT", "batch vs service tokens", "LDAP/OIDC for humans", "TTL/max_ttl", "root token hygiene"],
-        "followups": ["Human or machine — which method?", "What bounds a leak?"]
+        "key_points": [
+          "AppRole role_id/secret_id",
+          "Kubernetes auth JWT",
+          "batch vs service tokens",
+          "LDAP/OIDC for humans",
+          "TTL/max_ttl",
+          "root token hygiene"
+        ],
+        "followups": [
+          "Human or machine — which method?",
+          "What bounds a leak?"
+        ]
       },
       {
         "id": "policies",
         "name": "Policies",
-        "key_points": ["path + capabilities", "deny precedence", "identity templating", "default policy", "token capabilities", "sudo capability"],
-        "followups": ["Write the policy.", "What can this token do here?"]
+        "key_points": [
+          "path + capabilities",
+          "deny precedence",
+          "identity templating",
+          "default policy",
+          "token capabilities",
+          "sudo capability"
+        ],
+        "followups": [
+          "Write the policy.",
+          "What can this token do here?"
+        ]
       },
       {
         "id": "dynamic-secrets",
         "name": "Dynamic Secrets",
-        "key_points": ["lease TTL/max_ttl", "lease revoke", "response wrapping", "Vault Agent", "static roles", "orphan tokens"],
-        "followups": ["What happens at TTL expiry?", "How do you deliver it safely?"]
+        "key_points": [
+          "lease TTL/max_ttl",
+          "lease revoke",
+          "response wrapping",
+          "Vault Agent",
+          "static roles",
+          "orphan tokens"
+        ],
+        "followups": [
+          "What happens at TTL expiry?",
+          "How do you deliver it safely?"
+        ]
       },
       {
         "id": "consul-service-mesh",
         "name": "Consul Service Mesh",
-        "key_points": ["Raft quorum 3/5", "DNS and HTTP discovery", "health check tuning", "Connect sidecars/mTLS", "intentions", "KV not for secrets"],
-        "followups": ["How many servers and why?", "Identity or IP?"]
+        "key_points": [
+          "Raft quorum 3/5",
+          "DNS and HTTP discovery",
+          "health check tuning",
+          "Connect sidecars/mTLS",
+          "intentions",
+          "KV not for secrets"
+        ],
+        "followups": [
+          "How many servers and why?",
+          "Identity or IP?"
+        ]
       },
       {
         "id": "operations",
         "name": "Operations",
-        "key_points": ["seal/unseal Shamir", "Raft integrated storage", "snapshot save/restore", "rolling upgrades", "audit devices", "consul snapshots"],
-        "followups": ["Walk me through the recovery.", "What protects against logical disasters?"]
+        "key_points": [
+          "seal/unseal Shamir",
+          "Raft integrated storage",
+          "snapshot save/restore",
+          "rolling upgrades",
+          "audit devices",
+          "consul snapshots"
+        ],
+        "followups": [
+          "Walk me through the recovery.",
+          "What protects against logical disasters?"
+        ]
       }
+    ]
+  },
+  "labs": [
+    {
+      "id": "vault-consul-lab-1",
+      "title": "KV engine — Vault drill",
+      "objective": "Run a short sequence of Vault CLI commands that demonstrates KV engine, then verify each result against the expected output.",
+      "steps": [
+        "This lab reworks the Secrets Engines practice scenario \"The un-deleted secret\" into commands you run yourself — same concept, hands-on instead of multiple choice.",
+        "Open the Terminal tab for this bootcamp — every command below runs there.",
+        "Type exactly: vault status — the status output reports the Sealed state",
+        "Type exactly: vault kv put secret/lab owner=interstitium — the write reports Success",
+        "Type exactly: vault kv get secret/lab — the read returns the owner field",
+        "In your own words, say what each command's output taught you about KV engine."
+      ],
+      "checks": [
+        {
+          "command_pattern": "vault status",
+          "expect_contains": "Sealed",
+          "hint": "In the Terminal tab, run `vault status`. If the check fails, confirm you typed it exactly and that the output contains \"Sealed\"."
+        },
+        {
+          "command_pattern": "vault kv put",
+          "expect_contains": "Success",
+          "hint": "In the Terminal tab, run `vault kv put secret/lab owner=interstitium`. If the check fails, confirm you typed it exactly and that the output contains \"Success\"."
+        },
+        {
+          "command_pattern": "vault kv get",
+          "expect_contains": "owner",
+          "hint": "In the Terminal tab, run `vault kv get secret/lab`. If the check fails, confirm you typed it exactly and that the output contains \"owner\"."
+        }
+      ],
+      "success_message": "Lab complete — KV engine practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."
+    },
+    {
+      "id": "vault-consul-lab-2",
+      "title": "AppRole — Vault drill",
+      "objective": "Use the Vault CLI to explore appRole hands-on: type each command, read what comes back, and connect the output to the concept.",
+      "steps": [
+        "Inspired by the Auth Methods scenario \"CI needs Vault access\": take its core idea and prove it live in the terminal instead of answering on paper.",
+        "Open the Terminal tab for this bootcamp — every command below runs there.",
+        "Type exactly: vault kv get secret/lab — the read returns the owner field",
+        "Type exactly: vault kv list secret/ — the listing includes the lab secret",
+        "Type exactly: vault status — the status output reports the Sealed state",
+        "In your own words, say what each command's output taught you about appRole."
+      ],
+      "checks": [
+        {
+          "command_pattern": "vault kv get",
+          "expect_contains": "owner",
+          "hint": "In the Terminal tab, run `vault kv get secret/lab`. If the check fails, confirm you typed it exactly and that the output contains \"owner\"."
+        },
+        {
+          "command_pattern": "vault kv list",
+          "expect_contains": "lab",
+          "hint": "In the Terminal tab, run `vault kv list secret/`. If the check fails, confirm you typed it exactly and that the output contains \"lab\"."
+        },
+        {
+          "command_pattern": "vault status",
+          "expect_contains": "Sealed",
+          "hint": "In the Terminal tab, run `vault status`. If the check fails, confirm you typed it exactly and that the output contains \"Sealed\"."
+        }
+      ],
+      "success_message": "Lab complete — appRole practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."
+    },
+    {
+      "id": "vault-consul-lab-3",
+      "title": "Policy syntax — Vault drill",
+      "objective": "Prove you can apply policy syntax in the Vault CLI — follow the steps, watch the output, and confirm every check passes.",
+      "steps": [
+        "The Policies scenario \"Anatomy of a policy\" tests this concept as a question. This lab makes you demonstrate it with real commands.",
+        "Open the Terminal tab for this bootcamp — every command below runs there.",
+        "Type exactly: vault status — the status output reports the Sealed state",
+        "Type exactly: vault kv put secret/lab owner=interstitium — the write reports Success",
+        "Type exactly: vault kv get secret/lab — the read returns the owner field",
+        "In your own words, say what each command's output taught you about policy syntax."
+      ],
+      "checks": [
+        {
+          "command_pattern": "vault status",
+          "expect_contains": "Sealed",
+          "hint": "In the Terminal tab, run `vault status`. If the check fails, confirm you typed it exactly and that the output contains \"Sealed\"."
+        },
+        {
+          "command_pattern": "vault kv put",
+          "expect_contains": "Success",
+          "hint": "In the Terminal tab, run `vault kv put secret/lab owner=interstitium`. If the check fails, confirm you typed it exactly and that the output contains \"Success\"."
+        },
+        {
+          "command_pattern": "vault kv get",
+          "expect_contains": "owner",
+          "hint": "In the Terminal tab, run `vault kv get secret/lab`. If the check fails, confirm you typed it exactly and that the output contains \"owner\"."
+        }
+      ],
+      "success_message": "Lab complete — policy syntax practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."
+    },
+    {
+      "id": "vault-consul-lab-4",
+      "title": "Leases — Vault drill",
+      "objective": "Run a short sequence of Vault CLI commands that demonstrates leases, then verify each result against the expected output.",
+      "steps": [
+        "This lab reworks the Dynamic Secrets practice scenario \"The credential that expires\" into commands you run yourself — same concept, hands-on instead of multiple choice.",
+        "Open the Terminal tab for this bootcamp — every command below runs there.",
+        "Type exactly: vault kv get secret/lab — the read returns the owner field",
+        "Type exactly: vault kv list secret/ — the listing includes the lab secret",
+        "Type exactly: vault status — the status output reports the Sealed state",
+        "In your own words, say what each command's output taught you about leases."
+      ],
+      "checks": [
+        {
+          "command_pattern": "vault kv get",
+          "expect_contains": "owner",
+          "hint": "In the Terminal tab, run `vault kv get secret/lab`. If the check fails, confirm you typed it exactly and that the output contains \"owner\"."
+        },
+        {
+          "command_pattern": "vault kv list",
+          "expect_contains": "lab",
+          "hint": "In the Terminal tab, run `vault kv list secret/`. If the check fails, confirm you typed it exactly and that the output contains \"lab\"."
+        },
+        {
+          "command_pattern": "vault status",
+          "expect_contains": "Sealed",
+          "hint": "In the Terminal tab, run `vault status`. If the check fails, confirm you typed it exactly and that the output contains \"Sealed\"."
+        }
+      ],
+      "success_message": "Lab complete — leases practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."
+    },
+    {
+      "checks": [
+        {
+          "command_pattern": "^vault\\s+status",
+          "expect_contains": "Sealed",
+          "hint": "Type: vault status"
+        },
+        {
+          "command_pattern": "^vault\\s+version",
+          "expect_contains": "v1.18.2",
+          "hint": "Type: vault version"
+        }
+      ],
+      "difficulty": 1,
+      "id": "vault-consul-lab-5",
+      "objective": "Check Vault seal status and version before doing any secrets work.",
+      "steps": [
+        "Open the terminal view for this bootcamp",
+        "Run: vault status",
+        "Confirm Sealed is false and the cluster is initialized",
+        "Run: vault version",
+        "Note the server version"
+      ],
+      "success_message": "Vault is unsealed and healthy — safe to proceed.",
+      "title": "Vault health check"
+    },
+    {
+      "checks": [
+        {
+          "command_pattern": "^vault\\s+login",
+          "expect_contains": "authenticated",
+          "hint": "Type: vault login -method=userpass username=candidate"
+        },
+        {
+          "command_pattern": "^vault\\s+kv\\s+list\\s+secret",
+          "expect_contains": "creds",
+          "hint": "Type: vault kv list secret/"
+        },
+        {
+          "command_pattern": "^vault\\s+kv\\s+get\\s+secret/creds/db",
+          "expect_contains": "s3cret-simulated",
+          "hint": "Type: vault kv get secret/creds/db"
+        }
+      ],
+      "difficulty": 1,
+      "id": "vault-consul-lab-6",
+      "objective": "Authenticate and read an existing KV secret.",
+      "steps": [
+        "Open the terminal view for this bootcamp",
+        "Run: vault login -method=userpass username=candidate",
+        "Run: vault kv list secret/",
+        "Run: vault kv get secret/creds/db",
+        "Read the username and password fields from the Data table"
+      ],
+      "success_message": "Authenticated and secret retrieved from the KV engine.",
+      "title": "Login and read a KV secret"
+    },
+    {
+      "checks": [
+        {
+          "command_pattern": "^vault\\s+kv\\s+put\\s+secret/demo",
+          "expect_contains": "Data written to",
+          "hint": "Type: vault kv put secret/demo key=value"
+        },
+        {
+          "command_pattern": "^vault\\s+kv\\s+get\\s+secret/demo",
+          "expect_contains": "value",
+          "hint": "Type: vault kv get secret/demo"
+        },
+        {
+          "command_pattern": "^vault\\s+kv\\s+delete\\s+secret/demo",
+          "expect_contains": "Data deleted",
+          "hint": "Type: vault kv delete secret/demo"
+        }
+      ],
+      "difficulty": 2,
+      "id": "vault-consul-lab-7",
+      "objective": "Write, read back, and delete a KV secret to learn the full secret lifecycle.",
+      "steps": [
+        "Open the terminal view for this bootcamp",
+        "Run: vault kv put secret/demo key=value",
+        "Run: vault kv get secret/demo and confirm the value round-trips",
+        "Run: vault kv delete secret/demo",
+        "Run: vault kv get secret/demo again and confirm it reports no value"
+      ],
+      "success_message": "Secret lifecycle complete — write, read, delete.",
+      "title": "KV write-read-delete lifecycle"
+    },
+    {
+      "checks": [
+        {
+          "command_pattern": "^vault\\s+token\\s+create",
+          "expect_contains": "s.",
+          "hint": "Type: vault token create"
+        },
+        {
+          "command_pattern": "^vault\\s+token\\s+lookup",
+          "expect_contains": "768h",
+          "hint": "Type: vault token lookup"
+        },
+        {
+          "command_pattern": "^vault\\s+policy\\s+list",
+          "expect_contains": "ilb-admin",
+          "hint": "Type: vault policy list"
+        }
+      ],
+      "difficulty": 3,
+      "id": "vault-consul-lab-8",
+      "objective": "Issue a service token, inspect its properties, and enumerate the policies on the server.",
+      "steps": [
+        "Open the terminal view for this bootcamp",
+        "Run: vault token create and note the token prefix",
+        "Run: vault token lookup and read the TTL and policies",
+        "Run: vault policy list",
+        "Run: vault auth list and note the enabled auth methods"
+      ],
+      "success_message": "Token issued, inspected, and policies enumerated.",
+      "title": "Tokens and policies deep dive"
+    }
+  ],
+  "foundations": [
+    {
+      "track": "cli-basics",
+      "why_needed": "Vault's CLI is the primary interface. Terminal comfort comes before secrets engines."
+    },
+    {
+      "track": "cloud-concepts",
+      "why_needed": "Service networking assumes the cloud service model: compute, network, and managed services."
+    }
+  ],
+  "math": [],
+  "simulations": [
+    {
+      "brief": "Monday morning: applications start failing with 403s from Vault, and the on-call sees 'permission denied' in the audit log. The secrets themselves are intact. Work the diagnostic steps.",
+      "debrief": "403s with intact secrets point at the authorization layer: expired tokens, revoked leases, or policy changes — not missing data. Check token validity before touching secrets or policies.",
+      "difficulty": 2,
+      "domain_id": "operations",
+      "id": "vc-sim-denied",
+      "kind": "troubleshoot",
+      "points": 15,
+      "steps": [
+        {
+          "correct": 1,
+          "evidence": [
+            [
+              "audit.log",
+              "[2026-10-04 09:02:11] client app-svc-3: permission denied on secret/data/payments/api\n[2026-10-04 09:02:12] client app-svc-3: permission denied on secret/data/payments/api"
+            ],
+            [
+              "vault token lookup",
+              "policies    [default]\nttl         12s\n(simulated)"
+            ]
+          ],
+          "explain": "A token about to expire (12s TTL) with only the default policy explains permission denied on a path the policy never allowed. Renew or re-issue with the right policy; the secrets are fine.",
+          "options": [
+            "The KV engine is sealed — unseal Vault",
+            "The service token is nearly expired and carries only the default policy",
+            "The secrets were deleted over the weekend",
+            "The Vault cluster lost quorum"
+          ],
+          "symptom": "Applications get 403 permission denied reading secrets that still exist."
+        },
+        {
+          "correct": 0,
+          "evidence": [
+            [
+              "policy.hcl (deployed Friday)",
+              "path \"secret/data/payments/*\" {\n  capabilities = [\"read\", \"list\"]\n}"
+            ]
+          ],
+          "explain": "Tokens outlive the intent they were issued with. Re-issuing the token with the payments policy restores access; deleting the policy would break every other client.",
+          "options": [
+            "Re-issue the service token with the payments policy attached",
+            "Delete the payments policy and recreate it",
+            "Restart the Vault servers",
+            "Rotate the database password"
+          ],
+          "symptom": "Token renewed, still 403. Friday's change window touched policies."
+        },
+        {
+          "correct": 0,
+          "evidence": [
+            [
+              "runbook.txt",
+              "After any token re-issue: update the orchestrator secret store so the new token is distributed; never paste tokens into chat."
+            ]
+          ],
+          "explain": "Token hygiene: distribute through the orchestrator's secret store, scope TTLs tightly, and never let tokens travel through chat or tickets.",
+          "options": [
+            "Push the new token through the orchestrator's secret store and verify the app recovers",
+            "Email the token to the team for speed",
+            "Commit the token to the repo for visibility",
+            "Disable auth and run open until the incident is over"
+          ],
+          "symptom": "New token issued. How do you distribute it safely?"
+        }
+      ],
+      "title": "403s across the fleet"
+    },
+    {
+      "brief": "A new Vault operator keeps writing secrets before enabling the engine and reading before authenticating. Put the KV workflow in the right order.",
+      "debrief": "Authenticate first, confirm the engine is mounted, then write, read back to verify, and only then hand the path to consumers. Order matters because each step depends on the last.",
+      "difficulty": 1,
+      "domain_id": "secrets-engines",
+      "id": "vc-sim-kv-order",
+      "kind": "ordering",
+      "points": 10,
+      "steps": {
+        "context": "Drag the steps into the order a correct KV secret workflow follows.",
+        "correct_order": [
+          2,
+          0,
+          3,
+          1
+        ],
+        "items": [
+          "Write the secret with vault kv put",
+          "Read it back with vault kv get to verify",
+          "Authenticate with vault login",
+          "Confirm the kv engine is mounted with vault secrets list"
+        ]
+      },
+      "title": "Order the KV workflow"
+    },
+    {
+      "brief": "A submitted Vault policy for the billing service fails review. Click the lines that are wrong (2 issues).",
+      "debrief": "Policies are code: exact paths and exact capabilities. 'sudo' is effectively root, and write on a secrets path is a privilege the billing service never needs.",
+      "difficulty": 2,
+      "domain_id": "policies",
+      "id": "vc-sim-policy-review",
+      "kind": "config-check",
+      "points": 12,
+      "steps": {
+        "config": "# billing service policy\npath \"secret/data/billing/*\" {\n  capabilities = [\"read\", \"list\"]\n}\n\npath \"secret/data/billing/*\" {\n  capabilities = [\"sudo\"]\n}\n\npath \"secret/metadata/billing/*\" {\n  capabilities = [\"list\"]\n}",
+        "find": 2,
+        "issues": [
+          {
+            "description": "Duplicate path block grants sudo — equivalent to root on this path; the read/list block above already covers the need",
+            "fix": "Remove the entire sudo block",
+            "line": 6
+          },
+          {
+            "description": "The billing service does not need to modify secret metadata; list on metadata is unnecessary privilege",
+            "fix": "Remove the metadata block or restrict to the exact capability required",
+            "line": 10
+          }
+        ]
+      },
+      "title": "Spot the policy mistakes"
+    },
+    {
+      "brief": "The database password for the payments app was pasted into a public chat channel. You are the Vault operator. Decide the response.",
+      "debrief": "Leaked static credentials must be rotated and revoked, not just deleted from chat. This is exactly the failure dynamic secrets eliminate: short-lived, auto-revoking credentials.",
+      "difficulty": 3,
+      "domain_id": "dynamic-secrets",
+      "id": "vc-sim-leak-branch",
+      "kind": "branching",
+      "points": 15,
+      "steps": [
+        {
+          "choices": [
+            {
+              "feedback": "Correct — revocation plus rotation kills the leaked credential's value.",
+              "label": "Revoke the credential in Vault and rotate the database password",
+              "next": "s2",
+              "points": 2
+            },
+            {
+              "feedback": "Deleting the message does not un-leak the credential; it is already copied.",
+              "label": "Delete the chat message and hope nobody copied it",
+              "next": "END",
+              "outcome": "bad",
+              "points": 0
+            },
+            {
+              "feedback": "The credential is already exposed; waiting extends the window.",
+              "label": "Wait to see if anyone misuses it first",
+              "next": "END",
+              "outcome": "bad",
+              "points": 0
+            }
+          ],
+          "id": "s1",
+          "text": "The password is exposed. What is the first operational move?"
+        },
+        {
+          "choices": [
+            {
+              "feedback": "Partially right, but without lease hygiene the next leak will hurt the same way.",
+              "label": "Rotate once and keep using long-lived static passwords",
+              "next": "END",
+              "outcome": "bad",
+              "points": 1
+            },
+            {
+              "feedback": "Correct — short TTLs plus automated rotation shrink every future blast radius.",
+              "label": "Move the app to dynamic database credentials with short TTLs and automated rotation",
+              "next": "END",
+              "outcome": "good",
+              "points": 2
+            }
+          ],
+          "id": "s2",
+          "text": "Credential rotated. How do you stop this class of incident from recurring?"
+        }
+      ],
+      "title": "Leaked credential response"
+    }
+  ],
+  "consoleSims": [
+    {
+      "brief": "Author a least-privilege KV policy for the payments team using the policy editor form.",
+      "console": "generic-web",
+      "debrief": "Least privilege in Vault means naming exact paths and exact capabilities. Broad wildcards and root tokens are how breaches become catastrophes.",
+      "difficulty": 2,
+      "domain_id": "policies",
+      "id": "vc-console-policy-1",
+      "tasks": [
+        {
+          "hint": "Name the policy payments-read.",
+          "id": "t1",
+          "instruction": "Set the policy name to payments-read.",
+          "validate": {
+            "action": "set-field",
+            "params": {
+              "field": "policy-name",
+              "value": "payments-read"
+            }
+          }
+        },
+        {
+          "hint": "The path should be secret/data/payments/* (KV v2 data path).",
+          "id": "t2",
+          "instruction": "Set the allowed path to secret/data/payments/*.",
+          "validate": {
+            "action": "set-field",
+            "params": {
+              "field": "policy-path",
+              "value": "secret/data/payments/*"
+            }
+          }
+        },
+        {
+          "hint": "Capabilities are read and list for a read-only policy.",
+          "id": "t3",
+          "instruction": "Set capabilities to read,list.",
+          "validate": {
+            "action": "set-field",
+            "params": {
+              "field": "policy-capabilities",
+              "value": "read,list"
+            }
+          }
+        },
+        {
+          "hint": "Click the save-policy button.",
+          "id": "t4",
+          "instruction": "Save the policy.",
+          "validate": {
+            "action": "click",
+            "params": {
+              "target": "save-policy"
+            }
+          }
+        }
+      ],
+      "title": "Write a least-privilege policy"
+    },
+    {
+      "brief": "Enable the userpass auth method and create a login for the on-call candidate account.",
+      "console": "generic-web",
+      "debrief": "Auth methods answer 'who are you'; policies answer 'what can you do'. Enabling userpass at a dedicated mount keeps human logins separate from machine auth.",
+      "difficulty": 2,
+      "domain_id": "auth-methods",
+      "id": "vc-console-auth-1",
+      "tasks": [
+        {
+          "hint": "Click enable on the userpass auth method.",
+          "id": "t1",
+          "instruction": "Enable the userpass auth method.",
+          "validate": {
+            "action": "click",
+            "params": {
+              "target": "enable-userpass"
+            }
+          }
+        },
+        {
+          "hint": "Set the mount path to userpass.",
+          "id": "t2",
+          "instruction": "Set the auth mount path to userpass.",
+          "validate": {
+            "action": "set-field",
+            "params": {
+              "field": "auth-mount-path",
+              "value": "userpass"
+            }
+          }
+        },
+        {
+          "hint": "Create a user named candidate.",
+          "id": "t3",
+          "instruction": "Create the user 'candidate' on the userpass mount.",
+          "validate": {
+            "action": "create",
+            "params": {
+              "name": "candidate",
+              "type": "user"
+            }
+          }
+        }
+      ],
+      "title": "Enable userpass auth"
+    }
+  ],
+  "terminalMissions": [
+    {
+      "brief": "Confirm the Vault server version.",
+      "checks": [
+        {
+          "command_pattern": "^vault\\s+version",
+          "expect_contains": "v1.18.2",
+          "hint": "Type: vault version"
+        }
+      ],
+      "difficulty": 1,
+      "domain_id": "operations",
+      "id": "vault-consul-mission-1",
+      "objectives": [
+        "Run vault version and read the version string"
+      ],
+      "success_message": "Vault v1.18.2 confirmed.",
+      "title": "Check the Vault version"
+    },
+    {
+      "brief": "Inspect seal status and the cluster name.",
+      "checks": [
+        {
+          "command_pattern": "^vault\\s+status",
+          "expect_contains": "ilb-vault",
+          "hint": "Type: vault status"
+        }
+      ],
+      "difficulty": 1,
+      "domain_id": "operations",
+      "id": "vault-consul-mission-2",
+      "objectives": [
+        "Run vault status and find the cluster name"
+      ],
+      "success_message": "Cluster ilb-vault is unsealed.",
+      "title": "Seal status check"
+    },
+    {
+      "brief": "List the keys under secret/ and read the API keys entry.",
+      "checks": [
+        {
+          "command_pattern": "^vault\\s+kv\\s+list\\s+secret",
+          "expect_contains": "api",
+          "hint": "Type: vault kv list secret/"
+        },
+        {
+          "command_pattern": "^vault\\s+kv\\s+get\\s+secret/api/keys",
+          "expect_contains": "sk_test_simulated",
+          "hint": "Type: vault kv get secret/api/keys"
+        }
+      ],
+      "difficulty": 2,
+      "domain_id": "secrets-engines",
+      "id": "vault-consul-mission-3",
+      "objectives": [
+        "List keys under secret/",
+        "Read secret/api/keys"
+      ],
+      "success_message": "API keys entry located and read.",
+      "title": "Enumerate and read secrets"
+    },
+    {
+      "brief": "Authenticate with the userpass method.",
+      "checks": [
+        {
+          "command_pattern": "^vault\\s+login",
+          "expect_contains": "authenticated",
+          "hint": "Type: vault login -method=userpass username=candidate"
+        }
+      ],
+      "difficulty": 2,
+      "domain_id": "auth-methods",
+      "id": "vault-consul-mission-4",
+      "objectives": [
+        "Log in with vault login -method=userpass"
+      ],
+      "success_message": "Authenticated via userpass.",
+      "title": "Userpass login"
+    },
+    {
+      "brief": "Enumerate policies and the mounted secrets engines.",
+      "checks": [
+        {
+          "command_pattern": "^vault\\s+policy\\s+list",
+          "expect_contains": "ilb-readonly",
+          "hint": "Type: vault policy list"
+        },
+        {
+          "command_pattern": "^vault\\s+secrets\\s+list",
+          "expect_contains": "pki/",
+          "hint": "Type: vault secrets list"
+        }
+      ],
+      "difficulty": 3,
+      "domain_id": "policies",
+      "id": "vault-consul-mission-5",
+      "objectives": [
+        "List all policies",
+        "List all mounted secrets engines"
+      ],
+      "success_message": "Policies and engines enumerated.",
+      "title": "Policy and engine inventory"
+    },
+    {
+      "brief": "Issue a fresh token and inspect its TTL and policies.",
+      "checks": [
+        {
+          "command_pattern": "^vault\\s+token\\s+create",
+          "expect_contains": "token",
+          "hint": "Type: vault token create"
+        },
+        {
+          "command_pattern": "^vault\\s+token\\s+lookup",
+          "expect_contains": "768h",
+          "hint": "Type: vault token lookup"
+        }
+      ],
+      "difficulty": 3,
+      "domain_id": "dynamic-secrets",
+      "id": "vault-consul-mission-6",
+      "objectives": [
+        "Create a token",
+        "Look up its TTL and policies"
+      ],
+      "success_message": "Token issued with 768h TTL.",
+      "title": "Token issuance drill"
+    }
+  ],
+  "media": [
+    {
+      "id": "vault-consul-secrets-engines-diag",
+      "kind": "diagram",
+      "title": "Vault Secrets Engines",
+      "svg": "assets/diagrams/vault-consul-secrets-engines.svg",
+      "lesson_ref": "c-secrets-engines",
+      "caption": "Where secrets live and how they are made.",
+      "alt": "Vault Secrets Engines. Shows: kv, database, pki, transit."
+    },
+    {
+      "id": "vault-consul-auth-methods-diag",
+      "kind": "diagram",
+      "title": "Vault Authentication Flow",
+      "svg": "assets/diagrams/vault-consul-auth-methods.svg",
+      "lesson_ref": "c-auth-methods",
+      "caption": "Prove identity, get a scoped token.",
+      "alt": "Vault Authentication Flow. Shows: Client, Auth method, Policy check, Token + lease, Secrets engine."
+    },
+    {
+      "id": "vault-consul-policies-diag",
+      "kind": "diagram",
+      "title": "Vault Policies",
+      "svg": "assets/diagrams/vault-consul-policies.svg",
+      "lesson_ref": "c-policies",
+      "caption": "HCL paths grant capabilities.",
+      "alt": "Vault Policies. Shows: path \"secret/*\", capabilities, Deny by default, Tokens carry policies."
+    },
+    {
+      "id": "vault-consul-dynamic-secrets-diag",
+      "kind": "diagram",
+      "title": "Dynamic Secrets Lifecycle",
+      "svg": "assets/diagrams/vault-consul-dynamic-secrets.svg",
+      "lesson_ref": "c-dynamic-secrets",
+      "caption": "Credentials minted on demand, revoked on TTL.",
+      "alt": "Dynamic Secrets Lifecycle. Shows: Request, Mint, Lease, Renew / revoke, Audit."
+    },
+    {
+      "id": "vault-consul-consul-service-mesh-diag",
+      "kind": "diagram",
+      "title": "Consul Service Mesh",
+      "svg": "assets/diagrams/vault-consul-consul-service-mesh.svg",
+      "lesson_ref": "c-consul-service-mesh",
+      "caption": "Discovery, config, and mTLS mesh.",
+      "alt": "Consul Service Mesh. Covers: Service discovery, Health checks, KV store, Connect mesh (mTLS), DNS interface."
+    },
+    {
+      "id": "vault-consul-operations-diag",
+      "kind": "diagram",
+      "title": "Vault Operations",
+      "svg": "assets/diagrams/vault-consul-operations.svg",
+      "lesson_ref": "c-operations",
+      "caption": "Run it like production.",
+      "alt": "Vault Operations. Shows: Seal / unseal, HA, Backup, Audit devices."
+    }
+  ],
+  "resources": {
+    "cheatsheet": {
+      "title": "Vault & Consul — Cheat Sheet",
+      "sections": [
+        {
+          "heading": "Secrets Engines",
+          "items": [
+            "KV engine — the database engine generates per-client dynamic credentials (CREATE ROLE with TTL), so there's no shared password to rotate in lockstep — each lease simply expires and the service fetches a fresh one.",
+            "Policy paths — vault's isolation primitives are mounts and policy paths. This is the single most common Vault policy bug.",
+            "Dynamic secrets — static roles can still rotate a stored password on a schedule, but dynamic creds remove the coordination problem entirely.",
+            "Common trap — transit encrypts the database volume itself.",
+            "Common trap — policies apply to mounts, not paths.",
+            "Common trap — rename the mount daily so nobody finds the other team's secrets.",
+            "Common trap — splitting the password across mounts improves rotation.",
+            "Read — Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."
+          ]
+        },
+        {
+          "heading": "Auth Methods",
+          "items": [
+            "AppRole is designed for machines — role_id is non-secret identity, secret_id is the secret credential — delivered separately (ideally via different channels).",
+            "Machine auth — the initial root token is a bootstrap credential: log in, configure real auth (OIDC/LDAP), write least-privilege policies, then 'vault token revoke' the root token. Humans should auth via the company IdP: LDAP (bind + group mapping) or OIDC (SSO with group…",
+            "Kubernetes auth — the K8s auth method: Vault is configured with the cluster's API endpoint and CA; the Pod presents its service-account token (JWT); Vault verifies it with the K8s TokenReview API and checks it against role bindings (bound_service_account_names, bound_service…",
+            "Service tokens — are the persistent, renewable default for interactive/long-lived use.",
+            "Tokens — bound CIDRs, secret_id TTLs, and per-role policies scope it tightly. userpass is for humans; hardcoded tokens are the anti-pattern. Batch tokens are encrypted blobs (not stored server-side): cheap to create at massive scale, ideal for ephemeral high-volume…",
+            "Common trap — longer TTLs on service tokens.",
+            "Common trap — mount the Vault root token as a Secret in every Pod.",
+            "Common trap — keep the shared root token but change it monthly.",
+            "Common trap — one shared service token for all requests."
+          ]
+        },
+        {
+          "heading": "Policies",
+          "items": [
+            "Policy syntax — in Vault policy evaluation, an explicit deny on a path overrides all allows — it's the carve-out mechanism. The 'default' policy (attached to every token unless explicitly excluded) allows a token to look itself up, renew itself, and use its cubbyhole.",
+            "Capabilities — vault policies are path + capabilities (create, read, update, delete, list, sudo, deny). kv-v2 splits data vs metadata paths: reads need secret/data/..., listing versions needs secret/metadata/...",
+            "Policy paths support templating with identity metadata — {{identity.entity.name}}, {{identity.entity.metadata.team}}, etc. 'vault policy read' just shows the HCL source.",
+            "Identity-based policies — rule: default + app policies, never app policies alone. Test with a real token carrying the CI role's policies before wiring CI to it.",
+            "Common trap — token self-management requires the sudo capability.",
+            "Common trap — sudo capability means the policy was written by root.",
+            "Common trap — policies use allow/deny booleans, not capabilities.",
+            "Common trap — vault policy read shows effective permissions."
+          ]
+        },
+        {
+          "heading": "Dynamic Secrets",
+          "items": [
+            "Leases — revoking the token also revokes its leases (token → lease hierarchy), which is the bulk path during incidents.",
+            "Renewal — vault Agent centralizes the hard parts: auto-auth (AppRole/K8s/JWT), caching (reduces Vault load, survives brief outages), automatic renewal, and template stanza rendering secrets to files (with exec/restart hooks on change).",
+            "Revocation — orphan tokens break the link: they survive parent revocation, ideal for long-lived service identities. 'vault lease revoke' executes the engine's revocation logic immediately (e.g., DROP USER in the DB) and invalidates the lease — no waiting for TTL.",
+            "Incident response — response wrapping stores the real response in a cubbyhole behind a short-lived, single-use token.",
+            "Common trap — token hierarchy only applies to root tokens.",
+            "Common trap — static secrets in env vars are simpler.",
+            "Common trap — wrapping encrypts the secret permanently.",
+            "Common trap — static passwords can't be rotated automatically."
+          ]
+        },
+        {
+          "heading": "Consul Service Mesh",
+          "items": [
+            "Raft quorum — consul servers maintain the catalog via Raft consensus — quorum needs 2n+1 (3 tolerates 1 failure, 5 tolerates 2). But values are stored unencrypted and replicated in Raft logs — it's not a secret manager.",
+            "Service discovery — consul serves DNS on port 8600 (service.consul domain: <service>.service.consul, with tag/datacenter variants) and a rich HTTP API (/v1/catalog, /v1/health).",
+            "DNS — is the zero-code path; the API gives metadata, tags, and Connect info.",
+            "Health — Health checks (script/http/tcp/TTL/docker) should test the service itself cheaply — a deep check coupling to downstream deps causes cascading flaps. Clients are lightweight agents on every node: they run health checks, gossip membership via Serf (fast failu…",
+            "Flapping usually — means the check is too strict or too deep.",
+            "Common trap — connect requires rewriting each service's HTTP client.",
+            "Common trap — health checks must test the database.",
+            "Common trap — use the KV store to distribute certificates manually.",
+            "Common trap — use an external DNS server."
+          ]
+        },
+        {
+          "heading": "Operations",
+          "items": [
+            "Shamir's Secret Sharing splits the key — any threshold (3 of 5) reconstructs it.",
+            "Raft storage — integrated Raft storage is the recommended backend: Vault nodes replicate via Raft directly (3 or 5 nodes for quorum), snapshots via 'vault operator raft snapshot save/restore'. Rolling upgrade: standby nodes first (they rejoin and catch up via Raft), then…",
+            "HA — HA: audit devices record authenticated requests and responses (sensitive fields HMAC'd, not plaintext) — the compliance trail for 'who accessed what'. Raft snapshots are the DR mechanism: scheduled 'snapshot save' (keep them encrypted/offsite — they contain…",
+            "Backup — test restores periodically; an untested backup is a hope. Like Vault: replication ≠ backup; test the restore path before you need it.",
+            "Raft snapshots — consul snapshot save captures the Raft state atomically (any server works — the request forwards to the leader).",
+            "Common trap — audit logs contain plaintext secrets.",
+            "Common trap — copy the data directory while Vault runs."
+          ]
+        }
+      ]
+    },
+    "glossary": [
+      {
+        "term": "Vault",
+        "def": "Policy paths: vault's isolation primitives are mounts and policy paths. This is the single most common Vault policy bug."
+      },
+      {
+        "term": "API",
+        "def": "The CLI hides it, but kv-v2's HTTP API is mount + data/ + path for reads/writes and mount + metadata/ + path for version management. Policies match the real API paths, so kv-v2 policies must use secret/data/..."
+      },
+      {
+        "term": "TTL",
+        "def": "Token TTL is the initial lifetime; each renewal extends it but never beyond max_ttl (explicit or mount/system default). Short TTLs (minutes–hours) + re-auth (e.g., Vault Agent auto-auth) mean a leaked token dies quickly."
+      },
+      {
+        "term": "Raft",
+        "def": "Raft storage: integrated Raft storage is the recommended backend: Vault nodes replicate via Raft directly (3 or 5 nodes for quorum), snapshots via 'vault operator raft snapshot save/restore'. Rolling upgrade: standby nodes first (they re…"
+      },
+      {
+        "term": "consul",
+        "def": "Consul Connect is a service mesh: each service gets an Envoy sidecar; Consul's CA issues SPIFFE-compatible identities (spiffe://trust-domain/ns/default/dc/dc1/svc/payments); sidecars mutually authenticate and encrypt. Intentions (allow/d…"
+      },
+      {
+        "term": "DNS",
+        "def": "DNS is the zero-code path; the API gives metadata, tags, and Connect info."
+      },
+      {
+        "term": "HTTP",
+        "def": "The CLI hides it, but kv-v2's HTTP API is mount + data/ + path for reads/writes and mount + metadata/ + path for version management. Policies match the real API paths, so kv-v2 policies must use secret/data/..."
+      },
+      {
+        "term": "node",
+        "def": "Health checks (script/http/tcp/TTL/docker) should test the service itself cheaply — a deep check coupling to downstream deps causes cascading flaps. Clients are lightweight agents on every node: they run health checks, gossip membership…"
+      },
+      {
+        "term": "KV",
+        "def": "Consul KV is a simple, watched key-value store — ideal for dynamic config and coordination (with sessions for distributed locks/leader election). But values are stored unencrypted and replicated in Raft logs — it's not a secret manager."
+      },
+      {
+        "term": "CA",
+        "def": "Vault's PKI engine acts as an internal CA: mount it, configure roles constraining what can be issued (allowed_domains, max_ttl, key_bits), and clients request certs via API. Short TTLs (hours/days) shrink the revocation problem — expired…"
+      },
+      {
+        "term": "Policy",
+        "def": "Policy paths: vault's isolation primitives are mounts and policy paths. This is the single most common Vault policy bug."
+      },
+      {
+        "term": "Vault Agent",
+        "def": "Token TTL is the initial lifetime; each renewal extends it but never beyond max_ttl (explicit or mount/system default). Short TTLs (minutes–hours) + re-auth (e.g., Vault Agent auto-auth) mean a leaked token dies quickly."
+      },
+      {
+        "term": "CLI",
+        "def": "The CLI hides it, but kv-v2's HTTP API is mount + data/ + path for reads/writes and mount + metadata/ + path for version management. Policies match the real API paths, so kv-v2 policies must use secret/data/..."
+      },
+      {
+        "term": "AppRole",
+        "def": "AppRole is designed for machines: role_id is non-secret identity, secret_id is the secret credential — delivered separately (ideally via different channels)."
+      },
+      {
+        "term": "Service",
+        "def": "Service tokens are the persistent, renewable default for interactive/long-lived use."
+      },
+      {
+        "term": "HTTP API",
+        "def": "The CLI hides it, but kv-v2's HTTP API is mount + data/ + path for reads/writes and mount + metadata/ + path for version management. Policies match the real API paths, so kv-v2 policies must use secret/data/..."
+      },
+      {
+        "term": "Test",
+        "def": "Raft snapshots are the DR mechanism: scheduled 'snapshot save' (keep them encrypted/offsite — they contain everything), restore onto fresh nodes. Replication protects against node loss, not against logical disasters (bad policy change, d…"
+      },
+      {
+        "term": "Clients",
+        "def": "Health checks (script/http/tcp/TTL/docker) should test the service itself cheaply — a deep check coupling to downstream deps causes cascading flaps. Clients are lightweight agents on every node: they run health checks, gossip membership…"
+      },
+      {
+        "term": "DR",
+        "def": "Raft snapshots are the DR mechanism: scheduled 'snapshot save' (keep them encrypted/offsite — they contain everything), restore onto fresh nodes. Replication protects against node loss, not against logical disasters (bad policy change, d…"
+      },
+      {
+        "term": "Tokens",
+        "def": "Tokens: bound CIDRs, secret_id TTLs, and per-role policies scope it tightly. userpass is for humans; hardcoded tokens are the anti-pattern."
+      },
+      {
+        "term": "IdP",
+        "def": "Humans should auth via the company IdP: LDAP (bind + group mapping) or OIDC (SSO with group claims mapped to policies via groups/roles). This gives per-person audit trails and instant deprovisioning."
+      },
+      {
+        "term": "How",
+        "def": "How many shards does the threshold require — all, or a quorum?"
+      },
+      {
+        "term": "Batch",
+        "def": "Batch tokens are encrypted blobs (not stored server-side): cheap to create at massive scale, ideal for ephemeral high-volume use. Trade-offs: fixed TTL (no renewal), lost on Vault restart, no child tokens, limited capabilities."
+      },
+      {
+        "term": "Health",
+        "def": "Health checks (script/http/tcp/TTL/docker) should test the service itself cheaply — a deep check coupling to downstream deps causes cascading flaps. Tune interval vs timeout vs failures-before-critical; set deregister_critical_service_af…"
+      },
+      {
+        "term": "Transit",
+        "def": "Transit is encryption-as-a-service: the app never handles key material, only ciphertext. Key rotation is versioned — new data encrypts with the latest version while previous versions remain available for decryption, so there's no big-ban…"
+      }
+    ],
+    "links": [
+      {
+        "label": "HashiCorp — official site",
+        "url": "https://developer.hashicorp.com",
+        "note": "Official vendor documentation and certification information"
+      },
+      {
+        "label": "Vault documentation",
+        "url": "https://developer.hashicorp.com/vault/docs",
+        "note": "Official Vault docs"
+      },
+      {
+        "label": "Vault tutorials",
+        "url": "https://developer.hashicorp.com/vault/tutorials",
+        "note": "Official Vault tutorials"
+      },
+      {
+        "label": "Consul documentation",
+        "url": "https://developer.hashicorp.com/consul/docs",
+        "note": "Official Consul docs"
+      }
+    ],
+    "checklist": [
+      "Get 7–8 hours of sleep the night before — fatigue destroys recall faster than any topic gap.",
+      "Bring valid government-issued photo ID and arrive at the test center 30 minutes early.",
+      "Eat a real meal beforehand; bring water and a light snack if the center allows them.",
+      "Read every question twice before scanning the answer choices.",
+      "Flag uncertain questions and move on — return with fresh eyes at the end.",
+      "Eliminate the obviously wrong answers first, then compare the survivors.",
+      "Budget your time: answer steadily and keep a 10–15 minute review buffer.",
+      "Re-run your weakest-domain drill until mastery is at least 80%.",
+      "For Secrets Engines: restate the 'why' behind each scenario answer in your own words — if you can't explain it, you don't own it.",
+      "Redo one Auth Methods lab from scratch without looking at the steps.",
+      "Recite the key Policies terms from the glossary aloud from memory."
     ]
   }
 }

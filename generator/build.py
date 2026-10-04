@@ -349,7 +349,24 @@ def main():
     # route-relative references resolve on every domain.
     eng_out = os.path.join(SITE, "bootcamps", "engine")
     os.makedirs(eng_out, exist_ok=True)
-    for f in ["style.css", "bootcamp.js", "chat.js", "hub.js"]:
+    for f in ["style.css", "bootcamp.js", "terminal.js", "learn.js", "labs.js",
+              "simulations.js", "consoles.js", "missions.js",
+              "chat.js", "hub.js"]:
+        src = os.path.join(ENGINE_DIR, f)
+        if os.path.isfile(src):
+            shutil.copy2(src, os.path.join(eng_out, f))
+        else:
+            warnings.append("engine/%s not present — skipped (workstream pending)" % f)
+    # Optional shared assets (present once workstreams land; skipped if absent).
+    for f in ["math.json"]:
+        src = os.path.join(ENGINE_DIR, f)
+        if os.path.isfile(src):
+            shutil.copy2(src, os.path.join(eng_out, f))
+    # Shared foundation tracks ship as an engine-level asset (source of truth:
+    # generator/foundation-tracks.json).
+    ft_src = os.path.join(BASE, "generator", "foundation-tracks.json")
+    if os.path.isfile(ft_src):
+        shutil.copy2(ft_src, os.path.join(eng_out, "foundations.json"))
         shutil.copy2(os.path.join(ENGINE_DIR, f), os.path.join(eng_out, f))
     # NOTE: pure static-assets deploy — no edge worker. The asset tree already
     # carries the /bootcamps prefix, so <host>/bootcamps/* routes map directly.
@@ -371,6 +388,12 @@ def main():
         if content is not None:
             with open(os.path.join(bdir, "content.json"), "w", encoding="utf-8") as f:
                 json.dump(content, f, ensure_ascii=False)
+            # Enterprise CBT media assets (Worker 2 diagrams): content/<slug>/assets/
+            # -> site/bootcamps/<slug>/assets/ when the source dir exists.
+            assets_src = os.path.join(CONTENT_DIR, slug, "assets")
+            if os.path.isdir(assets_src):
+                shutil.copytree(assets_src, os.path.join(bdir, "assets"),
+                                dirs_exist_ok=True)
 
     # Hub + catalog map (both live under /bootcamps/ to match the routes)
     with open(os.path.join(SITE, "bootcamps", "index.html"), "w", encoding="utf-8") as f:

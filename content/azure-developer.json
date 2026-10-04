@@ -822,6 +822,209 @@
       ]
     }
   ],
+  "lessons": [
+    {
+      "domain_id": "app-service-functions",
+      "title": "App Service & Functions — Core concepts",
+      "concepts": [
+        "App Service plans: functions scale based on trigger metrics (queue depth for Service Bus); the plan must permit scale-out (Consumption scales automatically, Premium adds VNet/pre-warmed instances).",
+        "Always On: free and Shared tiers unload idle apps causing cold starts, and don't support Always On or deployment slots.",
+        "Deployment slots: it's the zero-downtime deployment pattern for App Service. Basic and above keep the worker warm with Always On and add staging slots — the standard fix for latency-sensitive APIs.",
+        "Swap pattern: slots let you deploy to a staging slot, validate it with production settings, then swap — the swap is atomic and reversible by swapping back.",
+        "Functions with a Blob trigger react to new blobs event-driven and scale to zero on Consumption — pay-per-execution. Durable Functions adds stateful orchestration to serverless: the orchestrator replays history, survives restarts, and handles retries, fan-out/fan-in, and human interaction patterns (approval workflows)."
+      ],
+      "example": {
+        "lang": "json",
+        "code": "{ \"Values\": { \"DbPassword\": \"P@ssw0rd123!\" } }  ← committed to repo",
+        "walkthrough": "App settings hold per-environment config; Key Vault references (@Microsoft.KeyVault(SecretUri=...)) let the platform inject secrets at runtime with the app's managed identity — no secrets in code, no secrets in the portal UI."
+      },
+      "pitfalls": [
+        "Common trap: a bigger App Service plan.",
+        "Common trap: enable deployment slots on Free tier.",
+        "Common trap: an App Service web app polling on a timer.",
+        "Common trap: consumption plan always scales infinitely with no config."
+      ],
+      "try_it": "Try it now in the Terminal tab →"
+    },
+    {
+      "domain_id": "storage-sdks",
+      "title": "Storage SDKs — Core concepts",
+      "concepts": [
+        "Blob SDK: the Blob SDK supports streaming uploads and block staging so large files never sit fully in memory — blocks upload in parallel and commit as one blob. Transient failures (429 throttling, 503) are expected in distributed systems; SDK retry policies with exponential backoff and Retry-After compliance absorb them.",
+        "SDK auth: good Cosmos DB development means designing queries (and the key) together; the SDK's cross-partition feedback is a design smell, not noise.",
+        "DefaultAzureCredential: azure SDKs accept TokenCredential; DefaultAzureCredential chains managed identity (in Azure) with developer credentials (locally).",
+        "Poison queues: queue triggers move messages to a poison queue after the dequeue-count limit (default 5), so one bad message stops blocking the healthy ones."
+      ],
+      "example": {
+        "lang": "csharp",
+        "code": "var client = new BlobServiceClient(new Uri(\"https://st.blob.core.windows.net\"), new DefaultAzureCredential());",
+        "walkthrough": "Azure SDKs accept TokenCredential; DefaultAzureCredential chains managed identity (in Azure) with developer credentials (locally). BlobServiceClient built on it needs no keys — least privilege via RBAC roles like Storage Blob Data Contributor."
+      },
+      "pitfalls": [
+        "Common trap: splitting files manually with string operations.",
+        "Common trap: a SAS token hardcoded with 10-year expiry.",
+        "Common trap: the account key in Key Vault but still a key.",
+        "Common trap: retrying instantly in a tight loop."
+      ],
+      "try_it": "Try it now in the Terminal tab →"
+    },
+    {
+      "domain_id": "auth-managed-identity",
+      "title": "Auth (Managed Identity) — Core concepts",
+      "concepts": [
+        "Managed identity types: defaultAzureCredential tries a chain: environment → managed identity → VS Code → Azure CLI → etc. Better still: eliminate the credential with managed identity where the app runs on Azure.",
+        "RBAC data plane: azure RBAC splits control plane (manage the account — Contributor) from data plane (read blobs — Storage Blob Data Reader/Contributor).",
+        "Principle: system-assigned identities are unique per resource and die with it — compromise of one app doesn't implicate others."
+      ],
+      "example": {
+        "lang": "text",
+        "code": "DefaultAzureCredential failed to retrieve a token. → Run `az login` to sign in.",
+        "walkthrough": "DefaultAzureCredential tries a chain: environment → managed identity → VS Code → Azure CLI → etc. Locally it needs one of the developer credentials (az login is the usual). The chain's order also matters — environment variables win when set."
+      },
+      "pitfalls": [
+        "Common trap: managed identity must be enabled on the laptop.",
+        "Common trap: RBAC doesn't apply to storage.",
+        "Common trap: sharing the app's client secret with customers.",
+        "Common trap: one shared identity for everything."
+      ],
+      "try_it": "Work through this in the Terminal tab →"
+    },
+    {
+      "domain_id": "containers",
+      "title": "Containers — Core concepts",
+      "concepts": [
+        "ACR gives private image storage near your clusters (geo-replication), automated builds (ACR Tasks), and signing/vulnerability scanning hooks — removing the supply-chain risk and throttling of public pulls.",
+        "Container Apps is the serverless container platform: built-in ingress, event-driven (KEDA) scale-to-zero, and revision management for traffic splitting — Kubernetes power without cluster ops. It's the right tool for one-off or bursty container jobs; AKS is for orchestrated microservices.",
+        "ACI runs individual containers serverlessly — billed per second, no cluster to manage.",
+        "Serverless containers: startup probes protect slow-starting containers: liveness/readiness checks wait until startup succeeds."
+      ],
+      "example": {
+        "lang": "text",
+        "code": "Worked example — acr\nSetup: Immutable, unique tags (git SHA, build ID) make deployments reproducible and rollbacks exact. :latest is mutable — you never know what it points to —…\nReasoning: Container Apps is the serverless container platform: built-in ingress, event-driven (KEDA) scale-to-zero, and revision management for traffic…\nTakeaway: Startup probes protect slow-starting containers: liveness/readiness checks wait until startup succeeds.",
+        "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."
+      },
+      "pitfalls": [
+        "Common trap: AKS with manual node management.",
+        "Common trap: a liveness probe with 1-second timeout."
+      ],
+      "try_it": "Work through this in the Terminal tab →"
+    },
+    {
+      "domain_id": "azure-openai",
+      "title": "Azure OpenAI — Core concepts",
+      "concepts": [
+        "Azure OpenAI provides the same model family inside Azure's compliance boundary, with private endpoints, managed identity auth, and content filtering — the enterprise path when data residency matters.",
+        "RAG: it's the foundation of RAG retrieval.",
+        "Tokens: every model has a max context window in tokens; exceeding it rejects the request."
+      ],
+      "example": {
+        "lang": "text",
+        "code": "Worked example — azure openai\nSetup: Azure OpenAI provides the same model family inside Azure's compliance boundary, with private endpoints, managed identity auth, and content filtering…\nReasoning: Azure OpenAI's configurable content filters block harmful categories; prompt-injection defense adds hardened system prompts, delimiting untrusted…\nTakeaway: Embeddings convert text to vectors where similar meanings sit close together; vector search (e.g., Azure AI Search vector queries) finds…",
+        "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."
+      },
+      "pitfalls": [
+        "Common trap: the public API with a longer timeout.",
+        "Common trap: longer system prompts with no data.",
+        "Common trap: no defenses; models are safe by default.",
+        "Common trap: manual spot checks yearly."
+      ],
+      "try_it": "Work through this in the Terminal tab →"
+    },
+    {
+      "domain_id": "monitoring",
+      "title": "Monitoring — Core concepts",
+      "concepts": [
+        "App Insights stores telemetry in Log Analytics tables (requests, dependencies, exceptions, traces). App Insights' application map and end-to-end transaction diagnostics trace a request across services, showing dependency call durations (SQL, HTTP) — pinpointing whether the DB, downstream, or code is slow.",
+        "Live Metrics streams near-real-time performance counters, request rates, and failures — the 'watch the deploy' screen.",
+        "Principle: standard metrics aggregate over minutes; live stream is for the moment things change."
+      ],
+      "example": {
+        "lang": "text",
+        "code": "operation_Name: POST /orders | outerMessage: SqlException timeout | count_: 412",
+        "walkthrough": "App Insights stores telemetry in Log Analytics tables (requests, dependencies, exceptions, traces). KQL groups and ranks: summarize by operation and message, order by count — the standard exception-triage query."
+      },
+      "pitfalls": [
+        "Common trap: server CPU metrics alone.",
+        "Common trap: standard metrics with 1-minute aggregation.",
+        "Common trap: deleting old data daily.",
+        "Common trap: logging the user name everywhere."
+      ],
+      "try_it": "Work through this in the Terminal tab →"
+    }
+  ],
+  "sections": [
+    {
+      "id": "foundations",
+      "title": "Foundations",
+      "kind": "foundation",
+      "lectures": [
+        "f-programming-basics-0",
+        "f-programming-basics-1",
+        "f-programming-basics-2",
+        "f-cloud-concepts-0",
+        "f-cloud-concepts-1",
+        "f-cloud-concepts-2",
+        "f-http-web-0",
+        "f-http-web-1",
+        "f-http-web-2"
+      ],
+      "lab_ids": [],
+      "drill_domain_ids": []
+    },
+    {
+      "id": "core",
+      "title": "Core",
+      "kind": "core",
+      "lectures": [
+        "c-app-service-functions",
+        "c-storage-sdks",
+        "c-auth-managed-identity"
+      ],
+      "lab_ids": [
+        "azure-developer-lab-1",
+        "azure-developer-lab-2"
+      ],
+      "drill_domain_ids": [
+        "app-service-functions",
+        "storage-sdks",
+        "auth-managed-identity"
+      ]
+    },
+    {
+      "id": "advanced",
+      "title": "Advanced",
+      "kind": "advanced",
+      "lectures": [
+        "c-containers",
+        "c-azure-openai",
+        "c-monitoring"
+      ],
+      "lab_ids": [
+        "azure-developer-lab-3",
+        "azure-developer-lab-4"
+      ],
+      "drill_domain_ids": [
+        "containers",
+        "azure-openai",
+        "monitoring"
+      ]
+    },
+    {
+      "id": "exam-prep",
+      "title": "Exam Prep",
+      "kind": "exam-prep",
+      "lectures": [],
+      "lab_ids": [],
+      "drill_domain_ids": [
+        "app-service-functions",
+        "storage-sdks",
+        "auth-managed-identity",
+        "containers",
+        "azure-openai",
+        "monitoring"
+      ]
+    }
+  ],
   "behavioral": [
     {
       "prompt": "Tell me about a time you debugged a production issue in an app you built or supported.",
@@ -1027,6 +1230,864 @@
           "How do you watch a deploy live?"
         ]
       }
+    ]
+  },
+  "labs": [
+    {
+      "id": "azure-developer-lab-1",
+      "title": "App Service plans — Azure CLI drill",
+      "objective": "Run a short sequence of Azure CLI commands that demonstrates app Service plans, then verify each result against the expected output.",
+      "steps": [
+        "This lab reworks the App Service & Functions practice scenario \"The always-on API\" into commands you run yourself — same concept, hands-on instead of multiple choice.",
+        "Open the Terminal tab for this bootcamp — every command below runs there.",
+        "Type exactly: az account show — the account document includes the subscription name",
+        "Type exactly: az group list — each resource group entry carries a name",
+        "Type exactly: az vm list — each VM entry carries a name",
+        "In your own words, say what each command's output taught you about app Service plans."
+      ],
+      "checks": [
+        {
+          "command_pattern": "az account show",
+          "expect_contains": "name",
+          "hint": "In the Terminal tab, run `az account show`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+        },
+        {
+          "command_pattern": "az group list",
+          "expect_contains": "name",
+          "hint": "In the Terminal tab, run `az group list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+        },
+        {
+          "command_pattern": "az vm list",
+          "expect_contains": "name",
+          "hint": "In the Terminal tab, run `az vm list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+        }
+      ],
+      "success_message": "Lab complete — app Service plans practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."
+    },
+    {
+      "id": "azure-developer-lab-2",
+      "title": "Blob SDK — Azure CLI drill",
+      "objective": "Use the Azure CLI to explore blob SDK hands-on: type each command, read what comes back, and connect the output to the concept.",
+      "steps": [
+        "Inspired by the Storage SDKs scenario \"The large upload\": take its core idea and prove it live in the terminal instead of answering on paper.",
+        "Open the Terminal tab for this bootcamp — every command below runs there.",
+        "Type exactly: az vm list — each VM entry carries a name",
+        "Type exactly: az account show — the account document includes the subscription name",
+        "Type exactly: az group list — each resource group entry carries a name",
+        "In your own words, say what each command's output taught you about blob SDK."
+      ],
+      "checks": [
+        {
+          "command_pattern": "az vm list",
+          "expect_contains": "name",
+          "hint": "In the Terminal tab, run `az vm list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+        },
+        {
+          "command_pattern": "az account show",
+          "expect_contains": "name",
+          "hint": "In the Terminal tab, run `az account show`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+        },
+        {
+          "command_pattern": "az group list",
+          "expect_contains": "name",
+          "hint": "In the Terminal tab, run `az group list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+        }
+      ],
+      "success_message": "Lab complete — blob SDK practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."
+    },
+    {
+      "id": "azure-developer-lab-3",
+      "title": "Managed identity types — Azure CLI drill",
+      "objective": "Prove you can apply managed identity types in the Azure CLI — follow the steps, watch the output, and confirm every check passes.",
+      "steps": [
+        "The Auth (Managed Identity) scenario \"The shared identity\" tests this concept as a question. This lab makes you demonstrate it with real commands.",
+        "Open the Terminal tab for this bootcamp — every command below runs there.",
+        "Type exactly: az group list — each resource group entry carries a name",
+        "Type exactly: az vm list — each VM entry carries a name",
+        "Type exactly: az account show — the account document includes the subscription name",
+        "In your own words, say what each command's output taught you about managed identity types."
+      ],
+      "checks": [
+        {
+          "command_pattern": "az group list",
+          "expect_contains": "name",
+          "hint": "In the Terminal tab, run `az group list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+        },
+        {
+          "command_pattern": "az vm list",
+          "expect_contains": "name",
+          "hint": "In the Terminal tab, run `az vm list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+        },
+        {
+          "command_pattern": "az account show",
+          "expect_contains": "name",
+          "hint": "In the Terminal tab, run `az account show`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+        }
+      ],
+      "success_message": "Lab complete — managed identity types practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."
+    },
+    {
+      "id": "azure-developer-lab-4",
+      "title": "ACR — Azure CLI drill",
+      "objective": "Run a short sequence of Azure CLI commands that demonstrates ACR, then verify each result against the expected output.",
+      "steps": [
+        "This lab reworks the Containers practice scenario \"The public image pull\" into commands you run yourself — same concept, hands-on instead of multiple choice.",
+        "Open the Terminal tab for this bootcamp — every command below runs there.",
+        "Type exactly: az account show — the account document includes the subscription name",
+        "Type exactly: az group list — each resource group entry carries a name",
+        "Type exactly: az vm list — each VM entry carries a name",
+        "In your own words, say what each command's output taught you about ACR."
+      ],
+      "checks": [
+        {
+          "command_pattern": "az account show",
+          "expect_contains": "name",
+          "hint": "In the Terminal tab, run `az account show`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+        },
+        {
+          "command_pattern": "az group list",
+          "expect_contains": "name",
+          "hint": "In the Terminal tab, run `az group list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+        },
+        {
+          "command_pattern": "az vm list",
+          "expect_contains": "name",
+          "hint": "In the Terminal tab, run `az vm list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+        }
+      ],
+      "success_message": "Lab complete — ACR practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."
+    },
+    {
+      "id": "azdev-lab-identity",
+      "title": "Developer identity check",
+      "objective": "Developers authenticate before they build. Verify the account and the signed-in identity.",
+      "difficulty": 1,
+      "steps": [
+        "Open the Terminal tab for this bootcamp.",
+        "Type exactly: az account show — subscription and signed-in user",
+        "Type exactly: az login — confirm the session",
+        "In your own words, say why local dev should use your identity, not a shared secret."
+      ],
+      "checks": [
+        {
+          "command_pattern": "^az account show$",
+          "expect_contains": "candidate@interstitium",
+          "hint": "In the Terminal tab, run `az account show`. If the check fails, confirm you typed it exactly and that the output contains \"candidate@interstitium\"."
+        },
+        {
+          "command_pattern": "^az login$",
+          "expect_contains": "Already signed in",
+          "hint": "In the Terminal tab, run `az login`. If the check fails, confirm you typed it exactly and that the output contains \"Already signed in\"."
+        }
+      ],
+      "success_message": "Lab complete — developer identity verified."
+    },
+    {
+      "id": "azdev-lab-storage",
+      "title": "Storage for the app",
+      "objective": "Apps need storage. List the storage accounts your code can target.",
+      "difficulty": 1,
+      "steps": [
+        "Open the Terminal tab for this bootcamp.",
+        "Type exactly: az storage account list — account names and SKUs",
+        "In your own words, say when your app should use managed identity instead of a connection string."
+      ],
+      "checks": [
+        {
+          "command_pattern": "^az storage account list$",
+          "expect_contains": "ilbartifacts",
+          "hint": "In the Terminal tab, run `az storage account list`. If the check fails, confirm you typed it exactly and that the output contains \"ilbartifacts\"."
+        }
+      ],
+      "success_message": "Lab complete — app storage located."
+    },
+    {
+      "id": "azdev-lab-containers",
+      "title": "Container platform check",
+      "objective": "Your containers need a home. Check the AKS cluster and the resource groups around it.",
+      "difficulty": 2,
+      "steps": [
+        "Open the Terminal tab for this bootcamp.",
+        "Type exactly: az aks list — cluster name, node count, Kubernetes version",
+        "Type exactly: az group list — the resource groups in play",
+        "In your own words, say what the cluster's node count implies for your deployment replicas."
+      ],
+      "checks": [
+        {
+          "command_pattern": "^az aks list$",
+          "expect_contains": "3",
+          "hint": "In the Terminal tab, run `az aks list`. If the check fails, confirm you typed it exactly and that the output contains \"3\"."
+        },
+        {
+          "command_pattern": "^az group list$",
+          "expect_contains": "ilb-rg",
+          "hint": "In the Terminal tab, run `az group list`. If the check fails, confirm you typed it exactly and that the output contains \"ilb-rg\"."
+        }
+      ],
+      "success_message": "Lab complete — container platform checked."
+    },
+    {
+      "id": "azdev-lab-runtime",
+      "title": "Runtime environment audit",
+      "objective": "Audit the runtime estate: the VMs that host services and the CLI version driving your scripts.",
+      "difficulty": 3,
+      "steps": [
+        "Open the Terminal tab for this bootcamp.",
+        "Type exactly: az vm list — the compute behind the services",
+        "Type exactly: az version — the CLI version your automation depends on",
+        "In your own words, say why pinning CLI versions matters for CI pipelines."
+      ],
+      "checks": [
+        {
+          "command_pattern": "^az vm list$",
+          "expect_contains": "ilb-web-01",
+          "hint": "In the Terminal tab, run `az vm list`. If the check fails, confirm you typed it exactly and that the output contains \"ilb-web-01\"."
+        },
+        {
+          "command_pattern": "^az version$",
+          "expect_contains": "azure-cli",
+          "hint": "In the Terminal tab, run `az version`. If the check fails, confirm you typed it exactly and that the output contains \"azure-cli\"."
+        }
+      ],
+      "success_message": "Lab complete — runtime audited."
+    }
+  ],
+  "foundations": [
+    {
+      "track": "programming-basics",
+      "why_needed": "AZ-204 assumes you write code. Learn what programs are and how they run before the SDKs and APIs."
+    },
+    {
+      "track": "cloud-concepts",
+      "why_needed": "App Service, Functions, and managed identity live in the cloud model: regions, services, and billing."
+    },
+    {
+      "track": "http-web",
+      "why_needed": "Every Azure API call is HTTP. Learn requests, status codes, and JSON-shaped thinking before the SDK topics."
+    }
+  ],
+  "math": [],
+  "simulations": [
+    {
+      "id": "azdev-sim-401",
+      "title": "The 401 from nowhere",
+      "kind": "troubleshoot",
+      "domain_id": "auth-managed-identity",
+      "difficulty": 2,
+      "brief": "Your app suddenly returns 401 calling the storage API. Nothing deployed today. The token endpoint is your first witness.",
+      "steps": [
+        {
+          "symptom": "App gets 401 from Azure Storage; no code changed.",
+          "evidence": [
+            [
+              "az account show",
+              "\"user\": {\n    \"name\": \"candidate@interstitium\",\n    \"type\": \"user\"\n  }"
+            ]
+          ],
+          "options": [
+            "Check whether the managed identity's role assignment still exists — 401 means the token is valid but unauthorized",
+            "Restart the app — tokens get stuck",
+            "Regenerate the storage keys — the app must be using a stale key",
+            "Redeploy the app — the identity configuration must have drifted"
+          ],
+          "correct": 0,
+          "explain": "401 with managed identity means authentication worked but authorization failed — the role assignment is the suspect, not the token. Restarting or redeploying cannot fix a missing RBAC grant."
+        },
+        {
+          "symptom": "The role assignment was removed during a 'cleanup' of the resource group.",
+          "evidence": [
+            [
+              "az storage account list",
+              "ilbartifacts  ilb-rg  Standard_LRS"
+            ]
+          ],
+          "options": [
+            "Re-grant the Storage Blob Data Reader role to the managed identity at the storage scope",
+            "Give the identity Owner on the subscription so this never happens again",
+            "Hardcode a storage key as a backup auth path",
+            "Move the app to a different subscription"
+          ],
+          "correct": 0,
+          "explain": "Restore the least-privilege grant that was removed — nothing more. Owner-on-subscription or hardcoded keys trade one outage for a permanent vulnerability."
+        }
+      ],
+      "debrief": "You debugged auth like a developer: 401 means authorized-identity, missing-permission. Fix the grant, not the code.",
+      "points": 15
+    },
+    {
+      "id": "azdev-sim-auth-choice",
+      "title": "How does the Function authenticate?",
+      "kind": "branching",
+      "domain_id": "auth-managed-identity",
+      "difficulty": 2,
+      "brief": "Your Azure Function needs Key Vault secrets at runtime. The team debates the auth pattern.",
+      "steps": [
+        {
+          "id": "s1",
+          "text": "The Function needs secrets from Key Vault. Pattern?",
+          "choices": [
+            {
+              "label": "Store the vault credentials in app settings",
+              "next": "s2a",
+              "points": 0,
+              "feedback": "Credentials in app settings are one export away from a leak."
+            },
+            {
+              "label": "System-assigned managed identity with Key Vault RBAC",
+              "next": "s2",
+              "points": 2,
+              "feedback": "Correct — the platform injects the identity; RBAC scopes the secret access."
+            }
+          ]
+        },
+        {
+          "id": "s2a",
+          "text": "The settings were exported to a support bundle last month. Reconsider:",
+          "choices": [
+            {
+              "label": "Managed identity with Key Vault RBAC",
+              "next": "s2",
+              "points": 1,
+              "feedback": "Right — secrets in settings always leak eventually."
+            }
+          ]
+        },
+        {
+          "id": "s2",
+          "text": "Local development: the Function runs on your laptop. Same identity?",
+          "choices": [
+            {
+              "label": "Yes — managed identity works on laptops",
+              "next": "END",
+              "points": 0,
+              "outcome": "bad",
+              "feedback": "Managed identity only exists inside Azure. Local dev needs a different credential chain."
+            },
+            {
+              "label": "No — Azure CLI / developer credentials locally, managed identity in Azure",
+              "next": "END",
+              "points": 2,
+              "outcome": "good",
+              "feedback": "Correct — DefaultAzureCredential chains local dev credentials to managed identity in the cloud."
+            }
+          ]
+        }
+      ],
+      "debrief": "You applied the developer identity model: managed identity in Azure, developer credentials locally, never secrets in settings.",
+      "points": 10
+    },
+    {
+      "id": "azdev-sim-deploy-order",
+      "title": "Ship the web app",
+      "kind": "ordering",
+      "domain_id": "app-service-functions",
+      "difficulty": 1,
+      "brief": "Order the deployment of a web app with its storage dependency.",
+      "steps": {
+        "context": "Deploy an app with a storage dependency: plan, provision, configure, deploy, verify.",
+        "items": [
+          "Deploy the application code",
+          "Provision the storage account",
+          "Verify the app serves traffic",
+          "Create the App Service plan",
+          "Configure app settings (storage connection via managed identity)"
+        ],
+        "correct_order": [
+          3,
+          1,
+          4,
+          0,
+          2
+        ]
+      },
+      "debrief": "You ordered the deploy: plan, storage, settings, code, verify. Configuration before code — the app should never start guessing.",
+      "points": 10
+    },
+    {
+      "id": "azdev-sim-appsettings",
+      "title": "The settings that leaked",
+      "kind": "config-check",
+      "domain_id": "app-service-functions",
+      "difficulty": 2,
+      "brief": "A support bundle from the app included these settings. Click the lines that should never have been there.",
+      "steps": {
+        "config": "App settings (production):\n1. WEBSITE_RUN_FROM_PACKAGE=1\n2. StorageConnection=DefaultEndpointsProtocol=https;AccountKey=abc123...\n3. APPINSIGHTS_INSTRUMENTATIONKEY=0000-...\n4. AdminPassword=P@ssw0rd-2026!",
+        "find": 2,
+        "issues": [
+          {
+            "line": 2,
+            "description": "A storage account key in plain app settings — anyone with read access to the app owns the storage account.",
+            "fix": "Replace with managed identity and RBAC; remove the key entirely."
+          },
+          {
+            "line": 4,
+            "description": "A plaintext admin password in app settings, exportable in any support bundle.",
+            "fix": "Move to Key Vault and reference it; never store passwords in app settings."
+          }
+        ]
+      },
+      "debrief": "You spotted the secret sprawl: keys and passwords in app settings travel with every export. Managed identity and Key Vault references are the fix.",
+      "points": 10
+    }
+  ],
+  "consoleSims": [
+    {
+      "id": "azdev-console-portal-appsettings-1",
+      "title": "Harden the app settings",
+      "console": "azure-portal",
+      "domain_id": "app-service-functions",
+      "difficulty": 2,
+      "brief": "Replace the storage connection string with a managed-identity reference in the app's settings.",
+      "tasks": [
+        {
+          "id": "t1",
+          "instruction": "Set the app setting StorageConnection to use the managed identity endpoint (no key).",
+          "validate": {
+            "action": "set-field",
+            "params": {
+              "field": "app.storage-connection",
+              "value": "managed-identity"
+            }
+          },
+          "hint": "Edit the StorageConnection setting and switch it to the managed identity option."
+        },
+        {
+          "id": "t2",
+          "instruction": "Mark the setting as a slot setting so it does not swap with staging.",
+          "validate": {
+            "action": "set-field",
+            "params": {
+              "field": "app.storage-connection.slotSetting",
+              "value": true
+            }
+          },
+          "hint": "Toggle the slot-setting flag on the connection setting."
+        }
+      ],
+      "debrief": "You removed the secret from the settings and pinned it to the slot. No keys, no swap surprises."
+    },
+    {
+      "id": "azdev-console-git-1",
+      "title": "Review the container PR",
+      "console": "git-host",
+      "domain_id": "containers",
+      "difficulty": 2,
+      "brief": "A PR bumps the container image tag in the deployment manifest. Review it like the deploy depends on it.",
+      "tasks": [
+        {
+          "id": "t1",
+          "instruction": "Approve the PR after verifying the image tag is pinned (not :latest).",
+          "validate": {
+            "action": "click",
+            "params": {
+              "target": "pr.approve"
+            }
+          },
+          "hint": "Check the manifest diff for a pinned tag, then approve."
+        },
+        {
+          "id": "t2",
+          "instruction": "Request changes if the PR touches the production namespace without an approval gate.",
+          "validate": {
+            "action": "click",
+            "params": {
+              "target": "pr.request-changes"
+            }
+          },
+          "hint": "If prod manifests changed without a gate, request changes instead."
+        }
+      ],
+      "debrief": "You reviewed the deploy PR for the two things that matter: pinned images and gated production changes."
+    }
+  ],
+  "terminalMissions": [
+    {
+      "id": "azdev-mission-user",
+      "title": "Confirm the developer",
+      "domain_id": "auth-managed-identity",
+      "difficulty": 1,
+      "brief": "Verify which identity the developer session runs as.",
+      "objectives": [
+        "Show the Azure account",
+        "Read the signed-in user"
+      ],
+      "checks": [
+        {
+          "command_pattern": "^az account show$",
+          "expect_contains": "candidate@interstitium",
+          "hint": "In the Terminal tab, run `az account show`. If the check fails, confirm you typed it exactly and that the output contains \"candidate@interstitium\"."
+        }
+      ],
+      "success_message": "Developer confirmed."
+    },
+    {
+      "id": "azdev-mission-storage",
+      "title": "Locate the storage",
+      "domain_id": "storage-sdks",
+      "difficulty": 1,
+      "brief": "List the storage accounts the SDK will target.",
+      "objectives": [
+        "List all storage accounts"
+      ],
+      "checks": [
+        {
+          "command_pattern": "^az storage account list$",
+          "expect_contains": "ilbartifacts",
+          "hint": "In the Terminal tab, run `az storage account list`. If the check fails, confirm you typed it exactly and that the output contains \"ilbartifacts\"."
+        }
+      ],
+      "success_message": "Storage located."
+    },
+    {
+      "id": "azdev-mission-aks",
+      "title": "Check the target cluster",
+      "domain_id": "containers",
+      "difficulty": 2,
+      "brief": "List the AKS clusters available as deploy targets.",
+      "objectives": [
+        "List all AKS clusters"
+      ],
+      "checks": [
+        {
+          "command_pattern": "^az aks list$",
+          "expect_contains": "1.30",
+          "hint": "In the Terminal tab, run `az aks list`. If the check fails, confirm you typed it exactly and that the output contains \"1.30\"."
+        }
+      ],
+      "success_message": "Deploy target confirmed."
+    },
+    {
+      "id": "azdev-mission-groups",
+      "title": "List the project groups",
+      "domain_id": "app-service-functions",
+      "difficulty": 2,
+      "brief": "List the resource groups in the developer's scope.",
+      "objectives": [
+        "List all resource groups"
+      ],
+      "checks": [
+        {
+          "command_pattern": "^az group list$",
+          "expect_contains": "ilb-rg",
+          "hint": "In the Terminal tab, run `az group list`. If the check fails, confirm you typed it exactly and that the output contains \"ilb-rg\"."
+        }
+      ],
+      "success_message": "Project groups listed."
+    },
+    {
+      "id": "azdev-mission-vms",
+      "title": "Survey the runtimes",
+      "domain_id": "monitoring",
+      "difficulty": 2,
+      "brief": "List the VMs hosting the services you monitor.",
+      "objectives": [
+        "List all virtual machines"
+      ],
+      "checks": [
+        {
+          "command_pattern": "^az vm list$",
+          "expect_contains": "ilb-web-01",
+          "hint": "In the Terminal tab, run `az vm list`. If the check fails, confirm you typed it exactly and that the output contains \"ilb-web-01\"."
+        }
+      ],
+      "success_message": "Runtimes surveyed."
+    },
+    {
+      "id": "azdev-mission-version",
+      "title": "Pin the toolchain",
+      "domain_id": "monitoring",
+      "difficulty": 3,
+      "brief": "Record the Azure CLI version for the pipeline's toolchain pin.",
+      "objectives": [
+        "Show the Azure CLI version"
+      ],
+      "checks": [
+        {
+          "command_pattern": "^az version$",
+          "expect_contains": "azure-cli",
+          "hint": "In the Terminal tab, run `az version`. If the check fails, confirm you typed it exactly and that the output contains \"azure-cli\"."
+        }
+      ],
+      "success_message": "Toolchain pinned — 2.66.0."
+    }
+  ],
+  "media": [
+    {
+      "id": "azure-developer-app-service-functions-diag",
+      "kind": "diagram",
+      "title": "App Service & Functions",
+      "svg": "assets/diagrams/azure-developer-app-service-functions.svg",
+      "lesson_ref": "c-app-service-functions",
+      "caption": "Host web apps and event-driven code without servers.",
+      "alt": "App Service & Functions. Tiers: App Service, Functions, Shared."
+    },
+    {
+      "id": "azure-developer-storage-sdks-diag",
+      "kind": "diagram",
+      "title": "Azure Storage for Developers",
+      "svg": "assets/diagrams/azure-developer-storage-sdks.svg",
+      "lesson_ref": "c-storage-sdks",
+      "caption": "SDK patterns that show up in every app.",
+      "alt": "Azure Storage for Developers. Shows: BlobClient, Connection strings, SAS tokens, Azurite."
+    },
+    {
+      "id": "azure-developer-auth-managed-identity-diag",
+      "kind": "diagram",
+      "title": "Managed Identity Auth",
+      "svg": "assets/diagrams/azure-developer-auth-managed-identity.svg",
+      "lesson_ref": "c-auth-managed-identity",
+      "caption": "No secrets in code — Azure issues the identity.",
+      "alt": "Managed Identity Auth. Shows: App, Entra ID, Key Vault, API call."
+    },
+    {
+      "id": "azure-developer-containers-diag",
+      "kind": "diagram",
+      "title": "Container Delivery on Azure",
+      "svg": "assets/diagrams/azure-developer-containers.svg",
+      "lesson_ref": "c-containers",
+      "caption": "Build once, run on ACI, ACA, or AKS.",
+      "alt": "Container Delivery on Azure. Shows: ACR, Build, Deploy, Monitor."
+    },
+    {
+      "id": "azure-developer-azure-openai-diag",
+      "kind": "diagram",
+      "title": "Azure OpenAI Integration",
+      "svg": "assets/diagrams/azure-developer-azure-openai.svg",
+      "lesson_ref": "c-azure-openai",
+      "caption": "Managed frontier models behind your VNet.",
+      "alt": "Azure OpenAI Integration. Tiers: Models, Deploy, App."
+    },
+    {
+      "id": "azure-developer-monitoring-diag",
+      "kind": "diagram",
+      "title": "App Monitoring",
+      "svg": "assets/diagrams/azure-developer-monitoring.svg",
+      "lesson_ref": "c-monitoring",
+      "caption": "Know before your users tell you.",
+      "alt": "App Monitoring. Shows: Application Insights, Live Metrics, Availability tests, Smart Detection."
+    }
+  ],
+  "resources": {
+    "cheatsheet": {
+      "title": "Azure Developer & AI (AZ-204 / AI-102) — Cheat Sheet",
+      "sections": [
+        {
+          "heading": "App Service & Functions",
+          "items": [
+            "App Service plans — functions scale based on trigger metrics (queue depth for Service Bus); the plan must permit scale-out (Consumption scales automatically, Premium adds VNet/pre-warmed instances).",
+            "Always On — free and Shared tiers unload idle apps causing cold starts, and don't support Always On or deployment slots.",
+            "Deployment slots — it's the zero-downtime deployment pattern for App Service. Basic and above keep the worker warm with Always On and add staging slots — the standard fix for latency-sensitive APIs.",
+            "Swap pattern — slots let you deploy to a staging slot, validate it with production settings, then swap — the swap is atomic and reversible by swapping back.",
+            "Functions — Functions with a Blob trigger react to new blobs event-driven and scale to zero on Consumption — pay-per-execution. Durable Functions adds stateful orchestration to serverless: the orchestrator replays history, survives restarts, and handles retries, fan-ou…",
+            "Common trap — a bigger App Service plan.",
+            "Common trap — enable deployment slots on Free tier.",
+            "Common trap — an App Service web app polling on a timer.",
+            "Common trap — consumption plan always scales infinitely with no config.",
+            "App — App settings hold per-environment config; Key Vault references (@Microsoft.KeyVault(SecretUri=...)) let the platform inject secrets at runtime with the app's managed identity — no secrets in code, no secrets in the portal UI."
+          ]
+        },
+        {
+          "heading": "Storage SDKs",
+          "items": [
+            "Blob SDK — the Blob SDK supports streaming uploads and block staging so large files never sit fully in memory — blocks upload in parallel and commit as one blob. Transient failures (429 throttling, 503) are expected in distributed systems; SDK retry policies with expo…",
+            "SDK auth — good Cosmos DB development means designing queries (and the key) together; the SDK's cross-partition feedback is a design smell, not noise.",
+            "DefaultAzureCredential — azure SDKs accept TokenCredential; DefaultAzureCredential chains managed identity (in Azure) with developer credentials (locally).",
+            "Poison queues — queue triggers move messages to a poison queue after the dequeue-count limit (default 5), so one bad message stops blocking the healthy ones.",
+            "Common trap — splitting files manually with string operations.",
+            "Common trap — a SAS token hardcoded with 10-year expiry.",
+            "Common trap — the account key in Key Vault but still a key.",
+            "Common trap — retrying instantly in a tight loop.",
+            "Azure SDKs — Azure SDKs accept TokenCredential; DefaultAzureCredential chains managed identity (in Azure) with developer credentials (locally). BlobServiceClient built on it needs no keys — least privilege via RBAC roles like Storage Blob Data Contributor."
+          ]
+        },
+        {
+          "heading": "Auth (Managed Identity)",
+          "items": [
+            "Managed identity types — defaultAzureCredential tries a chain: environment → managed identity → VS Code → Azure CLI → etc. Better still: eliminate the credential with managed identity where the app runs on Azure.",
+            "RBAC data plane — azure RBAC splits control plane (manage the account — Contributor) from data plane (read blobs — Storage Blob Data Reader/Contributor).",
+            "Principle — system-assigned identities are unique per resource and die with it — compromise of one app doesn't implicate others.",
+            "Common trap — managed identity must be enabled on the laptop.",
+            "Common trap — RBAC doesn't apply to storage.",
+            "Common trap — sharing the app's client secret with customers.",
+            "Common trap — one shared identity for everything.",
+            "DefaultAzureCredential tries a chain — environment → managed identity → VS Code → Azure CLI → etc. Locally it needs one of the developer credentials (az login is the usual). The chain's order also matters — environment variables win when set."
+          ]
+        },
+        {
+          "heading": "Containers",
+          "items": [
+            "ACR — ACR gives private image storage near your clusters (geo-replication), automated builds (ACR Tasks), and signing/vulnerability scanning hooks — removing the supply-chain risk and throttling of public pulls.",
+            "Container Apps is the serverless container platform — built-in ingress, event-driven (KEDA) scale-to-zero, and revision management for traffic splitting — Kubernetes power without cluster ops. It's the right tool for one-off or bursty container jobs; AKS is for orchestrated microservices.",
+            "ACI runs individual containers serverlessly — billed per second, no cluster to manage.",
+            "Serverless containers — startup probes protect slow-starting containers: liveness/readiness checks wait until startup succeeds.",
+            "Common trap — AKS with manual node management.",
+            "Common trap — a liveness probe with 1-second timeout.",
+            "Read — Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."
+          ]
+        },
+        {
+          "heading": "Azure OpenAI",
+          "items": [
+            "Azure OpenAI — provides the same model family inside Azure's compliance boundary, with private endpoints, managed identity auth, and content filtering — the enterprise path when data residency matters.",
+            "RAG — it's the foundation of RAG retrieval.",
+            "Tokens — every model has a max context window in tokens; exceeding it rejects the request.",
+            "Common trap — the public API with a longer timeout.",
+            "Common trap — longer system prompts with no data.",
+            "Common trap — no defenses; models are safe by default.",
+            "Common trap — manual spot checks yearly."
+          ]
+        },
+        {
+          "heading": "Monitoring",
+          "items": [
+            "App Insights — App Insights stores telemetry in Log Analytics tables (requests, dependencies, exceptions, traces). App Insights' application map and end-to-end transaction diagnostics trace a request across services, showing dependency call durations (SQL, HTTP) — pinpoin…",
+            "Live Metrics — Live Metrics streams near-real-time performance counters, request rates, and failures — the 'watch the deploy' screen.",
+            "Principle — standard metrics aggregate over minutes; live stream is for the moment things change.",
+            "Common trap — server CPU metrics alone.",
+            "Common trap — standard metrics with 1-minute aggregation.",
+            "Common trap — deleting old data daily.",
+            "Common trap — logging the user name everywhere.",
+            "App Insights — App Insights stores telemetry in Log Analytics tables (requests, dependencies, exceptions, traces). KQL groups and ranks: summarize by operation and message, order by count — the standard exception-triage query."
+          ]
+        }
+      ]
+    },
+    "glossary": [
+      {
+        "term": "SDK",
+        "def": "Blob SDK: the Blob SDK supports streaming uploads and block staging so large files never sit fully in memory — blocks upload in parallel and commit as one blob. Transient failures (429 throttling, 503) are expected in distributed systems…"
+      },
+      {
+        "term": "Azure",
+        "def": "Azure OpenAI provides the same model family inside Azure's compliance boundary, with private endpoints, managed identity auth, and content filtering — the enterprise path when data residency matters."
+      },
+      {
+        "term": "AKS",
+        "def": "Container Apps is the serverless container platform: built-in ingress, event-driven (KEDA) scale-to-zero, and revision management for traffic splitting — Kubernetes power without cluster ops. It's the right tool for one-off or bursty con…"
+      },
+      {
+        "term": "DB",
+        "def": "SDK auth: good Cosmos DB development means designing queries (and the key) together; the SDK's cross-partition feedback is a design smell, not noise."
+      },
+      {
+        "term": "RAG",
+        "def": "RAG: it's the foundation of RAG retrieval."
+      },
+      {
+        "term": "LLM",
+        "def": "Azure OpenAI's configurable content filters block harmful categories; prompt-injection defense adds hardened system prompts, delimiting untrusted input, and output validation. No single layer is sufficient — LLM security is layered like…"
+      },
+      {
+        "term": "App Service",
+        "def": "App Service plans: functions scale based on trigger metrics (queue depth for Service Bus); the plan must permit scale-out (Consumption scales automatically, Premium adds VNet/pre-warmed instances)."
+      },
+      {
+        "term": "App Insights",
+        "def": "App Insights stores telemetry in Log Analytics tables (requests, dependencies, exceptions, traces). App Insights' application map and end-to-end transaction diagnostics trace a request across services, showing dependency call durations (…"
+      },
+      {
+        "term": "DefaultAzureCredential",
+        "def": "DefaultAzureCredential: azure SDKs accept TokenCredential; DefaultAzureCredential chains managed identity (in Azure) with developer credentials (locally)."
+      },
+      {
+        "term": "Contributor",
+        "def": "Azure RBAC splits control plane (manage the account — Contributor) from data plane (read blobs — Storage Blob Data Reader/Contributor). This is the single most common managed-identity 403: the role is right, the plane is wrong."
+      },
+      {
+        "term": "Storage Blob Data",
+        "def": "Azure RBAC splits control plane (manage the account — Contributor) from data plane (read blobs — Storage Blob Data Reader/Contributor). This is the single most common managed-identity 403: the role is right, the plane is wrong."
+      },
+      {
+        "term": "ID",
+        "def": "Immutable, unique tags (git SHA, build ID) make deployments reproducible and rollbacks exact. :latest is mutable — you never know what it points to — which is why production manifests pin digests or versioned tags."
+      },
+      {
+        "term": "Principle",
+        "def": "Principle: system-assigned identities are unique per resource and die with it — compromise of one app doesn't implicate others."
+      },
+      {
+        "term": "App",
+        "def": "App registrations define the app's identity; multitenant apps let users from any Entra tenant sign in (consent framework permitting). MSAL handles the OAuth2/OIDC flows; the app never handles passwords."
+      },
+      {
+        "term": "Transient",
+        "def": "Transient failures (429 throttling, 503) are expected in distributed systems; SDK retry policies with exponential backoff and Retry-After compliance absorb them. Tight-loop retries amplify the spike — backoff is the disciplined pattern."
+      },
+      {
+        "term": "Azure OpenAI",
+        "def": "Azure OpenAI provides the same model family inside Azure's compliance boundary, with private endpoints, managed identity auth, and content filtering — the enterprise path when data residency matters."
+      },
+      {
+        "term": "Container Apps",
+        "def": "Container Apps is the serverless container platform: built-in ingress, event-driven (KEDA) scale-to-zero, and revision management for traffic splitting — Kubernetes power without cluster ops. It's the right tool for one-off or bursty con…"
+      },
+      {
+        "term": "VNet/pre-warmed",
+        "def": "Functions scale based on trigger metrics (queue depth for Service Bus); the plan must permit scale-out (Consumption scales automatically, Premium adds VNet/pre-warmed instances). Serial processing on fixed instances is the bottleneck to…"
+      },
+      {
+        "term": "Reader/Contributor",
+        "def": "Azure RBAC splits control plane (manage the account — Contributor) from data plane (read blobs — Storage Blob Data Reader/Contributor). This is the single most common managed-identity 403: the role is right, the plane is wrong."
+      },
+      {
+        "term": "AI",
+        "def": "What's the regression test for an AI feature?"
+      },
+      {
+        "term": "ACR",
+        "def": "ACR gives private image storage near your clusters (geo-replication), automated builds (ACR Tasks), and signing/vulnerability scanning hooks — removing the supply-chain risk and throttling of public pulls."
+      },
+      {
+        "term": "SHA",
+        "def": "Immutable, unique tags (git SHA, build ID) make deployments reproducible and rollbacks exact. :latest is mutable — you never know what it points to — which is why production manifests pin digests or versioned tags."
+      },
+      {
+        "term": "Live Metrics",
+        "def": "Live Metrics streams near-real-time performance counters, request rates, and failures — the 'watch the deploy' screen."
+      },
+      {
+        "term": "Log Analytics",
+        "def": "App Insights stores telemetry in Log Analytics tables (requests, dependencies, exceptions, traces). App Insights' application map and end-to-end transaction diagnostics trace a request across services, showing dependency call durations (…"
+      },
+      {
+        "term": "Durable Functions",
+        "def": "Durable Functions adds stateful orchestration to serverless: the orchestrator replays history, survives restarts, and handles retries, fan-out/fan-in, and human interaction patterns (approval workflows). Plain functions are stateless by…"
+      }
+    ],
+    "links": [
+      {
+        "label": "Microsoft — official site",
+        "url": "https://learn.microsoft.com",
+        "note": "Official vendor documentation and certification information"
+      },
+      {
+        "label": "Microsoft Learn — Azure",
+        "url": "https://learn.microsoft.com/en-us/azure/",
+        "note": "Official Azure documentation"
+      },
+      {
+        "label": "Microsoft certifications",
+        "url": "https://learn.microsoft.com/en-us/certifications/",
+        "note": "Official certification paths and exam pages"
+      },
+      {
+        "label": "Azure status and architecture",
+        "url": "https://azure.microsoft.com/en-us/",
+        "note": "Official Azure product pages"
+      }
+    ],
+    "checklist": [
+      "Get 7–8 hours of sleep the night before — fatigue destroys recall faster than any topic gap.",
+      "Bring valid government-issued photo ID and arrive at the test center 30 minutes early.",
+      "Eat a real meal beforehand; bring water and a light snack if the center allows them.",
+      "Read every question twice before scanning the answer choices.",
+      "Flag uncertain questions and move on — return with fresh eyes at the end.",
+      "Eliminate the obviously wrong answers first, then compare the survivors.",
+      "Budget your time: answer steadily and keep a 10–15 minute review buffer.",
+      "Re-run your weakest-domain drill until mastery is at least 80%.",
+      "For App Service & Functions: restate the 'why' behind each scenario answer in your own words — if you can't explain it, you don't own it.",
+      "Redo one Storage SDKs lab from scratch without looking at the steps.",
+      "Recite the key Auth (Managed Identity) terms from the glossary aloud from memory."
     ]
   }
 }

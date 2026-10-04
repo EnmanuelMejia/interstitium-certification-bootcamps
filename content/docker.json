@@ -19,7 +19,10 @@
           "situation": "A Dockerfile uses ADD for everything: copying source files, fetching a tarball from a URL, and adding a config file. A reviewer flags this in code review.",
           "prompt": "What is the best-practice guidance, and why?",
           "evidence": [
-            ["Dockerfile (excerpt)", "ADD https://example.com/data.tar.gz /opt/\nADD app/ /app/\nADD config.yaml /app/"]
+            [
+              "Dockerfile (excerpt)",
+              "ADD https://example.com/data.tar.gz /opt/\nADD app/ /app/\nADD config.yaml /app/"
+            ]
           ],
           "choices": [
             "Use COPY for local files — ADD's magic (URL fetch, tar auto-extract) makes builds surprising; reserve ADD for when you actually need it",
@@ -30,7 +33,10 @@
           "answer": 0,
           "why": "COPY does one transparent thing: copy local files. ADD additionally fetches remote URLs and auto-extracts archives, which hurts build-cache predictability and clarity. Best practice: COPY by default, ADD only when you need its extra behaviors (and even URL fetching is often clearer as an explicit RUN curl with checksum verification).",
           "hint": "Which instruction does exactly one obvious thing?",
-          "objectives": ["Dockerfile", "COPY vs ADD"],
+          "objectives": [
+            "Dockerfile",
+            "COPY vs ADD"
+          ],
           "mins": 5
         },
         {
@@ -39,7 +45,10 @@
           "situation": "Your image sets CMD [\"--port\", \"8080\"]. Running 'docker run myimg --port 9090' doesn't change the port — the container still listens on 8080.",
           "prompt": "What is wrong, and how do CMD and ENTRYPOINT interact?",
           "evidence": [
-            ["Dockerfile (excerpt)", "ENTRYPOINT [\"python\", \"app.py\", \"--port\", \"8080\"]\nCMD [\"--port\", \"8080\"]"]
+            [
+              "Dockerfile (excerpt)",
+              "ENTRYPOINT [\"python\", \"app.py\", \"--port\", \"8080\"]\nCMD [\"--port\", \"8080\"]"
+            ]
           ],
           "choices": [
             "ENTRYPOINT's exec list already hardcodes --port 8080, so the CMD arguments are appended after it — move the port flag out of ENTRYPOINT or use CMD as the default args",
@@ -47,10 +56,13 @@
             "docker run arguments override ENTRYPOINT, not CMD — use --entrypoint instead",
             "Arguments after the image name are ignored by design"
           ],
-          "answer":  0,
+          "answer": 0,
           "why": "With exec-form ENTRYPOINT, 'docker run <image> <args>' appends <args> to the ENTRYPOINT — replacing CMD entirely. Here the final command becomes 'python app.py --port 8080 --port 9090', and the app takes the first flag. The idiomatic split: ENTRYPOINT [\"python\", \"app.py\"] (the fixed executable) + CMD [\"--port\", \"8080\"] (default args, overridable).",
           "hint": "What is the final command line when both ENTRYPOINT and run-args are present?",
-          "objectives": ["Dockerfile", "CMD vs ENTRYPOINT"],
+          "objectives": [
+            "Dockerfile",
+            "CMD vs ENTRYPOINT"
+          ],
           "mins": 6
         },
         {
@@ -59,7 +71,10 @@
           "situation": "Your Node.js Dockerfile copies the whole repo, then runs npm ci. Every one-line code change triggers a full dependency reinstall — builds take 9 minutes.",
           "prompt": "How do you restructure the Dockerfile to cache dependencies?",
           "evidence": [
-            ["Dockerfile", "FROM node:20\nWORKDIR /app\nCOPY . .\nRUN npm ci\nCMD [\"node\", \"server.js\"]"]
+            [
+              "Dockerfile",
+              "FROM node:20\nWORKDIR /app\nCOPY . .\nRUN npm ci\nCMD [\"node\", \"server.js\"]"
+            ]
           ],
           "choices": [
             "COPY package.json package-lock.json first, RUN npm ci, then COPY the rest — dependency layer is cached until manifests change",
@@ -70,7 +85,10 @@
           "answer": 0,
           "why": "Docker caches each layer and invalidates everything after the first changed instruction. Copying package manifests first means the expensive npm ci layer is reused whenever only application code changes. Layer count barely matters; cache invalidation order is everything.",
           "hint": "Which changes more often — your dependencies or your code?",
-          "objectives": ["Build cache", "Layer ordering"],
+          "objectives": [
+            "Build cache",
+            "Layer ordering"
+          ],
           "mins": 5
         },
         {
@@ -88,7 +106,10 @@
           "answer": 0,
           "why": "Multi-stage builds let you use heavy tooling in an early stage and copy only artifacts into the final minimal stage (e.g., nginx:alpine). Deleting files in a later RUN doesn't shrink the image — the earlier layer still contains them. The result is often 10–50x smaller with a reduced attack surface.",
           "hint": "Do the build tools need to exist in the image that actually runs?",
-          "objectives": ["Multi-stage builds", "Image size"],
+          "objectives": [
+            "Multi-stage builds",
+            "Image size"
+          ],
           "mins": 5
         },
         {
@@ -106,7 +127,11 @@
           "answer": 0,
           "why": ".dockerignore keeps unwanted files out of the build context (faster builds, smaller images, fewer leaks). But .dockerignore can't un-ship what's already pushed — layers are immutable and downloadable, so any exposed secret must be rotated. Deeper lesson: secrets never belong in build contexts; inject at runtime.",
           "hint": "Can you un-publish a layer that already left your machine?",
-          "objectives": ["Build context", ".dockerignore", "Secret hygiene"],
+          "objectives": [
+            "Build context",
+            ".dockerignore",
+            "Secret hygiene"
+          ],
           "mins": 6
         },
         {
@@ -124,7 +149,10 @@
           "answer": 0,
           "why": "'latest' is a floating pointer, not a version guarantee: a host only updates it when it pulls, and pull policies vary. Immutable tags (semver, git SHA) or digests (sha256:...) make 'which exact bytes are running' unambiguous and rollbacks safe. Only tags are mutable; digests are content-addressed.",
           "hint": "What does the tag 'latest' actually point to on a host that hasn't pulled in weeks?",
-          "objectives": ["Tagging", "Immutable references"],
+          "objectives": [
+            "Tagging",
+            "Immutable references"
+          ],
           "mins": 5
         }
       ]
@@ -148,7 +176,10 @@
           "answer": 0,
           "why": "The registry hostname must be part of the image name: [registry/][namespace/]name:tag. 'docker tag' creates the fully-qualified alias pointing at the same image ID, then push sends it to that registry. Without the prefix, Docker assumes Docker Hub.",
           "hint": "How does the push command know which registry to contact?",
-          "objectives": ["Registries", "Image naming"],
+          "objectives": [
+            "Registries",
+            "Image naming"
+          ],
           "mins": 5
         },
         {
@@ -166,7 +197,10 @@
           "answer": 0,
           "why": "'docker login' authenticates and stores credentials in ~/.docker/config.json (use a credential helper like docker-credential-pass instead of base64 plaintext where possible). Every host that pulls private images needs its own login — or better, a registry credential wired into the orchestrator (e.g., imagePullSecrets in K8s).",
           "hint": "What did CI do that the new node hasn't?",
-          "objectives": ["Authentication", "docker login"],
+          "objectives": [
+            "Authentication",
+            "docker login"
+          ],
           "mins": 5
         },
         {
@@ -184,7 +218,10 @@
           "answer": 0,
           "why": "Tags are mutable pointers; digests (sha256 of the manifest) identify exact content. 'image:tag@sha256:digest' pins bytes precisely — pulls always resolve identically. 'docker images --digests' shows them. Tag immutability policies in the registry (Harbor/ECR support them) prevent the re-push problem at the source.",
           "hint": "Which reference can't change out from under you?",
-          "objectives": ["Digests", "Immutable deploys"],
+          "objectives": [
+            "Digests",
+            "Immutable deploys"
+          ],
           "mins": 5
         },
         {
@@ -202,7 +239,10 @@
           "answer": 0,
           "why": "Docker works with any OCI-compliant registry. Harbor (open source, self-hosted) adds RBAC, vulnerability scanning (Trivy), retention/tag-immutability policies, and replication. Cloud registries integrate with IAM and are managed. docker save/load tarballs are for air-gapped transfer, not team workflows.",
           "hint": "Is the Docker client locked to Docker Hub?",
-          "objectives": ["Registry options", "Harbor"],
+          "objectives": [
+            "Registry options",
+            "Harbor"
+          ],
           "mins": 5
         },
         {
@@ -220,7 +260,10 @@
           "answer": 0,
           "why": "Docker Hub rate-limits pulls (stricter for anonymous users; limits are per IP/account per time window). Fixes: 'docker login' for higher authenticated limits, run a pull-through cache registry mirror, or copy base images into your own registry/ECR so CI doesn't hit Hub at all. Authenticated limits are per-account, so use a dedicated CI service account.",
           "hint": "What changed at 9 AM — your Dockerfiles, or how many pulls happen?",
-          "objectives": ["Rate limits", "Pull-through cache"],
+          "objectives": [
+            "Rate limits",
+            "Pull-through cache"
+          ],
           "mins": 5
         },
         {
@@ -238,7 +281,10 @@
           "answer": 0,
           "why": "'docker image prune' removes dangling images; '-a' also removes images not used by any container. 'docker system prune' goes further (containers, networks, build cache — add --volumes only if you mean it). Never rm -rf /var/lib/docker while the daemon runs — it corrupts state. Schedule pruning in CI to prevent recurrence.",
           "hint": "Which prune flag distinguishes 'dangling' from 'unused'?",
-          "objectives": ["Disk management", "prune"],
+          "objectives": [
+            "Disk management",
+            "prune"
+          ],
           "mins": 4
         }
       ]
@@ -262,7 +308,10 @@
           "answer": 0,
           "why": "compose.yaml declares services (build context or image, ports, env, volumes, depends_on), plus top-level networks:/volumes: as needed. Named volumes persist DB data across 'compose down'. The 'version:' key is obsolete (ignored with a warning). One file, one 'docker compose up -d' (the hyphen-less v2 CLI).",
           "hint": "Which top-level keys describe the app, its data, and its networking?",
-          "objectives": ["Compose", "compose.yaml structure"],
+          "objectives": [
+            "Compose",
+            "compose.yaml structure"
+          ],
           "mins": 5
         },
         {
@@ -280,7 +329,10 @@
           "answer": 0,
           "why": "depends_on only controls start order. Readiness needs a healthcheck (e.g., pg_isready) on db plus 'condition: service_healthy' — supported in classic compose file formats (note: compose spec v2 dropped long-form conditions; healthcheck-based waiting is handled via depends_on + healthcheck in current Docker Compose). The robust app-side fix is retry-with-backoff on connect — ordering can never fully replace resilience.",
           "hint": "Does 'started' mean 'ready to accept connections'?",
-          "objectives": ["depends_on", "Healthchecks"],
+          "objectives": [
+            "depends_on",
+            "Healthchecks"
+          ],
           "mins": 6
         },
         {
@@ -298,7 +350,10 @@
           "answer": 0,
           "why": "env_file loads a gitignored .env; ${VAR} interpolates from the shell environment (with ${VAR:-default} fallbacks). Either keeps secrets out of version control. For stronger needs: Docker Swarm/compose 'secrets:' mounts secrets as files. Images are shared artifacts — baking secrets into them is worse, not better.",
           "hint": "Where should the secret live so git never sees it?",
-          "objectives": ["Environment", "Secret handling"],
+          "objectives": [
+            "Environment",
+            "Secret handling"
+          ],
           "mins": 5
         },
         {
@@ -316,7 +371,10 @@
           "answer": 0,
           "why": "'docker compose down' stops and removes containers/networks but preserves named volumes (your data survives). '-v/--volumes' explicitly deletes them — the 'nuke the data' option. Anonymous volumes are removed by default on down. Lesson: know what -v destroys before typing it near production-like data.",
           "hint": "Which flag is the difference between 'stop everything' and 'destroy the data too'?",
-          "objectives": ["Compose lifecycle", "down -v"],
+          "objectives": [
+            "Compose lifecycle",
+            "down -v"
+          ],
           "mins": 4
         },
         {
@@ -334,7 +392,10 @@
           "answer": 0,
           "why": "Compose merges multiple -f files (later wins on conflicts; lists like ports merge). Convention: compose.yaml (base) + compose.override.yaml (auto-loaded for local dev tweaks) + explicit -f for prod. Combined with ${VAR} interpolation and profiles, one base serves all environments without duplication.",
           "hint": "What happens when you pass two -f files with conflicting values?",
-          "objectives": ["Multiple files", "Overrides"],
+          "objectives": [
+            "Multiple files",
+            "Overrides"
+          ],
           "mins": 5
         },
         {
@@ -352,7 +413,10 @@
           "answer": 0,
           "why": "Each compose project gets a user-defined bridge network with an embedded DNS server: service names (and container names) resolve to container IPs, with basic load balancing across replicas. This is why inter-service communication 'just works' by service name — and why the legacy default bridge (no DNS) is inferior.",
           "hint": "What provides DNS on a user-defined network that the default bridge lacks?",
-          "objectives": ["Compose networking", "Service DNS"],
+          "objectives": [
+            "Compose networking",
+            "Service DNS"
+          ],
           "mins": 5
         }
       ]
@@ -376,7 +440,10 @@
           "answer": 0,
           "why": "host mode removes network isolation: the container sees host interfaces and binds host ports directly (no -p needed/possible). Use for network-monitoring agents or extreme-performance needs. You lose port mapping, DNS-per-network, and inter-container isolation — don't use it for regular apps. (Note: host networking doesn't work on Docker Desktop the same way.)",
           "hint": "Which mode gives the container the host's own network stack?",
-          "objectives": ["Network modes", "host networking"],
+          "objectives": [
+            "Network modes",
+            "host networking"
+          ],
           "mins": 5
         },
         {
@@ -394,7 +461,10 @@
           "answer": 0,
           "why": "Two classic causes: (1) the app listens on 127.0.0.1 inside its own network namespace — publish forwards to the container IP, not its loopback, so the app must bind 0.0.0.0; (2) -p syntax is host:container — reversed gives the wrong mapping. Diagnose: 'docker port <c>', 'ss -tlnp' on host, and check the app's bind address in logs.",
           "hint": "From the host's perspective, which address does the published port forward to?",
-          "objectives": ["Port publishing", "Bind addresses"],
+          "objectives": [
+            "Port publishing",
+            "Bind addresses"
+          ],
           "mins": 6
         },
         {
@@ -412,7 +482,10 @@
           "answer": 0,
           "why": "User-defined networks get an embedded DNS server resolving container names/aliases; the legacy default bridge doesn't (a historical limitation — --link was the old workaround, now deprecated). Best practice: always create explicit networks ('docker network create appnet') and attach containers to them.",
           "hint": "Which network type did Docker add DNS to?",
-          "objectives": ["DNS", "User-defined networks"],
+          "objectives": [
+            "DNS",
+            "User-defined networks"
+          ],
           "mins": 5
         },
         {
@@ -430,7 +503,10 @@
           "answer": 0,
           "why": "'docker network inspect' shows all attached containers with their IPv4/IPv6 addresses and aliases; 'docker inspect' gives the container's NetworkSettings (per-network IPs, port bindings, DNS). 'docker ps' shows published ports but not internal IPs. For name resolution testing: 'docker exec <c> getent hosts <name>'.",
           "hint": "Which inspect target shows the network's member list with IPs?",
-          "objectives": ["Inspection", "Debugging"],
+          "objectives": [
+            "Inspection",
+            "Debugging"
+          ],
           "mins": 4
         },
         {
@@ -448,7 +524,10 @@
           "answer": 0,
           "why": "macvlan creates sub-interfaces on the parent NIC, each with its own MAC — containers get real LAN IPs via the physical network (DHCP or static). Trade-offs: needs promiscuous mode on the parent, containers can't talk to the host itself without a macvlan shim, and it bypasses Docker's port mapping. It's the escape hatch for legacy/physical-network requirements.",
           "hint": "Which driver makes the container look like another physical machine on the switch?",
-          "objectives": ["macvlan", "Physical networking"],
+          "objectives": [
+            "macvlan",
+            "Physical networking"
+          ],
           "mins": 5
         },
         {
@@ -466,7 +545,10 @@
           "answer": 0,
           "why": "--network none gives the container a network namespace containing only lo — no eth0, no routes out. Unpublished ports still leave full outbound connectivity (containers can reach the internet via NAT by default), so 'no -p' is not isolation. none is the true air-gap for sensitive batch work.",
           "hint": "Does 'no published ports' also block outbound connections?",
-          "objectives": ["Network isolation", "none network"],
+          "objectives": [
+            "Network isolation",
+            "none network"
+          ],
           "mins": 4
         }
       ]
@@ -490,7 +572,10 @@
           "answer": 0,
           "why": "Named volumes (docker volume create pgdata; -v pgdata:/var/lib/postgresql/data) are Docker-managed: portable across hosts, work with volume drivers (NFS, cloud), get proper ownership handling, and persist independent of container lifecycle. Bind mounts (-v /host/path:/container/path) couple you to host paths and UID quirks — fine for dev config injection, wrong for production data.",
           "hint": "Which option keeps working when you move to a different host?",
-          "objectives": ["Volumes", "Bind mounts"],
+          "objectives": [
+            "Volumes",
+            "Bind mounts"
+          ],
           "mins": 5
         },
         {
@@ -508,7 +593,10 @@
           "answer": 0,
           "why": "Bind mounts expose host files with host ownership — the container's UID 1000 is the host's UID 1000. Fixes: chown 1000:1000 ./data on the host, or 'docker run --user $(id -u):$(id -g)'. Named volumes avoid this (Docker initializes ownership). 777 'works' by abandoning all access control — never in production.",
           "hint": "Is UID 1000 in the container a different user than UID 1000 on the host?",
-          "objectives": ["Permissions", "Bind mounts"],
+          "objectives": [
+            "Permissions",
+            "Bind mounts"
+          ],
           "mins": 5
         },
         {
@@ -526,7 +614,10 @@
           "answer": 0,
           "why": "Attach a helper container to the volume ('docker run --rm -v pgdata:/data -v $(pwd):/backup alpine tar czf /backup/pg.tar.gz /data') for file-level backup, or better: pg_dump from a linked container for a consistent logical backup. Raw-copying live database files risks corruption — use the DB's own tools. Restore is the reverse mount.",
           "hint": "What makes a database backup consistent that a file copy isn't?",
-          "objectives": ["Backups", "Volume sharing"],
+          "objectives": [
+            "Backups",
+            "Volume sharing"
+          ],
           "mins": 6
         },
         {
@@ -544,7 +635,10 @@
           "answer": 0,
           "why": "The :ro suffix (or --mount type=bind,source=...,target=...,readonly) mounts read-only — the container physically cannot modify it. Use for configs, certificates, and any host file the container should never change. Defense in depth alongside running as non-root.",
           "hint": "Which mount option makes the container's view read-only?",
-          "objectives": ["Read-only mounts", ":ro"],
+          "objectives": [
+            "Read-only mounts",
+            ":ro"
+          ],
           "mins": 4
         },
         {
@@ -562,7 +656,10 @@
           "answer": 0,
           "why": "Dockerfile VOLUME creates an anonymous volume at each container creation if no explicit mount is given — they accumulate because nothing references them by name. Fixes: mount named volumes explicitly (overrides the anonymous one), and clean up with 'docker volume prune' (careful — removes ALL unused volumes). Prefer explicit named volumes in compose files.",
           "hint": "What creates a volume when the Dockerfile says VOLUME but nothing is mounted?",
-          "objectives": ["Anonymous volumes", "VOLUME"],
+          "objectives": [
+            "Anonymous volumes",
+            "VOLUME"
+          ],
           "mins": 5
         },
         {
@@ -580,7 +677,11 @@
           "answer": 0,
           "why": "--mount's key=value syntax is self-documenting and validates (e.g., refuses a bind mount to a nonexistent source unless created). -v's positional 'src:dst:opts' is compact but easy to misorder (swapped source/target is a classic bug). Both work everywhere; --mount is the safer default for anything committed to a repo.",
           "hint": "Which syntax makes a swapped source/target obvious?",
-          "objectives": ["--mount", "-v", "Syntax"],
+          "objectives": [
+            "--mount",
+            "-v",
+            "Syntax"
+          ],
           "mins": 4
         }
       ]
@@ -604,7 +705,10 @@
           "answer": 0,
           "why": "USER switches the runtime user for subsequent instructions and the container process. Create a dedicated user, ensure it owns what it needs (chown in the same layer), prefer numeric UIDs (name resolution isn't guaranteed at runtime). Combined with dropping capabilities and read-only filesystems, this is container hardening 101.",
           "hint": "Which instruction changes the user — and what must be true about file ownership?",
-          "objectives": ["USER", "Non-root containers"],
+          "objectives": [
+            "USER",
+            "Non-root containers"
+          ],
           "mins": 5
         },
         {
@@ -622,7 +726,10 @@
           "answer": 0,
           "why": "ENV values persist in image config/history forever — anyone with the image has the secret. ARG is also visible in history. Runtime injection (-e, --env-file, compose env_file, secrets mounted as files) keeps secrets out of the artifact. For CI: secret managers or masked CI variables, never committed files.",
           "hint": "Who can read an image's ENV values?",
-          "objectives": ["Secrets", "ENV anti-pattern"],
+          "objectives": [
+            "Secrets",
+            "ENV anti-pattern"
+          ],
           "mins": 5
         },
         {
@@ -640,7 +747,10 @@
           "answer": 0,
           "why": "Presence = exposure (attackers find paths you didn't). Remediation: bump the base (patched tag or slim/distroless alternative), rebuild, rescan to verify. CI gates ('docker scout cves' / Trivy / Grype failing on critical) prevent regressions. Patching running containers is ephemeral — the next deploy reintroduces the CVE.",
           "hint": "Where does the permanent fix live — the running container or the build?",
-          "objectives": ["Scanning", "CVE remediation"],
+          "objectives": [
+            "Scanning",
+            "CVE remediation"
+          ],
           "mins": 5
         },
         {
@@ -658,7 +768,10 @@
           "answer": 0,
           "why": "Runtime hardening stack: --read-only (with --tmpfs for scratch), --cap-drop ALL + minimal adds, --user (non-root), resource limits (--memory, --cpus, --pids-limit to bound DoS/blast radius), --security-opt no-new-privileges. Each shrinks what a compromised container can do. --privileged is the opposite of hardening.",
           "hint": "Which flags reduce what a compromised container can do?",
-          "objectives": ["Runtime flags", "Defense in depth"],
+          "objectives": [
+            "Runtime flags",
+            "Defense in depth"
+          ],
           "mins": 6
         },
         {
@@ -676,7 +789,10 @@
           "answer": 0,
           "why": "no-new-privileges is a kernel flag preventing processes from gaining privileges via setuid/setgid binaries or file capabilities — a cheap, powerful containment control. Combine with dropping capabilities and non-root USER. It's part of the default Docker seccomp/AppArmor story but worth setting explicitly in security-sensitive contexts.",
           "hint": "Which kernel-level flag neuters setuid inside the container?",
-          "objectives": ["no-new-privileges", "setuid"],
+          "objectives": [
+            "no-new-privileges",
+            "setuid"
+          ],
           "mins": 4
         },
         {
@@ -694,9 +810,217 @@
           "answer": 0,
           "why": "Signing (cosign with Sigstore keyless: OIDC identity from CI) attaches verifiable signatures + attestations (SLSA provenance: what source, what build). Deploy-time verification (Kyverno/Connaisseur admission, or 'cosign verify' in pipelines) rejects unsigned/forged images. Fix the registry RBAC too — signing complements access control, doesn't replace it.",
           "hint": "What cryptographically ties an image to the CI run that built it?",
-          "objectives": ["Signing", "cosign", "Provenance"],
+          "objectives": [
+            "Signing",
+            "cosign",
+            "Provenance"
+          ],
           "mins": 6
         }
+      ]
+    }
+  ],
+  "lessons": [
+    {
+      "domain_id": "images-dockerfiles",
+      "title": "Images & Dockerfiles — Core concepts",
+      "concepts": [
+        "COPY vs ADD: best practice: COPY by default, ADD only when you need its extra behaviors (and even URL fetching is often clearer as an explicit RUN curl with checksum verification). Multi-stage builds let you use heavy tooling in an early stage and copy only artifacts into the final minimal stage (e.g., nginx:alpine).",
+        "CMD vs ENTRYPOINT: with exec-form ENTRYPOINT, 'docker run <image> <args>' appends <args> to the ENTRYPOINT — replacing CMD entirely.",
+        "Build cache: .dockerignore keeps unwanted files out of the build context (faster builds, smaller images, fewer leaks). Layer count barely matters; cache invalidation order is everything.",
+        "Layer ordering: deleting files in a later RUN doesn't shrink the image — the earlier layer still contains them. Docker caches each layer and invalidates everything after the first changed instruction."
+      ],
+      "example": {
+        "lang": "text",
+        "code": "ENTRYPOINT [\"python\", \"app.py\", \"--port\", \"8080\"]\nCMD [\"--port\", \"8080\"]",
+        "walkthrough": "With exec-form ENTRYPOINT, 'docker run <image> <args>' appends <args> to the ENTRYPOINT — replacing CMD entirely. Here the final command becomes 'python app.py --port 8080 --port 9090', and the app takes the first flag. The idiomatic split: ENTRYPOINT [\"python\", \"app.py\"] (the fixed executable) + CMD [\"--port\", \"8080\"] (default args, overridable)."
+      },
+      "pitfalls": [
+        "Common trap: combine COPY and RUN into a single layer to reduce layer count.",
+        "Common trap: docker run arguments override ENTRYPOINT, not CMD.",
+        "Common trap: CMD is ignored whenever ENTRYPOINT exists.",
+        "Common trap: add --no-cache to the build so layers are always fresh."
+      ],
+      "try_it": "Work through this in the Terminal tab →"
+    },
+    {
+      "domain_id": "registries",
+      "title": "Registries — Core concepts",
+      "concepts": [
+        "Registries: cloud registries integrate with IAM and are managed. docker save/load tarballs are for air-gapped transfer, not team workflows.",
+        "Image naming: 'docker image prune' removes dangling images; '-a' also removes images not used by any container. The registry hostname must be part of the image name: [registry/][namespace/]name:tag.",
+        "docker login: fixes: 'docker login' for higher authenticated limits, run a pull-through cache registry mirror, or copy base images into your own registry/ECR so CI doesn't hit Hub at all.",
+        "Digests: 'docker images --digests' shows them."
+      ],
+      "example": {
+        "lang": "text",
+        "code": "Worked example — registries\nSetup: Fixes: 'docker login' for higher authenticated limits, run a pull-through cache registry mirror, or copy base images into your own registry/ECR so CI…\nReasoning: 'image:tag@sha256:digest' pins bytes precisely — pulls always resolve identically.\nTakeaway: 'docker image prune' removes dangling images; '-a' also removes images not used by any container.",
+        "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."
+      },
+      "pitfalls": [
+        "Common trap: rate limits apply per image.",
+        "Common trap: docker push automatically prefixes the configured default registry.",
+        "Common trap: docker push myapp:1.0 --registry registry.example.com.",
+        "Common trap: docker Hub is the only registry Docker can use."
+      ],
+      "try_it": "Work through this in the Terminal tab →"
+    },
+    {
+      "domain_id": "compose",
+      "title": "Compose — Core concepts",
+      "concepts": [
+        "Compose merges multiple -f files (later wins on conflicts; lists like ports merge). Each compose project gets a user-defined bridge network with an embedded DNS server: service names (and container names) resolve to container IPs, with basic load balancing across replicas.",
+        "Compose.yaml declares services (build context or image, ports, env, volumes, depends_on), plus top-level networks:/volumes: as needed. Convention: compose.yaml (base) + compose.override.yaml (auto-loaded for local dev tweaks) + explicit -f for prod.",
+        "depends_on: readiness needs a healthcheck (e.g., pg_isready) on db plus 'condition: service_healthy' — supported in classic compose file formats (note: compose spec v2 dropped long-form conditions; healthcheck-based waiting is handled via depends_on + healthcheck in current Docker Compose).",
+        "Environment: env_file loads a gitignored .env; ${VAR} interpolates from the shell environment (with ${VAR:-default} fallbacks). Combined with ${VAR} interpolation and profiles, one base serves all environments without duplication."
+      ],
+      "example": {
+        "lang": "text",
+        "code": "Worked example — compose\nSetup: Compose merges multiple -f files (later wins on conflicts; lists like ports merge).\nReasoning: Each compose project gets a user-defined bridge network with an embedded DNS server: service names (and container names) resolve to container IPs…\nTakeaway: compose.yaml declares services (build context or image, ports, env, volumes, depends_on), plus top-level networks:/volumes: as needed.",
+        "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."
+      },
+      "pitfalls": [
+        "Common trap: compose doesn't support multiple files.",
+        "Common trap: environment variables can't change compose behavior.",
+        "Common trap: each service needs its own compose.yaml file.",
+        "Common trap: compose files aren't sensitive."
+      ],
+      "try_it": "Work through this in the Terminal tab →"
+    },
+    {
+      "domain_id": "networking",
+      "title": "Networking — Core concepts",
+      "concepts": [
+        "Network modes: 'docker network inspect' shows all attached containers with their IPv4/IPv6 addresses and aliases; 'docker inspect' gives the container's NetworkSettings (per-network IPs, port bindings, DNS).",
+        "host networking: (Note: host networking doesn't work on Docker Desktop the same way.). Two classic causes: (1) the app listens on 127.0.0.1 inside its own network namespace — publish forwards to the container IP, not its loopback, so the app must bind 0.0.0.0; (2) -p syntax is host:container — reversed gives the wrong mapping.",
+        "Port publishing: diagnose: 'docker port <c>', 'ss -tlnp' on host, and check the app's bind address in logs. Trade-offs: needs promiscuous mode on the parent, containers can't talk to the host itself without a macvlan shim, and it bypasses Docker's port mapping.",
+        "DNS: user-defined networks get an embedded DNS server resolving container names/aliases; the legacy default bridge doesn't (a historical limitation — --link was the old workaround, now deprecated). You lose port mapping, DNS-per-network, and inter-container isolation — don't use it for regular apps.",
+        "User-defined networks: best practice: always create explicit networks ('docker network create appnet') and attach containers to them."
+      ],
+      "example": {
+        "lang": "text",
+        "code": "Worked example — network modes\nSetup: Best practice: always create explicit networks ('docker network create appnet') and attach containers to them.\nReasoning: 'docker network inspect' shows all attached containers with their IPv4/IPv6 addresses and aliases; 'docker inspect' gives the container's…\nTakeaway: host mode removes network isolation: the container sees host interfaces and binds host ports directly (no -p needed/possible).",
+        "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."
+      },
+      "pitfalls": [
+        "Common trap: host mode doesn't exist on Linux.",
+        "Common trap: containers can't receive external connections."
+      ],
+      "try_it": "Work through this in the Terminal tab →"
+    },
+    {
+      "domain_id": "volumes",
+      "title": "Volumes — Core concepts",
+      "concepts": [
+        "Bind mounts (-v /host/path:/container/path) couple you to host paths and UID quirks — fine for dev config injection, wrong for production data. Bind mounts expose host files with host ownership — the container's UID 1000 is the host's UID 1000.",
+        "Volumes: fixes: mount named volumes explicitly (overrides the anonymous one), and clean up with 'docker volume prune' (careful — removes ALL unused volumes).",
+        "Volume sharing: dockerfile VOLUME creates an anonymous volume at each container creation if no explicit mount is given — they accumulate because nothing references them by name.",
+        "Read-only mounts: the :ro suffix (or --mount type=bind,source=...,target=...,readonly) mounts read-only — the container physically cannot modify it."
+      ],
+      "example": {
+        "lang": "text",
+        "code": "Worked example — bind mounts\nSetup: Dockerfile VOLUME creates an anonymous volume at each container creation if no explicit mount is given — they accumulate because nothing references…\nReasoning: --mount's key=value syntax is self-documenting and validates (e.g., refuses a bind mount to a nonexistent source unless created). -v's positional…\nTakeaway: The :ro suffix (or --mount type=bind,source=...,target=...,readonly) mounts read-only — the container physically cannot modify it.",
+        "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."
+      },
+      "pitfalls": [
+        "Common trap: :ro only works for named volumes, not bind mounts.",
+        "Common trap: anonymous volumes are deleted automatically.",
+        "Common trap: docker cp the volume directory while Postgres runs.",
+        "Common trap: docker shouldn't create volumes unprompted."
+      ],
+      "try_it": "Work through this in the Terminal tab →"
+    },
+    {
+      "domain_id": "security-bp",
+      "title": "Security & Best Practices — Core concepts",
+      "concepts": [
+        "USER: runtime hardening stack: --read-only (with --tmpfs for scratch), --cap-drop ALL + minimal adds, --user (non-root), resource limits (--memory, --cpus, --pids-limit to bound DoS/blast radius), --security-opt no-new-privileges.",
+        "Non-root containers: patching running containers is ephemeral — the next deploy reintroduces the CVE. Combine with dropping capabilities and non-root USER.",
+        "Secrets: runtime injection (-e, --env-file, compose env_file, secrets mounted as files) keeps secrets out of the artifact.",
+        "ENV values persist in image config/history forever — anyone with the image has the secret.",
+        "CVE remediation: remediation: bump the base (patched tag or slim/distroless alternative), rebuild, rescan to verify."
+      ],
+      "example": {
+        "lang": "text",
+        "code": "Worked example — user\nSetup: Runtime hardening stack: --read-only (with --tmpfs for scratch), --cap-drop ALL + minimal adds, --user (non-root), resource limits (--memory, --cpus…\nReasoning: Signing (cosign with Sigstore keyless: OIDC identity from CI) attaches verifiable signatures + attestations (SLSA provenance: what source, what…\nTakeaway: USER switches the runtime user for subsequent instructions and the container process.",
+        "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."
+      },
+      "pitfalls": [
+        "Common trap: setuid doesn't work in containers.",
+        "Common trap: running as root in containers is safe.",
+        "Common trap: the app doesn't use OpenSSL.",
+        "Common trap: patch the running container with apt-get."
+      ],
+      "try_it": "Work through this in the Terminal tab →"
+    }
+  ],
+  "sections": [
+    {
+      "id": "foundations",
+      "title": "Foundations",
+      "kind": "foundation",
+      "lectures": [
+        "m-binary",
+        "f-cli-basics-0",
+        "f-cli-basics-1",
+        "f-linux-cli-0",
+        "f-linux-cli-1",
+        "f-linux-cli-2"
+      ],
+      "lab_ids": [],
+      "drill_domain_ids": []
+    },
+    {
+      "id": "core",
+      "title": "Core",
+      "kind": "core",
+      "lectures": [
+        "c-images-dockerfiles",
+        "c-registries",
+        "c-compose",
+        "c-networking",
+        "c-volumes"
+      ],
+      "lab_ids": [
+        "docker-lab-1",
+        "docker-lab-2"
+      ],
+      "drill_domain_ids": [
+        "images-dockerfiles",
+        "registries",
+        "compose",
+        "networking",
+        "volumes"
+      ]
+    },
+    {
+      "id": "advanced",
+      "title": "Advanced",
+      "kind": "advanced",
+      "lectures": [
+        "c-security-bp"
+      ],
+      "lab_ids": [
+        "docker-lab-3",
+        "docker-lab-4"
+      ],
+      "drill_domain_ids": [
+        "security-bp"
+      ]
+    },
+    {
+      "id": "exam-prep",
+      "title": "Exam Prep",
+      "kind": "exam-prep",
+      "lectures": [],
+      "lab_ids": [],
+      "drill_domain_ids": [
+        "images-dockerfiles",
+        "registries",
+        "compose",
+        "networking",
+        "volumes",
+        "security-bp"
       ]
     }
   ],
@@ -704,50 +1028,106 @@
     {
       "prompt": "Tell me about a containerization project you led or contributed to. What did you decide and why?",
       "framework": "STAR",
-      "points": ["The application and constraints", "Key Dockerfile/architecture decisions", "Outcome in production"],
-      "pitfalls": ["Can't explain the decisions", "No production outcome"]
+      "points": [
+        "The application and constraints",
+        "Key Dockerfile/architecture decisions",
+        "Outcome in production"
+      ],
+      "pitfalls": [
+        "Can't explain the decisions",
+        "No production outcome"
+      ]
     },
     {
       "prompt": "Describe a time a container behaved unexpectedly (build, runtime, networking). How did you debug it?",
       "framework": "STAR",
-      "points": ["The symptom", "Your debug method (layers, logs, inspect)", "Root cause"],
-      "pitfalls": ["Rebuilding blindly until it worked", "No root cause"]
+      "points": [
+        "The symptom",
+        "Your debug method (layers, logs, inspect)",
+        "Root cause"
+      ],
+      "pitfalls": [
+        "Rebuilding blindly until it worked",
+        "No root cause"
+      ]
     },
     {
       "prompt": "Tell me about improving container image security or build performance.",
       "framework": "STAR",
-      "points": ["The problem (size, CVEs, slow builds)", "What you changed", "Measured improvement"],
-      "pitfalls": ["No measurements", "Theoretical only"]
+      "points": [
+        "The problem (size, CVEs, slow builds)",
+        "What you changed",
+        "Measured improvement"
+      ],
+      "pitfalls": [
+        "No measurements",
+        "Theoretical only"
+      ]
     },
     {
       "prompt": "Describe a disagreement about container practices (e.g., one big image vs many, compose vs Kubernetes).",
       "framework": "STAR",
-      "points": ["Both positions", "How you evaluated", "Decision and result"],
-      "pitfalls": ["Tool zealotry", "No evaluation criteria"]
+      "points": [
+        "Both positions",
+        "How you evaluated",
+        "Decision and result"
+      ],
+      "pitfalls": [
+        "Tool zealotry",
+        "No evaluation criteria"
+      ]
     },
     {
       "prompt": "Tell me about migrating an application to containers. What was hard?",
       "framework": "STAR",
-      "points": ["The app's assumptions that broke", "How you adapted them", "What you'd do differently"],
-      "pitfalls": ["'It was easy' with no detail", "No lessons"]
+      "points": [
+        "The app's assumptions that broke",
+        "How you adapted them",
+        "What you'd do differently"
+      ],
+      "pitfalls": [
+        "'It was easy' with no detail",
+        "No lessons"
+      ]
     },
     {
       "prompt": "Describe how you handle secrets and configuration for containerized apps.",
       "framework": "STAR",
-      "points": ["Your approach per environment", "A mistake you caught or made", "Current standard"],
-      "pitfalls": ["Secrets in images", "No standard"]
+      "points": [
+        "Your approach per environment",
+        "A mistake you caught or made",
+        "Current standard"
+      ],
+      "pitfalls": [
+        "Secrets in images",
+        "No standard"
+      ]
     },
     {
       "prompt": "Tell me about a production incident involving containers or orchestration.",
       "framework": "STAR",
-      "points": ["Your role", "Diagnosis steps", "Prevention added"],
-      "pitfalls": ["No method", "No prevention"]
+      "points": [
+        "Your role",
+        "Diagnosis steps",
+        "Prevention added"
+      ],
+      "pitfalls": [
+        "No method",
+        "No prevention"
+      ]
     },
     {
       "prompt": "Where are containers and cloud-native tooling heading, and how are you keeping up?",
       "framework": "Present-Past-Future",
-      "points": ["Informed trend view", "Current learning", "Application to your work"],
-      "pitfalls": ["Buzzwords only", "No action"]
+      "points": [
+        "Informed trend view",
+        "Current learning",
+        "Application to your work"
+      ],
+      "pitfalls": [
+        "Buzzwords only",
+        "No action"
+      ]
     }
   ],
   "chat": {
@@ -756,39 +1136,1006 @@
       {
         "id": "images-dockerfiles",
         "name": "Images & Dockerfiles",
-        "key_points": ["COPY vs ADD", "CMD vs ENTRYPOINT", "layer cache ordering", "multi-stage builds", ".dockerignore", "immutable tags vs latest"],
-        "followups": ["What does the final image contain?", "Why that instruction order?"]
+        "key_points": [
+          "COPY vs ADD",
+          "CMD vs ENTRYPOINT",
+          "layer cache ordering",
+          "multi-stage builds",
+          ".dockerignore",
+          "immutable tags vs latest"
+        ],
+        "followups": [
+          "What does the final image contain?",
+          "Why that instruction order?"
+        ]
       },
       {
         "id": "registries",
         "name": "Registries",
-        "key_points": ["fully-qualified image names", "docker login and config.json", "digests vs tags", "Harbor/ECR options", "rate limits", "image prune"],
-        "followups": ["How does the client know which registry?", "What can't change under you?"]
+        "key_points": [
+          "fully-qualified image names",
+          "docker login and config.json",
+          "digests vs tags",
+          "Harbor/ECR options",
+          "rate limits",
+          "image prune"
+        ],
+        "followups": [
+          "How does the client know which registry?",
+          "What can't change under you?"
+        ]
       },
       {
         "id": "compose",
         "name": "Compose",
-        "key_points": ["compose.yaml structure", "depends_on vs readiness", "env_file and interpolation", "down -v danger", "override files", "service-name DNS"],
-        "followups": ["What happens on down -v?", "How do services find each other?"]
+        "key_points": [
+          "compose.yaml structure",
+          "depends_on vs readiness",
+          "env_file and interpolation",
+          "down -v danger",
+          "override files",
+          "service-name DNS"
+        ],
+        "followups": [
+          "What happens on down -v?",
+          "How do services find each other?"
+        ]
       },
       {
         "id": "networking",
         "name": "Networking",
-        "key_points": ["bridge vs host vs none", "port publishing and bind addresses", "user-defined network DNS", "docker network inspect", "macvlan", "--network none"],
-        "followups": ["Which mode fits this need?", "Why connection refused?"]
+        "key_points": [
+          "bridge vs host vs none",
+          "port publishing and bind addresses",
+          "user-defined network DNS",
+          "docker network inspect",
+          "macvlan",
+          "--network none"
+        ],
+        "followups": [
+          "Which mode fits this need?",
+          "Why connection refused?"
+        ]
       },
       {
         "id": "volumes",
         "name": "Volumes",
-        "key_points": ["named volumes vs bind mounts", "UID permission model", "backup patterns", ":ro mounts", "anonymous volumes", "-v vs --mount"],
-        "followups": ["Where does the data live?", "What survives container removal?"]
+        "key_points": [
+          "named volumes vs bind mounts",
+          "UID permission model",
+          "backup patterns",
+          ":ro mounts",
+          "anonymous volumes",
+          "-v vs --mount"
+        ],
+        "followups": [
+          "Where does the data live?",
+          "What survives container removal?"
+        ]
       },
       {
         "id": "security-bp",
         "name": "Security & Best Practices",
-        "key_points": ["USER non-root", "no secrets in ENV/layers", "CVE scanning in CI", "runtime hardening flags", "no-new-privileges", "cosign signing"],
-        "followups": ["Who can see that secret?", "What's the blast radius?"]
+        "key_points": [
+          "USER non-root",
+          "no secrets in ENV/layers",
+          "CVE scanning in CI",
+          "runtime hardening flags",
+          "no-new-privileges",
+          "cosign signing"
+        ],
+        "followups": [
+          "Who can see that secret?",
+          "What's the blast radius?"
+        ]
       }
+    ]
+  },
+  "labs": [
+    {
+      "id": "docker-lab-1",
+      "title": "Dockerfile — Docker drill",
+      "objective": "Run a short sequence of Docker CLI commands that demonstrates dockerfile, then verify each result against the expected output.",
+      "steps": [
+        "This lab reworks the Images & Dockerfiles practice scenario \"COPY or ADD?\" into commands you run yourself — same concept, hands-on instead of multiple choice.",
+        "Open the Terminal tab for this bootcamp — every command below runs there.",
+        "Type exactly: docker ps — the container list header shows CONTAINER ID",
+        "Type exactly: docker images — the image list header shows REPOSITORY",
+        "Type exactly: docker pull hello-world — the pull output names the hello-world image",
+        "In your own words, say what each command's output taught you about dockerfile."
+      ],
+      "checks": [
+        {
+          "command_pattern": "docker ps",
+          "expect_contains": "CONTAINER",
+          "hint": "In the Terminal tab, run `docker ps`. If the check fails, confirm you typed it exactly and that the output contains \"CONTAINER\"."
+        },
+        {
+          "command_pattern": "docker images",
+          "expect_contains": "REPOSITORY",
+          "hint": "In the Terminal tab, run `docker images`. If the check fails, confirm you typed it exactly and that the output contains \"REPOSITORY\"."
+        },
+        {
+          "command_pattern": "docker pull",
+          "expect_contains": "hello-world",
+          "hint": "In the Terminal tab, run `docker pull hello-world`. If the check fails, confirm you typed it exactly and that the output contains \"hello-world\"."
+        }
+      ],
+      "success_message": "Lab complete — dockerfile practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."
+    },
+    {
+      "id": "docker-lab-2",
+      "title": "Registries — Docker drill",
+      "objective": "Use the Docker CLI to explore registries hands-on: type each command, read what comes back, and connect the output to the concept.",
+      "steps": [
+        "Inspired by the Registries scenario \"Naming the image for the registry\": take its core idea and prove it live in the terminal instead of answering on paper.",
+        "Open the Terminal tab for this bootcamp — every command below runs there.",
+        "Type exactly: docker pull hello-world — the pull output names the hello-world image",
+        "Type exactly: docker run hello-world — the container prints its greeting",
+        "Type exactly: docker ps — the container list header shows CONTAINER ID",
+        "In your own words, say what each command's output taught you about registries."
+      ],
+      "checks": [
+        {
+          "command_pattern": "docker pull",
+          "expect_contains": "hello-world",
+          "hint": "In the Terminal tab, run `docker pull hello-world`. If the check fails, confirm you typed it exactly and that the output contains \"hello-world\"."
+        },
+        {
+          "command_pattern": "docker run",
+          "expect_contains": "Hello from Docker",
+          "hint": "In the Terminal tab, run `docker run hello-world`. If the check fails, confirm you typed it exactly and that the output contains \"Hello from Docker\"."
+        },
+        {
+          "command_pattern": "docker ps",
+          "expect_contains": "CONTAINER",
+          "hint": "In the Terminal tab, run `docker ps`. If the check fails, confirm you typed it exactly and that the output contains \"CONTAINER\"."
+        }
+      ],
+      "success_message": "Lab complete — registries practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."
+    },
+    {
+      "id": "docker-lab-3",
+      "title": "Compose — Docker drill",
+      "objective": "Prove you can apply compose in the Docker CLI — follow the steps, watch the output, and confirm every check passes.",
+      "steps": [
+        "The Compose scenario \"First compose file\" tests this concept as a question. This lab makes you demonstrate it with real commands.",
+        "Open the Terminal tab for this bootcamp — every command below runs there.",
+        "Type exactly: docker ps — the container list header shows CONTAINER ID",
+        "Type exactly: docker images — the image list header shows REPOSITORY",
+        "Type exactly: docker pull hello-world — the pull output names the hello-world image",
+        "In your own words, say what each command's output taught you about compose."
+      ],
+      "checks": [
+        {
+          "command_pattern": "docker ps",
+          "expect_contains": "CONTAINER",
+          "hint": "In the Terminal tab, run `docker ps`. If the check fails, confirm you typed it exactly and that the output contains \"CONTAINER\"."
+        },
+        {
+          "command_pattern": "docker images",
+          "expect_contains": "REPOSITORY",
+          "hint": "In the Terminal tab, run `docker images`. If the check fails, confirm you typed it exactly and that the output contains \"REPOSITORY\"."
+        },
+        {
+          "command_pattern": "docker pull",
+          "expect_contains": "hello-world",
+          "hint": "In the Terminal tab, run `docker pull hello-world`. If the check fails, confirm you typed it exactly and that the output contains \"hello-world\"."
+        }
+      ],
+      "success_message": "Lab complete — compose practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."
+    },
+    {
+      "id": "docker-lab-4",
+      "title": "Network modes — Docker drill",
+      "objective": "Run a short sequence of Docker CLI commands that demonstrates network modes, then verify each result against the expected output.",
+      "steps": [
+        "This lab reworks the Networking practice scenario \"The app needs the host's network\" into commands you run yourself — same concept, hands-on instead of multiple choice.",
+        "Open the Terminal tab for this bootcamp — every command below runs there.",
+        "Type exactly: docker pull hello-world — the pull output names the hello-world image",
+        "Type exactly: docker run hello-world — the container prints its greeting",
+        "Type exactly: docker ps — the container list header shows CONTAINER ID",
+        "In your own words, say what each command's output taught you about network modes."
+      ],
+      "checks": [
+        {
+          "command_pattern": "docker pull",
+          "expect_contains": "hello-world",
+          "hint": "In the Terminal tab, run `docker pull hello-world`. If the check fails, confirm you typed it exactly and that the output contains \"hello-world\"."
+        },
+        {
+          "command_pattern": "docker run",
+          "expect_contains": "Hello from Docker",
+          "hint": "In the Terminal tab, run `docker run hello-world`. If the check fails, confirm you typed it exactly and that the output contains \"Hello from Docker\"."
+        },
+        {
+          "command_pattern": "docker ps",
+          "expect_contains": "CONTAINER",
+          "hint": "In the Terminal tab, run `docker ps`. If the check fails, confirm you typed it exactly and that the output contains \"CONTAINER\"."
+        }
+      ],
+      "success_message": "Lab complete — network modes practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."
+    },
+    {
+      "checks": [
+        {
+          "command_pattern": "docker ps",
+          "expect_contains": "web",
+          "hint": "Run `docker ps`."
+        },
+        {
+          "command_pattern": "docker ps",
+          "expect_contains": "Up 2 hours",
+          "hint": "Read the STATUS column of `docker ps`."
+        },
+        {
+          "command_pattern": "docker images",
+          "expect_contains": "nginx",
+          "hint": "Run `docker images`."
+        },
+        {
+          "command_pattern": "docker version",
+          "expect_contains": "27.3.1",
+          "hint": "Run `docker version`."
+        }
+      ],
+      "difficulty": 1,
+      "id": "docker-lab-5",
+      "objective": "Survey the Docker host: containers, images, engine version.",
+      "steps": [
+        "Open the Terminal tab for this bootcamp.",
+        "Type exactly: docker ps — running containers: names, images, status.",
+        "Type exactly: docker images — local images: repositories, tags, sizes.",
+        "Type exactly: docker version — client and server engine versions.",
+        "ps shows running containers only. How would you see stopped ones? (Check the profile help — then answer in one sentence.)"
+      ],
+      "success_message": "Lab complete — host surveyed. Containers, images, engine: the Docker handshake.",
+      "title": "Meet the host — docker drill"
+    },
+    {
+      "checks": [
+        {
+          "command_pattern": "docker pull hello-world",
+          "expect_contains": "Downloaded newer image",
+          "hint": "Run `docker pull hello-world`."
+        },
+        {
+          "command_pattern": "docker run -d --name demo httpd",
+          "expect_contains": "Unable to find image 'httpd' locally",
+          "hint": "Run `docker run -d --name demo httpd` — watch it pull, then start."
+        },
+        {
+          "command_pattern": "docker ps",
+          "expect_contains": "demo",
+          "hint": "Run `docker ps` and find demo."
+        }
+      ],
+      "difficulty": 1,
+      "id": "docker-lab-6",
+      "objective": "Pull an image and run a container: fetch, launch, verify.",
+      "steps": [
+        "Open the Terminal tab.",
+        "Type exactly: docker pull hello-world — fetch the image explicitly.",
+        "Type exactly: docker run -d --name demo httpd — Docker pulls it automatically, then runs it detached.",
+        "Type exactly: docker ps — find demo in the list.",
+        "pull-then-run vs run-alone: when would you pull explicitly first? One sentence."
+      ],
+      "success_message": "Lab complete — image pulled, container running. The Docker hello world.",
+      "title": "Pull and run — docker drill"
+    },
+    {
+      "checks": [
+        {
+          "command_pattern": "docker logs web",
+          "expect_contains": "listening on container port",
+          "hint": "Run `docker logs web`."
+        },
+        {
+          "command_pattern": "docker exec web ls",
+          "expect_contains": "bin",
+          "hint": "Run `docker exec web ls`."
+        },
+        {
+          "command_pattern": "docker exec web whoami",
+          "expect_contains": "root",
+          "hint": "Run `docker exec web whoami`."
+        }
+      ],
+      "difficulty": 2,
+      "id": "docker-lab-7",
+      "objective": "Look inside: read container logs and execute commands in a running container.",
+      "steps": [
+        "Open the Terminal tab.",
+        "Type exactly: docker logs web — the container's stdout history.",
+        "Type exactly: docker exec web ls — list the container's filesystem.",
+        "Type exactly: docker exec web whoami — which user runs the container's processes?",
+        "logs reads history; exec runs now. When do you need each? One sentence."
+      ],
+      "success_message": "Lab complete — inside the container: logs read, commands executed. Namespaces, not magic.",
+      "title": "Look inside — docker drill"
+    },
+    {
+      "checks": [
+        {
+          "command_pattern": "docker stop demo",
+          "expect_contains": "demo",
+          "hint": "Run `docker stop demo`."
+        },
+        {
+          "command_pattern": "docker rm demo",
+          "expect_contains": "demo",
+          "hint": "Run `docker rm demo` — stopped containers can be removed."
+        },
+        {
+          "command_pattern": "docker rmi hello-world",
+          "expect_contains": "Untagged:",
+          "hint": "Run `docker rmi hello-world`."
+        },
+        {
+          "command_pattern": "docker ps",
+          "expect_contains": "web",
+          "hint": "Run `docker ps` — web still runs, demo is gone."
+        }
+      ],
+      "difficulty": 3,
+      "id": "docker-lab-8",
+      "objective": "Full lifecycle cleanup: stop, remove the container, remove the image, verify.",
+      "steps": [
+        "Open the Terminal tab.",
+        "Type exactly: docker stop demo — graceful shutdown first.",
+        "Type exactly: docker rm demo — remove the stopped container.",
+        "Type exactly: docker rmi hello-world — remove the pulled image.",
+        "Type exactly: docker ps — confirm web still runs and demo is gone.",
+        "Stop before rm: why does Docker refuse to remove a running container?"
+      ],
+      "success_message": "Lab complete — lifecycle closed: stopped, removed, untagged, verified. Clean hosts stay clean.",
+      "title": "Stop and clean — docker drill"
+    }
+  ],
+  "foundations": [
+    {
+      "track": "cli-basics",
+      "why_needed": "Docker is a terminal tool. Command-line comfort comes before images and containers."
+    },
+    {
+      "track": "linux-cli",
+      "why_needed": "Containers are Linux: filesystems, processes, and pipes. Learn the Linux basics behind the abstraction."
+    }
+  ],
+  "math": [
+    "binary"
+  ],
+  "simulations": [
+    {
+      "brief": "A container exits immediately with code 1. The image was rebuilt this morning.",
+      "debrief": "Exit 1 on start = the container's command fails. Read the logs — they carry the app's own error. Common causes: missing env var, wrong CMD, config file not found. The fix is in the image or the run flags, not in restarting.",
+      "difficulty": 2,
+      "domain_id": "images-dockerfiles",
+      "id": "docker-sim-1",
+      "kind": "troubleshoot",
+      "points": 15,
+      "steps": [
+        {
+          "correct": 1,
+          "evidence": [
+            [
+              "container",
+              "Exited (1), restarts 5"
+            ],
+            [
+              "logs",
+              "Error: DATABASE_URL is not set"
+            ],
+            [
+              "run",
+              "docker run -d --name db-api myapp:2.1"
+            ]
+          ],
+          "explain": "The app requires DATABASE_URL and it was not passed. Fix: docker run -e DATABASE_URL=... (or --env-file). Restarting without the variable will fail identically.",
+          "options": [
+            "Restart the container until it stays up",
+            "Pass the missing variable: -e DATABASE_URL=... (or --env-file)",
+            "Rebuild the image with a different base",
+            "Give the container more memory"
+          ],
+          "symptom": "Container exits 1 immediately after a rebuild."
+        }
+      ],
+      "title": "Exit 1 on start"
+    },
+    {
+      "brief": "The app needs its config file and persistent data. Choose the mount strategy.",
+      "debrief": "Volumes persist data beyond container life; bind mounts share host files (like config) into the container. Data that must survive: named volumes. Config you edit: bind mounts. Never bake either into the image.",
+      "difficulty": 2,
+      "domain_id": "volumes",
+      "id": "docker-sim-2",
+      "kind": "branching",
+      "points": 15,
+      "steps": [
+        {
+          "choices": [
+            {
+              "feedback": "Correct: volumes for data that must survive, bind mounts for config you edit.",
+              "label": "Named volume for the data, bind mount for the config file",
+              "next": "END",
+              "outcome": "good",
+              "points": 2
+            },
+            {
+              "feedback": "Baking config into the image means rebuilding for every config change — and secrets in layers leak.",
+              "label": "Bake both into the image",
+              "next": "END",
+              "outcome": "bad",
+              "points": 0
+            }
+          ],
+          "id": "s1",
+          "text": "Config file + persistent data. Mount strategy?"
+        }
+      ],
+      "title": "Persist and configure"
+    },
+    {
+      "brief": "Put these Dockerfile-authoring steps in order.",
+      "debrief": "Base image first, then dependencies (the slow-changing layers, cached), then the app code, then the runtime config (ports, CMD). Layer order is a caching strategy: stable layers at the top.",
+      "difficulty": 1,
+      "domain_id": "images-dockerfiles",
+      "id": "docker-sim-3",
+      "kind": "ordering",
+      "points": 10,
+      "steps": {
+        "context": "Writing a Dockerfile",
+        "correct_order": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "items": [
+          "Choose the base image (FROM)",
+          "Install dependencies (slow-changing layers first)",
+          "Copy the application code",
+          "Declare ports and runtime config (EXPOSE, ENV)",
+          "Set the startup command (CMD)"
+        ]
+      },
+      "title": "Dockerfile order"
+    },
+    {
+      "brief": "This Dockerfile is headed for production. Click the misconfigured lines (2 issues to find).",
+      "debrief": "Two production mistakes: running as root (a container escape becomes host root — add a USER), and COPY . . after dependency install busting the layer cache on every code change. Order layers by change frequency; drop privileges.",
+      "difficulty": 2,
+      "domain_id": "images-dockerfiles",
+      "id": "docker-sim-4",
+      "kind": "config-check",
+      "points": 10,
+      "steps": {
+        "config": "FROM python:3.12-slim\nRUN pip install flask gunicorn\nCOPY . /app\nCMD [\"gunicorn\", \"app:app\"]",
+        "find": 2,
+        "issues": [
+          {
+            "description": "No USER instruction — the container runs as root.",
+            "fix": "Create a non-root user and add USER appuser before CMD.",
+            "line": 4
+          },
+          {
+            "description": "COPY . /app after dependency install means every code change invalidates the cache... (here deps and code are fused — split requirements install before the code copy).",
+            "fix": "COPY requirements first, RUN pip install, then COPY the code.",
+            "line": 3
+          }
+        ]
+      },
+      "title": "Review the Dockerfile"
+    }
+  ],
+  "consoleSims": [
+    {
+      "brief": "A CI pipeline failed at the image-build stage. Open the pipeline run, find the failing step, and read its logs.",
+      "console": "cicd-pipeline",
+      "debrief": "Pipeline failures are triaged like pods: find the red step, read its logs, fix the stage. Image builds fail on bad Dockerfiles or missing context — the log names the exact line.",
+      "difficulty": 2,
+      "domain_id": "images-dockerfiles",
+      "id": "docker-console-1",
+      "tasks": [
+        {
+          "hint": "Runs list first.",
+          "id": "docker-console-1-t1",
+          "instruction": "Open the failed pipeline run for the webapp build.",
+          "validate": {
+            "action": "click",
+            "params": {
+              "target": "failed-run"
+            }
+          }
+        },
+        {
+          "hint": "Find the red step.",
+          "id": "docker-console-1-t2",
+          "instruction": "Open the failing build-image step.",
+          "validate": {
+            "action": "click",
+            "params": {
+              "target": "failing-step"
+            }
+          }
+        },
+        {
+          "hint": "Logs name the line.",
+          "id": "docker-console-1-t3",
+          "instruction": "Read the step logs and identify the failing Dockerfile instruction.",
+          "validate": {
+            "action": "set-field",
+            "params": {
+              "field": "failing-instruction",
+              "value": "COPY"
+            }
+          }
+        }
+      ],
+      "title": "Triage the failed build"
+    },
+    {
+      "brief": "The pipeline needs a new stage that scans the built image for vulnerabilities before pushing. Add it to the pipeline definition.",
+      "console": "cicd-pipeline",
+      "debrief": "Security scanning belongs between build and push — a vulnerable image should never reach the registry. Gates in the pipeline enforce what checklists cannot.",
+      "difficulty": 3,
+      "domain_id": "security-bp",
+      "id": "docker-console-2",
+      "tasks": [
+        {
+          "hint": "Pipeline definition.",
+          "id": "docker-console-2-t1",
+          "instruction": "Open the pipeline definition for editing.",
+          "validate": {
+            "action": "click",
+            "params": {
+              "target": "edit-pipeline"
+            }
+          }
+        },
+        {
+          "hint": "Order matters.",
+          "id": "docker-console-2-t2",
+          "instruction": "Add a scan stage between the build and push stages.",
+          "validate": {
+            "action": "create",
+            "params": {
+              "name": "scan-image",
+              "type": "stage"
+            }
+          }
+        },
+        {
+          "hint": "Fail the build on criticals.",
+          "id": "docker-console-2-t3",
+          "instruction": "Configure the scan stage to fail the pipeline on critical vulnerabilities.",
+          "validate": {
+            "action": "set-field",
+            "params": {
+              "field": "scan-policy",
+              "value": "fail-on-critical"
+            }
+          }
+        }
+      ],
+      "title": "Add the image scan stage"
+    }
+  ],
+  "terminalMissions": [
+    {
+      "brief": "List running containers and images.",
+      "checks": [
+        {
+          "command_pattern": "docker ps",
+          "expect_contains": "CONTAINER ID",
+          "hint": "Run `docker ps`."
+        },
+        {
+          "command_pattern": "docker images",
+          "expect_contains": "REPOSITORY",
+          "hint": "Run `docker images`."
+        }
+      ],
+      "difficulty": 1,
+      "domain_id": "images-dockerfiles",
+      "id": "docker-mission-1",
+      "objectives": [
+        "Show running containers",
+        "Show local images"
+      ],
+      "success_message": "Mission complete — host surveyed.",
+      "title": "Host survey"
+    },
+    {
+      "brief": "Check the Docker engine version.",
+      "checks": [
+        {
+          "command_pattern": "docker version",
+          "expect_contains": "Docker Engine 27.3.1",
+          "hint": "Run `docker version`."
+        }
+      ],
+      "difficulty": 1,
+      "domain_id": "images-dockerfiles",
+      "id": "docker-mission-2",
+      "objectives": [
+        "Show client and server versions"
+      ],
+      "success_message": "Mission complete — engine 27.3.1.",
+      "title": "Engine version"
+    },
+    {
+      "brief": "Pull the alpine image.",
+      "checks": [
+        {
+          "command_pattern": "docker pull alpine",
+          "expect_contains": "Downloaded newer image",
+          "hint": "Run `docker pull alpine`."
+        }
+      ],
+      "difficulty": 2,
+      "domain_id": "images-dockerfiles",
+      "id": "docker-mission-3",
+      "objectives": [
+        "Fetch the alpine image"
+      ],
+      "success_message": "Mission complete — alpine pulled.",
+      "title": "Pull alpine"
+    },
+    {
+      "brief": "Run a container from the pulled image.",
+      "checks": [
+        {
+          "command_pattern": "docker ps",
+          "expect_contains": "lab1",
+          "hint": "Run `docker run -d --name lab1 alpine`, then `docker ps` to confirm lab1 is running."
+        }
+      ],
+      "difficulty": 2,
+      "domain_id": "images-dockerfiles",
+      "id": "docker-mission-4",
+      "objectives": [
+        "Start a detached container named lab1"
+      ],
+      "success_message": "Mission complete — lab1 running.",
+      "title": "Run lab1"
+    },
+    {
+      "brief": "Inspect lab1's logs and filesystem.",
+      "checks": [
+        {
+          "command_pattern": "docker logs lab1",
+          "expect_contains": "starting",
+          "hint": "Run `docker logs lab1`."
+        },
+        {
+          "command_pattern": "docker exec lab1 pwd",
+          "expect_contains": "/",
+          "hint": "Run `docker exec lab1 pwd`."
+        }
+      ],
+      "difficulty": 3,
+      "domain_id": "images-dockerfiles",
+      "id": "docker-mission-5",
+      "objectives": [
+        "Read the container's logs",
+        "Show its working directory"
+      ],
+      "success_message": "Mission complete — lab1 inspected.",
+      "title": "Inspect lab1"
+    },
+    {
+      "brief": "Stop, remove lab1, and remove the alpine image.",
+      "checks": [
+        {
+          "command_pattern": "docker stop lab1",
+          "expect_contains": "lab1",
+          "hint": "Run `docker stop lab1`."
+        },
+        {
+          "command_pattern": "docker rm lab1",
+          "expect_contains": "lab1",
+          "hint": "Run `docker rm lab1`."
+        },
+        {
+          "command_pattern": "docker rmi alpine",
+          "expect_contains": "Untagged:",
+          "hint": "Run `docker rmi alpine`."
+        }
+      ],
+      "difficulty": 3,
+      "domain_id": "images-dockerfiles",
+      "id": "docker-mission-6",
+      "objectives": [
+        "Stop lab1",
+        "Remove lab1",
+        "Remove the alpine image"
+      ],
+      "success_message": "Mission complete — cleaned up. Container lifecycle: owned.",
+      "title": "Clean up lab1"
+    }
+  ],
+  "media": [
+    {
+      "id": "docker-images-dockerfiles-diag",
+      "kind": "diagram",
+      "title": "Dockerfile → Image Layers",
+      "svg": "assets/diagrams/docker-images-dockerfiles.svg",
+      "lesson_ref": "c-images-dockerfiles",
+      "caption": "Each instruction adds a cached layer.",
+      "alt": "Dockerfile → Image Layers. Shows: FROM, RUN, COPY, EXPOSE, CMD."
+    },
+    {
+      "id": "docker-registries-diag",
+      "kind": "diagram",
+      "title": "Container Registries",
+      "svg": "assets/diagrams/docker-registries.svg",
+      "lesson_ref": "c-registries",
+      "caption": "Store and share images securely.",
+      "alt": "Container Registries. Shows: Docker Hub, ECR / ACR / GAR, Tags, Scanning."
+    },
+    {
+      "id": "docker-compose-diag",
+      "kind": "diagram",
+      "title": "Docker Compose",
+      "svg": "assets/diagrams/docker-compose.svg",
+      "lesson_ref": "c-compose",
+      "caption": "Multi-container apps in one YAML.",
+      "alt": "Docker Compose. Shows: services, networks, volumes, docker compose up."
+    },
+    {
+      "id": "docker-networking-diag",
+      "kind": "diagram",
+      "title": "Docker Network Drivers",
+      "svg": "assets/diagrams/docker-networking.svg",
+      "lesson_ref": "c-networking",
+      "caption": "Isolation level per driver.",
+      "alt": "Docker Network Drivers. Table with 4 rows."
+    },
+    {
+      "id": "docker-volumes-diag",
+      "kind": "diagram",
+      "title": "Docker Volumes",
+      "svg": "assets/diagrams/docker-volumes.svg",
+      "lesson_ref": "c-volumes",
+      "caption": "Data that outlives containers.",
+      "alt": "Docker Volumes. Shows: Named volumes, Bind mounts, tmpfs, Backups."
+    },
+    {
+      "id": "docker-security-bp-diag",
+      "kind": "diagram",
+      "title": "Container Security Best Practices",
+      "svg": "assets/diagrams/docker-security-bp.svg",
+      "lesson_ref": "c-security-bp",
+      "caption": "Small, signed, scanned, non-root.",
+      "alt": "Container Security Best Practices. Shows: Minimal base, Non-root USER, No secrets in layers, Scan images."
+    }
+  ],
+  "resources": {
+    "cheatsheet": {
+      "title": "Docker & Containers — Cheat Sheet",
+      "sections": [
+        {
+          "heading": "Images & Dockerfiles",
+          "items": [
+            "COPY vs ADD — best practice: COPY by default, ADD only when you need its extra behaviors (and even URL fetching is often clearer as an explicit RUN curl with checksum verification). Multi-stage builds let you use heavy tooling in an early stage and copy only artifacts in…",
+            "CMD vs ENTRYPOINT — with exec-form ENTRYPOINT, 'docker run <image> <args>' appends <args> to the ENTRYPOINT — replacing CMD entirely.",
+            "Build cache — .dockerignore keeps unwanted files out of the build context (faster builds, smaller images, fewer leaks). Layer count barely matters; cache invalidation order is everything.",
+            "Layer ordering — deleting files in a later RUN doesn't shrink the image — the earlier layer still contains them. Docker caches each layer and invalidates everything after the first changed instruction.",
+            "Common trap — combine COPY and RUN into a single layer to reduce layer count.",
+            "Common trap — docker run arguments override ENTRYPOINT, not CMD.",
+            "Common trap — CMD is ignored whenever ENTRYPOINT exists.",
+            "Common trap — add --no-cache to the build so layers are always fresh.",
+            "With — With exec-form ENTRYPOINT, 'docker run <image> <args>' appends <args> to the ENTRYPOINT — replacing CMD entirely. Here the final command becomes 'python app.py --port 8080 --port 9090', and the app takes the first flag. The idiomatic split: ENTRYPOINT [\"pyt…"
+          ]
+        },
+        {
+          "heading": "Registries",
+          "items": [
+            "Registries — cloud registries integrate with IAM and are managed. docker save/load tarballs are for air-gapped transfer, not team workflows.",
+            "Image naming — 'docker image prune' removes dangling images; '-a' also removes images not used by any container. The registry hostname must be part of the image name: [registry/][namespace/]name:tag.",
+            "Digests — 'docker images --digests' shows them.",
+            "Common trap — rate limits apply per image.",
+            "Common trap — docker push automatically prefixes the configured default registry.",
+            "Common trap — docker push myapp:1.0 --registry registry.example.com.",
+            "Common trap — docker Hub is the only registry Docker can use.",
+            "Read — Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."
+          ]
+        },
+        {
+          "heading": "Compose",
+          "items": [
+            "Compose — Compose merges multiple -f files (later wins on conflicts; lists like ports merge). Each compose project gets a user-defined bridge network with an embedded DNS server: service names (and container names) resolve to container IPs, with basic load balancing…",
+            "Compose.yaml — Compose.yaml declares services (build context or image, ports, env, volumes, depends_on), plus top-level networks:/volumes: as needed. Convention: compose.yaml (base) + compose.override.yaml (auto-loaded for local dev tweaks) + explicit -f for prod.",
+            "Environment — env_file loads a gitignored .env; ${VAR} interpolates from the shell environment (with ${VAR:-default} fallbacks). Combined with ${VAR} interpolation and profiles, one base serves all environments without duplication.",
+            "Common trap — compose doesn't support multiple files.",
+            "Common trap — environment variables can't change compose behavior.",
+            "Common trap — each service needs its own compose.yaml file.",
+            "Common trap — compose files aren't sensitive."
+          ]
+        },
+        {
+          "heading": "Networking",
+          "items": [
+            "Network modes — 'docker network inspect' shows all attached containers with their IPv4/IPv6 addresses and aliases; 'docker inspect' gives the container's NetworkSettings (per-network IPs, port bindings, DNS).",
+            "Port publishing — diagnose: 'docker port <c>', 'ss -tlnp' on host, and check the app's bind address in logs. Trade-offs: needs promiscuous mode on the parent, containers can't talk to the host itself without a macvlan shim, and it bypasses Docker's port mapping.",
+            "DNS — user-defined networks get an embedded DNS server resolving container names/aliases; the legacy default bridge doesn't (a historical limitation — --link was the old workaround, now deprecated). You lose port mapping, DNS-per-network, and inter-container isol…",
+            "User-defined networks — best practice: always create explicit networks ('docker network create appnet') and attach containers to them.",
+            "Common trap — host mode doesn't exist on Linux.",
+            "Common trap — containers can't receive external connections."
+          ]
+        },
+        {
+          "heading": "Volumes",
+          "items": [
+            "Bind mounts (-v /host/path — /container/path) couple you to host paths and UID quirks — fine for dev config injection, wrong for production data. Bind mounts expose host files with host ownership — the container's UID 1000 is the host's UID 1000.",
+            "Volumes — fixes: mount named volumes explicitly (overrides the anonymous one), and clean up with 'docker volume prune' (careful — removes ALL unused volumes).",
+            "Volume sharing — dockerfile VOLUME creates an anonymous volume at each container creation if no explicit mount is given — they accumulate because nothing references them by name.",
+            "Read-only mounts — the :ro suffix (or --mount type=bind,source=...,target=...,readonly) mounts read-only — the container physically cannot modify it.",
+            "Common trap — :ro only works for named volumes, not bind mounts.",
+            "Common trap — anonymous volumes are deleted automatically.",
+            "Common trap — docker cp the volume directory while Postgres runs.",
+            "Common trap — docker shouldn't create volumes unprompted."
+          ]
+        },
+        {
+          "heading": "Security & Best Practices",
+          "items": [
+            "USER — runtime hardening stack: --read-only (with --tmpfs for scratch), --cap-drop ALL + minimal adds, --user (non-root), resource limits (--memory, --cpus, --pids-limit to bound DoS/blast radius), --security-opt no-new-privileges.",
+            "Non-root containers — patching running containers is ephemeral — the next deploy reintroduces the CVE. Combine with dropping capabilities and non-root USER.",
+            "Secrets — runtime injection (-e, --env-file, compose env_file, secrets mounted as files) keeps secrets out of the artifact.",
+            "ENV values persist in image config/history forever — anyone with the image has the secret.",
+            "CVE remediation — remediation: bump the base (patched tag or slim/distroless alternative), rebuild, rescan to verify.",
+            "Common trap — setuid doesn't work in containers.",
+            "Common trap — running as root in containers is safe.",
+            "Common trap — the app doesn't use OpenSSL.",
+            "Common trap — patch the running container with apt-get."
+          ]
+        }
+      ]
+    },
+    "glossary": [
+      {
+        "term": "docker",
+        "def": "Common trap: docker Hub is the only registry Docker can use."
+      },
+      {
+        "term": "DNS",
+        "def": "DNS: user-defined networks get an embedded DNS server resolving container names/aliases; the legacy default bridge doesn't (a historical limitation — --link was the old workaround, now deprecated). You lose port mapping, DNS-per-network,…"
+      },
+      {
+        "term": "CMD",
+        "def": "Common trap: CMD is ignored whenever ENTRYPOINT exists."
+      },
+      {
+        "term": "CI",
+        "def": "Docker Hub rate-limits pulls (stricter for anonymous users; limits are per IP/account per time window). Fixes: 'docker login' for higher authenticated limits, run a pull-through cache registry mirror, or copy base images into your own re…"
+      },
+      {
+        "term": "UID",
+        "def": "Bind mounts (-v /host/path:/container/path) couple you to host paths and UID quirks — fine for dev config injection, wrong for production data. Bind mounts expose host files with host ownership — the container's UID 1000 is the host's UI…"
+      },
+      {
+        "term": "USER",
+        "def": "USER: runtime hardening stack: --read-only (with --tmpfs for scratch), --cap-drop ALL + minimal adds, --user (non-root), resource limits (--memory, --cpus, --pids-limit to bound DoS/blast radius), --security-opt no-new-privileges."
+      },
+      {
+        "term": "VAR",
+        "def": "env_file loads a gitignored .env; ${VAR} interpolates from the shell environment (with ${VAR:-default} fallbacks). Either keeps secrets out of version control."
+      },
+      {
+        "term": "VOLUME",
+        "def": "Volume sharing: dockerfile VOLUME creates an anonymous volume at each container creation if no explicit mount is given — they accumulate because nothing references them by name."
+      },
+      {
+        "term": "COPY",
+        "def": "COPY vs ADD: best practice: COPY by default, ADD only when you need its extra behaviors (and even URL fetching is often clearer as an explicit RUN curl with checksum verification). Multi-stage builds let you use heavy tooling in an early…"
+      },
+      {
+        "term": "ENTRYPOINT",
+        "def": "CMD vs ENTRYPOINT: with exec-form ENTRYPOINT, 'docker run <image> <args>' appends <args> to the ENTRYPOINT — replacing CMD entirely."
+      },
+      {
+        "term": "ECR",
+        "def": "Tags are mutable pointers; digests (sha256 of the manifest) identify exact content. 'image:tag@sha256:digest' pins bytes precisely — pulls always resolve identically."
+      },
+      {
+        "term": "IPs",
+        "def": "Each compose project gets a user-defined bridge network with an embedded DNS server: service names (and container names) resolve to container IPs, with basic load balancing across replicas. This is why inter-service communication 'just w…"
+      },
+      {
+        "term": "CVE",
+        "def": "CVE remediation: remediation: bump the base (patched tag or slim/distroless alternative), rebuild, rescan to verify."
+      },
+      {
+        "term": "ADD",
+        "def": "COPY vs ADD: best practice: COPY by default, ADD only when you need its extra behaviors (and even URL fetching is often clearer as an explicit RUN curl with checksum verification). Multi-stage builds let you use heavy tooling in an early…"
+      },
+      {
+        "term": "URL",
+        "def": "COPY vs ADD: best practice: COPY by default, ADD only when you need its extra behaviors (and even URL fetching is often clearer as an explicit RUN curl with checksum verification). Multi-stage builds let you use heavy tooling in an early…"
+      },
+      {
+        "term": "IAM",
+        "def": "Registries: cloud registries integrate with IAM and are managed. docker save/load tarballs are for air-gapped transfer, not team workflows."
+      },
+      {
+        "term": "Hub",
+        "def": "Common trap: docker Hub is the only registry Docker can use."
+      },
+      {
+        "term": "Layer",
+        "def": "Docker caches each layer and invalidates everything after the first changed instruction. Copying package manifests first means the expensive npm ci layer is reused whenever only application code changes."
+      },
+      {
+        "term": "Fixes",
+        "def": "Docker Hub rate-limits pulls (stricter for anonymous users; limits are per IP/account per time window). Fixes: 'docker login' for higher authenticated limits, run a pull-through cache registry mirror, or copy base images into your own re…"
+      },
+      {
+        "term": "Docker Hub",
+        "def": "Is the Docker client locked to Docker Hub?"
+      },
+      {
+        "term": "Does",
+        "def": "Does 'started' mean 'ready to accept connections'?"
+      },
+      {
+        "term": "Multi-stage",
+        "def": "Multi-stage builds let you use heavy tooling in an early stage and copy only artifacts into the final minimal stage (e.g., nginx:alpine). Deleting files in a later RUN doesn't shrink the image — the earlier layer still contains them."
+      },
+      {
+        "term": "DB",
+        "def": "compose.yaml declares services (build context or image, ports, env, volumes, depends_on), plus top-level networks:/volumes: as needed. Named volumes persist DB data across 'compose down'."
+      },
+      {
+        "term": "SHA",
+        "def": "'latest' is a floating pointer, not a version guarantee: a host only updates it when it pulls, and pull policies vary. Immutable tags (semver, git SHA) or digests (sha256:...) make 'which exact bytes are running' unambiguous and rollback…"
+      },
+      {
+        "term": "NAT",
+        "def": "--network none gives the container a network namespace containing only lo — no eth0, no routes out. Unpublished ports still leave full outbound connectivity (containers can reach the internet via NAT by default), so 'no -p' is not isolat…"
+      }
+    ],
+    "links": [
+      {
+        "label": "Docker / vendor-neutral — official site",
+        "url": "https://docs.docker.com",
+        "note": "Official vendor documentation and certification information"
+      },
+      {
+        "label": "Docker documentation",
+        "url": "https://docs.docker.com/",
+        "note": "Official Docker docs"
+      },
+      {
+        "label": "Docker get-started guide",
+        "url": "https://docs.docker.com/get-started/",
+        "note": "Official Docker getting-started"
+      },
+      {
+        "label": "Docker Engine reference",
+        "url": "https://docs.docker.com/engine/",
+        "note": "Official Docker Engine docs"
+      },
+      {
+        "label": "Docker Hub",
+        "url": "https://hub.docker.com/",
+        "note": "Official image registry"
+      }
+    ],
+    "checklist": [
+      "Get 7–8 hours of sleep the night before — fatigue destroys recall faster than any topic gap.",
+      "Bring valid government-issued photo ID and arrive at the test center 30 minutes early.",
+      "Eat a real meal beforehand; bring water and a light snack if the center allows them.",
+      "Read every question twice before scanning the answer choices.",
+      "Flag uncertain questions and move on — return with fresh eyes at the end.",
+      "Eliminate the obviously wrong answers first, then compare the survivors.",
+      "Budget your time: answer steadily and keep a 10–15 minute review buffer.",
+      "Re-run your weakest-domain drill until mastery is at least 80%.",
+      "For Images & Dockerfiles: restate the 'why' behind each scenario answer in your own words — if you can't explain it, you don't own it.",
+      "Redo one Registries lab from scratch without looking at the steps.",
+      "Recite the key Compose terms from the glossary aloud from memory."
     ]
   }
 }

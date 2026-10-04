@@ -117,6 +117,96 @@ function overallPct(){
   return TOTAL ? Math.round(100 * SCEN.filter(function(s){ return cleared(s.id); }).length / TOTAL) : 0; }
 function clearedCount(){ return SCEN.filter(function(s){ return cleared(s.id); }).length; }
 
+/* ---------------- enterprise CBT: progress intelligence ----------------
+   window.ILBProgress exposes cross-engine recommendations. It reads the
+   labs / simulations / missions localStorage keys directly (tolerating
+   missing engines — absent keys simply read as empty) and recommends the
+   next incomplete lab, simulation, or mission inside the weakest domains. */
+function domNameById(id){
+  var ds = (CONTENT && CONTENT.domains) || [], i;
+  for (i = 0; i < ds.length; i++){
+    if (ds[i].id === id) return ds[i].name || id;
+  }
+  return id;
+}
+function readLSMap(key){
+  try { return JSON.parse(localStorage.getItem(key)) || {}; }
+  catch (e) { return {}; }
+}
+/* Normalize the sims progress map: engines store {id:{completed:true,...}};
+   tolerate the legacy/plain {id:true} shape too. */
+function simDoneSet(){
+  var m = readLSMap('ilb-bootcamp-' + SLUG + '-sims-v1'), out = {}, k, v;
+  for (k in m){
+    if (m.hasOwnProperty(k)){
+      v = m[k];
+      out[k] = !!(v && (v === true || v.completed === true));
+    }
+  }
+  return out;
+}
+function domainMastery(){
+  var out = {}, i, items, cl;
+  var ds = (CONTENT && CONTENT.domains) || [];
+  for (i = 0; i < ds.length; i++){
+    items = domainItems(ds[i].name);
+    cl = domainCleared(ds[i].name);
+    out[ds[i].id] = { name: ds[i].name,
+      pct: items.length ? Math.round(100 * cl / items.length) : 0,
+      cleared: cl, total: items.length };
+  }
+  return out;
+}
+var KIND_VIEW = { lab: 'labs', simulation: 'exercises', mission: 'missions' };
+var KIND_LABEL = { lab: 'lab', simulation: 'simulation', mission: 'mission' };
+function nextRecommendations(limit){
+  limit = limit || 3;
+  var labsDone = readLSMap('ilb-bootcamp-' + SLUG + '-labs-v1');
+  var simsDone = simDoneSet();
+  var misDone = readLSMap('ilb-bootcamp-' + SLUG + '-missions-v1');
+  var labs = (CONTENT && CONTENT.labs) || [];
+  var sims = (CONTENT && CONTENT.simulations) || [];
+  var missions = (CONTENT && CONTENT.terminalMissions) || [];
+  var masteryMap = domainMastery();
+  var recs = [], di, i, item;
+  var order = weakestFirst(); /* domain names, weakest first */
+  function firstIncomplete(list, doneSet){
+    for (var k = 0; k < list.length; k++){
+      if (!doneSet[list[k].id]) return list[k];
+    }
+    return null;
+  }
+  function byDomain(list, domainId){
+    var out = [], k;
+    for (k = 0; k < list.length; k++){
+      if (list[k] && list[k].domain_id === domainId) out.push(list[k]);
+    }
+    return out;
+  }
+  for (di = 0; di < order.length && recs.length < limit; di++){
+    var dName = order[di], dId = DOMAIN_IDS[dName];
+    var m = masteryMap[dId] || { name: dName, pct: 0 };
+    var cands = [
+      { kind: 'lab', item: firstIncomplete(byDomain(labs, dId), labsDone) },
+      { kind: 'simulation', item: firstIncomplete(byDomain(sims, dId), simsDone) },
+      { kind: 'mission', item: firstIncomplete(byDomain(missions, dId), misDone) }
+    ];
+    for (i = 0; i < cands.length && recs.length < limit; i++){
+      item = cands[i].item;
+      if (!item) continue;
+      recs.push({ kind: cands[i].kind, id: item.id, title: item.title,
+        domain_id: dId, domain: dName,
+        reason: 'Weakest domain \u00B7 ' + dName + ' at ' + m.pct + '% drill mastery' });
+    }
+  }
+  return recs;
+}
+window.ILBProgress = {
+  domainMastery: domainMastery,
+  nextRecommendations: nextRecommendations,
+  kindView: function (kind){ return KIND_VIEW[kind] || null; }
+};
+
 /* Queue: domains weakest-first; within each domain, uncleared (shuffled)
    before cleared (shuffled) so reps target gaps while keeping wins warm. */
 function buildQueue(onlyDomain){
@@ -155,7 +245,8 @@ function pickSimItems(){
 }
 
 /* ---------------- views ---------------- */
-var VIEWS = ['dashboard', 'workbench', 'simulation', 'behavioral'];
+var VIEWS = ['dashboard', 'learn', 'workbench', 'terminal', 'labs',
+  'exercises', 'console', 'missions', 'resources', 'simulation', 'behavioral'];
 function showView(v){
   VIEWS.forEach(function(x){
     var sec = el('view-' + x);
@@ -168,6 +259,10 @@ function showView(v){
   if (v === 'workbench' && bench.timerId){
     /* resume paused drill clock */
     bench.t0 = Date.now() - bench.elapsed * 1000; startBenchClock();
+  }
+  /* Notify decoupled view modules (learn/terminal/labs engines). */
+  if (typeof document !== 'undefined' && document.dispatchEvent){
+    try { document.dispatchEvent(new CustomEvent('ilb:view', {detail: v})); } catch(e){}
   }
   window.scrollTo(0, 0);
 }
@@ -209,7 +304,37 @@ function renderDashboard(){
       '<i style="width:' + m + '%"></i></div><b>' + m + '%</b></div>';
   }).join('');
 
-  var q = buildQueue(), nextId = q.length ? q[0] : null, np = el('nextPanel');
+  var np = el('nextPanel');
+  /* Enterprise CBT: surface the top cross-engine recommendations
+     (labs / simulations / missions in the weakest domains) when any
+     exist; otherwise fall back to the classic next-scenario rep. */
+  var recs = [];
+  try { recs = window.ILBProgress.nextRecommendations(2); } catch (e) { recs = []; }
+  if (recs.length){
+    var rh = '<p class="eyebrow">YOUR NEXT REP</p><h3>Recommended next steps</h3>';
+    for (var ri = 0; ri < recs.length; ri++){
+      var rc = recs[ri], rv = window.ILBProgress.kindView(rc.kind);
+      rh += '<div class="lab-meta" style="margin:10px 0 4px"><span class="tag hot">' +
+        esc(KIND_LABEL[rc.kind].toUpperCase()) + '</span>' +
+        '<span class="tag">' + esc(rc.domain) + ' · weakest</span></div>' +
+        '<p style="margin:0 0 4px"><strong>' + esc(rc.title) + '</strong></p>' +
+        '<p style="color:var(--muted);font-size:13px;margin:0 0 8px">' + esc(rc.reason) + '</p>' +
+        '<button class="btn small primary" data-rec-view="' + esc(rv) +
+        '" style="margin-bottom:10px">Start this ' + esc(KIND_LABEL[rc.kind]) + ' \u2192</button>';
+    }
+    np.innerHTML = rh;
+    var rbtns = np.querySelectorAll('[data-rec-view]');
+    for (var bi = 0; bi < rbtns.length; bi++){
+      (function (b){
+        b.addEventListener('click', function (){
+          /* showView toggles the section + nav and dispatches ilb:view
+             with the matching detail so the target engine renders. */
+          showView(b.getAttribute('data-rec-view'));
+        });
+      })(rbtns[bi]);
+    }
+  } else {
+  var q = buildQueue(), nextId = q.length ? q[0] : null;
   if (nextId){
     var s = BY_ID[nextId];
     np.innerHTML =
@@ -226,6 +351,7 @@ function renderDashboard(){
       '<p>Every scenario is cleared. Run the timed simulation to prove it under pressure.</p>' +
       '<button class="btn primary" id="nextRepBtn">Stage the simulation →</button>';
     el('nextRepBtn').addEventListener('click', function(){ showView('simulation'); });
+  }
   }
 
   var chips = ['<button class="filter' + (activeFilter ? '' : ' active') + '" data-f="">All domains</button>']
@@ -662,6 +788,7 @@ if (typeof window !== 'undefined' && window.ENGINE_TEST){
     ingest: ingest, weakestFirst: weakestFirst, buildQueue: buildQueue,
     pickSimItems: pickSimItems, verdict: verdict, mastery: mastery,
     recordResult: recordResult, cleared: cleared, overallPct: overallPct,
+    domainMastery: domainMastery, nextRecommendations: nextRecommendations,
     get SCEN(){ return SCEN; }, get DOMAINS(){ return DOMAINS; },
     get SIM(){ return SIM; }
   };

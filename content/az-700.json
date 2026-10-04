@@ -818,6 +818,213 @@
       ]
     }
   ],
+  "lessons": [
+    {
+      "domain_id": "vnet-design",
+      "title": "VNet Design — Core concepts",
+      "concepts": [
+        "Address planning (non-overlapping RFC 1918 space per VNet, room for growth) is the foundational design step — renumbering after the fact is painful. IP address management (IPAM) — planning non-overlapping pools per region/environment, reserving growth space, and verifying before deployment — prevents the overlap/exhaustion cycle.",
+        "Peering prerequisites: vNet peering requires non-overlapping address spaces; Azure blocks peering creation when ranges overlap. Peering connects spokes to the hub but doesn't route spoke-to-spoke through it (non-transitive).",
+        "Gateway subnet: the gateway subnet hosts active/standby gateway instances plus platform addresses; Microsoft recommends /27 or larger. NAT Gateway provides up to 64k SNAT ports per public IP (up to 16 IPs) at the subnet level — the designed fix for large-scale outbound.",
+        "UDR: note: gateway subnets must be named exactly 'GatewaySubnet' and carry no NSG/UDR. UDRs with a default route to the hub firewall/NVA override system routes and force inspection — the classic forced-tunneling/hub inspection design."
+      ],
+      "example": {
+        "lang": "text",
+        "code": "mystorage.blob.core.windows.net → 20.150.x.x (public) — expected 10.1.4.5",
+        "walkthrough": "Private endpoints need private DNS resolution: the privatelink.* zone linked to the VNet maps the service's public FQDN to the private endpoint IP. Without it, clients resolve the public IP and traffic leaves the VNet — silently defeating the purpose."
+      },
+      "pitfalls": [
+        "Common trap: use a VPN gateway instead of peering.",
+        "Common trap: the subnet needs an NSG first.",
+        "Common trap: an NSG rule allowing DNS.",
+        "Common trap: peer anyway; Azure resolves overlaps automatically."
+      ],
+      "try_it": "Work through this in the Terminal tab →"
+    },
+    {
+      "domain_id": "connectivity",
+      "title": "Connectivity — Core concepts",
+      "concepts": [
+        "Site-to-site VPN connects entire on-premises networks to Azure via IPsec from the site's VPN device. Point-to-site VPN gives individual clients (laptops) an encrypted tunnel to the VNet via the VPN gateway — no on-premises VPN hardware needed.",
+        "Hybrid connectivity: point-to-site is per-client; ExpressRoute is dedicated private connectivity (overkill for one small branch); peering is Azure-to-Azure only.",
+        "Point-to-site VPN: VPN over the internet can't guarantee throughput.",
+        "ExpressRoute: global Reach connects ExpressRoute circuits together over Microsoft's backbone — e.g., Azure to another cloud's private interconnect — without traversing the public internet. ExpressRoute has two peering types: private peering (RFC 1918 traffic to your VNets) and Microsoft peering (public Microsoft services like M365).",
+        "Dedicated connectivity: expressRoute provides private, dedicated bandwidth (up to 100 Gbps) with SLA-backed latency/throughput — the choice for bulk, compliance-sensitive, or latency-sensitive traffic."
+      ],
+      "example": {
+        "lang": "text",
+        "code": "Worked example — site-to-site vpn\nSetup: Point-to-site is per-client; ExpressRoute is dedicated private connectivity (overkill for one small branch); peering is Azure-to-Azure only.\nReasoning: Global Reach connects ExpressRoute circuits together over Microsoft's backbone — e.g., Azure to another cloud's private interconnect — without…\nTakeaway: Virtual WAN provides a Microsoft-managed hub (vpn/ER/P2S gateways built in) with any-to-any branch connectivity and centralized routing/security…",
+        "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."
+      },
+      "pitfalls": [
+        "Common trap: microsoft peering carries VNet traffic.",
+        "Common trap: 30 separate site-to-site VPNs with manual routing.",
+        "Common trap: increasing the VPN gateway SKU.",
+        "Common trap: one giant VNet per branch."
+      ],
+      "try_it": "Work through this in the Terminal tab →"
+    },
+    {
+      "domain_id": "routing",
+      "title": "Routing — Core concepts",
+      "concepts": [
+        "UDR: service endpoints add system routes for the service's public prefixes, which are more specific than a 0.0.0.0/0 UDR — so service traffic should bypass the firewall. Azure system routes send internet-bound traffic directly out; a UDR default route (0.0.0.0/0 → firewall/NVA) overrides it — forced tunneling.",
+        "Route override: longest prefix match: the most specific matching route wins, regardless of creation order. Effective routes (portal or Get-AzEffectiveRouteTable) shows the merged result: NIC route table + subnet route table + system routes, with the winning route per prefix.",
+        "BGP exchanges routes dynamically between on-premises and Azure, enabling consistent path selection and automatic failover across redundant connections.",
+        "Dynamic routing: nSGs filter traffic but never change its path; routing and filtering are separate mechanisms."
+      ],
+      "example": {
+        "lang": "text",
+        "code": "10.0.1.0/24 → VNet peering (UDR)",
+        "walkthrough": "Longest prefix match: the most specific matching route wins, regardless of creation order. UDRs override system routes of equal specificity; among UDRs, specificity decides."
+      },
+      "pitfalls": [
+        "Common trap: service endpoints don't work with UDRs at all.",
+        "Common trap: service endpoints require ExpressRoute.",
+        "Common trap: the system route wins over UDRs.",
+        "Common trap: the VNet address space blade."
+      ],
+      "try_it": "Work through this in the Terminal tab →"
+    },
+    {
+      "domain_id": "private-access",
+      "title": "Private Access — Core concepts",
+      "concepts": [
+        "Private Link Service (the provider side of Private Link) exposes your internal standard load balancer to consumers who create private endpoints in their own VNets — private connectivity with no peering, no public IPs, and consumer-driven approval.",
+        "Compliance needs both axes: encrypted AND private.",
+        "Private Link Service: secure transfer required enforces HTTPS (encryption in transit); private endpoints with public network access disabled enforce private paths. Service endpoints keep the service's public endpoint (traffic stays on the backbone but the endpoint is still public) — insufficient for this mandate.",
+        "Provider-side Private Link: each consumer VNet needs its own private DNS zone linked locally — DNS resolution is per-VNet."
+      ],
+      "example": {
+        "lang": "text",
+        "code": "Worked example — private vs service endpoints\nSetup: Private Link Service (the provider side of Private Link) exposes your internal standard load balancer to consumers who create private endpoints in…\nReasoning: Only private endpoints move traffic to a private IP inside the VNet and allow disabling public access entirely.\nTakeaway: Secure transfer required enforces HTTPS (encryption in transit); private endpoints with public network access disabled enforce private paths.",
+        "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."
+      },
+      "pitfalls": [
+        "Common trap: a bigger private endpoint SKU.",
+        "Common trap: application Gateway always requires a public IP.",
+        "Common trap: keeps the public endpoint, only extends VNet identity.",
+        "Common trap: use Azure Front Door instead."
+      ],
+      "try_it": "Work through this in the Terminal tab →"
+    },
+    {
+      "domain_id": "monitoring",
+      "title": "Monitoring — Core concepts",
+      "concepts": [
+        "Traffic Analytics processes raw NSG flow logs into visual insights: top talkers, application ports, data-center/DC traffic distribution, and malicious-flow flagging — the analysis layer over flow logs.",
+        "Connection Monitor runs scheduled synthetic probes between endpoints and tracks latency, packet loss, and hop topology over time — the tool for intermittent issues that one-time tests miss.",
+        "NSG flow logs: it's the escalation when flow logs and verifiers can't explain the failure. It's the authoritative record of what the NSG did.",
+        "Packet capture: network Watcher packet capture records real packets from a VM (or gateway) to blob storage for deep protocol analysis."
+      ],
+      "example": {
+        "lang": "text",
+        "code": "flow: 10.1.2.8 → 10.2.0.9:443 DENIED by rule 'DenyAll-In' (priority 4096)",
+        "walkthrough": "NSG flow logs record every flow's allow/deny verdict per rule through the NSG, stored in Log Analytics via Traffic Analytics for KQL querying. It's the authoritative record of what the NSG did."
+      },
+      "pitfalls": [
+        "Common trap: raw flow logs read manually.",
+        "Common trap: measures latency, not rule decisions.",
+        "Common trap: reboot the on-premises device first.",
+        "Common trap: delete and recreate the gateway immediately."
+      ],
+      "try_it": "Work through this in the Terminal tab →"
+    },
+    {
+      "domain_id": "security",
+      "title": "Security — Core concepts",
+      "concepts": [
+        "Azure Firewall: firewall Manager with Azure Firewall Policies lets you define rule collections once (including hierarchical base + local policies) and assign them across firewalls and secured virtual hubs — centralized governance for distributed enforcement.",
+        "Firewall Manager: azure Firewall filters network traffic but isn't an HTTP WAF. DNS is essential, so the answer isn't blocking it: route DNS through the firewall's DNS proxy for FQDN policy enforcement and alert on anomalous query volumes/patterns (Defender for Cloud also flags DNS anomalies).",
+        "OWASP protection: dDoS Network Protection (paid tier) adds adaptive per-app tuning, detailed attack telemetry, and cost protection against scale-out billing during attacks — beyond the always-on basic mitigation every VNet gets."
+      ],
+      "example": {
+        "lang": "text",
+        "code": "Worked example — azure firewall\nSetup: Firewall Manager with Azure Firewall Policies lets you define rule collections once (including hierarchical base + local policies) and assign them…\nReasoning: DDoS Network Protection (paid tier) adds adaptive per-app tuning, detailed attack telemetry, and cost protection against scale-out billing during…\nTakeaway: Web Application Firewall (on App Gateway for regional, Front Door for global) inspects HTTP/S payloads against managed rule sets (OWASP CRS) blocking…",
+        "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."
+      },
+      "pitfalls": [
+        "Common trap: disabling the firewall's DNS proxy.",
+        "Common trap: L3/L4 + FQDN, not HTTP WAF rules.",
+        "Common trap: one NSG allowing everything between subnets.",
+        "Common trap: nIC-level NSGs only on the web tier."
+      ],
+      "try_it": "Work through this in the Terminal tab →"
+    }
+  ],
+  "sections": [
+    {
+      "id": "foundations",
+      "title": "Foundations",
+      "kind": "foundation",
+      "lectures": [
+        "m-binary",
+        "m-subnetting",
+        "f-networking-0",
+        "f-networking-1",
+        "f-networking-2",
+        "f-networking-3",
+        "f-cloud-concepts-0",
+        "f-cloud-concepts-1",
+        "f-cloud-concepts-2"
+      ],
+      "lab_ids": [],
+      "drill_domain_ids": []
+    },
+    {
+      "id": "core",
+      "title": "Core",
+      "kind": "core",
+      "lectures": [
+        "c-connectivity",
+        "c-routing",
+        "c-private-access",
+        "c-monitoring"
+      ],
+      "lab_ids": [
+        "az-700-lab-1",
+        "az-700-lab-2"
+      ],
+      "drill_domain_ids": [
+        "connectivity",
+        "routing",
+        "private-access",
+        "monitoring"
+      ]
+    },
+    {
+      "id": "advanced",
+      "title": "Advanced",
+      "kind": "advanced",
+      "lectures": [
+        "c-vnet-design",
+        "c-security"
+      ],
+      "lab_ids": [
+        "az-700-lab-3",
+        "az-700-lab-4"
+      ],
+      "drill_domain_ids": [
+        "vnet-design",
+        "security"
+      ]
+    },
+    {
+      "id": "exam-prep",
+      "title": "Exam Prep",
+      "kind": "exam-prep",
+      "lectures": [],
+      "lab_ids": [],
+      "drill_domain_ids": [
+        "vnet-design",
+        "connectivity",
+        "routing",
+        "private-access",
+        "monitoring",
+        "security"
+      ]
+    }
+  ],
   "behavioral": [
     {
       "prompt": "Tell me about a time you diagnosed a complex network outage across hybrid connectivity.",
@@ -1021,6 +1228,891 @@
           "Where does HTTP inspection happen?"
         ]
       }
+    ]
+  },
+  "labs": [
+    {
+      "id": "az-700-lab-1",
+      "title": "Address space planning — Azure CLI drill",
+      "objective": "Run a short sequence of Azure CLI commands that demonstrates address space planning, then verify each result against the expected output.",
+      "steps": [
+        "This lab reworks the VNet Design practice scenario \"The overlapping acquisition\" into commands you run yourself — same concept, hands-on instead of multiple choice.",
+        "Open the Terminal tab for this bootcamp — every command below runs there.",
+        "Type exactly: az account show — the account document includes the subscription name",
+        "Type exactly: az group list — each resource group entry carries a name",
+        "Type exactly: az vm list — each VM entry carries a name",
+        "In your own words, say what each command's output taught you about address space planning."
+      ],
+      "checks": [
+        {
+          "command_pattern": "az account show",
+          "expect_contains": "name",
+          "hint": "In the Terminal tab, run `az account show`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+        },
+        {
+          "command_pattern": "az group list",
+          "expect_contains": "name",
+          "hint": "In the Terminal tab, run `az group list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+        },
+        {
+          "command_pattern": "az vm list",
+          "expect_contains": "name",
+          "hint": "In the Terminal tab, run `az vm list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+        }
+      ],
+      "success_message": "Lab complete — address space planning practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."
+    },
+    {
+      "id": "az-700-lab-2",
+      "title": "Site-to-site VPN — Azure CLI drill",
+      "objective": "Use the Azure CLI to explore site-to-site VPN hands-on: type each command, read what comes back, and connect the output to the concept.",
+      "steps": [
+        "Inspired by the Connectivity scenario \"The branch office link\": take its core idea and prove it live in the terminal instead of answering on paper.",
+        "Open the Terminal tab for this bootcamp — every command below runs there.",
+        "Type exactly: az vm list — each VM entry carries a name",
+        "Type exactly: az account show — the account document includes the subscription name",
+        "Type exactly: az group list — each resource group entry carries a name",
+        "In your own words, say what each command's output taught you about site-to-site VPN."
+      ],
+      "checks": [
+        {
+          "command_pattern": "az vm list",
+          "expect_contains": "name",
+          "hint": "In the Terminal tab, run `az vm list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+        },
+        {
+          "command_pattern": "az account show",
+          "expect_contains": "name",
+          "hint": "In the Terminal tab, run `az account show`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+        },
+        {
+          "command_pattern": "az group list",
+          "expect_contains": "name",
+          "hint": "In the Terminal tab, run `az group list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+        }
+      ],
+      "success_message": "Lab complete — site-to-site VPN practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."
+    },
+    {
+      "id": "az-700-lab-3",
+      "title": "UDR — Azure CLI drill",
+      "objective": "Prove you can apply UDR in the Azure CLI — follow the steps, watch the output, and confirm every check passes.",
+      "steps": [
+        "The Routing scenario \"The default internet path\" tests this concept as a question. This lab makes you demonstrate it with real commands.",
+        "Open the Terminal tab for this bootcamp — every command below runs there.",
+        "Type exactly: az group list — each resource group entry carries a name",
+        "Type exactly: az vm list — each VM entry carries a name",
+        "Type exactly: az account show — the account document includes the subscription name",
+        "In your own words, say what each command's output taught you about UDR."
+      ],
+      "checks": [
+        {
+          "command_pattern": "az group list",
+          "expect_contains": "name",
+          "hint": "In the Terminal tab, run `az group list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+        },
+        {
+          "command_pattern": "az vm list",
+          "expect_contains": "name",
+          "hint": "In the Terminal tab, run `az vm list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+        },
+        {
+          "command_pattern": "az account show",
+          "expect_contains": "name",
+          "hint": "In the Terminal tab, run `az account show`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+        }
+      ],
+      "success_message": "Lab complete — UDR practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."
+    },
+    {
+      "id": "az-700-lab-4",
+      "title": "Private vs service endpoints — Azure CLI drill",
+      "objective": "Run a short sequence of Azure CLI commands that demonstrates private vs service endpoints, then verify each result against the expected output.",
+      "steps": [
+        "This lab reworks the Private Access practice scenario \"The compliance mandate\" into commands you run yourself — same concept, hands-on instead of multiple choice.",
+        "Open the Terminal tab for this bootcamp — every command below runs there.",
+        "Type exactly: az account show — the account document includes the subscription name",
+        "Type exactly: az group list — each resource group entry carries a name",
+        "Type exactly: az vm list — each VM entry carries a name",
+        "In your own words, say what each command's output taught you about private vs service endpoints."
+      ],
+      "checks": [
+        {
+          "command_pattern": "az account show",
+          "expect_contains": "name",
+          "hint": "In the Terminal tab, run `az account show`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+        },
+        {
+          "command_pattern": "az group list",
+          "expect_contains": "name",
+          "hint": "In the Terminal tab, run `az group list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+        },
+        {
+          "command_pattern": "az vm list",
+          "expect_contains": "name",
+          "hint": "In the Terminal tab, run `az vm list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+        }
+      ],
+      "success_message": "Lab complete — private vs service endpoints practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."
+    },
+    {
+      "id": "az700-lab-vnet-inventory",
+      "title": "VNet inventory — the network map",
+      "objective": "Network engineers start with the map. List every virtual network, its address space, and its resource group.",
+      "difficulty": 1,
+      "steps": [
+        "Open the Terminal tab for this bootcamp.",
+        "Type exactly: az network vnet list — the VNet name, owning resource group, and address prefix",
+        "Type exactly: az group list — confirm which resource group owns the network",
+        "In your own words, say why the network lives in its own resource group."
+      ],
+      "checks": [
+        {
+          "command_pattern": "^az network vnet list$",
+          "expect_contains": "ilb-vnet",
+          "hint": "In the Terminal tab, run `az network vnet list`. If the check fails, confirm you typed it exactly and that the output contains \"ilb-vnet\"."
+        },
+        {
+          "command_pattern": "^az group list$",
+          "expect_contains": "ilb-network-rg",
+          "hint": "In the Terminal tab, run `az group list`. If the check fails, confirm you typed it exactly and that the output contains \"ilb-network-rg\"."
+        }
+      ],
+      "success_message": "Lab complete — network map drawn."
+    },
+    {
+      "id": "az700-lab-tenant",
+      "title": "Confirm the tenant context",
+      "objective": "Network changes are tenant-scoped. Verify the subscription and tenant before touching the fabric.",
+      "difficulty": 1,
+      "steps": [
+        "Open the Terminal tab for this bootcamp.",
+        "Type exactly: az account show — subscription id, tenant id, and cloud environment",
+        "In your own words, say why a network engineer verifies tenant context before a change."
+      ],
+      "checks": [
+        {
+          "command_pattern": "^az account show$",
+          "expect_contains": "tenantId",
+          "hint": "In the Terminal tab, run `az account show`. If the check fails, confirm you typed it exactly and that the output contains \"tenantId\"."
+        }
+      ],
+      "success_message": "Lab complete — tenant context verified."
+    },
+    {
+      "id": "az700-lab-compute-fabric",
+      "title": "Survey the compute behind the network",
+      "objective": "Networks exist to carry workloads. Survey the VMs and the AKS cluster the VNets serve.",
+      "difficulty": 2,
+      "steps": [
+        "Open the Terminal tab for this bootcamp.",
+        "Type exactly: az vm list — VM names, states, and sizes behind the network",
+        "Type exactly: az aks list — the Kubernetes cluster riding on the VNet",
+        "In your own words, say why AKS networking choices (kubenet vs Azure CNI) matter to the VNet design."
+      ],
+      "checks": [
+        {
+          "command_pattern": "^az vm list$",
+          "expect_contains": "Standard_B2s",
+          "hint": "In the Terminal tab, run `az vm list`. If the check fails, confirm you typed it exactly and that the output contains \"Standard_B2s\"."
+        },
+        {
+          "command_pattern": "^az aks list$",
+          "expect_contains": "ilb-aks",
+          "hint": "In the Terminal tab, run `az aks list`. If the check fails, confirm you typed it exactly and that the output contains \"ilb-aks\"."
+        }
+      ],
+      "success_message": "Lab complete — workloads behind the network surveyed."
+    },
+    {
+      "id": "az700-lab-hub-spoke",
+      "title": "Hub-spoke foothold",
+      "objective": "Hub-and-spoke starts with the hub's resource group. Create it and verify it landed.",
+      "difficulty": 3,
+      "steps": [
+        "Open the Terminal tab for this bootcamp.",
+        "Type exactly: az group create --name ilb-hub-rg --location eastus — the hub's resource group",
+        "Type exactly: az group list — confirm ilb-hub-rg appears in eastus",
+        "In your own words, say what lives in the hub versus the spokes."
+      ],
+      "checks": [
+        {
+          "command_pattern": "^az group create --name ilb-hub-rg --location eastus$",
+          "expect_contains": "ilb-hub-rg",
+          "hint": "In the Terminal tab, run `az group create --name ilb-hub-rg --location eastus`. If the check fails, confirm you typed it exactly and that the output contains \"ilb-hub-rg\"."
+        },
+        {
+          "command_pattern": "^az group list$",
+          "expect_contains": "ilb-hub-rg",
+          "hint": "In the Terminal tab, run `az group list`. If the check fails, confirm you typed it exactly and that the output contains \"ilb-hub-rg\"."
+        }
+      ],
+      "success_message": "Lab complete — hub foothold established."
+    }
+  ],
+  "foundations": [
+    {
+      "track": "networking",
+      "why_needed": "This is the networking exam: design and operate Azure networks. Master IP, DNS, ports, and HTTP fundamentals first."
+    },
+    {
+      "track": "cloud-concepts",
+      "why_needed": "Regions and VNets frame every design decision. Learn the geography before the architectures."
+    }
+  ],
+  "math": [
+    "binary",
+    "subnetting"
+  ],
+  "simulations": [
+    {
+      "id": "az700-sim-connectivity",
+      "title": "No route to the spoke",
+      "kind": "troubleshoot",
+      "domain_id": "connectivity",
+      "difficulty": 2,
+      "brief": "A VM in the spoke VNet cannot reach the hub firewall. Peering shows 'Connected'. Work the evidence.",
+      "steps": [
+        {
+          "symptom": "Spoke-to-hub traffic fails despite peering status Connected.",
+          "evidence": [
+            [
+              "az network vnet list",
+              "ilb-vnet  ilb-network-rg  10.0.0.0/16"
+            ]
+          ],
+          "options": [
+            "Check the route tables and whether 'use remote gateways' / gateway transit is configured on the peering",
+            "Delete and recreate the peering — it must be corrupt",
+            "The VNet is too small — expand the address space",
+            "Reboot the VM — networking stacks get stuck"
+          ],
+          "correct": 0,
+          "explain": "'Connected' peering without gateway transit or correct routes is the classic hub-spoke failure: peering is up, but traffic has no route or no gateway to use. Check peering options and UDRs before rebuilding anything."
+        },
+        {
+          "symptom": "The peering lacks gateway transit and the spoke has no route to the hub firewall.",
+          "evidence": [
+            [
+              "az vm list -g ilb-rg",
+              "ilb-web-01  ilb-rg  VM running  Standard_D2s_v3"
+            ]
+          ],
+          "options": [
+            "Enable gateway transit on the peering and add the UDR pointing 0.0.0.0/0 at the hub firewall",
+            "Assign public IPs to all spoke VMs so they route directly",
+            "Move the firewall into the spoke VNet",
+            "Disable the firewall — it is blocking legitimate traffic"
+          ],
+          "correct": 0,
+          "explain": "Hub-spoke routing is explicit: gateway transit on the peering plus user-defined routes steering traffic through the hub appliance. Public IPs or moving the firewall dodge the architecture."
+        }
+      ],
+      "debrief": "You diagnosed hub-spoke routing at the right layer: peering state, then transit options, then routes. Connectivity is designed, not assumed.",
+      "points": 15
+    },
+    {
+      "id": "az700-sim-route-table",
+      "title": "The route table that hijacked traffic",
+      "kind": "config-check",
+      "domain_id": "routing",
+      "difficulty": 3,
+      "brief": "After a route-table change, the app subnet lost internet access. Review the routes and click the offending lines.",
+      "steps": {
+        "config": "rt-app-subnet:\n1. 10.0.0.0/16 -> VNetLocal\n2. 0.0.0.0/0 -> 10.0.0.4 (firewall)\n3. 0.0.0.0/0 -> Internet\n4. 10.1.0.0/16 -> VNetPeering",
+        "find": 2,
+        "issues": [
+          {
+            "line": 2,
+            "description": "The default route points at the firewall, but the firewall is down for maintenance — all outbound traffic blackholes.",
+            "fix": "During firewall maintenance, either fail the default route over or schedule the change in a window; never leave a dead next hop."
+          },
+          {
+            "line": 3,
+            "description": "Two default routes (lines 2 and 3) — Azure uses longest-prefix match, and identical 0.0.0.0/0 routes are ambiguous.",
+            "fix": "Keep exactly one default route; remove the duplicate so the intended path is deterministic."
+          }
+        ]
+      },
+      "debrief": "You caught the routing sins: a dead next hop and duplicate default routes. Route tables are read top-to-specific — ambiguity is an outage waiting.",
+      "points": 10
+    },
+    {
+      "id": "az700-sim-vpn-order",
+      "title": "Bring up the site-to-site VPN",
+      "kind": "ordering",
+      "domain_id": "connectivity",
+      "difficulty": 2,
+      "brief": "The branch office needs a site-to-site VPN to Azure. Order the build so each piece lands on a ready foundation.",
+      "steps": {
+        "context": "Site-to-site VPN: gateway subnet, gateway, on-premises definition, connection.",
+        "items": [
+          "Create the connection between the gateway and the on-premises network",
+          "Create the virtual network gateway in the gateway subnet",
+          "Define the local network gateway (on-premises address space and public IP)",
+          "Create the gateway subnet in the VNet",
+          "Verify the connection status shows Connected"
+        ],
+        "correct_order": [
+          3,
+          1,
+          2,
+          0,
+          4
+        ]
+      },
+      "debrief": "You ordered the VPN build: gateway subnet, gateway, on-premises definition, connection, then verify. Gateways take 45 minutes — order matters because rework is expensive.",
+      "points": 10
+    },
+    {
+      "id": "az700-sim-peering-choice",
+      "title": "Peer or VPN?",
+      "kind": "branching",
+      "domain_id": "vnet-design",
+      "difficulty": 2,
+      "brief": "Two VNets need to talk. The junior engineer proposes a VPN gateway between them. Steer the design.",
+      "steps": [
+        {
+          "id": "s1",
+          "text": "Both VNets are in Azure, same tenant, non-overlapping address spaces. VPN gateway between them?",
+          "choices": [
+            {
+              "label": "Yes — VPN gateways connect networks",
+              "next": "s2a",
+              "points": 0,
+              "feedback": "A VPN gateway between two Azure VNets is cost and complexity for no reason when peering exists."
+            },
+            {
+              "label": "No — VNet peering is the native, low-latency answer",
+              "next": "s2",
+              "points": 2,
+              "feedback": "Correct — peering keeps traffic on the Azure backbone with no gateway hops."
+            }
+          ]
+        },
+        {
+          "id": "s2a",
+          "text": "The gateway would cost ~$140/month and add latency. Reconsider:",
+          "choices": [
+            {
+              "label": "VNet peering",
+              "next": "s2",
+              "points": 1,
+              "feedback": "Right — use the native construct."
+            }
+          ]
+        },
+        {
+          "id": "s2",
+          "text": "Now the second VNet is in a different tenant (partner company). Still peering?",
+          "choices": [
+            {
+              "label": "Yes — cross-tenant peering works with consent",
+              "next": "END",
+              "points": 2,
+              "outcome": "good",
+              "feedback": "Correct — VNet peering supports cross-tenant with proper authorization. The constraint changed, the answer adapted."
+            },
+            {
+              "label": "No — tenants can never connect",
+              "next": "END",
+              "points": 0,
+              "outcome": "bad",
+              "feedback": "Wrong — cross-tenant peering is supported. Never let a false constraint kill a valid design."
+            }
+          ]
+        }
+      ],
+      "debrief": "You chose the right interconnect per constraint: peering for Azure-to-Azure, and you knew peering crosses tenants too. Design follows constraints, not habits.",
+      "points": 10
+    }
+  ],
+  "consoleSims": [
+    {
+      "id": "az700-console-portal-vnet-1",
+      "title": "Create the spoke VNet",
+      "console": "azure-portal",
+      "domain_id": "vnet-design",
+      "difficulty": 2,
+      "brief": "Create the spoke VNet for the app tier with a non-overlapping address space.",
+      "tasks": [
+        {
+          "id": "t1",
+          "instruction": "Create a virtual network named ilb-spoke-vnet with address space 10.1.0.0/16 in eastus.",
+          "validate": {
+            "action": "create",
+            "params": {
+              "type": "vnet",
+              "name": "ilb-spoke-vnet",
+              "cidr": "10.1.0.0/16",
+              "location": "eastus"
+            }
+          },
+          "hint": "Use the VNet creation blade with the exact name and address space."
+        },
+        {
+          "id": "t2",
+          "instruction": "Verify the address space does not overlap ilb-vnet (10.0.0.0/16).",
+          "validate": {
+            "action": "click",
+            "params": {
+              "target": "vnet.ilb-spoke-vnet.address-check"
+            }
+          },
+          "hint": "Run the overlap check against the existing hub VNet."
+        }
+      ],
+      "debrief": "You created the spoke with a non-overlapping space — the prerequisite every peering design assumes."
+    },
+    {
+      "id": "az700-console-fw-1",
+      "title": "Deny the internet on the DB subnet",
+      "console": "firewall",
+      "domain_id": "security",
+      "difficulty": 3,
+      "brief": "The database subnet must never initiate internet traffic. Add the deny rule at the right priority.",
+      "tasks": [
+        {
+          "id": "t1",
+          "instruction": "Create an NSG rule denying 0.0.0.0/0 outbound on the database subnet's NSG.",
+          "validate": {
+            "action": "create",
+            "params": {
+              "type": "rule",
+              "group": "ilb-db-sg",
+              "direction": "outbound",
+              "action": "deny",
+              "destination": "0.0.0.0/0"
+            }
+          },
+          "hint": "Add an outbound deny rule for the internet on the DB security group."
+        },
+        {
+          "id": "t2",
+          "instruction": "Set the rule priority to 4096 (evaluated after the allow rules).",
+          "validate": {
+            "action": "set-field",
+            "params": {
+              "field": "rule.priority",
+              "value": "4096"
+            }
+          },
+          "hint": "Give it the highest number so specific allows win."
+        }
+      ],
+      "debrief": "You locked down the DB subnet: explicit deny, correct priority, allows preserved above it."
+    }
+  ],
+  "terminalMissions": [
+    {
+      "id": "az700-mission-vnet",
+      "title": "Read the VNet",
+      "domain_id": "vnet-design",
+      "difficulty": 1,
+      "brief": "List the virtual networks and read the address space.",
+      "objectives": [
+        "List all virtual networks"
+      ],
+      "checks": [
+        {
+          "command_pattern": "^az network vnet list$",
+          "expect_contains": "10.0.0.0/16",
+          "hint": "In the Terminal tab, run `az network vnet list`. If the check fails, confirm you typed it exactly and that the output contains \"10.0.0.0/16\"."
+        }
+      ],
+      "success_message": "VNet read — 10.0.0.0/16 on the map."
+    },
+    {
+      "id": "az700-mission-vms",
+      "title": "List the protected VMs",
+      "domain_id": "security",
+      "difficulty": 1,
+      "brief": "List the VMs the network protects.",
+      "objectives": [
+        "List all virtual machines"
+      ],
+      "checks": [
+        {
+          "command_pattern": "^az vm list$",
+          "expect_contains": "Standard_B2s",
+          "hint": "In the Terminal tab, run `az vm list`. If the check fails, confirm you typed it exactly and that the output contains \"Standard_B2s\"."
+        }
+      ],
+      "success_message": "VMs listed."
+    },
+    {
+      "id": "az700-mission-tenant",
+      "title": "Verify the tenant",
+      "domain_id": "connectivity",
+      "difficulty": 2,
+      "brief": "Confirm the tenant id on the account document.",
+      "objectives": [
+        "Show the Azure account"
+      ],
+      "checks": [
+        {
+          "command_pattern": "^az account show$",
+          "expect_contains": "tenantId",
+          "hint": "In the Terminal tab, run `az account show`. If the check fails, confirm you typed it exactly and that the output contains \"tenantId\"."
+        }
+      ],
+      "success_message": "Tenant verified."
+    },
+    {
+      "id": "az700-mission-hub",
+      "title": "Create the hub group",
+      "domain_id": "vnet-design",
+      "difficulty": 2,
+      "brief": "Create the hub resource group for this mission.",
+      "objectives": [
+        "Create resource group ilb-700-mission in eastus"
+      ],
+      "checks": [
+        {
+          "command_pattern": "^az group create --name ilb-700-mission --location eastus$",
+          "expect_contains": "ilb-700-mission",
+          "hint": "In the Terminal tab, run `az group create --name ilb-700-mission --location eastus`. If the check fails, confirm you typed it exactly and that the output contains \"ilb-700-mission\"."
+        }
+      ],
+      "success_message": "Hub group created."
+    },
+    {
+      "id": "az700-mission-aks",
+      "title": "Check the cluster version",
+      "domain_id": "connectivity",
+      "difficulty": 2,
+      "brief": "List the AKS clusters and read the Kubernetes version the network serves.",
+      "objectives": [
+        "List all AKS clusters"
+      ],
+      "checks": [
+        {
+          "command_pattern": "^az aks list$",
+          "expect_contains": "K8sVersion",
+          "hint": "In the Terminal tab, run `az aks list`. If the check fails, confirm you typed it exactly and that the output contains \"K8sVersion\"."
+        }
+      ],
+      "success_message": "Cluster version read."
+    },
+    {
+      "id": "az700-mission-storage",
+      "title": "Confirm the storage region",
+      "domain_id": "private-access",
+      "difficulty": 3,
+      "brief": "List storage accounts and confirm they sit in the expected resource group.",
+      "objectives": [
+        "List all storage accounts"
+      ],
+      "checks": [
+        {
+          "command_pattern": "^az storage account list$",
+          "expect_contains": "ilb-rg",
+          "hint": "In the Terminal tab, run `az storage account list`. If the check fails, confirm you typed it exactly and that the output contains \"ilb-rg\"."
+        }
+      ],
+      "success_message": "Storage region confirmed."
+    }
+  ],
+  "media": [
+    {
+      "id": "az-700-vnet-design-diag",
+      "kind": "diagram",
+      "title": "Hub-and-Spoke VNet Design",
+      "svg": "assets/diagrams/az-700-vnet-design.svg",
+      "lesson_ref": "c-vnet-design",
+      "caption": "Shared services in the hub; workloads peered as spokes.",
+      "alt": "Hub-and-Spoke VNet Design. Covers: Spoke: apps, Spoke: data, VPN Gateway, ExpressRoute, Azure Firewall, DNS (private zones)."
+    },
+    {
+      "id": "az-700-connectivity-diag",
+      "kind": "diagram",
+      "title": "Azure Connectivity Options",
+      "svg": "assets/diagrams/az-700-connectivity.svg",
+      "lesson_ref": "c-connectivity",
+      "caption": "Private paths between VNets and on-premises.",
+      "alt": "Azure Connectivity Options. Table with 4 rows."
+    },
+    {
+      "id": "az-700-routing-diag",
+      "kind": "diagram",
+      "title": "Traffic Routing Decisions",
+      "svg": "assets/diagrams/az-700-routing.svg",
+      "lesson_ref": "c-routing",
+      "caption": "How Azure picks the path for each packet.",
+      "alt": "Traffic Routing Decisions. Shows: System routes, UDR, BGP, Effective routes."
+    },
+    {
+      "id": "az-700-private-access-diag",
+      "kind": "diagram",
+      "title": "Private Access to PaaS",
+      "svg": "assets/diagrams/az-700-private-access.svg",
+      "lesson_ref": "c-private-access",
+      "caption": "Keep platform traffic off the public internet.",
+      "alt": "Private Access to PaaS. Shows: Private Endpoint, Private Link, Service endpoints, Private DNS zones."
+    },
+    {
+      "id": "az-700-monitoring-diag",
+      "kind": "diagram",
+      "title": "Network Monitoring",
+      "svg": "assets/diagrams/az-700-monitoring.svg",
+      "lesson_ref": "c-monitoring",
+      "caption": "Watch connectivity, not just uptime.",
+      "alt": "Network Monitoring. Shows: Network Watcher, Connection Monitor, Traffic Analytics, NSG flow logs."
+    },
+    {
+      "id": "az-700-security-diag",
+      "kind": "diagram",
+      "title": "Network Security Layers",
+      "svg": "assets/diagrams/az-700-security.svg",
+      "lesson_ref": "c-security",
+      "caption": "Filter at the edge, the subnet, and the host.",
+      "alt": "Network Security Layers. Shows: Edge, Subnet, Host, Monitor."
+    }
+  ],
+  "resources": {
+    "cheatsheet": {
+      "title": "Azure Network Engineer (AZ-700) — Cheat Sheet",
+      "sections": [
+        {
+          "heading": "VNet Design",
+          "items": [
+            "Address — Address planning (non-overlapping RFC 1918 space per VNet, room for growth) is the foundational design step — renumbering after the fact is painful. IP address management (IPAM) — planning non-overlapping pools per region/environment, reserving growth space…",
+            "Peering prerequisites — vNet peering requires non-overlapping address spaces; Azure blocks peering creation when ranges overlap. Peering connects spokes to the hub but doesn't route spoke-to-spoke through it (non-transitive).",
+            "Gateway subnet — the gateway subnet hosts active/standby gateway instances plus platform addresses; Microsoft recommends /27 or larger. NAT Gateway provides up to 64k SNAT ports per public IP (up to 16 IPs) at the subnet level — the designed fix for large-scale outbound.",
+            "UDR — note: gateway subnets must be named exactly 'GatewaySubnet' and carry no NSG/UDR. UDRs with a default route to the hub firewall/NVA override system routes and force inspection — the classic forced-tunneling/hub inspection design.",
+            "Common trap — use a VPN gateway instead of peering.",
+            "Common trap — the subnet needs an NSG first.",
+            "Common trap — an NSG rule allowing DNS.",
+            "Common trap — peer anyway; Azure resolves overlaps automatically.",
+            "Private endpoints need private DNS resolution — the privatelink.* zone linked to the VNet maps the service's public FQDN to the private endpoint IP. Without it, clients resolve the public IP and traffic leaves the VNet — silently defeating the purpose."
+          ]
+        },
+        {
+          "heading": "Connectivity",
+          "items": [
+            "Site-to-site VPN — Site-to-site VPN connects entire on-premises networks to Azure via IPsec from the site's VPN device. Point-to-site VPN gives individual clients (laptops) an encrypted tunnel to the VNet via the VPN gateway — no on-premises VPN hardware needed.",
+            "Hybrid connectivity — point-to-site is per-client; ExpressRoute is dedicated private connectivity (overkill for one small branch); peering is Azure-to-Azure only.",
+            "Point-to-site VPN — VPN over the internet can't guarantee throughput.",
+            "ExpressRoute — global Reach connects ExpressRoute circuits together over Microsoft's backbone — e.g., Azure to another cloud's private interconnect — without traversing the public internet. ExpressRoute has two peering types: private peering (RFC 1918 traffic to your VNet…",
+            "Dedicated connectivity — expressRoute provides private, dedicated bandwidth (up to 100 Gbps) with SLA-backed latency/throughput — the choice for bulk, compliance-sensitive, or latency-sensitive traffic.",
+            "Common trap — microsoft peering carries VNet traffic.",
+            "Common trap — 30 separate site-to-site VPNs with manual routing.",
+            "Common trap — increasing the VPN gateway SKU.",
+            "Common trap — one giant VNet per branch.",
+            "Read — Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."
+          ]
+        },
+        {
+          "heading": "Routing",
+          "items": [
+            "UDR — service endpoints add system routes for the service's public prefixes, which are more specific than a 0.0.0.0/0 UDR — so service traffic should bypass the firewall. Azure system routes send internet-bound traffic directly out; a UDR default route (0.0.0.0/0…",
+            "Route override — longest prefix match: the most specific matching route wins, regardless of creation order. Effective routes (portal or Get-AzEffectiveRouteTable) shows the merged result: NIC route table + subnet route table + system routes, with the winning route per prefix.",
+            "BGP — BGP exchanges routes dynamically between on-premises and Azure, enabling consistent path selection and automatic failover across redundant connections.",
+            "Dynamic routing — nSGs filter traffic but never change its path; routing and filtering are separate mechanisms.",
+            "Common trap — service endpoints don't work with UDRs at all.",
+            "Common trap — service endpoints require ExpressRoute.",
+            "Common trap — the system route wins over UDRs.",
+            "Common trap — the VNet address space blade.",
+            "Longest prefix match — the most specific matching route wins, regardless of creation order. UDRs override system routes of equal specificity; among UDRs, specificity decides."
+          ]
+        },
+        {
+          "heading": "Private Access",
+          "items": [
+            "Private Link Service — Private Link Service (the provider side of Private Link) exposes your internal standard load balancer to consumers who create private endpoints in their own VNets — private connectivity with no peering, no public IPs, and consumer-driven approval.",
+            "Compliance needs both axes — encrypted AND private.",
+            "Private Link Service — secure transfer required enforces HTTPS (encryption in transit); private endpoints with public network access disabled enforce private paths. Service endpoints keep the service's public endpoint (traffic stays on the backbone but the endpoint is still publi…",
+            "Provider-side Private Link — each consumer VNet needs its own private DNS zone linked locally — DNS resolution is per-VNet.",
+            "Common trap — a bigger private endpoint SKU.",
+            "Common trap — application Gateway always requires a public IP.",
+            "Common trap — keeps the public endpoint, only extends VNet identity.",
+            "Common trap — use Azure Front Door instead."
+          ]
+        },
+        {
+          "heading": "Monitoring",
+          "items": [
+            "Traffic Analytics processes raw NSG flow logs into visual insights — top talkers, application ports, data-center/DC traffic distribution, and malicious-flow flagging — the analysis layer over flow logs.",
+            "Connection Monitor — Connection Monitor runs scheduled synthetic probes between endpoints and tracks latency, packet loss, and hop topology over time — the tool for intermittent issues that one-time tests miss.",
+            "NSG flow logs — it's the escalation when flow logs and verifiers can't explain the failure. It's the authoritative record of what the NSG did.",
+            "Packet capture — network Watcher packet capture records real packets from a VM (or gateway) to blob storage for deep protocol analysis.",
+            "Common trap — raw flow logs read manually.",
+            "Common trap — measures latency, not rule decisions.",
+            "Common trap — reboot the on-premises device first.",
+            "Common trap — delete and recreate the gateway immediately.",
+            "NSG — NSG flow logs record every flow's allow/deny verdict per rule through the NSG, stored in Log Analytics via Traffic Analytics for KQL querying. It's the authoritative record of what the NSG did."
+          ]
+        },
+        {
+          "heading": "Security",
+          "items": [
+            "Azure Firewall — firewall Manager with Azure Firewall Policies lets you define rule collections once (including hierarchical base + local policies) and assign them across firewalls and secured virtual hubs — centralized governance for distributed enforcement.",
+            "Firewall Manager — azure Firewall filters network traffic but isn't an HTTP WAF. DNS is essential, so the answer isn't blocking it: route DNS through the firewall's DNS proxy for FQDN policy enforcement and alert on anomalous query volumes/patterns (Defender for Cloud also fl…",
+            "OWASP protection — dDoS Network Protection (paid tier) adds adaptive per-app tuning, detailed attack telemetry, and cost protection against scale-out billing during attacks — beyond the always-on basic mitigation every VNet gets.",
+            "Common trap — disabling the firewall's DNS proxy.",
+            "Common trap — L3/L4 + FQDN, not HTTP WAF rules.",
+            "Common trap — one NSG allowing everything between subnets.",
+            "Common trap — nIC-level NSGs only on the web tier."
+          ]
+        }
+      ]
+    },
+    "glossary": [
+      {
+        "term": "VPN",
+        "def": "Point-to-site VPN: VPN over the internet can't guarantee throughput."
+      },
+      {
+        "term": "DNS",
+        "def": "DNS is essential, so the answer isn't blocking it: route DNS through the firewall's DNS proxy for FQDN policy enforcement and alert on anomalous query volumes/patterns (Defender for Cloud also flags DNS anomalies). Design acknowledges DN…"
+      },
+      {
+        "term": "VNet",
+        "def": "VNet peering requires non-overlapping address spaces; Azure blocks peering creation when ranges overlap. Address planning (non-overlapping RFC 1918 space per VNet, room for growth) is the foundational design step — renumbering after the…"
+      },
+      {
+        "term": "NSG",
+        "def": "Common trap: the subnet needs an NSG first."
+      },
+      {
+        "term": "UDR",
+        "def": "UDR: note: gateway subnets must be named exactly 'GatewaySubnet' and carry no NSG/UDR. UDRs with a default route to the hub firewall/NVA override system routes and force inspection — the classic forced-tunneling/hub inspection design."
+      },
+      {
+        "term": "RFC",
+        "def": "Address planning (non-overlapping RFC 1918 space per VNet, room for growth) is the foundational design step — renumbering after the fact is painful. IP address management (IPAM) — planning non-overlapping pools per region/environment, re…"
+      },
+      {
+        "term": "IP",
+        "def": "IP address management (IPAM) — planning non-overlapping pools per region/environment, reserving growth space, and verifying before deployment — prevents the overlap/exhaustion cycle. Azure Virtual Network Manager can centrally manage con…"
+      },
+      {
+        "term": "ExpressRoute",
+        "def": "ExpressRoute: global Reach connects ExpressRoute circuits together over Microsoft's backbone — e.g., Azure to another cloud's private interconnect — without traversing the public internet. ExpressRoute has two peering types: private peer…"
+      },
+      {
+        "term": "WAF",
+        "def": "Firewall Manager: azure Firewall filters network traffic but isn't an HTTP WAF. DNS is essential, so the answer isn't blocking it: route DNS through the firewall's DNS proxy for FQDN policy enforcement and alert on anomalous query volume…"
+      },
+      {
+        "term": "HTTP",
+        "def": "Firewall Manager: azure Firewall filters network traffic but isn't an HTTP WAF. DNS is essential, so the answer isn't blocking it: route DNS through the firewall's DNS proxy for FQDN policy enforcement and alert on anomalous query volume…"
+      },
+      {
+        "term": "Microsoft",
+        "def": "Gateway subnet: the gateway subnet hosts active/standby gateway instances plus platform addresses; Microsoft recommends /27 or larger. NAT Gateway provides up to 64k SNAT ports per public IP (up to 16 IPs) at the subnet level — the desig…"
+      },
+      {
+        "term": "SNAT",
+        "def": "Outbound SNAT ports are finite per public IP; hundreds of VMs sharing a few ports exhaust them. NAT Gateway provides up to 64k SNAT ports per public IP (up to 16 IPs) at the subnet level — the designed fix for large-scale outbound."
+      },
+      {
+        "term": "SKU",
+        "def": "Common trap: increasing the VPN gateway SKU."
+      },
+      {
+        "term": "BGP",
+        "def": "BGP exchanges routes dynamically between on-premises and Azure, enabling consistent path selection and automatic failover across redundant connections."
+      },
+      {
+        "term": "HTTPS",
+        "def": "Secure transfer required enforces HTTPS (encryption in transit); private endpoints with public network access disabled enforce private paths. Compliance needs both axes: encrypted AND private."
+      },
+      {
+        "term": "NAT",
+        "def": "Outbound SNAT ports are finite per public IP; hundreds of VMs sharing a few ports exhaust them. NAT Gateway provides up to 64k SNAT ports per public IP (up to 16 IPs) at the subnet level — the designed fix for large-scale outbound."
+      },
+      {
+        "term": "Peering",
+        "def": "Peering prerequisites: vNet peering requires non-overlapping address spaces; Azure blocks peering creation when ranges overlap. Peering connects spokes to the hub but doesn't route spoke-to-spoke through it (non-transitive)."
+      },
+      {
+        "term": "Service",
+        "def": "Private Link Service: secure transfer required enforces HTTPS (encryption in transit); private endpoints with public network access disabled enforce private paths. Service endpoints keep the service's public endpoint (traffic stays on th…"
+      },
+      {
+        "term": "Point-to-site VPN",
+        "def": "Point-to-site VPN: VPN over the internet can't guarantee throughput."
+      },
+      {
+        "term": "VMs",
+        "def": "Outbound SNAT ports are finite per public IP; hundreds of VMs sharing a few ports exhaust them. NAT Gateway provides up to 64k SNAT ports per public IP (up to 16 IPs) at the subnet level — the designed fix for large-scale outbound."
+      },
+      {
+        "term": "IPsec",
+        "def": "Site-to-site VPN connects entire on-premises networks to Azure via IPsec from the site's VPN device. Point-to-site is per-client; ExpressRoute is dedicated private connectivity (overkill for one small branch); peering is Azure-to-Azure o…"
+      },
+      {
+        "term": "VM",
+        "def": "The choke point must not be a single VM. What makes inspection highly available?"
+      },
+      {
+        "term": "Azure Firewall",
+        "def": "Azure Firewall: firewall Manager with Azure Firewall Policies lets you define rule collections once (including hierarchical base + local policies) and assign them across firewalls and secured virtual hubs — centralized governance for dis…"
+      },
+      {
+        "term": "Gateway",
+        "def": "Gateway subnet: the gateway subnet hosts active/standby gateway instances plus platform addresses; Microsoft recommends /27 or larger. NAT Gateway provides up to 64k SNAT ports per public IP (up to 16 IPs) at the subnet level — the desig…"
+      },
+      {
+        "term": "Manager",
+        "def": "Azure Firewall: firewall Manager with Azure Firewall Policies lets you define rule collections once (including hierarchical base + local policies) and assign them across firewalls and secured virtual hubs — centralized governance for dis…"
+      }
+    ],
+    "links": [
+      {
+        "label": "Microsoft — official site",
+        "url": "https://learn.microsoft.com",
+        "note": "Official vendor documentation and certification information"
+      },
+      {
+        "label": "Microsoft Learn — Azure",
+        "url": "https://learn.microsoft.com/en-us/azure/",
+        "note": "Official Azure documentation"
+      },
+      {
+        "label": "Microsoft certifications",
+        "url": "https://learn.microsoft.com/en-us/certifications/",
+        "note": "Official certification paths and exam pages"
+      },
+      {
+        "label": "Azure status and architecture",
+        "url": "https://azure.microsoft.com/en-us/",
+        "note": "Official Azure product pages"
+      },
+      {
+        "label": "RFC 791 — Internet Protocol (IPv4)",
+        "url": "https://www.rfc-editor.org/rfc/rfc791.txt",
+        "note": "Official IETF standard"
+      },
+      {
+        "label": "RFC 793 — Transmission Control Protocol",
+        "url": "https://www.rfc-editor.org/rfc/rfc793.txt",
+        "note": "Official IETF standard"
+      },
+      {
+        "label": "RFC 1035 — Domain Names (DNS)",
+        "url": "https://www.rfc-editor.org/rfc/rfc1035.txt",
+        "note": "Official IETF standard"
+      },
+      {
+        "label": "RFC 1918 — Private address allocation",
+        "url": "https://www.rfc-editor.org/rfc/rfc1918.txt",
+        "note": "Official IETF standard"
+      }
+    ],
+    "checklist": [
+      "Get 7–8 hours of sleep the night before — fatigue destroys recall faster than any topic gap.",
+      "Bring valid government-issued photo ID and arrive at the test center 30 minutes early.",
+      "Eat a real meal beforehand; bring water and a light snack if the center allows them.",
+      "Read every question twice before scanning the answer choices.",
+      "Flag uncertain questions and move on — return with fresh eyes at the end.",
+      "Eliminate the obviously wrong answers first, then compare the survivors.",
+      "Budget your time: answer steadily and keep a 10–15 minute review buffer.",
+      "Re-run your weakest-domain drill until mastery is at least 80%.",
+      "For VNet Design: restate the 'why' behind each scenario answer in your own words — if you can't explain it, you don't own it.",
+      "Redo one Connectivity lab from scratch without looking at the steps.",
+      "Recite the key Routing terms from the glossary aloud from memory."
     ]
   }
 }

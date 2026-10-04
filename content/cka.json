@@ -28,7 +28,10 @@
           "answer": 0,
           "why": "The apiserver is the only component clients talk to; etcd is the consistent key-value store of record; the scheduler binds unscheduled Pods to nodes; the controller-manager runs controllers (Deployment, ReplicaSet, Node) that reconcile desired vs actual state. kubelet (node agent) and kube-proxy (service networking) run on every node including control-plane nodes.",
           "hint": "Which component is the single source of truth for cluster state?",
-          "objectives": ["Control plane", "Component roles"],
+          "objectives": [
+            "Control plane",
+            "Component roles"
+          ],
           "mins": 6
         },
         {
@@ -46,7 +49,10 @@
           "answer": 0,
           "why": "Modern etcd needs ETCDCTL_API=3, the TLS endpoint, and the cluster's client certificates (found in /etc/kubernetes/pki/etcd/). 'snapshot save' is the online backup API; copying the data dir of a running etcd risks corruption, and there is no 'kubectl backup etcd'.",
           "hint": "Does etcd's API listen on plaintext localhost by default in kubeadm?",
-          "objectives": ["etcd", "Backup & restore"],
+          "objectives": [
+            "etcd",
+            "Backup & restore"
+          ],
           "mins": 6
         },
         {
@@ -64,7 +70,10 @@
           "answer": 0,
           "why": "The supported skew policy: kube-apiserver first, then controller-manager/scheduler, then kubelets. kubelet can be at most two minor versions older than the apiserver (n-2) and never newer; kubectl must be within one minor version of the apiserver. kubeadm enforces this via 'kubeadm upgrade plan'.",
           "hint": "Which component must always be the newest in the cluster?",
-          "objectives": ["Upgrades", "Version skew"],
+          "objectives": [
+            "Upgrades",
+            "Version skew"
+          ],
           "mins": 6
         },
         {
@@ -82,7 +91,10 @@
           "answer": 0,
           "why": "kubeadm deploys control-plane components as static Pods: plain Pod manifests in the kubelet's manifest directory (--pod-manifest-path, default /etc/kubernetes/manifests). The kubelet starts them without any apiserver involvement — which is exactly why the apiserver itself can be deployed this way. Edit the file and the kubelet restarts the Pod.",
           "hint": "What reads that directory — the apiserver, or something that runs before it?",
-          "objectives": ["Static Pods", "kubeadm architecture"],
+          "objectives": [
+            "Static Pods",
+            "kubeadm architecture"
+          ],
           "mins": 5
         },
         {
@@ -100,7 +112,10 @@
           "answer": 0,
           "why": "kubeadm join needs a bootstrap token (default TTL 24h) plus the CA cert hash for trust. 'kubeadm token create --print-join-command' mints a fresh token and prints the complete, verified command. admin.conf grants cluster-admin — copying it to workers is a security anti-pattern, and running init twice creates two clusters.",
           "hint": "What two secrets does a joining node need to trust and authenticate to the cluster?",
-          "objectives": ["kubeadm", "Node bootstrap"],
+          "objectives": [
+            "kubeadm",
+            "Node bootstrap"
+          ],
           "mins": 5
         },
         {
@@ -118,7 +133,10 @@
           "answer": 0,
           "why": "In-cluster DNS is served by CoreDNS (fronted by the kube-dns Service at 10.96.0.10 by default); the CNI only provides pod networking. /etc/resolv.conf in each Pod points at kube-dns. If CoreDNS Pods are CrashLooping or the Service selector is broken, name resolution fails while IP connectivity works.",
           "hint": "Which cluster component answers DNS queries from Pods?",
-          "objectives": ["Cluster DNS", "CoreDNS"],
+          "objectives": [
+            "Cluster DNS",
+            "CoreDNS"
+          ],
           "mins": 6
         }
       ]
@@ -142,7 +160,10 @@
           "answer": 0,
           "why": "Taints repel Pods that don't tolerate them: 'kubectl taint nodes gpu1 dedicated=gpu:NoSchedule'. Only Pods with the matching toleration (key dedicated, value gpu, effect NoSchedule) schedule there. NoSchedule blocks new scheduling; NoExecute would also evict running Pods. nodeSelector on regular Pods doesn't scale — taint the special nodes instead.",
           "hint": "Do you label the special nodes, or label everything else?",
-          "objectives": ["Taints", "Tolerations"],
+          "objectives": [
+            "Taints",
+            "Tolerations"
+          ],
           "mins": 6
         },
         {
@@ -160,7 +181,10 @@
           "answer": 0,
           "why": "Node affinity splits hard vs soft: requiredDuringSchedulingIgnoredDuringExecution is mandatory (Pod stays pending without SSD nodes); preferredDuringSchedulingIgnoredDuringExecution adds weighted scoring the scheduler tries to satisfy. nodeSelector only does hard equality matching. 'IgnoredDuringExecution' means the rule isn't re-evaluated if labels change later.",
           "hint": "Which affinity stanza is mandatory and which is best-effort?",
-          "objectives": ["Node affinity", "Hard vs soft constraints"],
+          "objectives": [
+            "Node affinity",
+            "Hard vs soft constraints"
+          ],
           "mins": 6
         },
         {
@@ -178,7 +202,10 @@
           "answer": 0,
           "why": "podAntiAffinity repels: 'don't schedule me on a node (topologyKey: kubernetes.io/hostname) already running a Pod matching these labels'. requiredDuringScheduling makes it a hard rule. podAffinity does the opposite (co-locate). Replica count alone never guarantees spread — that's also what topologySpreadConstraints handle more flexibly.",
           "hint": "Affinity attracts, anti-affinity repels — which do you need?",
-          "objectives": ["Pod affinity", "High availability"],
+          "objectives": [
+            "Pod affinity",
+            "High availability"
+          ],
           "mins": 6
         },
         {
@@ -196,7 +223,10 @@
           "answer": 0,
           "why": "QoS is derived: Guaranteed = requests == limits for every container (CPU and memory); Burstable = at least one request/limit set but not equal; BestEffort = nothing set. Under memory pressure the kubelet evicts BestEffort first, then Burstable (by how far over requests), protecting Guaranteed longest. Always set requests AND limits on critical workloads.",
           "hint": "Which Pod made no resource promises at all?",
-          "objectives": ["QoS classes", "Resource management"],
+          "objectives": [
+            "QoS classes",
+            "Resource management"
+          ],
           "mins": 6
         },
         {
@@ -214,7 +244,10 @@
           "answer": 0,
           "why": "DaemonSet's contract is 'one Pod per selected node': the controller adds Pods as nodes join and removes them as nodes leave — perfect for node-level agents (log shippers, monitoring, CNI). Deployments manage a fixed replica count with no node awareness; StatefulSets give stable identity/storage, not per-node coverage.",
           "hint": "Which controller reacts to nodes joining the cluster?",
-          "objectives": ["DaemonSet", "Workload selection"],
+          "objectives": [
+            "DaemonSet",
+            "Workload selection"
+          ],
           "mins": 5
         },
         {
@@ -232,7 +265,10 @@
           "answer": 0,
           "why": "cordon marks the node unschedulable; drain evicts Pods gracefully (respecting PodDisruptionBudgets) and cordons as part of the operation — though explicit cordon first is the safe habit. --ignore-daemonsets skips DaemonSet Pods (they can't be drained), --delete-emptydir-data acknowledges local data loss. uncordon returns the node to service after the reboot.",
           "hint": "What two things must happen: stop new Pods arriving, and move existing ones away safely?",
-          "objectives": ["Node maintenance", "cordon/drain"],
+          "objectives": [
+            "Node maintenance",
+            "cordon/drain"
+          ],
           "mins": 6
         }
       ]
@@ -256,7 +292,10 @@
           "answer": 0,
           "why": "Cluster DNS form: <service>.<namespace>.svc.cluster.local. A Pod's resolv.conf search domains include '<pod-namespace>.svc.cluster.local', so short 'api' expands within its own namespace only. Cross-namespace requires at least 'api.backend' (resolvable via search) — the FQDN always works.",
           "hint": "What search domains does a Pod get, and which namespace do they cover?",
-          "objectives": ["Service DNS", "Cross-namespace"],
+          "objectives": [
+            "Service DNS",
+            "Cross-namespace"
+          ],
           "mins": 5
         },
         {
@@ -274,7 +313,10 @@
           "answer": 0,
           "why": "Ingress TLS: spec.tls[] maps hosts to a TLS Secret (type kubernetes.io/tls with tls.crt/tls.key). The ingress controller (nginx, etc., selected via ingressClassName) terminates TLS. Without the tls section you get HTTP only. cert-manager automates issuance/renewal via ACME.",
           "hint": "Where does the certificate live, and how does the Ingress reference it?",
-          "objectives": ["Ingress", "TLS termination"],
+          "objectives": [
+            "Ingress",
+            "TLS termination"
+          ],
           "mins": 6
         },
         {
@@ -292,7 +334,10 @@
           "answer": 0,
           "why": "NetworkPolicy ingress.from combines podSelector (who) with namespaceSelector (where) — both in one peer entry means AND. policyTypes: Ingress activates ingress enforcement; the podSelector selects the DB Pods; ports restrict to 5432. Remember: the policy must exist in the DB's namespace, and the CNI must enforce policies.",
           "hint": "In which namespace does the policy live, and what does 'from' combine?",
-          "objectives": ["NetworkPolicy", "Ingress rules"],
+          "objectives": [
+            "NetworkPolicy",
+            "Ingress rules"
+          ],
           "mins": 6
         },
         {
@@ -310,7 +355,10 @@
           "answer": 0,
           "why": "The apiserver's --service-node-port-range defaults to 30000-32767; explicitly requested nodePorts outside it are rejected. Omit nodePort for auto-allocation, or choose within range. (The range is configurable cluster-wide, but you won't change it per-Service.) For production external access, prefer Ingress/LoadBalancer over NodePort.",
           "hint": "What is the default valid range for nodePort values?",
-          "objectives": ["NodePort", "Service types"],
+          "objectives": [
+            "NodePort",
+            "Service types"
+          ],
           "mins": 4
         },
         {
@@ -328,7 +376,10 @@
           "answer": 0,
           "why": "Debug from inside the cluster's network: a throwaway Pod with dnsutils/busybox lets you run nslookup <name>, check /etc/resolv.conf (nameserver should be the kube-dns ClusterIP, searches set), and query specific servers ('nslookup db.data 10.96.0.10'). Your laptop's DNS is irrelevant. 'kubectl debug' adds ephemeral containers to existing Pods for the same purpose.",
           "hint": "Where must the test run to see what Pods see?",
-          "objectives": ["DNS debugging", "kubectl debug"],
+          "objectives": [
+            "DNS debugging",
+            "kubectl debug"
+          ],
           "mins": 5
         },
         {
@@ -346,7 +397,10 @@
           "answer": 0,
           "why": "kube-proxy watches Services/Endpoints and programs the data path on every node: iptables mode installs NAT rules (simple, scales to ~thousands of services), IPVS mode uses Linux IPVS (better load-balancing algorithms, scales further). The old userspace mode is obsolete. The ClusterIP exists only as routing rules — nothing listens on it.",
           "hint": "Which component translates the virtual Service IP into Pod IPs on each node?",
-          "objectives": ["kube-proxy", "Service networking"],
+          "objectives": [
+            "kube-proxy",
+            "Service networking"
+          ],
           "mins": 6
         }
       ]
@@ -370,7 +424,10 @@
           "answer": 0,
           "why": "Binding requires: sufficient capacity, compatible accessModes, matching storageClassName (or both empty), and selector/label match. A 5Gi PV can't satisfy 10Gi. With a default StorageClass, dynamic provisioning should create a volume — if it doesn't, check the provisioner, parameters, and events ('kubectl describe pvc'). Fix: right-size a static PV or repair dynamic provisioning.",
           "hint": "What must match between a PV and a PVC for binding?",
-          "objectives": ["PV/PVC", "Binding"],
+          "objectives": [
+            "PV/PVC",
+            "Binding"
+          ],
           "mins": 6
         },
         {
@@ -388,7 +445,10 @@
           "answer": 0,
           "why": "Access modes: RWO (one node RW), ROX (many nodes read-only), RWX (many nodes RW). Most block storage (EBS, GCE PD) is RWO-only — the second node's mount fails by design. True shared RW needs a shared filesystem (NFS, EFS, CephFS, Azure Files). Often the better architecture is avoiding shared POSIX: object storage or a database.",
           "hint": "What does 'Once' vs 'Many' count — Pods or nodes?",
-          "objectives": ["Access modes", "RWO/RWX"],
+          "objectives": [
+            "Access modes",
+            "RWO/RWX"
+          ],
           "mins": 5
         },
         {
@@ -406,7 +466,10 @@
           "answer": 0,
           "why": "A PVC with no storageClassName binds only to PVs with no class — unless a default StorageClass exists, in which case it's applied automatically and dynamic provisioning kicks in. One default per cluster (the annotation). 'kubectl get storageclass' shows it. This is the #1 'works in dev, Pending in prod' storage gotcha.",
           "hint": "What annotation makes a StorageClass apply to class-less PVCs?",
-          "objectives": ["StorageClass", "Default class"],
+          "objectives": [
+            "StorageClass",
+            "Default class"
+          ],
           "mins": 5
         },
         {
@@ -424,7 +487,10 @@
           "answer": 0,
           "why": "With allowVolumeExpansion: true and a supporting provisioner/driver, PVCs are editable upward: the external-resizer expands the block device, and kubelet expands the filesystem (FileSystemResizePending → done, often automatic for mounted volumes). Only expansion, never shrinking. Verify with 'kubectl get pvc' and df inside the Pod.",
           "hint": "Which StorageClass field gates whether PVCs can grow?",
-          "objectives": ["Volume expansion", "allowVolumeExpansion"],
+          "objectives": [
+            "Volume expansion",
+            "allowVolumeExpansion"
+          ],
           "mins": 6
         },
         {
@@ -442,7 +508,10 @@
           "answer": 0,
           "why": "StatefulSets give stable identity: Pod db-0 ↔ PVC data-db-0 via volumeClaimTemplates (auto-created per replica). On reschedule, db-0 reattaches to its own PVC. Deployments have interchangeable Pods with no identity — wrong for stateful data. hostPath ties data to a node (lost on reschedule); emptyDir dies with the Pod.",
           "hint": "Which workload gives each replica a stable name — and what storage follows that name?",
-          "objectives": ["StatefulSet", "volumeClaimTemplates"],
+          "objectives": [
+            "StatefulSet",
+            "volumeClaimTemplates"
+          ],
           "mins": 6
         },
         {
@@ -460,7 +529,10 @@
           "answer": 0,
           "why": "Reclaim policy is per-PV (defaulting from the StorageClass): Retain keeps the underlying volume after PVC deletion (data safe, manual cleanup, PV goes Released and can't rebind without manual intervention); Delete removes the volume asset. Dynamically provisioned volumes usually default Delete; statically created PVs default Retain. Check before deleting PVCs holding important data.",
           "hint": "Which policy keeps the cloud disk after the PVC is gone?",
-          "objectives": ["Reclaim policies", "Retain vs Delete"],
+          "objectives": [
+            "Reclaim policies",
+            "Retain vs Delete"
+          ],
           "mins": 5
         }
       ]
@@ -484,7 +556,10 @@
           "answer": 0,
           "why": "CrashLoopBackOff = container exits, kubelet backs off restarts. Debug: --previous for the dead container's logs; common causes — bad command/args, missing env/config, failing startupProbe/livenessProbe killing slow boots, immediate exit (no foreground process). 'kubectl debug' adds an ephemeral container to a running Pod for inspection without changing the image.",
           "hint": "Where are the logs of the container instance that already died?",
-          "objectives": ["CrashLoopBackOff", "Debug workflow"],
+          "objectives": [
+            "CrashLoopBackOff",
+            "Debug workflow"
+          ],
           "mins": 6
         },
         {
@@ -502,7 +577,10 @@
           "answer": 0,
           "why": "kubelet needs registry credentials: 'kubectl create secret docker-registry regcred --docker-server=... --docker-username=... --docker-password=...', then imagePullSecrets: [{name: regcred}] in the Pod spec (or on the ServiceAccount for all its Pods). Also check: typo'd image/tag, and whether the registry requires the full path. Describe the Pod — events name the exact failure.",
           "hint": "How does the kubelet authenticate to a private registry?",
-          "objectives": ["ImagePullBackOff", "imagePullSecrets"],
+          "objectives": [
+            "ImagePullBackOff",
+            "imagePullSecrets"
+          ],
           "mins": 5
         },
         {
@@ -520,7 +598,10 @@
           "answer": 0,
           "why": "'kubectl describe pod' Events show each failed scheduling predicate. Here: unbound PVC (no matching PV/StorageClass provisioning) AND insufficient memory. Fix each: provision storage / correct the claim; right-size requests or scale the cluster. Pending is the scheduler telling you exactly what's wrong — read the events.",
           "hint": "How many distinct reasons does the event list?",
-          "objectives": ["Pending Pods", "Scheduler events"],
+          "objectives": [
+            "Pending Pods",
+            "Scheduler events"
+          ],
           "mins": 5
         },
         {
@@ -538,7 +619,10 @@
           "answer": 0,
           "why": "Triage: describe node conditions (MemoryPressure/DiskPressure/PIDPressure explain evictions; NetworkUnavailable implicates CNI). Then node-level: 'systemctl status kubelet', 'journalctl -u kubelet', disk full? ('df -h'), runtime down? ('systemctl status containerd'). Fix the cause (free disk, restart runtime), the node returns Ready and Pods reschedule. Deleting the Node object orphans workloads.",
           "hint": "What do the node's Conditions tell you before you SSH?",
-          "objectives": ["Node troubleshooting", "NotReady"],
+          "objectives": [
+            "Node troubleshooting",
+            "NotReady"
+          ],
           "mins": 6
         },
         {
@@ -556,7 +640,10 @@
           "answer": 0,
           "why": "Direct-IP works + name fails = DNS problem (not CNI). Check: Pod's resolv.conf points at kube-dns Service IP; 'nslookup api' vs FQDN (search-domain issues); query kube-dns IP directly; CoreDNS Pods Running with clean logs; the 'api' Service actually has Endpoints. Layer the tests — each narrows the fault domain.",
           "hint": "If the IP works but the name doesn't, which layer is broken?",
-          "objectives": ["DNS troubleshooting", "Fault isolation"],
+          "objectives": [
+            "DNS troubleshooting",
+            "Fault isolation"
+          ],
           "mins": 6
         },
         {
@@ -574,7 +661,10 @@
           "answer": 0,
           "why": "With the apiserver down, kubectl is useless — go to the node: 'journalctl -u kubelet', 'crictl ps/logs' for the static Pod containers, and the manifest YAMLs. The apiserver depends on etcd: if the etcd static Pod is crashlooping (disk full? cert expired? data corruption?), fix etcd first — the apiserver can't start without its state store. Check cert expiry with openssl on the pki files.",
           "hint": "What does the apiserver need before it can serve anything?",
-          "objectives": ["Control plane recovery", "etcd dependency"],
+          "objectives": [
+            "Control plane recovery",
+            "etcd dependency"
+          ],
           "mins": 6
         }
       ]
@@ -598,7 +688,10 @@
           "answer": 0,
           "why": "'kubectl auth can-i <verb> <resource> --as=<user> -n <ns>' evaluates RBAC as that subject — the definitive 'can they?' check. '--list' dumps the full effective permission set. Remember RBAC is additive (union of all bindings); a single deny doesn't exist — least privilege means granting only what's needed.",
           "hint": "Which command evaluates RBAC from another subject's perspective?",
-          "objectives": ["RBAC", "auth can-i"],
+          "objectives": [
+            "RBAC",
+            "auth can-i"
+          ],
           "mins": 5
         },
         {
@@ -616,7 +709,10 @@
           "answer": 0,
           "why": "Hardening: per-workload ServiceAccounts (never share default), least-privilege Roles/RoleBindings, automountServiceAccountToken: false on Pods that don't call the API, and short-lived projected tokens (the default since 1.22 — auto-rotating, audience-bound). The default SA historically got overly broad bindings — audit yours.",
           "hint": "Which Pods actually need to talk to the API server?",
-          "objectives": ["ServiceAccounts", "Token hardening"],
+          "objectives": [
+            "ServiceAccounts",
+            "Token hardening"
+          ],
           "mins": 6
         },
         {
@@ -634,7 +730,10 @@
           "answer": 0,
           "why": "The PodSecurity admission plugin reads namespace labels: enforce (blocks violations), audit (records), warn (warns) — each with a version (e.g., restricted:latest). Rollout strategy: warn/audit first to find violating workloads, fix them, then enforce. Exemptions for system namespaces via the plugin's exemptions config. PSP was removed in 1.25 — don't reach for it.",
           "hint": "What namespace labels does the PodSecurity admission plugin read?",
-          "objectives": ["Pod Security Standards", "enforce mode"],
+          "objectives": [
+            "Pod Security Standards",
+            "enforce mode"
+          ],
           "mins": 6
         },
         {
@@ -652,7 +751,10 @@
           "answer": 0,
           "why": "Enable apiserver auditing: an audit policy selects which requests to log (e.g., all writes at RequestResponse level for sensitive resources), written as JSON to --audit-log-path (usually shipped to a SIEM). It captures user, source IP, verb, object, and response. Events are short-lived hints, not forensics — auditing is the compliance-grade trail.",
           "hint": "Which apiserver log records every mutating request with user and source IP?",
-          "objectives": ["Audit logs", "Forensics"],
+          "objectives": [
+            "Audit logs",
+            "Forensics"
+          ],
           "mins": 5
         },
         {
@@ -670,7 +772,10 @@
           "answer": 0,
           "why": "Enable envelope encryption: EncryptionConfiguration listing providers (aescbc with local keys, or KMS plugins) for resource 'secrets', passed to kube-apiserver. Crucially, existing Secrets must be re-encrypted ('kubectl get secrets --all-namespaces -o json | kubectl replace -f -') — the config only encrypts new writes. Rotate keys via the key-rotation procedure; back up the config — losing keys loses Secrets.",
           "hint": "What must happen to Secrets written BEFORE encryption was enabled?",
-          "objectives": ["Encryption at rest", "EncryptionConfiguration"],
+          "objectives": [
+            "Encryption at rest",
+            "EncryptionConfiguration"
+          ],
           "mins": 6
         },
         {
@@ -688,9 +793,224 @@
           "answer": 0,
           "why": "Pod/container securityContext hardening: runAsNonRoot/runAsUser (no root), allowPrivilegeEscalation: false (no setuid gain), readOnlyRootFilesystem: true (immutable fs — needs emptyDir for writable paths), capabilities: drop: [ALL] then add only needed (e.g., NET_BIND_SERVICE), seccompProfile: RuntimeDefault. Set at Pod level (applies to all containers) with per-container overrides. This is the 'restricted' PSS profile in spec form.",
           "hint": "Which three fields control user, escalation, and filesystem writability?",
-          "objectives": ["securityContext", "Pod hardening"],
+          "objectives": [
+            "securityContext",
+            "Pod hardening"
+          ],
           "mins": 6
         }
+      ]
+    }
+  ],
+  "lessons": [
+    {
+      "domain_id": "cluster-arch",
+      "title": "Cluster Architecture — Core concepts",
+      "concepts": [
+        "Component roles: the apiserver is the only component clients talk to; etcd is the consistent key-value store of record; the scheduler binds unscheduled Pods to nodes; the controller-manager runs controllers (Deployment, ReplicaSet, Node) that reconcile desired vs actual state. kubelet (node agent) and kube-proxy (service networking) run on every node including control-plane nodes.",
+        "etcd: modern etcd needs ETCDCTL_API=3, the TLS endpoint, and the cluster's client certificates (found in /etc/kubernetes/pki/etcd/).",
+        "Backup & restore: 'snapshot save' is the online backup API; copying the data dir of a running etcd risks corruption, and there is no 'kubectl backup etcd'.",
+        "Version skew: the supported skew policy: kube-apiserver first, then controller-manager/scheduler, then kubelets. kubelet can be at most two minor versions older than the apiserver (n-2) and never newer; kubectl must be within one minor version of the apiserver. kubeadm enforces this via 'kubeadm upgrade plan'."
+      ],
+      "example": {
+        "lang": "text",
+        "code": "Worked example — control plane\nSetup: The apiserver is the only component clients talk to; etcd is the consistent key-value store of record; the scheduler binds unscheduled Pods to nodes…\nReasoning: The supported skew policy: kube-apiserver first, then controller-manager/scheduler, then kubelets. kubelet can be at most two minor versions older…\nTakeaway: kubeadm deploys control-plane components as static Pods: plain Pod manifests in the kubelet's manifest directory (--pod-manifest-path, default…",
+        "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."
+      },
+      "pitfalls": [
+        "Common trap: apiserver and etcd run on workers; scheduler and controller-manager run on control plane nodes only.",
+        "Common trap: apiserver: stores state; etcd: schedules Pods; scheduler: exposes the API; controller-manager: runs containers.",
+        "Common trap: version skew doesn't matter as long as kubectl matches the server.",
+        "Common trap: kubectl backup etcd --all-namespaces -o /backup/etcd.db."
+      ],
+      "try_it": "Work through this in the Terminal tab →"
+    },
+    {
+      "domain_id": "workloads-scheduling",
+      "title": "Workloads & Scheduling — Core concepts",
+      "concepts": [
+        "Taints repel Pods that don't tolerate them: 'kubectl taint nodes gpu1 dedicated=gpu:NoSchedule'.",
+        "Node affinity splits hard vs soft: requiredDuringSchedulingIgnoredDuringExecution is mandatory (Pod stays pending without SSD nodes); preferredDuringSchedulingIgnoredDuringExecution adds weighted scoring the scheduler tries to satisfy. nodeSelector only does hard equality matching.",
+        "Pod affinity: daemonSet's contract is 'one Pod per selected node': the controller adds Pods as nodes join and removes them as nodes leave — perfect for node-level agents (log shippers, monitoring, CNI)."
+      ],
+      "example": {
+        "lang": "text",
+        "code": "Worked example — taints\nSetup: Node affinity splits hard vs soft: requiredDuringSchedulingIgnoredDuringExecution is mandatory (Pod stays pending without SSD nodes)…\nReasoning: podAntiAffinity repels: 'don't schedule me on a node (topologyKey: kubernetes.io/hostname) already running a Pod matching these labels'.…\nTakeaway: DaemonSet's contract is 'one Pod per selected node': the controller adds Pods as nodes join and removes them as nodes leave — perfect for node-level…",
+        "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."
+      },
+      "pitfalls": [
+        "Common trap: a static Pod copied to every node manually.",
+        "Common trap: taint the GPU nodes and add the toleration to every Pod so nothing breaks.",
+        "Common trap: kubectl taint worker-3 maintenance=true:NoSchedule.",
+        "Common trap: a Job with parallelism equal to node count."
+      ],
+      "try_it": "Work through this in the Terminal tab →"
+    },
+    {
+      "domain_id": "services-networking",
+      "title": "Services & Networking — Core concepts",
+      "concepts": [
+        "Service DNS: cluster DNS form: <service>.<namespace>.svc.cluster.local. Your laptop's DNS is irrelevant.",
+        "Cross-namespace requires at least 'api.backend' (resolvable via search) — the FQDN always works.",
+        "Ingress TLS: spec.tls[] maps hosts to a TLS Secret (type kubernetes.io/tls with tls.crt/tls.key). NetworkPolicy ingress.from combines podSelector (who) with namespaceSelector (where) — both in one peer entry means AND. policyTypes: Ingress activates ingress enforcement; the podSelector selects the DB Pods; ports restrict to 5432.",
+        "TLS termination: without the tls section you get HTTP only. cert-manager automates issuance/renewal via ACME.",
+        "Ingress rules: kube-proxy watches Services/Endpoints and programs the data path on every node: iptables mode installs NAT rules (simple, scales to ~thousands of services), IPVS mode uses Linux IPVS (better load-balancing algorithms, scales further)."
+      ],
+      "example": {
+        "lang": "text",
+        "code": "Worked example — service dns\nSetup: Ingress TLS: spec.tls[] maps hosts to a TLS Secret (type kubernetes.io/tls with tls.crt/tls.key).\nReasoning: NetworkPolicy ingress.from combines podSelector (who) with namespaceSelector (where) — both in one peer entry means AND. policyTypes: Ingress…\nTakeaway: Cross-namespace requires at least 'api.backend' (resolvable via search) — the FQDN always works.",
+        "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."
+      },
+      "pitfalls": [
+        "Common trap: networkPolicies can't express cross-namespace rules.",
+        "Common trap: kube-proxy is a userspace proxy that terminates every connection.",
+        "Common trap: add the certificate as an annotation string on the Service.",
+        "Common trap: a Service of type LoadBalancer with a firewall annotation."
+      ],
+      "try_it": "Work through this in the Terminal tab →"
+    },
+    {
+      "domain_id": "storage",
+      "title": "Storage — Core concepts",
+      "concepts": [
+        "Binding requires: sufficient capacity, compatible accessModes, matching storageClassName (or both empty), and selector/label match.",
+        "Access modes: RWO (one node RW), ROX (many nodes read-only), RWX (many nodes RW).",
+        "StorageClass: reclaim policy is per-PV (defaulting from the StorageClass): Retain keeps the underlying volume after PVC deletion (data safe, manual cleanup, PV goes Released and can't rebind without manual intervention); Delete removes the volume asset.",
+        "Default class: a PVC with no storageClassName binds only to PVs with no class — unless a default StorageClass exists, in which case it's applied automatically and dynamic provisioning kicks in. Dynamically provisioned volumes usually default Delete; statically created PVs default Retain."
+      ],
+      "example": {
+        "lang": "text",
+        "code": "Worked example — pv/pvc\nSetup: Reclaim policy is per-PV (defaulting from the StorageClass): Retain keeps the underlying volume after PVC deletion (data safe, manual cleanup, PV…\nReasoning: With a default StorageClass, dynamic provisioning should create a volume — if it doesn't, check the provisioner, parameters, and events ('kubectl…\nTakeaway: A PVC with no storageClassName binds only to PVs with no class — unless a default StorageClass exists, in which case it's applied automatically and…",
+        "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."
+      },
+      "pitfalls": [
+        "Common trap: dynamic provisioning works without any StorageClass.",
+        "Common trap: delete the PVC and recreate it bigger.",
+        "Common trap: RWO means one Pod total.",
+        "Common trap: pVCs bind to any PV regardless of size."
+      ],
+      "try_it": "Work through this in the Terminal tab →"
+    },
+    {
+      "domain_id": "troubleshooting",
+      "title": "Troubleshooting — Core concepts",
+      "concepts": [
+        "CrashLoopBackOff = container exits, kubelet backs off restarts.",
+        "Debug: --previous for the dead container's logs; common causes — bad command/args, missing env/config, failing startupProbe/livenessProbe killing slow boots, immediate exit (no foreground process).",
+        "imagePullSecrets: kubelet needs registry credentials: 'kubectl create secret docker-registry regcred --docker-server=... --docker-username=... --docker-password=...', then imagePullSecrets: [{name: regcred}] in the Pod spec (or on the ServiceAccount for all its Pods).",
+        "Pending is the scheduler telling you exactly what's wrong — read the events. Fix the cause (free disk, restart runtime), the node returns Ready and Pods reschedule.",
+        "Scheduler events: describe the Pod — events name the exact failure. 'kubectl describe pod' Events show each failed scheduling predicate."
+      ],
+      "example": {
+        "lang": "text",
+        "code": "Worked example — crashloopbackoff\nSetup: kubelet needs registry credentials: 'kubectl create secret docker-registry regcred --docker-server=... --docker-username=... --docker-password=...'…\nReasoning: Fix each: provision storage / correct the claim; right-size requests or scale the cluster.\nTakeaway: Pending is the scheduler telling you exactly what's wrong — read the events.",
+        "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."
+      },
+      "pitfalls": [
+        "Common trap: static Pods self-heal without etcd.",
+        "Common trap: pull the image manually on each node with docker pull.",
+        "Common trap: imagePullBackOff means the tag is wrong.",
+        "Common trap: pending means the image is pulling."
+      ],
+      "try_it": "Work through this in the Terminal tab →"
+    },
+    {
+      "domain_id": "security",
+      "title": "Security — Core concepts",
+      "concepts": [
+        "RBAC: 'kubectl auth can-i <verb> <resource> --as=<user> -n <ns>' evaluates RBAC as that subject — the definitive 'can they?' check.",
+        "ServiceAccounts: hardening: per-workload ServiceAccounts (never share default), least-privilege Roles/RoleBindings, automountServiceAccountToken: false on Pods that don't call the API, and short-lived projected tokens (the default since 1.22 — auto-rotating, audience-bound).",
+        "Token hardening: pod/container securityContext hardening: runAsNonRoot/runAsUser (no root), allowPrivilegeEscalation: false (no setuid gain), readOnlyRootFilesystem: true (immutable fs — needs emptyDir for writable paths), capabilities: drop: [ALL] then add only needed (e.g., NET_BIND_SERVICE), seccompProfile: RuntimeDefault.",
+        "Pod Security Standards: set at Pod level (applies to all containers) with per-container overrides.",
+        "enforce mode: the PodSecurity admission plugin reads namespace labels: enforce (blocks violations), audit (records), warn (warns) — each with a version (e.g., restricted:latest)."
+      ],
+      "example": {
+        "lang": "text",
+        "code": "Worked example — rbac\nSetup: Hardening: per-workload ServiceAccounts (never share default), least-privilege Roles/RoleBindings, automountServiceAccountToken: false on Pods that…\nReasoning: 'kubectl auth can-i <verb> <resource> --as=<user> -n <ns>' evaluates RBAC as that subject — the definitive 'can they?' check.\nTakeaway: Remember RBAC is additive (union of all bindings); a single deny doesn't exist — least privilege means granting only what's needed.",
+        "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."
+      },
+      "pitfalls": [
+        "Common trap: RBAC can enforce Pod security fields directly.",
+        "Common trap: audit logs don't exist in Kubernetes.",
+        "Common trap: encrypt each Secret's values manually before creating.",
+        "Common trap: run as root but add a NetworkPolicy."
+      ],
+      "try_it": "Work through this in the Terminal tab →"
+    }
+  ],
+  "sections": [
+    {
+      "id": "foundations",
+      "title": "Foundations",
+      "kind": "foundation",
+      "lectures": [
+        "m-binary",
+        "m-subnetting",
+        "f-linux-cli-0",
+        "f-linux-cli-1",
+        "f-linux-cli-2",
+        "f-yaml-0",
+        "f-yaml-1",
+        "f-yaml-2",
+        "f-networking-0",
+        "f-networking-1",
+        "f-networking-2",
+        "f-networking-3"
+      ],
+      "lab_ids": [],
+      "drill_domain_ids": []
+    },
+    {
+      "id": "core",
+      "title": "Core",
+      "kind": "core",
+      "lectures": [
+        "c-workloads-scheduling",
+        "c-services-networking",
+        "c-storage",
+        "c-troubleshooting"
+      ],
+      "lab_ids": [
+        "cka-lab-1",
+        "cka-lab-2"
+      ],
+      "drill_domain_ids": [
+        "workloads-scheduling",
+        "services-networking",
+        "storage",
+        "troubleshooting"
+      ]
+    },
+    {
+      "id": "advanced",
+      "title": "Advanced",
+      "kind": "advanced",
+      "lectures": [
+        "c-cluster-arch",
+        "c-security"
+      ],
+      "lab_ids": [
+        "cka-lab-3",
+        "cka-lab-4"
+      ],
+      "drill_domain_ids": [
+        "cluster-arch",
+        "security"
+      ]
+    },
+    {
+      "id": "exam-prep",
+      "title": "Exam Prep",
+      "kind": "exam-prep",
+      "lectures": [],
+      "lab_ids": [],
+      "drill_domain_ids": [
+        "cluster-arch",
+        "workloads-scheduling",
+        "services-networking",
+        "storage",
+        "troubleshooting",
+        "security"
       ]
     }
   ],
@@ -698,50 +1018,106 @@
     {
       "prompt": "Tell me about the hardest Kubernetes problem you've debugged. Walk me through your method.",
       "framework": "STAR",
-      "points": ["How you narrowed the fault domain", "Specific kubectl/debug steps", "Root cause and prevention"],
-      "pitfalls": ["Restarting things randomly", "No root cause found"]
+      "points": [
+        "How you narrowed the fault domain",
+        "Specific kubectl/debug steps",
+        "Root cause and prevention"
+      ],
+      "pitfalls": [
+        "Restarting things randomly",
+        "No root cause found"
+      ]
     },
     {
       "prompt": "Describe a time you were paged for a cluster issue. What happened?",
       "framework": "STAR",
-      "points": ["Initial triage", "Your actions and their rationale", "What you improved afterwards"],
-      "pitfalls": ["Heroics with no learning", "Blaming the platform"]
+      "points": [
+        "Initial triage",
+        "Your actions and their rationale",
+        "What you improved afterwards"
+      ],
+      "pitfalls": [
+        "Heroics with no learning",
+        "Blaming the platform"
+      ]
     },
     {
       "prompt": "Tell me about a cluster upgrade or migration you participated in.",
       "framework": "STAR",
-      "points": ["Planning and risk mitigation", "Your specific role", "What went wrong and how you handled it"],
-      "pitfalls": ["'It just worked' with no detail", "No rollback plan mentioned"]
+      "points": [
+        "Planning and risk mitigation",
+        "Your specific role",
+        "What went wrong and how you handled it"
+      ],
+      "pitfalls": [
+        "'It just worked' with no detail",
+        "No rollback plan mentioned"
+      ]
     },
     {
       "prompt": "Describe a security issue you found or fixed in a Kubernetes environment.",
       "framework": "STAR",
-      "points": ["How you found it", "The risk it posed", "Remediation and verification"],
-      "pitfalls": ["Vague 'we hardened things'", "No risk assessment"]
+      "points": [
+        "How you found it",
+        "The risk it posed",
+        "Remediation and verification"
+      ],
+      "pitfalls": [
+        "Vague 'we hardened things'",
+        "No risk assessment"
+      ]
     },
     {
       "prompt": "Tell me about a time you had to learn a Kubernetes concept under deadline pressure.",
       "framework": "STAR",
-      "points": ["The deadline and the gap", "How you learned fast", "The outcome"],
-      "pitfalls": ["Cutting corners on understanding", "No validation"]
+      "points": [
+        "The deadline and the gap",
+        "How you learned fast",
+        "The outcome"
+      ],
+      "pitfalls": [
+        "Cutting corners on understanding",
+        "No validation"
+      ]
     },
     {
       "prompt": "Describe a disagreement about Kubernetes architecture or operations with a colleague.",
       "framework": "STAR",
-      "points": ["Both technical positions", "How you resolved it", "What you'd do differently"],
-      "pitfalls": ["Appeal to authority", "No technical substance"]
+      "points": [
+        "Both technical positions",
+        "How you resolved it",
+        "What you'd do differently"
+      ],
+      "pitfalls": [
+        "Appeal to authority",
+        "No technical substance"
+      ]
     },
     {
       "prompt": "Tell me about improving reliability of workloads on Kubernetes (SLOs, autoscaling, chaos, etc.).",
       "framework": "STAR",
-      "points": ["The reliability gap", "What you implemented", "Measured improvement"],
-      "pitfalls": ["No metrics", "Theoretical only"]
+      "points": [
+        "The reliability gap",
+        "What you implemented",
+        "Measured improvement"
+      ],
+      "pitfalls": [
+        "No metrics",
+        "Theoretical only"
+      ]
     },
     {
       "prompt": "How do you keep up with the fast-moving Kubernetes ecosystem?",
       "framework": "Present-Past-Future",
-      "points": ["Concrete sources and habits", "Something recent you applied", "What's next for you"],
-      "pitfalls": ["No specific sources", "Learning without doing"]
+      "points": [
+        "Concrete sources and habits",
+        "Something recent you applied",
+        "What's next for you"
+      ],
+      "pitfalls": [
+        "No specific sources",
+        "Learning without doing"
+      ]
     }
   ],
   "chat": {
@@ -750,39 +1126,975 @@
       {
         "id": "cluster-arch",
         "name": "Cluster Architecture",
-        "key_points": ["control plane component roles", "etcd snapshot/restore", "version skew rules", "static Pods", "kubeadm join tokens", "CoreDNS"],
-        "followups": ["Give me the exact command.", "What breaks if you skip that step?"]
+        "key_points": [
+          "control plane component roles",
+          "etcd snapshot/restore",
+          "version skew rules",
+          "static Pods",
+          "kubeadm join tokens",
+          "CoreDNS"
+        ],
+        "followups": [
+          "Give me the exact command.",
+          "What breaks if you skip that step?"
+        ]
       },
       {
         "id": "workloads-scheduling",
         "name": "Workloads & Scheduling",
-        "key_points": ["taints and tolerations", "nodeAffinity required vs preferred", "podAntiAffinity", "QoS classes", "DaemonSet use cases", "cordon and drain"],
-        "followups": ["Which Pods are affected?", "What is the eviction order?"]
+        "key_points": [
+          "taints and tolerations",
+          "nodeAffinity required vs preferred",
+          "podAntiAffinity",
+          "QoS classes",
+          "DaemonSet use cases",
+          "cordon and drain"
+        ],
+        "followups": [
+          "Which Pods are affected?",
+          "What is the eviction order?"
+        ]
       },
       {
         "id": "services-networking",
         "name": "Services & Networking",
-        "key_points": ["cluster DNS FQDN", "Ingress TLS", "NetworkPolicy ingress rules", "NodePort range", "DNS debugging", "kube-proxy modes"],
-        "followups": ["Where does the policy live?", "How do you verify?"]
+        "key_points": [
+          "cluster DNS FQDN",
+          "Ingress TLS",
+          "NetworkPolicy ingress rules",
+          "NodePort range",
+          "DNS debugging",
+          "kube-proxy modes"
+        ],
+        "followups": [
+          "Where does the policy live?",
+          "How do you verify?"
+        ]
       },
       {
         "id": "storage",
         "name": "Storage",
-        "key_points": ["PV/PVC binding rules", "RWO vs RWX", "default StorageClass", "allowVolumeExpansion", "volumeClaimTemplates", "reclaim policies"],
-        "followups": ["Why is it Pending?", "What matches what?"]
+        "key_points": [
+          "PV/PVC binding rules",
+          "RWO vs RWX",
+          "default StorageClass",
+          "allowVolumeExpansion",
+          "volumeClaimTemplates",
+          "reclaim policies"
+        ],
+        "followups": [
+          "Why is it Pending?",
+          "What matches what?"
+        ]
       },
       {
         "id": "troubleshooting",
         "name": "Troubleshooting",
-        "key_points": ["CrashLoopBackOff sequence", "ImagePullBackOff causes", "Pending predicates", "NotReady triage", "DNS isolation", "apiserver-down recovery"],
-        "followups": ["What do the events say?", "What's your next command?"]
+        "key_points": [
+          "CrashLoopBackOff sequence",
+          "ImagePullBackOff causes",
+          "Pending predicates",
+          "NotReady triage",
+          "DNS isolation",
+          "apiserver-down recovery"
+        ],
+        "followups": [
+          "What do the events say?",
+          "What's your next command?"
+        ]
       },
       {
         "id": "security",
         "name": "Security",
-        "key_points": ["auth can-i", "ServiceAccount hardening", "PSS enforce labels", "audit logs", "etcd encryption at rest", "securityContext fields"],
-        "followups": ["What's the least-privilege version?", "How do you verify it's enforced?"]
+        "key_points": [
+          "auth can-i",
+          "ServiceAccount hardening",
+          "PSS enforce labels",
+          "audit logs",
+          "etcd encryption at rest",
+          "securityContext fields"
+        ],
+        "followups": [
+          "What's the least-privilege version?",
+          "How do you verify it's enforced?"
+        ]
       }
+    ]
+  },
+  "labs": [
+    {
+      "id": "cka-lab-1",
+      "title": "Control plane — kubectl drill",
+      "objective": "Run a short sequence of kubectl commands that demonstrates control plane, then verify each result against the expected output.",
+      "steps": [
+        "This lab reworks the Cluster Architecture practice scenario \"Which component does what?\" into commands you run yourself — same concept, hands-on instead of multiple choice.",
+        "Open the Terminal tab for this bootcamp — every command below runs there.",
+        "Type exactly: kubectl get pods — the pod list shows pods in the Running phase",
+        "Type exactly: kubectl get nodes — the node list reports Ready status",
+        "Type exactly: kubectl get deployments — the deployment list shows available replicas",
+        "In your own words, say what each command's output taught you about control plane."
+      ],
+      "checks": [
+        {
+          "command_pattern": "kubectl get pods",
+          "expect_contains": "Running",
+          "hint": "In the Terminal tab, run `kubectl get pods`. If the check fails, confirm you typed it exactly and that the output contains \"Running\"."
+        },
+        {
+          "command_pattern": "kubectl get nodes",
+          "expect_contains": "Ready",
+          "hint": "In the Terminal tab, run `kubectl get nodes`. If the check fails, confirm you typed it exactly and that the output contains \"Ready\"."
+        },
+        {
+          "command_pattern": "kubectl get deployments",
+          "expect_contains": "Available",
+          "hint": "In the Terminal tab, run `kubectl get deployments`. If the check fails, confirm you typed it exactly and that the output contains \"Available\"."
+        }
+      ],
+      "success_message": "Lab complete — control plane practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."
+    },
+    {
+      "id": "cka-lab-2",
+      "title": "Taints — kubectl drill",
+      "objective": "Use the kubectl to explore taints hands-on: type each command, read what comes back, and connect the output to the concept.",
+      "steps": [
+        "Inspired by the Workloads & Scheduling scenario \"Keep non-GPU work off GPU nodes\": take its core idea and prove it live in the terminal instead of answering on paper.",
+        "Open the Terminal tab for this bootcamp — every command below runs there.",
+        "Type exactly: kubectl get deployments — the deployment list shows available replicas",
+        "Type exactly: kubectl describe pod/web — the describe output names the pod web",
+        "Type exactly: kubectl get pods — the pod list shows pods in the Running phase",
+        "In your own words, say what each command's output taught you about taints."
+      ],
+      "checks": [
+        {
+          "command_pattern": "kubectl get deployments",
+          "expect_contains": "Available",
+          "hint": "In the Terminal tab, run `kubectl get deployments`. If the check fails, confirm you typed it exactly and that the output contains \"Available\"."
+        },
+        {
+          "command_pattern": "kubectl describe pod",
+          "expect_contains": "web",
+          "hint": "In the Terminal tab, run `kubectl describe pod/web`. If the check fails, confirm you typed it exactly and that the output contains \"web\"."
+        },
+        {
+          "command_pattern": "kubectl get pods",
+          "expect_contains": "Running",
+          "hint": "In the Terminal tab, run `kubectl get pods`. If the check fails, confirm you typed it exactly and that the output contains \"Running\"."
+        }
+      ],
+      "success_message": "Lab complete — taints practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."
+    },
+    {
+      "id": "cka-lab-3",
+      "title": "Service DNS — kubectl drill",
+      "objective": "Prove you can apply service DNS in the kubectl — follow the steps, watch the output, and confirm every check passes.",
+      "steps": [
+        "The Services & Networking scenario \"The full DNS name\" tests this concept as a question. This lab makes you demonstrate it with real commands.",
+        "Open the Terminal tab for this bootcamp — every command below runs there.",
+        "Type exactly: kubectl get pods — the pod list shows pods in the Running phase",
+        "Type exactly: kubectl get nodes — the node list reports Ready status",
+        "Type exactly: kubectl get deployments — the deployment list shows available replicas",
+        "In your own words, say what each command's output taught you about service DNS."
+      ],
+      "checks": [
+        {
+          "command_pattern": "kubectl get pods",
+          "expect_contains": "Running",
+          "hint": "In the Terminal tab, run `kubectl get pods`. If the check fails, confirm you typed it exactly and that the output contains \"Running\"."
+        },
+        {
+          "command_pattern": "kubectl get nodes",
+          "expect_contains": "Ready",
+          "hint": "In the Terminal tab, run `kubectl get nodes`. If the check fails, confirm you typed it exactly and that the output contains \"Ready\"."
+        },
+        {
+          "command_pattern": "kubectl get deployments",
+          "expect_contains": "Available",
+          "hint": "In the Terminal tab, run `kubectl get deployments`. If the check fails, confirm you typed it exactly and that the output contains \"Available\"."
+        }
+      ],
+      "success_message": "Lab complete — service DNS practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."
+    },
+    {
+      "id": "cka-lab-4",
+      "title": "PV/PVC — kubectl drill",
+      "objective": "Run a short sequence of kubectl commands that demonstrates PV/PVC, then verify each result against the expected output.",
+      "steps": [
+        "This lab reworks the Storage practice scenario \"The PVC that won't bind\" into commands you run yourself — same concept, hands-on instead of multiple choice.",
+        "Open the Terminal tab for this bootcamp — every command below runs there.",
+        "Type exactly: kubectl get deployments — the deployment list shows available replicas",
+        "Type exactly: kubectl describe pod/web — the describe output names the pod web",
+        "Type exactly: kubectl get pods — the pod list shows pods in the Running phase",
+        "In your own words, say what each command's output taught you about PV/PVC."
+      ],
+      "checks": [
+        {
+          "command_pattern": "kubectl get deployments",
+          "expect_contains": "Available",
+          "hint": "In the Terminal tab, run `kubectl get deployments`. If the check fails, confirm you typed it exactly and that the output contains \"Available\"."
+        },
+        {
+          "command_pattern": "kubectl describe pod",
+          "expect_contains": "web",
+          "hint": "In the Terminal tab, run `kubectl describe pod/web`. If the check fails, confirm you typed it exactly and that the output contains \"web\"."
+        },
+        {
+          "command_pattern": "kubectl get pods",
+          "expect_contains": "Running",
+          "hint": "In the Terminal tab, run `kubectl get pods`. If the check fails, confirm you typed it exactly and that the output contains \"Running\"."
+        }
+      ],
+      "success_message": "Lab complete — PV/PVC practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."
+    },
+    {
+      "checks": [
+        {
+          "command_pattern": "kubectl get nodes",
+          "expect_contains": "control-plane",
+          "hint": "Run `kubectl get nodes` and read the ROLES column."
+        },
+        {
+          "command_pattern": "kubectl get pods -n kube-system",
+          "expect_contains": "coredns",
+          "hint": "Run `kubectl get pods -n kube-system`."
+        },
+        {
+          "command_pattern": "kubectl config get-contexts",
+          "expect_contains": "ilb-prod",
+          "hint": "Run `kubectl config get-contexts`."
+        }
+      ],
+      "difficulty": 1,
+      "id": "cka-lab-5",
+      "objective": "Survey control-plane health: node roles, kube-system pods, contexts.",
+      "steps": [
+        "Open the Terminal tab for this bootcamp.",
+        "Type exactly: kubectl get nodes — which node is the control-plane?",
+        "Type exactly: kubectl get pods -n kube-system — etcd and CoreDNS healthy?",
+        "Type exactly: kubectl config get-contexts — the star marks your current context.",
+        "Why does an admin check kube-system first when the cluster misbehaves? One sentence."
+      ],
+      "success_message": "Lab complete — control plane surveyed. Healthy kube-system, known context: the admin's baseline.",
+      "title": "Control-plane survey — kubectl drill"
+    },
+    {
+      "checks": [
+        {
+          "command_pattern": "kubectl get deployments",
+          "expect_contains": "2/2",
+          "hint": "Run `kubectl get deployments`."
+        },
+        {
+          "command_pattern": "kubectl describe deployment/api",
+          "expect_contains": "Replicas:",
+          "hint": "Run `kubectl describe deployment/api`."
+        },
+        {
+          "command_pattern": "kubectl describe pod/api-7d9f8c6b4-x2kzq",
+          "expect_contains": "api-7d9f8c6b4-x2kzq",
+          "hint": "Run `kubectl describe pod/api-7d9f8c6b4-x2kzq`."
+        }
+      ],
+      "difficulty": 1,
+      "id": "cka-lab-6",
+      "objective": "Describe workloads: deployment replicas and full pod detail.",
+      "steps": [
+        "Open the Terminal tab.",
+        "Type exactly: kubectl get deployments — readiness fractions.",
+        "Type exactly: kubectl describe deployment/api — replicas desired vs available.",
+        "Type exactly: kubectl describe pod/api-7d9f8c6b4-x2kzq — node, IP, restart count, conditions.",
+        "What does the Events section of a describe tell you that get never does?"
+      ],
+      "success_message": "Lab complete — describe mastered. get lists; describe explains.",
+      "title": "Describe workloads — kubectl drill"
+    },
+    {
+      "checks": [
+        {
+          "command_pattern": "kubectl logs api-7d9f8c6b4-x2kzq",
+          "expect_contains": "connection refused",
+          "hint": "Run `kubectl logs api-7d9f8c6b4-x2kzq`."
+        },
+        {
+          "command_pattern": "kubectl logs web-5c4d8f2a1-q7rtx",
+          "expect_contains": "INFO",
+          "hint": "Run `kubectl logs web-5c4d8f2a1-q7rtx`."
+        },
+        {
+          "command_pattern": "kubectl top pods",
+          "expect_contains": "CPU(cores)",
+          "hint": "Run `kubectl top pods`."
+        }
+      ],
+      "difficulty": 2,
+      "id": "cka-lab-7",
+      "objective": "Read logs across pods and check resource usage — the observability loop.",
+      "steps": [
+        "Open the Terminal tab.",
+        "Type exactly: kubectl logs api-7d9f8c6b4-x2kzq — find the ERROR line. What is it trying to reach?",
+        "Type exactly: kubectl logs web-5c4d8f2a1-q7rtx — a healthy pod's logs for contrast.",
+        "Type exactly: kubectl top pods — CPU and memory per pod.",
+        "Logs tell you what happened; top tells you what it costs. When do you reach for each?"
+      ],
+      "success_message": "Lab complete — observability loop: logs for causes, top for costs.",
+      "title": "Logs and top — kubectl drill"
+    },
+    {
+      "checks": [
+        {
+          "command_pattern": "kubectl scale deployment/api --replicas=3",
+          "expect_contains": "scaled to 3",
+          "hint": "Run `kubectl scale deployment/api --replicas=3`."
+        },
+        {
+          "command_pattern": "kubectl rollout status deployment/api",
+          "expect_contains": "successfully rolled out",
+          "hint": "Run `kubectl rollout status deployment/api`."
+        },
+        {
+          "command_pattern": "kubectl get deployments",
+          "expect_contains": "3/3",
+          "hint": "Run `kubectl get deployments` and read the READY column."
+        }
+      ],
+      "difficulty": 3,
+      "id": "cka-lab-8",
+      "objective": "Scale the api deployment to 3 and verify the rollout.",
+      "steps": [
+        "Open the Terminal tab.",
+        "Type exactly: kubectl scale deployment/api --replicas=3 — request three replicas.",
+        "Type exactly: kubectl rollout status deployment/api — wait for the rollout verdict.",
+        "Type exactly: kubectl get deployments — confirm 3/3 ready.",
+        "Type exactly: kubectl get pods — count the api pods.",
+        "Scale changes desired state; the controller does the work. What actually creates the new pods?"
+      ],
+      "success_message": "Lab complete — scaled and rolled out. Desired state declared, controller delivered.",
+      "title": "Scale and rollout — kubectl drill"
+    }
+  ],
+  "foundations": [
+    {
+      "track": "linux-cli",
+      "why_needed": "The CKA is a hands-on terminal exam on Linux. Command-line fluency is non-negotiable."
+    },
+    {
+      "track": "yaml",
+      "why_needed": "Every Kubernetes object is YAML. Read and write it confidently before the cluster topics."
+    },
+    {
+      "track": "networking",
+      "why_needed": "Services, DNS, and CNI are networking inside the cluster. Fundamentals first."
+    }
+  ],
+  "math": [
+    "binary",
+    "subnetting"
+  ],
+  "simulations": [
+    {
+      "brief": "kubectl get pods shows a pod in CrashLoopBackOff with 12 restarts. The deployment was updated an hour ago.",
+      "debrief": "CrashLoopBackOff after a deploy = the new image or config is broken. Check the rollout: describe the pod for the exit reason, read the logs for the crash, then roll back the deployment — the fastest path to healthy.",
+      "difficulty": 3,
+      "domain_id": "troubleshooting",
+      "id": "cka-sim-1",
+      "kind": "troubleshoot",
+      "points": 15,
+      "steps": [
+        {
+          "correct": 2,
+          "evidence": [
+            [
+              "pod",
+              "CrashLoopBackOff, 12 restarts, started 1h ago"
+            ],
+            [
+              "describe",
+              "Last State: Terminated, Exit Code: 1"
+            ],
+            [
+              "logs",
+              "FATAL: missing required env var DB_HOST"
+            ]
+          ],
+          "explain": "Exit code 1 with a FATAL log about a missing env var — the new deployment dropped a required variable. The fix: restore the env var (or roll back), not restart the pod — restarts will keep crashing.",
+          "options": [
+            "Delete the pod and let it recreate",
+            "Increase the restart backoff",
+            "Fix the deployment: restore the DB_HOST env var (or roll back to the previous revision)",
+            "Add more replicas"
+          ],
+          "symptom": "CrashLoopBackOff right after a deployment."
+        }
+      ],
+      "title": "CrashLoop after deploy"
+    },
+    {
+      "brief": "A pod needs to land only on nodes with SSD storage. Choose the scheduling mechanism.",
+      "debrief": "nodeSelector matches simple labels; affinity handles complex rules; taints repel. For 'only SSD nodes', label the nodes and use nodeSelector (or nodeAffinity) — the declarative way to constrain placement.",
+      "difficulty": 2,
+      "domain_id": "workloads-scheduling",
+      "id": "cka-sim-2",
+      "kind": "branching",
+      "points": 15,
+      "steps": [
+        {
+          "choices": [
+            {
+              "feedback": "Correct: labels + selector is the standard constraint.",
+              "label": "Label SSD nodes and add a nodeSelector",
+              "next": "END",
+              "outcome": "good",
+              "points": 2
+            },
+            {
+              "feedback": "Taints repel pods — the opposite of attracting to SSD nodes (unless combined with tolerations).",
+              "label": "Taint the SSD nodes",
+              "next": "END",
+              "outcome": "bad",
+              "points": 0
+            }
+          ],
+          "id": "s1",
+          "text": "Schedule only onto SSD nodes. Mechanism?"
+        }
+      ],
+      "title": "Place the pod"
+    },
+    {
+      "brief": "Put these troubleshooting steps in order.",
+      "debrief": "Symptoms first (get), then detail (describe), then evidence (logs), then fix. Skipping to the fix without evidence is how you 'fix' the wrong thing.",
+      "difficulty": 2,
+      "domain_id": "troubleshooting",
+      "id": "cka-sim-3",
+      "kind": "ordering",
+      "points": 10,
+      "steps": {
+        "context": "Troubleshooting a broken workload",
+        "correct_order": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "items": [
+          "kubectl get pods — observe the symptom",
+          "kubectl describe pod/<name> — read events and state",
+          "kubectl logs <pod> — gather evidence",
+          "Fix the root cause (config, image, resources)"
+        ]
+      },
+      "title": "Troubleshooting order"
+    },
+    {
+      "brief": "This deployment manifest is headed for production. Click the misconfigured lines (2 issues to find).",
+      "debrief": "Two reliability mistakes: no liveness/readiness probes (Kubernetes cannot detect or route around a hung app), and missing resource limits. Probes + resources are the production baseline.",
+      "difficulty": 3,
+      "domain_id": "workloads-scheduling",
+      "id": "cka-sim-4",
+      "kind": "config-check",
+      "points": 10,
+      "steps": {
+        "config": "apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: api\nspec:\n  replicas: 2\n  template:\n    spec:\n      containers:\n      - name: app\n        image: myapp:1.4.2",
+        "find": 2,
+        "issues": [
+          {
+            "description": "No readiness/liveness probes — a hung container stays in service and receives traffic.",
+            "fix": "Add readinessProbe and livenessProbe (e.g. httpGet on /health).",
+            "line": 8
+          },
+          {
+            "description": "No resource requests/limits declared on the container.",
+            "fix": "Add resources.requests/limits for CPU and memory.",
+            "line": 9
+          }
+        ]
+      },
+      "title": "Review the deployment"
+    }
+  ],
+  "consoleSims": [
+    {
+      "brief": "A node is running hot in the dashboard. Open the node view, check its pressure conditions, and cordon it for maintenance.",
+      "console": "k8s-dashboard",
+      "debrief": "Node pressure (DiskPressure, MemoryPressure) explains scheduling failures. Cordoning stops new pods from landing while you investigate — drain follows when you are ready to evict.",
+      "difficulty": 3,
+      "domain_id": "cluster-arch",
+      "id": "cka-console-1",
+      "tasks": [
+        {
+          "hint": "Nodes view first.",
+          "id": "cka-console-1-t1",
+          "instruction": "Open the Nodes view in the dashboard.",
+          "validate": {
+            "action": "click",
+            "params": {
+              "target": "nodes-view"
+            }
+          }
+        },
+        {
+          "hint": "Check its conditions.",
+          "id": "cka-console-1-t2",
+          "instruction": "Open node-2's detail page and read its conditions.",
+          "validate": {
+            "action": "click",
+            "params": {
+              "target": "node-detail"
+            }
+          }
+        },
+        {
+          "hint": "Stop the bleeding.",
+          "id": "cka-console-1-t3",
+          "instruction": "Cordon node-2 to prevent new scheduling.",
+          "validate": {
+            "action": "click",
+            "params": {
+              "target": "cordon-node"
+            }
+          }
+        }
+      ],
+      "title": "Cordon the hot node"
+    },
+    {
+      "brief": "The api service needs to change from ClusterIP to NodePort for a debugging session. Edit the service in the dashboard.",
+      "console": "k8s-dashboard",
+      "debrief": "Service type changes the exposure: ClusterIP is internal-only, NodePort opens a port on every node. Dashboards edit the same service object kubectl would — verify the type change took effect.",
+      "difficulty": 2,
+      "domain_id": "services-networking",
+      "id": "cka-console-2",
+      "tasks": [
+        {
+          "hint": "Services view.",
+          "id": "cka-console-2-t1",
+          "instruction": "Open the api-svc service detail page.",
+          "validate": {
+            "action": "click",
+            "params": {
+              "target": "service-detail"
+            }
+          }
+        },
+        {
+          "hint": "Edit the spec.",
+          "id": "cka-console-2-t2",
+          "instruction": "Change the service type to NodePort.",
+          "validate": {
+            "action": "set-field",
+            "params": {
+              "field": "service-type",
+              "value": "NodePort"
+            }
+          }
+        },
+        {
+          "hint": "Apply.",
+          "id": "cka-console-2-t3",
+          "instruction": "Click Update to apply the change.",
+          "validate": {
+            "action": "click",
+            "params": {
+              "target": "update-service"
+            }
+          }
+        }
+      ],
+      "title": "Expose the service for debugging"
+    }
+  ],
+  "terminalMissions": [
+    {
+      "brief": "Show nodes and their roles.",
+      "checks": [
+        {
+          "command_pattern": "kubectl get nodes",
+          "expect_contains": "control-plane",
+          "hint": "Run `kubectl get nodes`."
+        }
+      ],
+      "difficulty": 1,
+      "domain_id": "cluster-arch",
+      "id": "cka-mission-1",
+      "objectives": [
+        "List nodes with roles"
+      ],
+      "success_message": "Mission complete — nodes listed.",
+      "title": "Node roles"
+    },
+    {
+      "brief": "List kube-system pods.",
+      "checks": [
+        {
+          "command_pattern": "kubectl get pods -n kube-system",
+          "expect_contains": "etcd-node-1",
+          "hint": "Run `kubectl get pods -n kube-system`."
+        }
+      ],
+      "difficulty": 1,
+      "domain_id": "cluster-arch",
+      "id": "cka-mission-2",
+      "objectives": [
+        "Show control-plane pods"
+      ],
+      "success_message": "Mission complete — control plane visible.",
+      "title": "Control-plane pods"
+    },
+    {
+      "brief": "Describe the api deployment.",
+      "checks": [
+        {
+          "command_pattern": "kubectl describe deployment/api",
+          "expect_contains": "Replicas:",
+          "hint": "Run `kubectl describe deployment/api`."
+        }
+      ],
+      "difficulty": 2,
+      "domain_id": "workloads-scheduling",
+      "id": "cka-mission-3",
+      "objectives": [
+        "Show deployment detail"
+      ],
+      "success_message": "Mission complete — deployment described.",
+      "title": "Describe api"
+    },
+    {
+      "brief": "Check pod resource usage.",
+      "checks": [
+        {
+          "command_pattern": "kubectl top pods",
+          "expect_contains": "MEMORY(bytes)",
+          "hint": "Run `kubectl top pods`."
+        }
+      ],
+      "difficulty": 2,
+      "domain_id": "cluster-arch",
+      "id": "cka-mission-4",
+      "objectives": [
+        "Show CPU/memory per pod"
+      ],
+      "success_message": "Mission complete — usage checked.",
+      "title": "Resource usage"
+    },
+    {
+      "brief": "Scale web to 2 replicas and verify.",
+      "checks": [
+        {
+          "command_pattern": "kubectl scale deployment/web --replicas=2",
+          "expect_contains": "scaled to 2",
+          "hint": "Run `kubectl scale deployment/web --replicas=2`."
+        },
+        {
+          "command_pattern": "kubectl get deployments",
+          "expect_contains": "2/2",
+          "hint": "Run `kubectl get deployments`."
+        }
+      ],
+      "difficulty": 3,
+      "domain_id": "workloads-scheduling",
+      "id": "cka-mission-5",
+      "objectives": [
+        "Scale the web deployment",
+        "Verify 2/2 readiness"
+      ],
+      "success_message": "Mission complete — web scaled to 2.",
+      "title": "Scale web"
+    },
+    {
+      "brief": "Verify the rollout of web.",
+      "checks": [
+        {
+          "command_pattern": "kubectl rollout status deployment/web",
+          "expect_contains": "successfully rolled out",
+          "hint": "Run `kubectl rollout status deployment/web`."
+        }
+      ],
+      "difficulty": 3,
+      "domain_id": "workloads-scheduling",
+      "id": "cka-mission-6",
+      "objectives": [
+        "Confirm the rollout completed"
+      ],
+      "success_message": "Mission complete — rollout verified. Cluster admin instincts: confirmed.",
+      "title": "Rollout check"
+    }
+  ],
+  "media": [
+    {
+      "id": "cka-cluster-arch-diag",
+      "kind": "diagram",
+      "title": "Kubernetes Cluster Architecture",
+      "svg": "assets/diagrams/cka-cluster-arch.svg",
+      "lesson_ref": "c-cluster-arch",
+      "caption": "Control plane decides; nodes execute.",
+      "alt": "Kubernetes Cluster Architecture. Tiers: Control plane, Worker node, Workloads."
+    },
+    {
+      "id": "cka-workloads-scheduling-diag",
+      "kind": "diagram",
+      "title": "Workloads & Scheduling",
+      "svg": "assets/diagrams/cka-workloads-scheduling.svg",
+      "lesson_ref": "c-workloads-scheduling",
+      "caption": "Declare desired state; controllers converge.",
+      "alt": "Workloads & Scheduling. Shows: kube-scheduler, Requests / limits, Taints / tolerations, Affinity, Deployments, DaemonSets / Jobs."
+    },
+    {
+      "id": "cka-services-networking-diag",
+      "kind": "diagram",
+      "title": "Kubernetes Service Types",
+      "svg": "assets/diagrams/cka-services-networking.svg",
+      "lesson_ref": "c-services-networking",
+      "caption": "How pods get stable endpoints.",
+      "alt": "Kubernetes Service Types. Table with 4 rows."
+    },
+    {
+      "id": "cka-storage-diag",
+      "kind": "diagram",
+      "title": "Kubernetes Storage",
+      "svg": "assets/diagrams/cka-storage.svg",
+      "lesson_ref": "c-storage",
+      "caption": "Persistent data survives pod churn.",
+      "alt": "Kubernetes Storage. Shows: PV / PVC, StorageClass, Access modes, StatefulSets."
+    },
+    {
+      "id": "cka-troubleshooting-diag",
+      "kind": "diagram",
+      "title": "Pod Troubleshooting Flow",
+      "svg": "assets/diagrams/cka-troubleshooting.svg",
+      "lesson_ref": "c-troubleshooting",
+      "caption": "Describe, logs, events — in that order.",
+      "alt": "Pod Troubleshooting Flow. Shows: kubectl get pods, kubectl describe, kubectl logs, Exec / debug, Fix + rollout."
+    },
+    {
+      "id": "cka-security-diag",
+      "kind": "diagram",
+      "title": "Cluster Security Hardening",
+      "svg": "assets/diagrams/cka-security.svg",
+      "lesson_ref": "c-security",
+      "caption": "Secure the control plane and the workloads.",
+      "alt": "Cluster Security Hardening. Shows: RBAC, NetworkPolicies, Pod Security, Secrets, Image scanning."
+    }
+  ],
+  "resources": {
+    "cheatsheet": {
+      "title": "Certified Kubernetes Administrator — Cheat Sheet",
+      "sections": [
+        {
+          "heading": "Cluster Architecture",
+          "items": [
+            "Component roles — the apiserver is the only component clients talk to; etcd is the consistent key-value store of record; the scheduler binds unscheduled Pods to nodes; the controller-manager runs controllers (Deployment, ReplicaSet, Node) that reconcile desired vs actual sta…",
+            "Backup & restore — 'snapshot save' is the online backup API; copying the data dir of a running etcd risks corruption, and there is no 'kubectl backup etcd'.",
+            "Version skew — the supported skew policy: kube-apiserver first, then controller-manager/scheduler, then kubelets. kubelet can be at most two minor versions older than the apiserver (n-2) and never newer; kubectl must be within one minor version of the apiserver. kubeadm e…",
+            "Common trap — apiserver and etcd run on workers; scheduler and controller-manager run on control plane nodes only.",
+            "Common trap — apiserver: stores state; etcd: schedules Pods; scheduler: exposes the API; controller-manager: runs containers.",
+            "Common trap — version skew doesn't matter as long as kubectl matches the server.",
+            "Common trap — kubectl backup etcd --all-namespaces -o /backup/etcd.db.",
+            "Read — Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."
+          ]
+        },
+        {
+          "heading": "Workloads & Scheduling",
+          "items": [
+            "Taints repel Pods that don't tolerate them — 'kubectl taint nodes gpu1 dedicated=gpu:NoSchedule'.",
+            "Node affinity splits hard vs soft — requiredDuringSchedulingIgnoredDuringExecution is mandatory (Pod stays pending without SSD nodes); preferredDuringSchedulingIgnoredDuringExecution adds weighted scoring the scheduler tries to satisfy. nodeSelector only does hard equality matching.",
+            "Pod affinity — daemonSet's contract is 'one Pod per selected node': the controller adds Pods as nodes join and removes them as nodes leave — perfect for node-level agents (log shippers, monitoring, CNI).",
+            "Common trap — a static Pod copied to every node manually.",
+            "Common trap — taint the GPU nodes and add the toleration to every Pod so nothing breaks.",
+            "Common trap — kubectl taint worker-3 maintenance=true:NoSchedule.",
+            "Common trap — a Job with parallelism equal to node count."
+          ]
+        },
+        {
+          "heading": "Services & Networking",
+          "items": [
+            "Service DNS — cluster DNS form: <service>.<namespace>.svc.cluster.local. Your laptop's DNS is irrelevant.",
+            "Cross-namespace — requires at least 'api.backend' (resolvable via search) — the FQDN always works.",
+            "Ingress TLS — spec.tls[] maps hosts to a TLS Secret (type kubernetes.io/tls with tls.crt/tls.key). NetworkPolicy ingress.from combines podSelector (who) with namespaceSelector (where) — both in one peer entry means AND. policyTypes: Ingress activates ingress enforcement;…",
+            "TLS termination — without the tls section you get HTTP only. cert-manager automates issuance/renewal via ACME.",
+            "Ingress rules — kube-proxy watches Services/Endpoints and programs the data path on every node: iptables mode installs NAT rules (simple, scales to ~thousands of services), IPVS mode uses Linux IPVS (better load-balancing algorithms, scales further).",
+            "Common trap — networkPolicies can't express cross-namespace rules.",
+            "Common trap — kube-proxy is a userspace proxy that terminates every connection.",
+            "Common trap — add the certificate as an annotation string on the Service.",
+            "Common trap — a Service of type LoadBalancer with a firewall annotation."
+          ]
+        },
+        {
+          "heading": "Storage",
+          "items": [
+            "Binding requires — sufficient capacity, compatible accessModes, matching storageClassName (or both empty), and selector/label match.",
+            "Access modes — RWO (one node RW), ROX (many nodes read-only), RWX (many nodes RW).",
+            "StorageClass — reclaim policy is per-PV (defaulting from the StorageClass): Retain keeps the underlying volume after PVC deletion (data safe, manual cleanup, PV goes Released and can't rebind without manual intervention); Delete removes the volume asset.",
+            "Default class — a PVC with no storageClassName binds only to PVs with no class — unless a default StorageClass exists, in which case it's applied automatically and dynamic provisioning kicks in. Dynamically provisioned volumes usually default Delete; statically created PVs…",
+            "Common trap — dynamic provisioning works without any StorageClass.",
+            "Common trap — delete the PVC and recreate it bigger.",
+            "Common trap — RWO means one Pod total.",
+            "Common trap — pVCs bind to any PV regardless of size."
+          ]
+        },
+        {
+          "heading": "Troubleshooting",
+          "items": [
+            "CrashLoopBackOff — CrashLoopBackOff = container exits, kubelet backs off restarts.",
+            "Debug — --previous for the dead container's logs; common causes — bad command/args, missing env/config, failing startupProbe/livenessProbe killing slow boots, immediate exit (no foreground process).",
+            "Pending is the scheduler telling you exactly what's wrong — read the events. Fix the cause (free disk, restart runtime), the node returns Ready and Pods reschedule.",
+            "Scheduler events — describe the Pod — events name the exact failure. 'kubectl describe pod' Events show each failed scheduling predicate.",
+            "Common trap — static Pods self-heal without etcd.",
+            "Common trap — pull the image manually on each node with docker pull.",
+            "Common trap — imagePullBackOff means the tag is wrong.",
+            "Common trap — pending means the image is pulling."
+          ]
+        },
+        {
+          "heading": "Security",
+          "items": [
+            "RBAC — 'kubectl auth can-i <verb> <resource> --as=<user> -n <ns>' evaluates RBAC as that subject — the definitive 'can they?' check.",
+            "ServiceAccounts — hardening: per-workload ServiceAccounts (never share default), least-privilege Roles/RoleBindings, automountServiceAccountToken: false on Pods that don't call the API, and short-lived projected tokens (the default since 1.22 — auto-rotating, audience-bound).",
+            "Token hardening — pod/container securityContext hardening: runAsNonRoot/runAsUser (no root), allowPrivilegeEscalation: false (no setuid gain), readOnlyRootFilesystem: true (immutable fs — needs emptyDir for writable paths), capabilities: drop: [ALL] then add only needed (e.g…",
+            "Pod Security Standards — set at Pod level (applies to all containers) with per-container overrides.",
+            "Common trap — RBAC can enforce Pod security fields directly.",
+            "Common trap — audit logs don't exist in Kubernetes.",
+            "Common trap — encrypt each Secret's values manually before creating.",
+            "Common trap — run as root but add a NetworkPolicy."
+          ]
+        }
+      ]
+    },
+    "glossary": [
+      {
+        "term": "node",
+        "def": "Ingress rules: kube-proxy watches Services/Endpoints and programs the data path on every node: iptables mode installs NAT rules (simple, scales to ~thousands of services), IPVS mode uses Linux IPVS (better load-balancing algorithms, scal…"
+      },
+      {
+        "term": "Pod",
+        "def": "Pod affinity: daemonSet's contract is 'one Pod per selected node': the controller adds Pods as nodes join and removes them as nodes leave — perfect for node-level agents (log shippers, monitoring, CNI)."
+      },
+      {
+        "term": "kubectl",
+        "def": "With the apiserver down, kubectl is useless — go to the node: 'journalctl -u kubelet', 'crictl ps/logs' for the static Pod containers, and the manifest YAMLs. The apiserver depends on etcd: if the etcd static Pod is crashlooping (disk full?"
+      },
+      {
+        "term": "Pods",
+        "def": "kubeadm deploys control-plane components as static Pods: plain Pod manifests in the kubelet's manifest directory (--pod-manifest-path, default /etc/kubernetes/manifests). The kubelet starts them without any apiserver involvement — which…"
+      },
+      {
+        "term": "PVC",
+        "def": "Which policy keeps the cloud disk after the PVC is gone?"
+      },
+      {
+        "term": "CNI",
+        "def": "In-cluster DNS is served by CoreDNS (fronted by the kube-dns Service at 10.96.0.10 by default); the CNI only provides pod networking. /etc/resolv.conf in each Pod points at kube-dns."
+      },
+      {
+        "term": "DNS",
+        "def": "Service DNS: cluster DNS form: <service>.<namespace>.svc.cluster.local. Your laptop's DNS is irrelevant."
+      },
+      {
+        "term": "TLS",
+        "def": "Ingress TLS: spec.tls[] maps hosts to a TLS Secret (type kubernetes.io/tls with tls.crt/tls.key). NetworkPolicy ingress.from combines podSelector (who) with namespaceSelector (where) — both in one peer entry means AND."
+      },
+      {
+        "term": "RBAC",
+        "def": "RBAC: 'kubectl auth can-i <verb> <resource> --as=<user> -n <ns>' evaluates RBAC as that subject — the definitive 'can they?' check."
+      },
+      {
+        "term": "StorageClass",
+        "def": "StorageClass: reclaim policy is per-PV (defaulting from the StorageClass): Retain keeps the underlying volume after PVC deletion (data safe, manual cleanup, PV goes Released and can't rebind without manual intervention); Delete removes t…"
+      },
+      {
+        "term": "IP",
+        "def": "If the IP works but the name doesn't, which layer is broken?"
+      },
+      {
+        "term": "RWO",
+        "def": "Common trap: RWO means one Pod total."
+      },
+      {
+        "term": "PV",
+        "def": "StorageClass: reclaim policy is per-PV (defaulting from the StorageClass): Retain keeps the underlying volume after PVC deletion (data safe, manual cleanup, PV goes Released and can't rebind without manual intervention); Delete removes t…"
+      },
+      {
+        "term": "Service",
+        "def": "In-cluster DNS is served by CoreDNS (fronted by the kube-dns Service at 10.96.0.10 by default); the CNI only provides pod networking. /etc/resolv.conf in each Pod points at kube-dns."
+      },
+      {
+        "term": "Fix",
+        "def": "Binding requires: sufficient capacity, compatible accessModes, matching storageClassName (or both empty), and selector/label match. A 5Gi PV can't satisfy 10Gi."
+      },
+      {
+        "term": "ALL",
+        "def": "Pod/container securityContext hardening: runAsNonRoot/runAsUser (no root), allowPrivilegeEscalation: false (no setuid gain), readOnlyRootFilesystem: true (immutable fs — needs emptyDir for writable paths), capabilities: drop: [ALL] then…"
+      },
+      {
+        "term": "IPVS",
+        "def": "Ingress rules: kube-proxy watches Services/Endpoints and programs the data path on every node: iptables mode installs NAT rules (simple, scales to ~thousands of services), IPVS mode uses Linux IPVS (better load-balancing algorithms, scal…"
+      },
+      {
+        "term": "PVCs",
+        "def": "With allowVolumeExpansion: true and a supporting provisioner/driver, PVCs are editable upward: the external-resizer expands the block device, and kubelet expands the filesystem (FileSystemResizePending → done, often automatic for mounted…"
+      },
+      {
+        "term": "Debug",
+        "def": "Debug: --previous for the dead container's logs; common causes — bad command/args, missing env/config, failing startupProbe/livenessProbe killing slow boots, immediate exit (no foreground process)."
+      },
+      {
+        "term": "Pending",
+        "def": "Pending is the scheduler telling you exactly what's wrong — read the events. Fix the cause (free disk, restart runtime), the node returns Ready and Pods reschedule."
+      },
+      {
+        "term": "Events",
+        "def": "Enable apiserver auditing: an audit policy selects which requests to log (e.g., all writes at RequestResponse level for sensitive resources), written as JSON to --audit-log-path (usually shipped to a SIEM). It captures user, source IP, v…"
+      },
+      {
+        "term": "RW",
+        "def": "Access modes: RWO (one node RW), ROX (many nodes read-only), RWX (many nodes RW). Most block storage (EBS, GCE PD) is RWO-only — the second node's mount fails by design."
+      },
+      {
+        "term": "Binding",
+        "def": "Binding requires: sufficient capacity, compatible accessModes, matching storageClassName (or both empty), and selector/label match."
+      },
+      {
+        "term": "Ingress TLS",
+        "def": "Ingress TLS: spec.tls[] maps hosts to a TLS Secret (type kubernetes.io/tls with tls.crt/tls.key). NetworkPolicy ingress.from combines podSelector (who) with namespaceSelector (where) — both in one peer entry means AND."
+      },
+      {
+        "term": "Cross-namespace",
+        "def": "Cross-namespace requires at least 'api.backend' (resolvable via search) — the FQDN always works."
+      }
+    ],
+    "links": [
+      {
+        "label": "CNCF / Linux Foundation — official site",
+        "url": "https://training.linuxfoundation.org",
+        "note": "Official vendor documentation and certification information"
+      },
+      {
+        "label": "Kubernetes documentation",
+        "url": "https://kubernetes.io/docs/home/",
+        "note": "Official Kubernetes docs"
+      },
+      {
+        "label": "Kubernetes API reference",
+        "url": "https://kubernetes.io/docs/reference/",
+        "note": "Official API reference"
+      },
+      {
+        "label": "Cloud Native Computing Foundation",
+        "url": "https://www.cncf.io/",
+        "note": "Cloud-native project home"
+      }
+    ],
+    "checklist": [
+      "Get 7–8 hours of sleep the night before — fatigue destroys recall faster than any topic gap.",
+      "Bring valid government-issued photo ID and arrive at the test center 30 minutes early.",
+      "Eat a real meal beforehand; bring water and a light snack if the center allows them.",
+      "Read every question twice before scanning the answer choices.",
+      "Flag uncertain questions and move on — return with fresh eyes at the end.",
+      "Eliminate the obviously wrong answers first, then compare the survivors.",
+      "Budget your time: answer steadily and keep a 10–15 minute review buffer.",
+      "Re-run your weakest-domain drill until mastery is at least 80%.",
+      "For Cluster Architecture: restate the 'why' behind each scenario answer in your own words — if you can't explain it, you don't own it.",
+      "Redo one Workloads & Scheduling lab from scratch without looking at the steps.",
+      "Recite the key Services & Networking terms from the glossary aloud from memory."
     ]
   }
 }

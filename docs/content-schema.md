@@ -128,3 +128,170 @@ Omit any of them and the engine uses the stated default.
 - `simulation.items` / `.minutes`: lineup size and clock (defaults 12 / 180). `.evidence_cost_mins`: minutes deducted per evidence source opened during the sim (default 0 = free; the reference design used 2).
 - `desc`: one-line scenario blurb for library cards.
 - `chat.topics[].prompt` / `[].hint`: per-topic overrides; the engine generates honest fallbacks when absent.
+
+## Learn & Labs (optional top-level fields — safe to omit)
+
+Two optional arrays that power the Learn and Labs views. Omit either (or
+both) and the corresponding view renders the branded "content on the way"
+empty state; nothing else changes.
+
+```json
+{
+  "lessons": [
+    {
+      "domain_id": "basics",
+      "title": "Reading the evidence first",
+      "concepts": ["Defensive reading", "Hypothesis before verdict"],
+      "example": {
+        "lang": "python",
+        "code": "def collect(items=[]):\n    items.append(1)\n    return items",
+        "walkthrough": "Default arguments evaluate once at def time, so the same list is shared across calls."
+      },
+      "pitfalls": ["Skimming the prompt and jumping to the first plausible answer"],
+      "try_it": "Open the evidence panel and trace what each line does before choosing."
+    }
+  ],
+  "labs": [
+    {
+      "id": "lab-guided-scan",
+      "title": "Guided service scan",
+      "objective": "Identify open services on the target host.",
+      "steps": ["Open the terminal view", "Run a service scan against the target"],
+      "checks": [
+        {"command_pattern": "nmap.*", "expect_contains": "open", "hint": "Try nmap -sV <target>"}
+      ],
+      "success_message": "Lab complete — you enumerated the open services."
+    }
+  ]
+}
+```
+
+- `lessons[].domain_id` matches a `domains[].id` from the same file.
+- `lessons[].concepts`: 3–6 short concept labels. `example`: one runnable
+  snippet (`lang` = language or shell), `walkthrough` explains it in 2–4
+  sentences. `pitfalls`: common mistakes to avoid. `try_it`: one hands-on
+  prompt for the learner.
+- `labs[].id`: unique, kebab-case. `steps`: ordered instructions.
+  `checks[]`: `command_pattern` (regex the learner's command must match),
+  `expect_contains` (substring the command output must contain), `hint`
+  (shown after a failed check). `success_message`: shown when all checks pass.
+- The original-content rules above apply to both: no real exam questions,
+  no invented facts — commands, flags, API names, and defaults must be real.
+
+## Foundations, Math & Sections (optional top-level fields — safe to omit)
+
+Every bootcamp assumes zero prior knowledge, so prerequisites are taught
+inside the platform itself rather than assumed. Three optional fields power
+this; omit any of them and the Learn view simply skips that block.
+
+```json
+{
+  "foundations": [
+    {
+      "track": "linux-cli",
+      "why_needed": "The CKA is a hands-on terminal exam on Linux. Command-line fluency is non-negotiable."
+    }
+  ],
+  "math": ["binary", "subnetting"],
+  "sections": [
+    {
+      "id": "sec-networking",
+      "title": "Networking for this path",
+      "kind": "foundation",
+      "lectures": [],
+      "lab_ids": ["lab-guided-scan"],
+      "drill_domain_ids": ["networking"]
+    }
+  ]
+}
+```
+
+- `foundations[]`: prerequisite tracks for this bootcamp (1–3 typical).
+  `track` is an id from the shared `engine/foundations.json` asset;
+  `why_needed` is 1–2 sentences explaining why *this* certification needs
+  *this* prerequisite. The Learn view renders the track's lectures inline.
+- `math[]`: ids of shared math modules from `engine/math.json` this
+  bootcamp needs: `binary`, `subnetting`, `logic`, `stats`, `probability`,
+  `linalg`. Empty list allowed (omit or `[]` when the path needs no math
+  beyond its own content).
+- `sections[]`: Learn-view groupings. `id` unique kebab-case; `title`
+  display name; `kind` one of `foundation` (prerequisite material),
+  `core` (the path's own domains), `math` (math modules); `lectures[]`
+  slide-model lectures; `lab_ids[]` referencing `labs[].id` in the same
+  file; `drill_domain_ids[]` referencing `domains[].id` in the same file.
+- Omit `foundations`, `math`, or `sections` (or pass empty arrays) and the
+  corresponding Learn block renders nothing; nothing else changes.
+
+## Shared assets: engine/foundations.json + engine/math.json
+
+Two JSON assets ship at the engine level and are copied verbatim into
+`site/bootcamps/engine/` by `generator/build.py`. They are the single
+source of truth for prerequisite teaching — no per-bootcamp duplication.
+
+`engine/foundations.json` (source of truth:
+`generator/foundation-tracks.json`):
+
+```json
+{
+  "tracks": [
+    {
+      "id": "linux-cli",
+      "title": "Linux Command Line",
+      "audience": "Beginners comfortable opening a terminal who need real Linux skills.",
+      "lectures": [
+        {
+          "id": "linux-files-folders",
+          "title": "Files, folders, and where you are",
+          "slides": [
+            {"kind": "title", "heading": "...", "lede": "...", "narration": "..."},
+            {"kind": "bullets", "heading": "...", "bullets": ["..."], "narration": "..."},
+            {"kind": "diagram", "heading": "...",
+             "diagram": {"type": "flow", "title": "...", "nodes": ["..."], "note": "..."},
+             "narration": "..."},
+            {"kind": "code", "heading": "...",
+             "code": {"lang": "shell", "code": "..."},
+             "walkthrough": "...", "narration": "..."},
+            {"kind": "bullets", "heading": "Common pitfalls", "bullets": ["..."], "narration": "..."},
+            {"kind": "tryit", "heading": "...", "text": "...", "narration": "..."}
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+`engine/math.json`:
+
+```json
+{
+  "modules": [
+    {
+      "id": "binary",
+      "title": "Binary & Number Bases",
+      "why": "One or two sentences on why this math matters across the catalog.",
+      "lectures": [ ... same slide model as above ... ]
+    }
+  ]
+}
+```
+
+### Slide model (shared contract with the Learn renderer)
+
+- Every lecture: 4–7 slides. Every slide carries a `narration` transcript
+  (1–3 sentences; accessibility + SEO).
+- Slide kinds: `title` (`heading`, `lede`, `narration`); `bullets`
+  (`heading`, `bullets[]`, `narration`); `diagram` (`heading`,
+  `diagram{type,title,nodes[],note}`, `narration`); `code` (`heading`,
+  `code{lang,code}`, `walkthrough`, `narration`); `tryit` (`heading`,
+  `text`, `narration`).
+- Diagrams: at least 1 per lecture. `type` is one of
+  `flow` | `layers` | `cycle` | `compare` | `hierarchy` | `timeline`;
+  `nodes[]` are short labels (≤5 words); `note` is one clarifying sentence.
+- Code examples are tiny and valid; arithmetic walkthroughs use
+  `"lang": "text"` with step-by-step working.
+- Content principles apply to all shared assets: original teaching prose
+  only (never reproduce exam questions or vendor materials), honest
+  framing (no affiliation claimed, confers no certificate), true-beginner
+  level (assume the reader knows nothing), any-candidate product
+  (no personal data).

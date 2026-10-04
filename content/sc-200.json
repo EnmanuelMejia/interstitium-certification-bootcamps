@@ -812,6 +812,202 @@
       ]
     }
   ],
+  "lessons": [
+    {
+      "domain_id": "sentinel-workspaces",
+      "title": "Sentinel Workspaces — Core concepts",
+      "concepts": [
+        "Workspace design balances data residency, RBAC isolation, and cost: regional workspaces keep EU data in the EU and queues separate, while cross-workspace queries, Lighthouse delegation, and shared threat intel preserve unified defense.",
+        "Data connectors: sentinel's data connectors (including CEF/Syslog via the Azure Monitor Agent) stream third-party logs into normalized tables like CommonSecurityLog.",
+        "CEF ingestion: sentinel cost control happens at ingestion: DCR filtering, dropping chatty Syslog facilities, and using basic/auxiliary log tiers for high-volume low-value data."
+      ],
+      "example": {
+        "lang": "text",
+        "code": "Worked example — workspace design\nSetup: Workspace design balances data residency, RBAC isolation, and cost: regional workspaces keep EU data in the EU and queues separate, while…\nReasoning: Sentinel's data connectors (including CEF/Syslog via the Azure Monitor Agent) stream third-party logs into normalized tables like CommonSecurityLog.\nTakeaway: AMA + DCRs replace the legacy MMA: data collection rules define exactly what to collect from which machines (Syslog facilities, Windows events, CEF)…",
+        "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."
+      },
+      "pitfalls": [
+        "Common trap: one workspace for everything worldwide.",
+        "Common trap: sharing customer admin passwords."
+      ],
+      "try_it": "Work through this in the Terminal tab →"
+    },
+    {
+      "domain_id": "kql-hunting",
+      "title": "KQL Hunting — Core concepts",
+      "concepts": [
+        "KQL pipelines filter (where), aggregate (summarize ... by), and rank (top).",
+        "summarize and top: timecharts reveal periodicity: human traffic is bursty and irregular; beaconing is metronomic. summarize count() by bin(TimeGenerated, 1m) | render timechart turns a hunch into visible evidence.",
+        "Beaconing detection: watchlists store reference data (IP ranges, VIPs, service accounts) as queryable tables joined into hunts and analytics rules — turning tribal knowledge into reusable detection logic."
+      ],
+      "example": {
+        "lang": "text",
+        "code": "CommonSecurityLog | where DestinationHostName == 'evil.example' | summarize c=count() by bin(TimeGenerated, 1m) | render timechart",
+        "walkthrough": "Timecharts reveal periodicity: human traffic is bursty and irregular; beaconing is metronomic. summarize count() by bin(TimeGenerated, 1m) | render timechart turns a hunch into visible evidence."
+      },
+      "pitfalls": [
+        "Common trap: two separate queries eyeballed manually.",
+        "Common trap: a pie chart of total bytes.",
+        "Common trap: hardcoding IPs in every query."
+      ],
+      "try_it": "Work through this in the Terminal tab →"
+    },
+    {
+      "domain_id": "incidents-playbooks",
+      "title": "Incidents & Playbooks — Core concepts",
+      "concepts": [
+        "Incidents: SOC operations need aging/escalation mechanics: automation rules assign on creation, and SLA-style alerts fire when high-severity incidents age unassigned. Alert-per-row triage is the anti-pattern; incidents are the workflow.",
+        "Incident lifecycle: automation rules handle incident lifecycle chores (assign, change status/severity, close) on trigger conditions — the first automation layer. Triage follows the incident lifecycle: understand scope first (entities graph, timeline), validate it's real, then contain before eradicating.",
+        "Triage order: playbooks (Logic Apps) do the heavy enrichment/response; rules do the triage routing.",
+        "Automation rules trigger them and handle simple status changes. Playbooks are privileged automation — they deserve their own managed identity with minimal API permissions.",
+        "Triage automation: a playbook running as a human inherits that human's breadth; a scoped identity limits what automation can do if abused. Process enforced by automation beats process documented in a wiki."
+      ],
+      "example": {
+        "lang": "text",
+        "code": "Worked example — incidents\nSetup: SOC operations need aging/escalation mechanics: automation rules assign on creation, and SLA-style alerts fire when high-severity incidents age…\nReasoning: Automation rules handle incident lifecycle chores (assign, change status/severity, close) on trigger conditions — the first automation layer.\nTakeaway: Playbooks are privileged automation — they deserve their own managed identity with minimal API permissions.",
+        "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."
+      },
+      "pitfalls": [
+        "Common trap: the SOC lead's personal account.",
+        "Common trap: can't call APIs or branch logic.",
+        "Common trap: a shared admin password in the workflow."
+      ],
+      "try_it": "Work through this in the Terminal tab →"
+    },
+    {
+      "domain_id": "defender-xdr",
+      "title": "Defender XDR — Core concepts",
+      "concepts": [
+        "Defender XDR natively correlates signals across its workloads into single cross-domain incidents with one entity graph.",
+        "Defender for Office 365's ZAP retroactively purges malicious mail after detonation verdicts.",
+        "Containment: device isolation is the first containment: it severs attacker connectivity while preserving the machine for forensics.",
+        "Defender for Identity: dCSync from a non-DC is a classic credential-dumping technique (Mimikatz-style) — one of the highest-fidelity identity alerts."
+      ],
+      "example": {
+        "lang": "text",
+        "code": "Worked example — defender xdr\nSetup: Defender for Cloud Apps (CASB) discovers shadow IT from firewall/proxy logs, scores app risk, and enforces session policies (block downloads, require…\nReasoning: Defender for Office 365's ZAP retroactively purges malicious mail after detonation verdicts.\nTakeaway: Defender XDR natively correlates signals across its workloads into single cross-domain incidents with one entity graph.",
+        "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."
+      },
+      "pitfalls": [
+        "Common trap: it ingests but doesn't replace XDR correlation.",
+        "Common trap: reimage immediately (destroys forensic evidence)."
+      ],
+      "try_it": "Work through this in the Terminal tab →"
+    },
+    {
+      "domain_id": "threat-intel",
+      "title": "Threat Intel — Core concepts",
+      "concepts": [
+        "Threat-informed defense: translate actor intel into ATT&CK techniques, hunt each in your data, and the gaps you find (no logs for that technique) become the detection-engineering roadmap. Operational intel sharing needs a pipeline (ingest → normalize → match → alert) plus process (TLP classification, source trust, analyst validation).",
+        "Intel decay: structured intel becomes detection, not reading material. Indicators decay: IPs get reassigned, domains get cleaned.",
+        "Principle: sentinel's TI connectors ingest STIX/TAXII feeds into the threat intelligence tables; matching rules and the TI blade correlate indicators against your logs."
+      ],
+      "example": {
+        "lang": "text",
+        "code": "Worked example — threat intel platform\nSetup: Threat-informed defense: translate actor intel into ATT&CK techniques, hunt each in your data, and the gaps you find (no logs for that technique)…\nReasoning: Operational intel sharing needs a pipeline (ingest → normalize → match → alert) plus process (TLP classification, source trust, analyst validation).\nTakeaway: The Diamond Model structures intrusions as relationships between adversary, capability, infrastructure, and victim — pivoting on any vertex (e.g.…",
+        "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."
+      },
+      "pitfalls": [
+        "Common trap: treating all indicators as eternal truth.",
+        "Skipping the key question: how do STIX indicators become queryable detections.",
+        "Skipping the key question: a 2019 IP indicator fires today. What lifecycle step was missed."
+      ],
+      "try_it": "Work through this in the Terminal tab →"
+    },
+    {
+      "domain_id": "response",
+      "title": "Response — Core concepts",
+      "concepts": [
+        "Forensic priority: legal-bound evidence needs chain of custody: write-blocked forensic images, hashed and documented at every handoff, with log retention under legal hold.",
+        "Forensic handling: analyzing the original or casual handling can render evidence inadmissible.",
+        "Persistence: eradication is a hunt for every persistence mechanism, verified by monitoring for recurrence. Mass reimaging destroys forensics and may miss persistence elsewhere."
+      ],
+      "example": {
+        "lang": "text",
+        "code": "Worked example — containment\nSetup: Legal-bound evidence needs chain of custody: write-blocked forensic images, hashed and documented at every handoff, with log retention under legal…\nReasoning: Reinfection means persistence survived: attackers plant multiple footholds (scheduled tasks, services, WMI event subscriptions, startup keys).\nTakeaway: Recovery requires verified-clean state: rebuild from known-good media or verified-clean backups (backups may predate or contain the intrusion)…",
+        "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."
+      },
+      "pitfalls": [
+        "Common trap: restore from last night's backup (which may contain the backdoor).",
+        "Common trap: a fourth incident report nobody reads.",
+        "Common trap: analyzing the original laptop directly.",
+        "Common trap: emailing the disk image around."
+      ],
+      "try_it": "Work through this in the Terminal tab →"
+    }
+  ],
+  "sections": [
+    {
+      "id": "foundations",
+      "title": "Foundations",
+      "kind": "foundation",
+      "lectures": [
+        "m-logic",
+        "f-security-basics-0",
+        "f-security-basics-1",
+        "f-security-basics-2",
+        "f-networking-0",
+        "f-networking-1",
+        "f-networking-2",
+        "f-networking-3"
+      ],
+      "lab_ids": [],
+      "drill_domain_ids": []
+    },
+    {
+      "id": "core",
+      "title": "Core",
+      "kind": "core",
+      "lectures": [
+        "c-sentinel-workspaces",
+        "c-kql-hunting",
+        "c-incidents-playbooks",
+        "c-defender-xdr",
+        "c-response"
+      ],
+      "lab_ids": [
+        "sc-200-lab-1",
+        "sc-200-lab-2"
+      ],
+      "drill_domain_ids": [
+        "sentinel-workspaces",
+        "kql-hunting",
+        "incidents-playbooks",
+        "defender-xdr",
+        "response"
+      ]
+    },
+    {
+      "id": "advanced",
+      "title": "Advanced",
+      "kind": "advanced",
+      "lectures": [
+        "c-threat-intel"
+      ],
+      "lab_ids": [
+        "sc-200-lab-3",
+        "sc-200-lab-4"
+      ],
+      "drill_domain_ids": [
+        "threat-intel"
+      ]
+    },
+    {
+      "id": "exam-prep",
+      "title": "Exam Prep",
+      "kind": "exam-prep",
+      "lectures": [],
+      "lab_ids": [],
+      "drill_domain_ids": [
+        "sentinel-workspaces",
+        "kql-hunting",
+        "incidents-playbooks",
+        "defender-xdr",
+        "threat-intel",
+        "response"
+      ]
+    }
+  ],
   "behavioral": [
     {
       "prompt": "Tell me about a time you investigated a real security incident.",
@@ -1016,6 +1212,874 @@
           "Why did eradication fail?"
         ]
       }
+    ]
+  },
+  "labs": [
+    {
+      "id": "sc-200-lab-1",
+      "title": "Workspace design — Azure CLI drill",
+      "objective": "Run a short sequence of Azure CLI commands that demonstrates workspace design, then verify each result against the expected output.",
+      "steps": [
+        "This lab reworks the Sentinel Workspaces practice scenario \"The three SOCs\" into commands you run yourself — same concept, hands-on instead of multiple choice.",
+        "Open the Terminal tab for this bootcamp — every command below runs there.",
+        "Type exactly: az account show — the account document includes the subscription name",
+        "Type exactly: az group list — each resource group entry carries a name",
+        "Type exactly: az vm list — each VM entry carries a name",
+        "In your own words, say what each command's output taught you about workspace design."
+      ],
+      "checks": [
+        {
+          "command_pattern": "az account show",
+          "expect_contains": "name",
+          "hint": "In the Terminal tab, run `az account show`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+        },
+        {
+          "command_pattern": "az group list",
+          "expect_contains": "name",
+          "hint": "In the Terminal tab, run `az group list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+        },
+        {
+          "command_pattern": "az vm list",
+          "expect_contains": "name",
+          "hint": "In the Terminal tab, run `az vm list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+        }
+      ],
+      "success_message": "Lab complete — workspace design practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."
+    },
+    {
+      "id": "sc-200-lab-2",
+      "title": "KQL fundamentals — Azure CLI drill",
+      "objective": "Use the Azure CLI to explore KQL fundamentals hands-on: type each command, read what comes back, and connect the output to the concept.",
+      "steps": [
+        "Inspired by the KQL Hunting scenario \"The failed logons\": take its core idea and prove it live in the terminal instead of answering on paper.",
+        "Open the Terminal tab for this bootcamp — every command below runs there.",
+        "Type exactly: az vm list — each VM entry carries a name",
+        "Type exactly: az account show — the account document includes the subscription name",
+        "Type exactly: az group list — each resource group entry carries a name",
+        "In your own words, say what each command's output taught you about KQL fundamentals."
+      ],
+      "checks": [
+        {
+          "command_pattern": "az vm list",
+          "expect_contains": "name",
+          "hint": "In the Terminal tab, run `az vm list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+        },
+        {
+          "command_pattern": "az account show",
+          "expect_contains": "name",
+          "hint": "In the Terminal tab, run `az account show`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+        },
+        {
+          "command_pattern": "az group list",
+          "expect_contains": "name",
+          "hint": "In the Terminal tab, run `az group list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+        }
+      ],
+      "success_message": "Lab complete — KQL fundamentals practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."
+    },
+    {
+      "id": "sc-200-lab-3",
+      "title": "Incidents — Azure CLI drill",
+      "objective": "Prove you can apply incidents in the Azure CLI — follow the steps, watch the output, and confirm every check passes.",
+      "steps": [
+        "The Incidents & Playbooks scenario \"The alert storm\" tests this concept as a question. This lab makes you demonstrate it with real commands.",
+        "Open the Terminal tab for this bootcamp — every command below runs there.",
+        "Type exactly: az group list — each resource group entry carries a name",
+        "Type exactly: az vm list — each VM entry carries a name",
+        "Type exactly: az account show — the account document includes the subscription name",
+        "In your own words, say what each command's output taught you about incidents."
+      ],
+      "checks": [
+        {
+          "command_pattern": "az group list",
+          "expect_contains": "name",
+          "hint": "In the Terminal tab, run `az group list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+        },
+        {
+          "command_pattern": "az vm list",
+          "expect_contains": "name",
+          "hint": "In the Terminal tab, run `az vm list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+        },
+        {
+          "command_pattern": "az account show",
+          "expect_contains": "name",
+          "hint": "In the Terminal tab, run `az account show`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+        }
+      ],
+      "success_message": "Lab complete — incidents practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."
+    },
+    {
+      "id": "sc-200-lab-4",
+      "title": "Defender XDR — Azure CLI drill",
+      "objective": "Run a short sequence of Azure CLI commands that demonstrates defender XDR, then verify each result against the expected output.",
+      "steps": [
+        "This lab reworks the Defender XDR practice scenario \"The five portals\" into commands you run yourself — same concept, hands-on instead of multiple choice.",
+        "Open the Terminal tab for this bootcamp — every command below runs there.",
+        "Type exactly: az account show — the account document includes the subscription name",
+        "Type exactly: az group list — each resource group entry carries a name",
+        "Type exactly: az vm list — each VM entry carries a name",
+        "In your own words, say what each command's output taught you about defender XDR."
+      ],
+      "checks": [
+        {
+          "command_pattern": "az account show",
+          "expect_contains": "name",
+          "hint": "In the Terminal tab, run `az account show`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+        },
+        {
+          "command_pattern": "az group list",
+          "expect_contains": "name",
+          "hint": "In the Terminal tab, run `az group list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+        },
+        {
+          "command_pattern": "az vm list",
+          "expect_contains": "name",
+          "hint": "In the Terminal tab, run `az vm list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+        }
+      ],
+      "success_message": "Lab complete — defender XDR practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."
+    },
+    {
+      "id": "sc200-lab-workspace",
+      "title": "SOC workspace orientation",
+      "objective": "Sentinel workspaces live in resource groups under a subscription. Orient: subscription, tenant, resource groups.",
+      "difficulty": 1,
+      "steps": [
+        "Open the Terminal tab for this bootcamp.",
+        "Type exactly: az account show — subscription and tenant the SOC operates in",
+        "Type exactly: az group list — the resource groups that can host Sentinel workspaces",
+        "In your own words, say why a SOC standardizes which resource group holds the Sentinel workspace."
+      ],
+      "checks": [
+        {
+          "command_pattern": "^az account show$",
+          "expect_contains": "ILB-Playground",
+          "hint": "In the Terminal tab, run `az account show`. If the check fails, confirm you typed it exactly and that the output contains \"ILB-Playground\"."
+        },
+        {
+          "command_pattern": "^az group list$",
+          "expect_contains": "ilb-rg",
+          "hint": "In the Terminal tab, run `az group list`. If the check fails, confirm you typed it exactly and that the output contains \"ilb-rg\"."
+        }
+      ],
+      "success_message": "Lab complete — SOC workspace oriented."
+    },
+    {
+      "id": "sc200-lab-triage",
+      "title": "Triage the fleet",
+      "objective": "An alert names a host. Triage starts with the fleet inventory: which hosts exist and their states.",
+      "difficulty": 1,
+      "steps": [
+        "Open the Terminal tab for this bootcamp.",
+        "Type exactly: az vm list — every host the SOC is responsible for",
+        "In your own words, say what you check first when an alert names ilb-web-01."
+      ],
+      "checks": [
+        {
+          "command_pattern": "^az vm list$",
+          "expect_contains": "ilb-web-01",
+          "hint": "In the Terminal tab, run `az vm list`. If the check fails, confirm you typed it exactly and that the output contains \"ilb-web-01\"."
+        }
+      ],
+      "success_message": "Lab complete — fleet triaged."
+    },
+    {
+      "id": "sc200-lab-isolate",
+      "title": "Isolate the compromised host",
+      "objective": "The playbook says isolate on confirmed compromise. Stop ilb-web-01, verify isolation, then restore the lab.",
+      "difficulty": 2,
+      "steps": [
+        "Open the Terminal tab for this bootcamp.",
+        "Type exactly: az vm stop -n ilb-web-01 -g ilb-rg — ISOLATE the suspected host",
+        "Type exactly: az vm list -g ilb-rg — verify ilb-web-01 reads 'VM stopped'",
+        "Type exactly: az vm start -n ilb-web-01 -g ilb-rg — restore the lab host",
+        "In your own words, say why isolation precedes forensics in every IR playbook."
+      ],
+      "checks": [
+        {
+          "command_pattern": "^az vm stop -n ilb-web-01 -g ilb-rg$",
+          "expect_contains": "deallocated",
+          "hint": "In the Terminal tab, run `az vm stop -n ilb-web-01 -g ilb-rg`. If the check fails, confirm you typed it exactly and that the output contains \"deallocated\"."
+        },
+        {
+          "command_pattern": "^az vm start -n ilb-web-01 -g ilb-rg$",
+          "expect_contains": "started",
+          "hint": "In the Terminal tab, run `az vm start -n ilb-web-01 -g ilb-rg`. If the check fails, confirm you typed it exactly and that the output contains \"started\"."
+        }
+      ],
+      "success_message": "Lab complete — isolation playbook executed."
+    },
+    {
+      "id": "sc200-lab-netforensics",
+      "title": "Network forensics sweep",
+      "objective": "Lateral movement rides the network. Sweep the VNet inventory and the cluster behind it for the forensics record.",
+      "difficulty": 3,
+      "steps": [
+        "Open the Terminal tab for this bootcamp.",
+        "Type exactly: az network vnet list — the networks lateral movement could traverse",
+        "Type exactly: az aks list — the cluster whose pods could be affected",
+        "In your own words, say what network evidence you preserve first in a lateral-movement case."
+      ],
+      "checks": [
+        {
+          "command_pattern": "^az network vnet list$",
+          "expect_contains": "10.0.0.0/16",
+          "hint": "In the Terminal tab, run `az network vnet list`. If the check fails, confirm you typed it exactly and that the output contains \"10.0.0.0/16\"."
+        },
+        {
+          "command_pattern": "^az aks list$",
+          "expect_contains": "ilb-aks",
+          "hint": "In the Terminal tab, run `az aks list`. If the check fails, confirm you typed it exactly and that the output contains \"ilb-aks\"."
+        }
+      ],
+      "success_message": "Lab complete — network forensics swept."
+    }
+  ],
+  "foundations": [
+    {
+      "track": "security-basics",
+      "why_needed": "SOC work is the CIA triad in action: detect threats, assess risk, respond in layers. Learn the vocabulary from zero."
+    },
+    {
+      "track": "networking",
+      "why_needed": "Log analysis and hunting assume you read addresses, DNS, and HTTP fluently."
+    }
+  ],
+  "math": [
+    "logic"
+  ],
+  "simulations": [
+    {
+      "id": "sc200-sim-alert-triage",
+      "title": "The impossible-travel alert",
+      "kind": "troubleshoot",
+      "domain_id": "incidents-playbooks",
+      "difficulty": 2,
+      "brief": "Sentinel fires an impossible-travel alert: the candidate account signed in from two continents 20 minutes apart. Triage before you escalate.",
+      "steps": [
+        {
+          "symptom": "Impossible-travel alert on candidate@interstitium: logins 20 minutes apart, 4,000 miles apart.",
+          "evidence": [
+            [
+              "az account show",
+              "\"user\": {\n    \"name\": \"candidate@interstitium\",\n    \"type\": \"user\"\n  }"
+            ]
+          ],
+          "options": [
+            "Check for VPN or corporate egress that explains the geography before disabling the account",
+            "Immediately disable the account — impossible travel is always compromise",
+            "Delete the alert — these are always false positives",
+            "Reset the user's password and move on"
+          ],
+          "correct": 0,
+          "explain": "Impossible travel is high-fidelity but not certain — corporate VPN egress routinely triggers it. Verify the egress story first; disabling the account on a false positive locks out a legitimate user."
+        },
+        {
+          "symptom": "No VPN explains it; the second login came from an anonymizing proxy and then touched the storage account.",
+          "evidence": [
+            [
+              "az storage account list",
+              "ilbartifacts  ilb-rg  Standard_LRS"
+            ]
+          ],
+          "options": [
+            "Disable the account, revoke sessions, and scope what the session touched",
+            "Just force a password reset — that ends it",
+            "Monitor silently for a week to gather more evidence",
+            "Email the user and ask if it was them"
+          ],
+          "correct": 0,
+          "explain": "Confirmed compromise gets the full response: disable, revoke sessions (password reset alone does not kill existing tokens), and scope the blast radius via logs. Asking the user wastes the containment window."
+        }
+      ],
+      "debrief": "You triaged like an analyst: verify before you act, then act completely — disable, revoke, and scope. Half-responses let attackers persist.",
+      "points": 15
+    },
+    {
+      "id": "sc200-sim-ir-tree",
+      "title": "Ransomware in the SOC queue",
+      "kind": "branching",
+      "domain_id": "response",
+      "difficulty": 3,
+      "brief": "The queue escalates: ransomware behavior on a host with the artifact bucket mounted. You own the incident.",
+      "steps": [
+        {
+          "id": "s1",
+          "text": "Host is encrypting files and the bucket shows renames. First move?",
+          "choices": [
+            {
+              "label": "Isolate the host and block the bucket writes",
+              "next": "s2",
+              "points": 2,
+              "feedback": "Correct — containment first, both the host and the data path."
+            },
+            {
+              "label": "Start restoring the bucket from backup",
+              "next": "s2a",
+              "points": 0,
+              "feedback": "Restoring into an active encryption event just feeds it new files."
+            }
+          ]
+        },
+        {
+          "id": "s2a",
+          "text": "Restores are being re-encrypted. Reconsider:",
+          "choices": [
+            {
+              "label": "Isolate host and block bucket writes",
+              "next": "s2",
+              "points": 1,
+              "feedback": "Right — stop the bleeding before the transfusion."
+            }
+          ]
+        },
+        {
+          "id": "s2",
+          "text": "Contained. The ransom note demands payment in 48 hours. Call?",
+          "choices": [
+            {
+              "label": "Pay to recover faster",
+              "next": "END",
+              "points": 0,
+              "outcome": "bad",
+              "feedback": "Paying funds the ecosystem and often fails. You have versioned backups."
+            },
+            {
+              "label": "Refuse, restore from versioned backups, preserve evidence",
+              "next": "END",
+              "points": 2,
+              "outcome": "good",
+              "feedback": "Correct — versioning plus backups make payment unnecessary; evidence keeps options open."
+            }
+          ]
+        }
+      ],
+      "debrief": "You ran the ransomware response: contain, refuse, restore, preserve. That is the playbook that turns a catastrophe into an incident.",
+      "points": 15
+    },
+    {
+      "id": "sc200-sim-ir-phases",
+      "title": "Order the response",
+      "kind": "ordering",
+      "domain_id": "response",
+      "difficulty": 2,
+      "brief": "The new analyst wants to 'just reimage' during identification. Order the phases correctly.",
+      "steps": {
+        "context": "Incident response lifecycle in execution order.",
+        "items": [
+          "Eradication and recovery",
+          "Detection and analysis",
+          "Preparation",
+          "Containment",
+          "Post-incident lessons learned"
+        ],
+        "correct_order": [
+          2,
+          1,
+          3,
+          0,
+          4
+        ]
+      },
+      "debrief": "You ordered the lifecycle: prepare, detect and analyze, contain, eradicate and recover, lessons learned. Reimaging during identification destroys evidence.",
+      "points": 10
+    },
+    {
+      "id": "sc200-sim-analytics-rule",
+      "title": "The noisy analytics rule",
+      "kind": "config-check",
+      "domain_id": "sentinel-workspaces",
+      "difficulty": 3,
+      "brief": "This Sentinel analytics rule pages the SOC 40 times a day. Review it and click the lines causing the noise.",
+      "steps": {
+        "config": "Rule: impossible-travel-v1\n1. Query: SigninLogs | where TimeGenerated > ago(1d)\n2. Entity mapping: none\n3. Threshold: 1 event\n4. Suppression: disabled\n5. Severity: High",
+        "find": 2,
+        "issues": [
+          {
+            "line": 2,
+            "description": "No entity mapping means alerts cannot be grouped or enriched — every event is a separate noisy alert.",
+            "fix": "Map the Account entity so related sign-ins correlate into one incident."
+          },
+          {
+            "line": 4,
+            "description": "Suppression disabled means the same user re-alerts every day with no deduplication.",
+            "fix": "Enable suppression (e.g. 24h per entity) so repeats consolidate."
+          }
+        ]
+      },
+      "debrief": "You found the noise sources: unmapped entities and disabled suppression. Tune the rule and the SOC starts trusting the queue again.",
+      "points": 10
+    }
+  ],
+  "consoleSims": [
+    {
+      "id": "sc200-console-siem-triage-1",
+      "title": "Triage the incident queue",
+      "console": "siem-dashboard",
+      "domain_id": "incidents-playbooks",
+      "difficulty": 2,
+      "brief": "Three incidents wait in the queue. Triage the impossible-travel case: assign, set severity, and link the entity.",
+      "tasks": [
+        {
+          "id": "t1",
+          "instruction": "Assign incident INC-2042 to yourself.",
+          "validate": {
+            "action": "click",
+            "params": {
+              "target": "incident.INC-2042.assign"
+            }
+          },
+          "hint": "Open the incident and use the assign control."
+        },
+        {
+          "id": "t2",
+          "instruction": "Set its severity to High and link the candidate account entity.",
+          "validate": {
+            "action": "set-field",
+            "params": {
+              "field": "incident.INC-2042.severity",
+              "value": "High"
+            }
+          },
+          "hint": "Set severity to High on the incident."
+        }
+      ],
+      "debrief": "You triaged the queue properly: owned, prioritized, and entity-linked. Unowned alerts are where breaches hide."
+    },
+    {
+      "id": "sc200-console-siem-hunt-1",
+      "title": "Save the hunt query",
+      "console": "siem-dashboard",
+      "domain_id": "kql-hunting",
+      "difficulty": 3,
+      "brief": "Your hunt found anomalous storage access. Save it as a reusable hunting query with a watchlist.",
+      "tasks": [
+        {
+          "id": "t1",
+          "instruction": "Save the query text as hunt 'anomalous-storage-access'.",
+          "validate": {
+            "action": "set-field",
+            "params": {
+              "field": "hunt.query",
+              "value": "anomalous-storage-access"
+            }
+          },
+          "hint": "Use the save control in the hunting blade and name the query."
+        },
+        {
+          "id": "t2",
+          "instruction": "Create a watchlist named vip-accounts for the hunt to reference.",
+          "validate": {
+            "action": "create",
+            "params": {
+              "type": "watchlist",
+              "name": "vip-accounts"
+            }
+          },
+          "hint": "Create the watchlist the query will join against."
+        }
+      ],
+      "debrief": "You turned a one-off hunt into reusable detection: saved query plus watchlist. Hunts compound; ad-hoc queries evaporate."
+    }
+  ],
+  "terminalMissions": [
+    {
+      "id": "sc200-mission-soc",
+      "title": "Confirm the SOC subscription",
+      "domain_id": "sentinel-workspaces",
+      "difficulty": 1,
+      "brief": "Verify the subscription the SOC operates in is enabled.",
+      "objectives": [
+        "Show the Azure account",
+        "Confirm the subscription state"
+      ],
+      "checks": [
+        {
+          "command_pattern": "^az account show$",
+          "expect_contains": "Enabled",
+          "hint": "In the Terminal tab, run `az account show`. If the check fails, confirm you typed it exactly and that the output contains \"Enabled\"."
+        }
+      ],
+      "success_message": "SOC subscription confirmed."
+    },
+    {
+      "id": "sc200-mission-groups",
+      "title": "List the workspace groups",
+      "domain_id": "sentinel-workspaces",
+      "difficulty": 1,
+      "brief": "List the resource groups that can host Sentinel workspaces.",
+      "objectives": [
+        "List all resource groups"
+      ],
+      "checks": [
+        {
+          "command_pattern": "^az group list$",
+          "expect_contains": "ilb-rg",
+          "hint": "In the Terminal tab, run `az group list`. If the check fails, confirm you typed it exactly and that the output contains \"ilb-rg\"."
+        }
+      ],
+      "success_message": "Workspace groups listed."
+    },
+    {
+      "id": "sc200-mission-fleet",
+      "title": "Inventory the monitored hosts",
+      "domain_id": "defender-xdr",
+      "difficulty": 2,
+      "brief": "List the VMs under Defender's protection.",
+      "objectives": [
+        "List all virtual machines"
+      ],
+      "checks": [
+        {
+          "command_pattern": "^az vm list$",
+          "expect_contains": "ilb-build-01",
+          "hint": "In the Terminal tab, run `az vm list`. If the check fails, confirm you typed it exactly and that the output contains \"ilb-build-01\"."
+        }
+      ],
+      "success_message": "Monitored hosts inventoried."
+    },
+    {
+      "id": "sc200-mission-network",
+      "title": "Map the monitored network",
+      "domain_id": "threat-intel",
+      "difficulty": 2,
+      "brief": "List the VNets in scope for network threat detection.",
+      "objectives": [
+        "List all virtual networks"
+      ],
+      "checks": [
+        {
+          "command_pattern": "^az network vnet list$",
+          "expect_contains": "ilb-vnet",
+          "hint": "In the Terminal tab, run `az network vnet list`. If the check fails, confirm you typed it exactly and that the output contains \"ilb-vnet\"."
+        }
+      ],
+      "success_message": "Monitored network mapped."
+    },
+    {
+      "id": "sc200-mission-cluster",
+      "title": "Check the cluster",
+      "domain_id": "defender-xdr",
+      "difficulty": 2,
+      "brief": "List the AKS clusters Defender watches.",
+      "objectives": [
+        "List all AKS clusters"
+      ],
+      "checks": [
+        {
+          "command_pattern": "^az aks list$",
+          "expect_contains": "ilb-aks",
+          "hint": "In the Terminal tab, run `az aks list`. If the check fails, confirm you typed it exactly and that the output contains \"ilb-aks\"."
+        }
+      ],
+      "success_message": "Cluster confirmed under watch."
+    },
+    {
+      "id": "sc200-mission-storage",
+      "title": "Verify the log storage",
+      "domain_id": "sentinel-workspaces",
+      "difficulty": 3,
+      "brief": "Confirm the storage account backing log retention.",
+      "objectives": [
+        "List all storage accounts"
+      ],
+      "checks": [
+        {
+          "command_pattern": "^az storage account list$",
+          "expect_contains": "Standard_LRS",
+          "hint": "In the Terminal tab, run `az storage account list`. If the check fails, confirm you typed it exactly and that the output contains \"Standard_LRS\"."
+        }
+      ],
+      "success_message": "Log storage verified."
+    }
+  ],
+  "media": [
+    {
+      "id": "sc-200-sentinel-workspaces-diag",
+      "kind": "diagram",
+      "title": "Microsoft Sentinel Workflow",
+      "svg": "assets/diagrams/sc-200-sentinel-workspaces.svg",
+      "lesson_ref": "c-sentinel-workspaces",
+      "caption": "From log onboarding to automated response.",
+      "alt": "Microsoft Sentinel Workflow. Shows: Connect, Collect, Detect, Investigate, Respond."
+    },
+    {
+      "id": "sc-200-kql-hunting-diag",
+      "kind": "diagram",
+      "title": "KQL Hunting Essentials",
+      "svg": "assets/diagrams/sc-200-kql-hunting.svg",
+      "lesson_ref": "c-kql-hunting",
+      "caption": "The query language behind Sentinel investigations.",
+      "alt": "KQL Hunting Essentials. Commands: SigninLogs | take 10, | where ResultType != 0, | summarize count() by UserPrincipalName, | project TimeGenerated, User, | sort by TimeGenerated desc."
+    },
+    {
+      "id": "sc-200-incidents-playbooks-diag",
+      "kind": "diagram",
+      "title": "Incident → Playbook Response",
+      "svg": "assets/diagrams/sc-200-incidents-playbooks.svg",
+      "lesson_ref": "c-incidents-playbooks",
+      "caption": "Triage once, automate the repeatable parts.",
+      "alt": "Incident → Playbook Response. Shows: Incident, Triage, Playbook, Enrich, Close."
+    },
+    {
+      "id": "sc-200-defender-xdr-diag",
+      "kind": "diagram",
+      "title": "Microsoft Defender XDR",
+      "svg": "assets/diagrams/sc-200-defender-xdr.svg",
+      "lesson_ref": "c-defender-xdr",
+      "caption": "Correlated defense across endpoints, identity, email, apps.",
+      "alt": "Microsoft Defender XDR. Shows: Defender for Endpoint, Defender for Identity, Defender for Office, Defender for Cloud Apps, Incidents."
+    },
+    {
+      "id": "sc-200-threat-intel-diag",
+      "kind": "diagram",
+      "title": "Threat Intelligence in Sentinel",
+      "svg": "assets/diagrams/sc-200-threat-intel.svg",
+      "lesson_ref": "c-threat-intel",
+      "caption": "Turn external intel into detections.",
+      "alt": "Threat Intelligence in Sentinel. Shows: Tactical, Operational, Strategic, IOCs vs TTPs."
+    },
+    {
+      "id": "sc-200-response-diag",
+      "kind": "diagram",
+      "title": "Response Actions",
+      "svg": "assets/diagrams/sc-200-response.svg",
+      "lesson_ref": "c-response",
+      "caption": "Contain first, then eradicate and recover.",
+      "alt": "Response Actions. Shows: Isolate, Block, Revoke, Collect, Restore."
+    }
+  ],
+  "resources": {
+    "cheatsheet": {
+      "title": "Microsoft Sentinel SOC (SC-200) — Cheat Sheet",
+      "sections": [
+        {
+          "heading": "Sentinel Workspaces",
+          "items": [
+            "Workspace design balances data residency, RBAC isolation, and cost — regional workspaces keep EU data in the EU and queues separate, while cross-workspace queries, Lighthouse delegation, and shared threat intel preserve unified defense.",
+            "Data connectors — sentinel's data connectors (including CEF/Syslog via the Azure Monitor Agent) stream third-party logs into normalized tables like CommonSecurityLog.",
+            "CEF ingestion — sentinel cost control happens at ingestion: DCR filtering, dropping chatty Syslog facilities, and using basic/auxiliary log tiers for high-volume low-value data.",
+            "Common trap — one workspace for everything worldwide.",
+            "Common trap — sharing customer admin passwords.",
+            "Read — Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."
+          ]
+        },
+        {
+          "heading": "KQL Hunting",
+          "items": [
+            "KQL — KQL pipelines filter (where), aggregate (summarize ... by), and rank (top).",
+            "Beaconing detection — watchlists store reference data (IP ranges, VIPs, service accounts) as queryable tables joined into hunts and analytics rules — turning tribal knowledge into reusable detection logic.",
+            "Common trap — two separate queries eyeballed manually.",
+            "Common trap — a pie chart of total bytes.",
+            "Common trap — hardcoding IPs in every query.",
+            "Timecharts reveal periodicity — human traffic is bursty and irregular; beaconing is metronomic. summarize count() by bin(TimeGenerated, 1m) | render timechart turns a hunch into visible evidence."
+          ]
+        },
+        {
+          "heading": "Incidents & Playbooks",
+          "items": [
+            "Incidents — SOC operations need aging/escalation mechanics: automation rules assign on creation, and SLA-style alerts fire when high-severity incidents age unassigned. Alert-per-row triage is the anti-pattern; incidents are the workflow.",
+            "Incident lifecycle — automation rules handle incident lifecycle chores (assign, change status/severity, close) on trigger conditions — the first automation layer. Triage follows the incident lifecycle: understand scope first (entities graph, timeline), validate it's real, then…",
+            "Triage order — playbooks (Logic Apps) do the heavy enrichment/response; rules do the triage routing.",
+            "Automation — Automation rules trigger them and handle simple status changes. Playbooks are privileged automation — they deserve their own managed identity with minimal API permissions.",
+            "Triage automation — a playbook running as a human inherits that human's breadth; a scoped identity limits what automation can do if abused. Process enforced by automation beats process documented in a wiki.",
+            "Common trap — the SOC lead's personal account.",
+            "Common trap — can't call APIs or branch logic.",
+            "Common trap — a shared admin password in the workflow."
+          ]
+        },
+        {
+          "heading": "Defender XDR",
+          "items": [
+            "Defender XDR — Defender XDR natively correlates signals across its workloads into single cross-domain incidents with one entity graph.",
+            "Defender — Defender for Office 365's ZAP retroactively purges malicious mail after detonation verdicts.",
+            "Containment — device isolation is the first containment: it severs attacker connectivity while preserving the machine for forensics.",
+            "Defender for Identity — dCSync from a non-DC is a classic credential-dumping technique (Mimikatz-style) — one of the highest-fidelity identity alerts.",
+            "Common trap — it ingests but doesn't replace XDR correlation.",
+            "Common trap — reimage immediately (destroys forensic evidence)."
+          ]
+        },
+        {
+          "heading": "Threat Intel",
+          "items": [
+            "Threat-informed defense — translate actor intel into ATT&CK techniques, hunt each in your data, and the gaps you find (no logs for that technique) become the detection-engineering roadmap. Operational intel sharing needs a pipeline (ingest → normalize → match → alert) plus process (…",
+            "Intel decay — structured intel becomes detection, not reading material. Indicators decay: IPs get reassigned, domains get cleaned.",
+            "Principle — sentinel's TI connectors ingest STIX/TAXII feeds into the threat intelligence tables; matching rules and the TI blade correlate indicators against your logs.",
+            "Common trap — treating all indicators as eternal truth.",
+            "Skipping the key question — how do STIX indicators become queryable detections.",
+            "Skipping the key question — a 2019 IP indicator fires today. What lifecycle step was missed."
+          ]
+        },
+        {
+          "heading": "Response",
+          "items": [
+            "Forensic priority — legal-bound evidence needs chain of custody: write-blocked forensic images, hashed and documented at every handoff, with log retention under legal hold.",
+            "Forensic handling — analyzing the original or casual handling can render evidence inadmissible.",
+            "Persistence — eradication is a hunt for every persistence mechanism, verified by monitoring for recurrence. Mass reimaging destroys forensics and may miss persistence elsewhere.",
+            "Common trap — restore from last night's backup (which may contain the backdoor).",
+            "Common trap — a fourth incident report nobody reads.",
+            "Common trap — analyzing the original laptop directly.",
+            "Common trap — emailing the disk image around."
+          ]
+        }
+      ]
+    },
+    "glossary": [
+      {
+        "term": "SOC",
+        "def": "Incidents: SOC operations need aging/escalation mechanics: automation rules assign on creation, and SLA-style alerts fire when high-severity incidents age unassigned. Alert-per-row triage is the anti-pattern; incidents are the workflow."
+      },
+      {
+        "term": "CEF",
+        "def": "CEF ingestion: sentinel cost control happens at ingestion: DCR filtering, dropping chatty Syslog facilities, and using basic/auxiliary log tiers for high-volume low-value data."
+      },
+      {
+        "term": "IP",
+        "def": "The Diamond Model structures intrusions as relationships between adversary, capability, infrastructure, and victim — pivoting on any vertex (e.g., one infrastructure IP → other victims). IOC lists are flat; the diamond is relational."
+      },
+      {
+        "term": "STIX",
+        "def": "Skipping the key question: how do STIX indicators become queryable detections."
+      },
+      {
+        "term": "How",
+        "def": "How do you turn 'are we exposed to APT29' into an actionable hunt?"
+      },
+      {
+        "term": "Defender",
+        "def": "Defender for Identity: dCSync from a non-DC is a classic credential-dumping technique (Mimikatz-style) — one of the highest-fidelity identity alerts."
+      },
+      {
+        "term": "XDR",
+        "def": "Defender XDR natively correlates signals across its workloads into single cross-domain incidents with one entity graph."
+      },
+      {
+        "term": "MMA",
+        "def": "AMA + DCRs replace the legacy MMA: data collection rules define exactly what to collect from which machines (Syslog facilities, Windows events, CEF), reducing noise and cost versus the old agent's broad collection."
+      },
+      {
+        "term": "Playbooks",
+        "def": "Playbooks are Logic Apps wired to Sentinel triggers: they query TI, detonate URLs, isolate hosts via Defender, open tickets, and notify — SOAR orchestration. Automation rules trigger them and handle simple status changes."
+      },
+      {
+        "term": "TI",
+        "def": "Principle: sentinel's TI connectors ingest STIX/TAXII feeds into the threat intelligence tables; matching rules and the TI blade correlate indicators against your logs."
+      },
+      {
+        "term": "ZAP",
+        "def": "Defender for Office 365's ZAP retroactively purges malicious mail after detonation verdicts."
+      },
+      {
+        "term": "CASB",
+        "def": "Defender for Cloud Apps (CASB) discovers shadow IT from firewall/proxy logs, scores app risk, and enforces session policies (block downloads, require MFA) on sanctioned/unsanctioned apps — visibility first, control second."
+      },
+      {
+        "term": "Logic Apps",
+        "def": "Triage order: playbooks (Logic Apps) do the heavy enrichment/response; rules do the triage routing."
+      },
+      {
+        "term": "Hunting",
+        "def": "Hunting is proactive: start from intel/TTPs, query broadly for the behavior, and convert validated hunts into scheduled analytics rules. Waiting for alerts means waiting to be a victim."
+      },
+      {
+        "term": "NAT",
+        "def": "Anomaly-based analytics (ML rules, Identity Protection) flag deviations like impossible travel; but VPN egress locations and carrier NAT create false positives. Hunting means tuning thresholds and validating before escalating."
+      },
+      {
+        "term": "IOC",
+        "def": "The Diamond Model structures intrusions as relationships between adversary, capability, infrastructure, and victim — pivoting on any vertex (e.g., one infrastructure IP → other victims). IOC lists are flat; the diamond is relational."
+      },
+      {
+        "term": "WMI",
+        "def": "Reinfection means persistence survived: attackers plant multiple footholds (scheduled tasks, services, WMI event subscriptions, startup keys). Eradication is a hunt for every persistence mechanism, verified by monitoring for recurrence."
+      },
+      {
+        "term": "Speed",
+        "def": "Recovery requires verified-clean state: rebuild from known-good media or verified-clean backups (backups may predate or contain the intrusion), rotate all potentially exposed credentials, and heighten monitoring. Speed without verificati…"
+      },
+      {
+        "term": "Windows",
+        "def": "KQL pipelines filter (where), aggregate (summarize ... by), and rank (top)."
+      },
+      {
+        "term": "Alert-per-row",
+        "def": "Incidents: SOC operations need aging/escalation mechanics: automation rules assign on creation, and SLA-style alerts fire when high-severity incidents age unassigned. Alert-per-row triage is the anti-pattern; incidents are the workflow."
+      },
+      {
+        "term": "TAXII",
+        "def": "Sentinel's TI connectors ingest STIX/TAXII feeds into the threat intelligence tables; matching rules and the TI blade correlate indicators against your logs. Structured intel becomes detection, not reading material."
+      },
+      {
+        "term": "Defender XDR",
+        "def": "Defender XDR natively correlates signals across its workloads into single cross-domain incidents with one entity graph."
+      },
+      {
+        "term": "Log Analytics",
+        "def": "Log Analytics splits retention: interactive (hot, fast KQL) plus archive tier (cheap, 12-year capable) with search/restore jobs for investigations. Paying interactive rates for 2-year-old logs is the expensive mistake."
+      },
+      {
+        "term": "Threat-informed",
+        "def": "Threat-informed defense: translate actor intel into ATT&CK techniques, hunt each in your data, and the gaps you find (no logs for that technique) become the detection-engineering roadmap. Operational intel sharing needs a pipeline (inges…"
+      },
+      {
+        "term": "Identity",
+        "def": "Defender for Identity: dCSync from a non-DC is a classic credential-dumping technique (Mimikatz-style) — one of the highest-fidelity identity alerts."
+      }
+    ],
+    "links": [
+      {
+        "label": "Microsoft — official site",
+        "url": "https://learn.microsoft.com",
+        "note": "Official vendor documentation and certification information"
+      },
+      {
+        "label": "Microsoft Learn — Azure",
+        "url": "https://learn.microsoft.com/en-us/azure/",
+        "note": "Official Azure documentation"
+      },
+      {
+        "label": "Microsoft certifications",
+        "url": "https://learn.microsoft.com/en-us/certifications/",
+        "note": "Official certification paths and exam pages"
+      },
+      {
+        "label": "Azure status and architecture",
+        "url": "https://azure.microsoft.com/en-us/",
+        "note": "Official Azure product pages"
+      },
+      {
+        "label": "NIST SP 800-53 Rev. 5",
+        "url": "https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final",
+        "note": "Official NIST security controls catalog"
+      },
+      {
+        "label": "NIST Cybersecurity Framework",
+        "url": "https://www.nist.gov/cyberframework",
+        "note": "Official NIST CSF"
+      },
+      {
+        "label": "OWASP Top Ten",
+        "url": "https://owasp.org/www-project-top-ten/",
+        "note": "OWASP's top web application risks"
+      },
+      {
+        "label": "MITRE ATT&CK",
+        "url": "https://attack.mitre.org/",
+        "note": "MITRE's adversary tactics knowledge base"
+      }
+    ],
+    "checklist": [
+      "Get 7–8 hours of sleep the night before — fatigue destroys recall faster than any topic gap.",
+      "Bring valid government-issued photo ID and arrive at the test center 30 minutes early.",
+      "Eat a real meal beforehand; bring water and a light snack if the center allows them.",
+      "Read every question twice before scanning the answer choices.",
+      "Flag uncertain questions and move on — return with fresh eyes at the end.",
+      "Eliminate the obviously wrong answers first, then compare the survivors.",
+      "Budget your time: answer steadily and keep a 10–15 minute review buffer.",
+      "Re-run your weakest-domain drill until mastery is at least 80%.",
+      "For Sentinel Workspaces: restate the 'why' behind each scenario answer in your own words — if you can't explain it, you don't own it.",
+      "Redo one KQL Hunting lab from scratch without looking at the steps.",
+      "Recite the key Incidents & Playbooks terms from the glossary aloud from memory."
     ]
   }
 }

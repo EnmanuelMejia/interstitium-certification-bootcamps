@@ -1,1 +1,2129 @@
-{"behavioral":[{"framework":"STAR","pitfalls":["Hype-only answers","No technical depth"],"points":["What drew you to blockchain technically","How you learned the fundamentals","What you can build"],"prompt":"Why blockchain development — and how did you build real technical depth, not just hype familiarity?"},{"framework":"STAR","pitfalls":["Skipping the security angle","No testing mention"],"points":["The contract or protocol you built","Your security and testing approach","The outcome"],"prompt":"Walk me through something you built on a blockchain — what did you learn about the constraints?"},{"framework":"STAR","pitfalls":["Blaming the protocol","No root-cause analysis"],"points":["The incident or bug","Your investigation","The fix and the lesson"],"prompt":"Describe a time something went wrong with a smart contract or chain integration — how did you diagnose it?"},{"framework":"STAR","pitfalls":["Maximalism with no trade-offs","No use-case reasoning"],"points":["The use case","Why this chain/model fit","The trade-offs you accepted"],"prompt":"Tell me about choosing between blockchain platforms or architectures for a use case."},{"framework":"STAR","pitfalls":["Tool-only answers","No conceptual understanding"],"points":["The concept that was hard","How you made it concrete","Where you applied it"],"prompt":"What's the hardest blockchain concept you taught yourself (consensus, cryptography, MEV)? How did you learn it?"},{"framework":"STAR","pitfalls":["Vague 'decentralization' talk","No concrete mechanism"],"points":["The trust problem","The mechanism you used","Why it works"],"prompt":"Describe a time you designed around trust — removing a trusted intermediary with a protocol mechanism."},{"framework":"STAR","pitfalls":["Ignoring the audit","Shipping fast over shipping safe"],"points":["The security review process","What it found","What changed before launch"],"prompt":"Tell me about a security review or audit you went through — what did it catch?"},{"framework":"STAR","pitfalls":["Solo-only narrative","No community learning"],"points":["How you stay current","A time the community corrected you","What you changed"],"prompt":"How do you keep up with a space that changes as fast as blockchain — and when did that save you?"}],"chat":{"persona":"You are a rigorous blockchain engineering mentor running a mock assessment. Demand protocol-level understanding, push on security implications of every design choice, and always ask 'what does the chain actually guarantee here?'","topics":[{"followups":["What does the chain guarantee, and what doesn't it?","When is a blockchain the wrong tool?"],"id":"blockchain-basics","key_points":["distributed ledger concepts","consensus purpose","permissioned vs permissionless","finality concepts","trust minimization","when not to use blockchain"],"name":"Blockchain Basics"},{"followups":["Why does this design choice exist?","What attack does it prevent?"],"id":"bitcoin","key_points":["UTXO model","proof of work","difficulty adjustment","transaction lifecycle","SegWit concepts","lightning concepts"],"name":"Bitcoin Protocol"},{"followups":["How does XRPL consensus differ from mining?","What is the ledger close process?"],"id":"xrpl","key_points":["consensus ledger","no mining","3-5 second close","XRP as bridge currency","trust lines","issued currencies"],"name":"XRPL"},{"followups":["What does this opcode-level behavior imply?","How much gas does that cost, and why?"],"id":"solidity-evm","key_points":["EVM execution model","gas economics","storage vs memory","events and logs","contract interaction patterns","upgradeability trade-offs"],"name":"Solidity & EVM"},{"followups":["How would you exploit this?","What's the proper fix pattern?"],"id":"chain-security","key_points":["reentrancy","access control","oracle risk","front-running/MEV concepts","audit mindset","defense in depth"],"name":"Security"},{"followups":["When is permissioned the right call?","How does Fabric consensus differ?"],"id":"hyperledger","key_points":["permissioned models","channels","chaincode","ordering service","identity/PKI","enterprise fit"],"name":"Hyperledger Concepts"}]},"disclaimer":"Independent practice material by Interstitium Labs. Vendor-neutral blockchain concepts; not affiliated with, endorsed by, or sponsored by the Linux Foundation, Hyperledger Foundation, or any blockchain project or foundation. Confers no certificate and no vendor certification. All scenarios are original; no exam content is reproduced.","domains":[{"id":"blockchain-basics","name":"Blockchain Basics","scenarios":[{"answer":1,"choices":["It's just a slow database","A distributed ledger: an append-only, cryptographically-linked record replicated across participants, where consensus replaces the trusted intermediary","It's encryption for databases","It's only for cryptocurrency"],"evidence":[],"hint":"What problem does the chain solve that a shared database doesn't — and what does it cost?","id":"bc-what-is","mins":5,"objectives":["Distributed ledger","Trust model"],"prompt":"What is a blockchain, fundamentally?","situation":"A stakeholder asks why the project needs a blockchain instead of a database.","title":"Why a chain?","why":"A blockchain is a trust technology, not a database technology: multiple mutually-distrusting parties agree on shared state without a central authority, via consensus and cryptographic linkage. That buys censorship resistance and auditability at the cost of throughput and complexity. If all parties trust one operator, a database wins — the chain's value is precisely where trust is absent."},{"answer":1,"choices":["To make transactions fast","To let mutually distrusting participants agree on a single shared state without a central authority","To encrypt data","To reduce storage costs"],"evidence":[],"hint":"What would happen if two participants disagreed about the ledger — and who resolves it?","id":"bc-consensus-purpose","mins":5,"objectives":["Consensus","Agreement"],"prompt":"What problem does consensus solve?","situation":"You're explaining consensus to a backend engineer.","title":"Agreeing without a boss","why":"Consensus is the mechanism by which decentralized participants converge on one ledger state — ordering transactions and resolving conflicts without a trusted coordinator. Without it, every participant has their own version of truth and double-spending is trivial. Different mechanisms (PoW, PoS, XRPL consensus) make different trade-offs, but the problem they solve is identical: agreement among adversaries."},{"answer":1,"choices":["They're the same thing","Permissionless: anyone can participate, security from economics/cryptography. Permissioned: known identified participants, access controlled — different trust assumptions, different fits","Permissioned is always more secure","Permissionless is always better"],"evidence":[],"hint":"Who are you defending against in each model — anonymous attackers, or known-but-curious partners?","id":"bc-permissioned","mins":6,"objectives":["Permissioned vs permissionless","Trust assumptions"],"prompt":"When is each model appropriate?","situation":"An enterprise consortium debates public vs permissioned for inter-bank settlement.","title":"Choosing the model","why":"The models encode different trust assumptions: permissionless assumes adversarial anonymity (secured by economic incentives), permissioned assumes known identities with contractual/legal accountability. Inter-bank settlement among regulated entities fits permissioned — identity, privacy, and governance matter more than censorship resistance. The wrong model choice is the most expensive architectural mistake in the space."},{"answer":0,"choices":["Finality means a transaction can never be reversed under the protocol's guarantees — probabilistic (PoW confirmations) vs deterministic (BFT-style) finality","Finality means the transaction is fast","All chains have the same finality","Finality doesn't matter for applications"],"evidence":[],"hint":"After one Bitcoin confirmation, how sure are you — and after six?","id":"bc-finality","mins":6,"objectives":["Finality","Confirmations"],"prompt":"What is finality, and why do the models differ?","situation":"Your app must decide when a deposit is 'safe' to credit.","title":"When is it final?","why":"Finality is the guarantee a transaction won't be reversed: Bitcoin offers probabilistic finality (each confirmation exponentially reduces reversal odds — hence the 6-confirmation convention for large value), while BFT-style systems offer deterministic finality at ledger close. Your crediting policy must match the chain's finality model — crediting instantly on a PoW chain is how exchanges get double-spent."},{"answer":1,"choices":["Blockchain fixes everything","When multiple distrusting parties need shared, tamper-evident state without a trusted intermediary — and not when one party is trusted, throughput matters most, or data must be deletable","Whenever there's a database","For all financial software"],"evidence":[],"hint":"What does the chain give you that nothing else does — and what does it cost you?","id":"bc-when-not","mins":5,"objectives":["Fit assessment","Honest engineering"],"prompt":"When should you NOT use a blockchain?","situation":"A team proposes blockchain for an internal single-company inventory system.","title":"The wrong tool","why":"Blockchain's benefits (trust minimization, tamper-evidence across distrusting parties) come at real costs: throughput limits, complexity, immutability conflicts with data-deletion requirements. A single trusted company running inventory gets all cost and no benefit — a database with audit logs is the honest answer. Saying 'no' to blockchain is often the most senior engineering call."},{"answer":1,"choices":["Decentralization means no one is in charge of anything","A spectrum: distribution of control across participants, varying by layer (mining/validation, development, governance) — assess each layer, not the label","It's just marketing","Only node count matters"],"evidence":[],"hint":"A chain with 10,000 nodes but 2 mining pools — how decentralized is it, really?","id":"bc-decentralization","mins":6,"objectives":["Decentralization","Critical thinking"],"prompt":"How should engineers evaluate decentralization claims?","situation":"A vendor claims their chain is 'fully decentralized.'","title":"Measuring decentralization","why":"Decentralization is multi-layered: consensus power, client development, governance, and infrastructure can each centralize independently. Node counts mislead when mining pools or validators concentrate. Engineers should ask: who can censor transactions? Who can change the rules? Who do I depend on? — per layer. The label is marketing; the power distribution is engineering."}]},{"id":"bitcoin","name":"Bitcoin Protocol","scenarios":[{"answer":1,"choices":["Accounts with balances, like a bank","UTXOs: unspent transaction outputs — each transaction consumes inputs and creates outputs; your 'balance' is the set of UTXOs you can spend","A single global balance sheet","It doesn't track ownership"],"evidence":[],"hint":"When you 'send' bitcoin, what exactly are you consuming — and what are you creating?","id":"bc-utxo","mins":6,"objectives":["UTXO model","Transaction structure"],"prompt":"How does Bitcoin track ownership?","situation":"You're explaining to an Ethereum developer why Bitcoin has no accounts.","title":"Coins, not accounts","why":"Bitcoin's UTXO model: value lives in discrete unspent outputs, each locked to a spending condition. Transactions consume UTXOs as inputs and create new ones as outputs (with change returning to the sender). No account balances exist at the protocol level — wallets compute them by summing UTXOs. This shapes everything: privacy (new addresses per UTXO), validation, and fee estimation."},{"answer":1,"choices":["To waste electricity","To make rewriting history prohibitively expensive: the longest-work chain wins, so altering a buried transaction requires redoing all subsequent work","To create new coins only","Miners enjoy puzzles"],"evidence":[],"hint":"What would it cost to change a transaction six blocks deep?","id":"bc-pow","mins":6,"objectives":["Proof of work","Security model"],"prompt":"What security property does proof of work provide?","situation":"A skeptic calls PoW 'wasteful computation.'","title":"Work as security","why":"PoW converts energy into immutability: each block's work accumulates, so rewriting history means outpacing the honest network's ongoing work — economically infeasible for deep burials. The 'waste' critique misses the point: the cost IS the security. Whether that trade-off is worth it is a legitimate debate; what PoW buys is objective, verifiable, leaderless consensus."},{"answer":1,"choices":["Blocks come whenever miners feel like it","Every 2016 blocks, difficulty retargets to maintain ~10-minute average block times despite changing hash power","Difficulty never changes","It's adjusted daily by developers"],"evidence":[],"hint":"What keeps block times stable when hash power doubles overnight?","id":"bc-difficulty","mins":6,"objectives":["Difficulty adjustment","Monetary policy"],"prompt":"How does Bitcoin keep block times stable?","situation":"Network hash rate doubled after a price rally.","title":"The retarget","why":"The difficulty retarget (every 2016 blocks, ~2 weeks) adjusts mining difficulty based on actual vs target block times, holding the ~10-minute average regardless of hash power. This is Bitcoin's monetary-policy engine room: stable block times mean predictable issuance. It's also why the network survived massive hash-rate shocks — the protocol adapts automatically, no committee required."},{"answer":1,"choices":["Transactions confirm instantly","The lifecycle: creation → signing → broadcast → mempool → miner selection (fee market) → block inclusion → confirmations","Miners create transactions","The mempool is permanent storage"],"evidence":[],"hint":"Where does a transaction wait — and who decides which waits end?","id":"bc-tx-lifecycle","mins":6,"objectives":["Transaction lifecycle","Mempool","Fee market"],"prompt":"What happens between clicking 'send' and confirmation?","situation":"A user's transaction is 'stuck' — unconfirmed for hours.","title":"Stuck in the mempool","why":"The mempool is the waiting room: unconfirmed transactions queue, and miners select by fee rate (satoshis per virtual byte) — it's a fee market, not a queue. 'Stuck' means underbid: the fix is fee bumping (RBF/CPFP), not resending. Understanding the lifecycle turns 'the network is broken' into 'the fee was too low' — and informs wallet fee-estimation design."},{"answer":1,"choices":["SegWit was just a block-size increase","A protocol upgrade that fixed transaction malleability and separated witness data — enabling Layer 2 (Lightning) and changing fee economics","SegWit made Bitcoin centralized","It only affected miners"],"evidence":[],"hint":"What did malleability break — and what does fixing it enable?","id":"bc-segwit","mins":7,"objectives":["SegWit","Malleability"],"prompt":"Why did SegWit matter?","situation":"You're reviewing Bitcoin's upgrade history for protocol literacy.","title":"Segregating the witness","why":"SegWit fixed transaction malleability (third parties could alter txids before confirmation, breaking chains of unconfirmed transactions) by moving signatures out of the txid computation — which unblocked Layer 2 protocols like Lightning that depend on stable txids. It also introduced block weight, effectively raising capacity. Protocol upgrades are case studies in decentralized governance actually working."},{"answer":1,"choices":["Lightning is a separate coin","A Layer 2 of payment channels: parties transact off-chain instantly and cheaply, settling net results on-chain — inheriting Bitcoin's security for the settlement","Lightning replaces Bitcoin","Channels require trusting a third party"],"evidence":[],"hint":"What goes on-chain — every coffee purchase, or just the channel open and close?","id":"bc-lightning","mins":7,"objectives":["Lightning Network","Layer 2"],"prompt":"How does Lightning scale Bitcoin?","situation":"A merchant needs instant, low-fee Bitcoin payments.","title":"Off-chain, secured on-chain","why":"Lightning moves the volume off-chain: two parties lock funds in a channel, transact instantly via signed updates, and only the open/close (or disputes) touch the blockchain. Security comes from the ability to always settle on-chain — the chain is the court of final appeal. It's the layered-scaling thesis: base layer for settlement security, upper layers for speed and cost."}]},{"id":"xrpl","name":"XRPL","scenarios":[{"answer":1,"choices":["Miners compete with proof of work","A consensus process among trusted validators: rounds of proposal and voting converge on the next ledger version every 3–5 seconds — no mining","A central server decides","It's proof of stake"],"evidence":[],"hint":"If there's no mining, what do validators actually do every few seconds?","id":"bc-xrpl-consensus","mins":7,"objectives":["XRPL consensus","Validator voting"],"prompt":"How does the XRP Ledger reach agreement without mining?","situation":"You're comparing XRPL's consensus to Bitcoin's for an architecture review.","title":"Consensus without mining","why":"XRPL validators iteratively propose and vote on transaction sets until a supermajority agrees — converging on a validated ledger every 3–5 seconds. Security comes from validator overlap and the supermajority threshold, not energy expenditure. The trade-off: faster deterministic-ish close and low energy, versus Bitcoin's permissionless mining security model. Different trust assumptions, different design."},{"answer":1,"choices":["XRP is just for speculation","XRP as a bridge currency and anti-spam mechanism: it enables cross-currency payments and each transaction destroys a tiny amount, making spam expensive","XRP has no protocol function","It's only for fees"],"evidence":[],"hint":"What sits between two illiquid currencies in a payment path — and what stops someone from flooding the network?","id":"bc-xrp-role","mins":6,"objectives":["XRP","Bridge currency"],"prompt":"What is XRP's protocol-level function?","situation":"A payments engineer asks why XRP exists in the design.","title":"More than a token","why":"XRP serves two protocol functions: bridge currency (any currency can route through XRP for liquidity between otherwise illiquid pairs) and spam prevention (tiny destroyed fee per transaction makes flooding the ledger economically irrational). Understanding the native asset's mechanical role — not its price — is protocol literacy."},{"answer":1,"choices":["Trust lines are just contacts","Trust lines: explicit on-ledger authorizations to hold an issuer's currency, with limits — the mechanism for issued currencies (stablecoins, etc.) on XRPL","Anyone can issue unlimited currency to anyone","Trust lines are off-chain"],"evidence":[],"hint":"Why should the ledger let anyone force you to hold their IOU?","id":"bc-trustlines","mins":7,"objectives":["Trust lines","Issued currencies"],"prompt":"How do non-XRP currencies work on the ledger?","situation":"A fintech wants to issue a USD stablecoin on XRPL.","title":"IOUs with consent","why":"Issued currencies on XRPL are IOUs: they only exist between an issuer and holders connected by trust lines — explicit, limited authorizations to hold that issuer's currency. No trust line, no balance. This elegantly models credit risk on-ledger: holding issued currency IS trusting the issuer, and the ledger records exactly who trusts whom, to what limit."},{"answer":1,"choices":["Payments only work in XRP","Pathfinding: the ledger finds multi-hop paths across order books and trust lines to deliver the requested currency — auto-bridging through XRP or other currencies","You must hold every currency","Paths are manual"],"evidence":[],"hint":"How does a payment in EUR reach someone who wants USD, with neither party touching the conversion?","id":"bc-pathfinding","mins":7,"objectives":["Pathfinding","Auto-bridging"],"prompt":"How do cross-currency payments work?","situation":"A user wants to pay USD to a recipient who wants EUR.","title":"Finding the path","why":"XRPL pathfinding computes routes through the ledger's liquidity graph — order books and trust lines — auto-bridging across currencies (often via XRP) so sender and recipient each deal in their own currency. The protocol does the FX. This is the payments-engine vision: currency-agnostic value transfer with the ledger as the exchange."},{"answer":0,"choices":["Ledger close is probabilistic like Bitcoin","Validated ledgers close every 3–5 seconds with supermajority agreement — fast, regular settlement","Close times are random","Faster close means less security automatically"],"evidence":[],"hint":"What does a 3–5 second rhythm buy a payments use case — and what does it assume?","id":"bc-ledger-close","mins":5,"objectives":["Ledger close","Settlement speed"],"prompt":"What does the 3–5 second ledger close mean practically?","situation":"You're sizing XRPL for a remittance product.","title":"Seconds, not minutes","why":"A validated ledger every 3–5 seconds means payment finality on a human-interaction timescale — the remittance use case actually works. The speed comes from the validator-voting consensus rather than PoW's probabilistic race. The engineering question is always the trade: what trust assumption buys this speed, and does your use case accept it?"},{"answer":1,"choices":["XRPL has no smart contracts at all","The ledger prioritizes native transaction types and robustness over general programmability — a deliberate design trade differing from EVM-style chains","It's less advanced","Native types are a limitation with no benefit"],"evidence":[],"hint":"What bugs are impossible when the transaction types are fixed and native?","id":"bc-xrpl-design","mins":6,"objectives":["Design philosophy","Native functions"],"prompt":"How does XRPL's design philosophy differ from EVM chains?","situation":"A Solidity developer asks why XRPL 'lacks' smart contracts.","title":"Native vs programmable","why":"XRPL's philosophy: implement core financial operations (payments, DEX, escrow, channels) as native, reviewed transaction types rather than user smart contracts. The trade: less general programmability, but the most-exploited contract bug classes simply can't exist in native code paths. It's a different point on the flexibility-safety spectrum — understand the trade before judging the design."}]},{"id":"solidity-evm","name":"Solidity & EVM","scenarios":[{"answer":1,"choices":["The EVM is just a slow computer","A deterministic stack-based virtual machine: every node executes the same bytecode and reaches the same state — the foundation of smart-contract trustlessness","It's only for Solidity","Gas is optional"],"evidence":[],"hint":"Why must execution be deterministic — what breaks if two nodes compute different results?","id":"bc-evm-model","mins":6,"objectives":["EVM","Deterministic execution"],"prompt":"What is the EVM's execution model, and why deterministic?","situation":"You're explaining smart contracts to a traditional backend engineer.","title":"The world computer's rules","why":"The EVM is a deterministic state machine: given the same state and transaction, every node computes the identical result — that's what lets mutually distrusting nodes agree on contract outcomes. Determinism forbids randomness, wall-clock time, and external calls inside execution; oracles and commit-reveal exist precisely because of this constraint. The determinism IS the trust model."},{"answer":1,"choices":["Gas is just a fee","Gas meters computation: every operation costs gas, bounding execution (halting problem solved economically) and pricing block space — out-of-gas reverts state changes","Gas is refunded always","Unlimited loops are fine"],"evidence":[],"hint":"What stops an infinite loop on a blockchain — and who pays for the attempt?","id":"bc-gas","mins":6,"objectives":["Gas","Execution bounds"],"prompt":"What problem does gas solve?","situation":"A developer's contract keeps running out of gas.","title":"Paying for computation","why":"Gas solves the halting problem economically: computation must terminate because the sender's gas runs out, and every operation's price reflects its cost to the network. Out-of-gas reverts state (but consumes the gas — the work was done). For developers, gas shapes design: storage is brutally expensive, loops over unbounded arrays are bugs, and 'gas golfing' is real engineering."},{"answer":1,"choices":["They're the same — both store data","Storage persists on-chain across transactions (expensive, ~20k gas per slot); memory is transient per-call (cheap). Choosing wrong wastes enormous gas or loses data","Always use storage — it's safer","Memory persists between calls"],"evidence":[],"hint":"What happens to memory when the call ends — and what does a storage write cost?","id":"bc-storage-memory","mins":6,"objectives":["Storage vs memory","Gas optimization"],"prompt":"When do you use storage vs memory?","situation":"A contract stores loop temporaries in storage and costs a fortune.","title":"Storage is the expensive one","why":"EVM storage (SSTORE) writes to permanent chain state — ~20,000 gas per new slot, the most expensive common operation. Memory is per-call scratch space, cheap and discarded. The bug pattern: using storage for temporaries, or reading storage repeatedly in loops instead of caching to memory. Gas-aware Solidity starts with knowing where each variable lives."},{"answer":1,"choices":["Events are just logs for debugging","Events: cheap append-only logs (bloom-filter indexed) for off-chain consumption — the contract-to-world communication channel; they don't affect state","Events can change state","Off-chain apps should poll storage instead"],"evidence":[],"hint":"How does a frontend learn a transfer happened — by re-reading all state, or by listening?","id":"bc-events","mins":5,"objectives":["Events","Off-chain integration"],"prompt":"What are events for?","situation":"A dApp frontend needs to track token transfers in real time.","title":"The contract speaks","why":"Events are the EVM's cheap broadcast mechanism: contracts emit them, off-chain indexers and frontends subscribe — no polling, no state reads. They're orders of magnitude cheaper than storage and bloom-indexed for efficient filtering. But they're write-only from the chain's perspective: contracts can't read their own events. Design the off-chain architecture around events from day one."},{"answer":1,"choices":["Contracts call each other like normal functions — no special risk","External calls hand control to untrusted code: the called contract can reenter before state updates — the reentrancy class. Update state BEFORE external calls (checks-effects-interactions)","Reentrancy is theoretical","Only call trusted contracts"],"evidence":[["vuln.sol","function withdraw() public {\n  uint amt = balances[msg.sender];\n  (bool ok,) = msg.sender.call{value: amt}(\"\");\n  require(ok);\n  balances[msg.sender] = 0;\n}"]],"hint":"What happens if msg.sender is a contract whose fallback calls withdraw() again — before balances is zeroed?","id":"bc-reentrancy","mins":8,"objectives":["Reentrancy","Checks-effects-interactions"],"prompt":"What is the vulnerability?","situation":"An audit flags this withdrawal function.","title":"The DAO's lesson","why":"The external call happens BEFORE the balance is zeroed — a malicious recipient contract reenters withdraw() and drains funds repeatedly. This exact pattern caused The DAO hack. The fix pattern (checks-effects-interactions): update state first, then interact. Every external call is a trust boundary; the EVM will happily call attacker code mid-function."},{"answer":1,"choices":["Contracts are immutable — deal with it","Upgradeability is a deliberate trade: proxy patterns enable fixes but reintroduce trust (who controls the upgrade?) — choose explicitly and disclose it","Upgrades are always safe","Immutable contracts need no audits"],"evidence":[],"hint":"What does 'immutable' protect — and what does it cost when there's a bug?","id":"bc-upgradeability","mins":6,"objectives":["Upgradeability","Trust trade-offs"],"prompt":"How should teams think about upgradeable contracts?","situation":"The team debates proxy-upgradeable vs immutable deployment.","title":"To upgrade or not","why":"Immutability is a security property (users know the rules can't change) and an operational risk (bugs are forever). Proxy patterns buy fixability at the cost of reintroducing trusted upgrade authority — which must itself be governed (multisig, timelock). There's no universally right answer; there's only the explicit trade-off, disclosed to users. 'Upgradeable' without governance is just centralized control."}]},{"id":"chain-security","name":"Security","scenarios":[{"answer":1,"choices":["Only the contract's own functions matter","Every external call, oracle input, and privileged role is a trust boundary — map them explicitly and minimize trust at each","Trust boundaries don't apply on-chain","Only the admin is a boundary"],"evidence":[],"hint":"Where does untrusted input or control enter your contract?","id":"bc-trust-boundaries","mins":6,"objectives":["Trust boundaries","Threat modeling"],"prompt":"How do you threat-model a smart contract?","situation":"You're reviewing a DeFi contract before audit.","title":"Mapping the boundaries","why":"Contract threat modeling enumerates trust boundaries: external calls (untrusted code execution), oracle feeds (who controls the data?), privileged roles (who can rug?), and economic assumptions (what breaks if prices move?). Each boundary gets a control: reentrancy guards, oracle validation, timelocks, circuit breakers. Unmapped boundaries are where the exploits live."},{"answer":1,"choices":["Ownable is enough for everything","Role-based access control: least-privilege roles, timelocked admin actions, and ideally multisig for critical functions — single-key admin is a centralization risk","Access control doesn't matter on-chain","Give everyone admin"],"evidence":[],"hint":"What happens when the single admin key is compromised — or the admin turns malicious?","id":"bc-access-control","mins":6,"objectives":["Access control","Admin risk"],"prompt":"What is proper access control for a protocol contract?","situation":"The contract has a single owner with sweeping powers and no timelock.","title":"The god key","why":"A single EOA admin is a single point of failure AND a rug vector: compromise or malice drains the protocol. Mature designs use role-based permissions (minting ≠ upgrading ≠ pausing), timelocks on sensitive actions (users can exit before changes), and multisig control. 'Decentralized protocol, centralized admin' is the contradiction auditors flag first."},{"answer":1,"choices":["Oracles are trusted by definition","Oracle risk: contracts consuming off-chain data inherit the oracle's trust assumptions — validate feeds (multiple sources, deviation checks, staleness guards, circuit breakers)","Use one oracle — simpler","Oracle data can't be manipulated"],"evidence":[],"hint":"What is the contract actually trusting — the data, or the mechanism that delivered it?","id":"bc-oracle","mins":7,"objectives":["Oracle risk","Data validation"],"prompt":"How do you handle price-feed risk?","situation":"A lending contract liquidates based on a single DEX spot price.","title":"The oracle problem","why":"A single-source spot price is manipulable (flash-loan attacks have drained protocols exactly this way). Defense in depth: multiple independent sources, time-weighted averages, deviation circuit breakers, and staleness checks. The contract's security is bounded by its weakest oracle — 'the price feed said so' is not a defense when the feed was the attack vector."},{"answer":1,"choices":["Front-running is impossible on-chain","Ordering risk: public mempools let searchers see and outbid your transaction — design with commit-reveal, batch auctions, or MEV-aware mechanisms where ordering matters","It's only a miner problem","Users don't need to know"],"evidence":[],"hint":"Who sees your transaction before it's confirmed — and what can they do with that preview?","id":"bc-mev","mins":7,"objectives":["MEV","Front-running"],"prompt":"What is the front-running/MEV risk for your DEX?","situation":"Users complain their trades execute at worse prices than quoted.","title":"The invisible tax","why":"Public mempools are an all-see preview: searchers sandwich user trades (buy before, sell after) or outbid liquidations. It's a structural property of transparent ordering, not a bug in your contract — but your design must account for it: slippage limits protect users partially; commit-reveal or batch auctions change the game. Ignoring MEV means your users pay it."},{"answer":1,"choices":["Audits guarantee security","Audits are expert review, not proof: scope them tightly, fix findings, re-audit fixes, and layer defenses (bounties, monitoring, circuit breakers, upgrade governance) — defense in depth past the audit","One audit is enough forever","Only audit after launch"],"evidence":[],"hint":"What does an audit actually certify — and what happens the day after?","id":"bc-audit-mindset","mins":6,"objectives":["Audits","Defense in depth"],"prompt":"How should teams treat security audits?","situation":"'We're audited, so we're safe,' the team says post-audit.","title":"Beyond the audit","why":"An audit is a point-in-time expert review of scoped code — it reduces risk, it doesn't eliminate it. Findings need fixing AND re-verification; code changes after the audit need re-review; and runtime defenses (monitoring, pause mechanisms, bug bounties) catch what audits miss. 'Audited' as a security blanket is how protocols get surprised. Treat the audit as one layer, not the wall."},{"answer":1,"choices":["Test the happy path thoroughly","Adversarial testing: invariant testing/fuzzing, economic attack simulation, and fork-testing against mainnet state — assume the attacker is smarter and better funded than you","Mainnet is the testnet","Formal verification is unnecessary overhead to even consider"],"evidence":[],"hint":"Who is your adversary — a user who misclicks, or a fund with a team of exploit developers?","id":"bc-adversarial-test","mins":6,"objectives":["Adversarial testing","Fuzzing"],"prompt":"What does adequate pre-launch testing look like?","situation":"Launch is next week. Testing so far is unit tests of happy paths.","title":"Testing like an attacker","why":"Your adversary runs invariant fuzzers, simulates economic attacks, and tests against real mainnet state — your testing must too. Happy-path unit tests verify intent; adversarial testing (property-based fuzzing, fork tests, economic modeling) verifies robustness. The budget for pre-launch testing is the cheapest security spend in the lifecycle; post-launch it's incident response."}]},{"id":"hyperledger","name":"Hyperledger Concepts","scenarios":[{"answer":1,"choices":["It's a cryptocurrency","Hyperledger Foundation hosts enterprise blockchain frameworks (like Fabric) — permissioned, modular, identity-based — under the Linux Foundation umbrella","It's a single product","It's only for finance"],"evidence":[],"hint":"What does 'enterprise' demand that public chains don't optimize for — identity, privacy, throughput?","id":"bc-hyperledger-what","mins":5,"objectives":["Hyperledger","Enterprise blockchain"],"prompt":"What is Hyperledger?","situation":"An enterprise architect asks about Hyperledger vs public chains.","title":"Blockchain for business","why":"Hyperledger is a Linux Foundation greenhouse of enterprise blockchain frameworks — permissioned networks, known identities, modular consensus, private transactions. The enterprise requirements (who's on the network, who sees what data, how many TPS) drive fundamentally different designs than permissionless chains. It's not a coin; it's infrastructure for consortia that need governance, not anonymity."},{"answer":1,"choices":["Channels are just chat rooms","Channels: private subnets within the network where subsets of participants transact confidentially — data isolation between business relationships on shared infrastructure","Everyone sees everything","Channels are off-chain"],"evidence":[],"hint":"Two banks share infrastructure but must not see each other's trades — how?","id":"bc-fabric-channels","mins":6,"objectives":["Channels","Data isolation"],"prompt":"How does Fabric handle confidentiality between participants?","situation":"A consortium needs shared infrastructure with private bilateral data.","title":"Private lanes","why":"Channels partition the ledger: each channel has its own ledger, members, and chaincode — participants only see channels they belong to. This models real business confidentiality (bilateral deals invisible to competitors) on shared infrastructure. Channel design IS the data-governance architecture; getting it wrong leaks competitively sensitive data to the consortium."},{"answer":1,"choices":["Chaincode is just a smart contract by another name","Chaincode: programs running on peers that encode business logic — similar concept to smart contracts, but executing in the permissioned, identity-known Fabric model with endorsement policies","Chaincode can't be updated","It's written only in Go"],"evidence":[],"hint":"Who must approve a transaction before it's committed — and how is that policy expressed?","id":"bc-chaincode","mins":6,"objectives":["Chaincode","Endorsement"],"prompt":"What is chaincode, and how does endorsement work?","situation":"You're porting a business process to Fabric.","title":"Code with endorsers","why":"Chaincode encodes the business rules, but Fabric's distinctive mechanism is endorsement: transactions must be endorsed (simulated and signed) by specified peers per policy BEFORE ordering and commitment. Endorsement policies express business trust ('both counterparties' peers plus the regulator's') in protocol terms. It's smart-contract logic wrapped in consortium governance."},{"answer":1,"choices":["Miners order transactions","The ordering service: a dedicated component that sequences transactions into blocks — separated from execution/endorsement (execute-order-validate architecture)","Ordering is done by clients","Order doesn't matter"],"evidence":[],"hint":"What breaks if two peers commit transactions in different orders?","id":"bc-ordering","mins":6,"objectives":["Ordering service","Execute-order-validate"],"prompt":"What does the ordering service do, and why is it separate?","situation":"You're explaining Fabric's architecture to a Fabric-newcomer.","title":"Ordering the chaos","why":"Fabric separates execution (endorsement) from ordering (sequencing) from validation (commit) — the ordering service establishes the single canonical transaction order all peers then validate and commit deterministically. This separation enables the modular consensus (Raft/Kafka-based ordering) and is the architectural signature distinguishing Fabric from order-execute chains. Order is consensus; execution is endorsement."},{"answer":1,"choices":["Participants are anonymous","Identity via PKI: every participant has a cryptographic identity from a Membership Service Provider — accountability is built into the permissioned model","Identity doesn't matter","It's username/password"],"evidence":[],"hint":"In a consortium of known banks, what does anonymity buy you — and what does identity buy?","id":"bc-fabric-identity","mins":5,"objectives":["Identity","MSP","PKI"],"prompt":"How is identity handled?","situation":"Compliance requires knowing exactly who did what on the network.","title":"Known participants","why":"Fabric's Membership Service Providers bind every actor to a PKI identity — every transaction is signed by a known party, giving the accountability and auditability enterprises and regulators require. This is the permissioned model's core bargain: you trade anonymity for accountability. For regulated consortia, it's the feature that makes blockchain deployable."},{"answer":1,"choices":["Permissioned means less secure","Fit assessment: permissioned enterprise ledgers suit known-participant consortia needing privacy, throughput, and governance; permissionless suits open, censorship-resistant use — match the model to the trust reality","Enterprise should always use public chains","Throughput is the only criterion"],"evidence":[],"hint":"Who are the participants, what do they need to hide, and who governs changes?","id":"bc-enterprise-fit","mins":6,"objectives":["Fit assessment","Governance"],"prompt":"How do you choose between Hyperledger-style and public-chain approaches?","situation":"A supply-chain consortium is choosing its platform.","title":"Fitting the platform","why":"The decision rests on trust reality: known, contracted participants with confidentiality needs and governance requirements fit permissioned frameworks; open participation with censorship resistance needs fits permissionless. Supply-chain consortia (known partners, competitive data, throughput needs) typically land permissioned. Platform choice follows the trust model — not the hype cycle."}]}],"slug":"blockchain-dev","tagline":"Bitcoin, XRPL, Solidity, and LF blockchain concepts","title":"Blockchain Development","vendor":{"certs":"HFCP, BCP (concepts)","docs":"","name":"Linux Foundation / vendor-neutral"}}
+{
+  "behavioral": [
+    {
+      "framework": "STAR",
+      "pitfalls": [
+        "Hype-only answers",
+        "No technical depth"
+      ],
+      "points": [
+        "What drew you to blockchain technically",
+        "How you learned the fundamentals",
+        "What you can build"
+      ],
+      "prompt": "Why blockchain development — and how did you build real technical depth, not just hype familiarity?"
+    },
+    {
+      "framework": "STAR",
+      "pitfalls": [
+        "Skipping the security angle",
+        "No testing mention"
+      ],
+      "points": [
+        "The contract or protocol you built",
+        "Your security and testing approach",
+        "The outcome"
+      ],
+      "prompt": "Walk me through something you built on a blockchain — what did you learn about the constraints?"
+    },
+    {
+      "framework": "STAR",
+      "pitfalls": [
+        "Blaming the protocol",
+        "No root-cause analysis"
+      ],
+      "points": [
+        "The incident or bug",
+        "Your investigation",
+        "The fix and the lesson"
+      ],
+      "prompt": "Describe a time something went wrong with a smart contract or chain integration — how did you diagnose it?"
+    },
+    {
+      "framework": "STAR",
+      "pitfalls": [
+        "Maximalism with no trade-offs",
+        "No use-case reasoning"
+      ],
+      "points": [
+        "The use case",
+        "Why this chain/model fit",
+        "The trade-offs you accepted"
+      ],
+      "prompt": "Tell me about choosing between blockchain platforms or architectures for a use case."
+    },
+    {
+      "framework": "STAR",
+      "pitfalls": [
+        "Tool-only answers",
+        "No conceptual understanding"
+      ],
+      "points": [
+        "The concept that was hard",
+        "How you made it concrete",
+        "Where you applied it"
+      ],
+      "prompt": "What's the hardest blockchain concept you taught yourself (consensus, cryptography, MEV)? How did you learn it?"
+    },
+    {
+      "framework": "STAR",
+      "pitfalls": [
+        "Vague 'decentralization' talk",
+        "No concrete mechanism"
+      ],
+      "points": [
+        "The trust problem",
+        "The mechanism you used",
+        "Why it works"
+      ],
+      "prompt": "Describe a time you designed around trust — removing a trusted intermediary with a protocol mechanism."
+    },
+    {
+      "framework": "STAR",
+      "pitfalls": [
+        "Ignoring the audit",
+        "Shipping fast over shipping safe"
+      ],
+      "points": [
+        "The security review process",
+        "What it found",
+        "What changed before launch"
+      ],
+      "prompt": "Tell me about a security review or audit you went through — what did it catch?"
+    },
+    {
+      "framework": "STAR",
+      "pitfalls": [
+        "Solo-only narrative",
+        "No community learning"
+      ],
+      "points": [
+        "How you stay current",
+        "A time the community corrected you",
+        "What you changed"
+      ],
+      "prompt": "How do you keep up with a space that changes as fast as blockchain — and when did that save you?"
+    }
+  ],
+  "chat": {
+    "persona": "You are a rigorous blockchain engineering mentor running a mock assessment. Demand protocol-level understanding, push on security implications of every design choice, and always ask 'what does the chain actually guarantee here?'",
+    "topics": [
+      {
+        "followups": [
+          "What does the chain guarantee, and what doesn't it?",
+          "When is a blockchain the wrong tool?"
+        ],
+        "id": "blockchain-basics",
+        "key_points": [
+          "distributed ledger concepts",
+          "consensus purpose",
+          "permissioned vs permissionless",
+          "finality concepts",
+          "trust minimization",
+          "when not to use blockchain"
+        ],
+        "name": "Blockchain Basics"
+      },
+      {
+        "followups": [
+          "Why does this design choice exist?",
+          "What attack does it prevent?"
+        ],
+        "id": "bitcoin",
+        "key_points": [
+          "UTXO model",
+          "proof of work",
+          "difficulty adjustment",
+          "transaction lifecycle",
+          "SegWit concepts",
+          "lightning concepts"
+        ],
+        "name": "Bitcoin Protocol"
+      },
+      {
+        "followups": [
+          "How does XRPL consensus differ from mining?",
+          "What is the ledger close process?"
+        ],
+        "id": "xrpl",
+        "key_points": [
+          "consensus ledger",
+          "no mining",
+          "3-5 second close",
+          "XRP as bridge currency",
+          "trust lines",
+          "issued currencies"
+        ],
+        "name": "XRPL"
+      },
+      {
+        "followups": [
+          "What does this opcode-level behavior imply?",
+          "How much gas does that cost, and why?"
+        ],
+        "id": "solidity-evm",
+        "key_points": [
+          "EVM execution model",
+          "gas economics",
+          "storage vs memory",
+          "events and logs",
+          "contract interaction patterns",
+          "upgradeability trade-offs"
+        ],
+        "name": "Solidity & EVM"
+      },
+      {
+        "followups": [
+          "How would you exploit this?",
+          "What's the proper fix pattern?"
+        ],
+        "id": "chain-security",
+        "key_points": [
+          "reentrancy",
+          "access control",
+          "oracle risk",
+          "front-running/MEV concepts",
+          "audit mindset",
+          "defense in depth"
+        ],
+        "name": "Security"
+      },
+      {
+        "followups": [
+          "When is permissioned the right call?",
+          "How does Fabric consensus differ?"
+        ],
+        "id": "hyperledger",
+        "key_points": [
+          "permissioned models",
+          "channels",
+          "chaincode",
+          "ordering service",
+          "identity/PKI",
+          "enterprise fit"
+        ],
+        "name": "Hyperledger Concepts"
+      }
+    ]
+  },
+  "disclaimer": "Independent practice material by Interstitium Labs. Vendor-neutral blockchain concepts; not affiliated with, endorsed by, or sponsored by the Linux Foundation, Hyperledger Foundation, or any blockchain project or foundation. Confers no certificate and no vendor certification. All scenarios are original; no exam content is reproduced.",
+  "domains": [
+    {
+      "id": "blockchain-basics",
+      "name": "Blockchain Basics",
+      "scenarios": [
+        {
+          "answer": 1,
+          "choices": [
+            "It's just a slow database",
+            "A distributed ledger: an append-only, cryptographically-linked record replicated across participants, where consensus replaces the trusted intermediary",
+            "It's encryption for databases",
+            "It's only for cryptocurrency"
+          ],
+          "evidence": [],
+          "hint": "What problem does the chain solve that a shared database doesn't — and what does it cost?",
+          "id": "bc-what-is",
+          "mins": 5,
+          "objectives": [
+            "Distributed ledger",
+            "Trust model"
+          ],
+          "prompt": "What is a blockchain, fundamentally?",
+          "situation": "A stakeholder asks why the project needs a blockchain instead of a database.",
+          "title": "Why a chain?",
+          "why": "A blockchain is a trust technology, not a database technology: multiple mutually-distrusting parties agree on shared state without a central authority, via consensus and cryptographic linkage. That buys censorship resistance and auditability at the cost of throughput and complexity. If all parties trust one operator, a database wins — the chain's value is precisely where trust is absent."
+        },
+        {
+          "answer": 1,
+          "choices": [
+            "To make transactions fast",
+            "To let mutually distrusting participants agree on a single shared state without a central authority",
+            "To encrypt data",
+            "To reduce storage costs"
+          ],
+          "evidence": [],
+          "hint": "What would happen if two participants disagreed about the ledger — and who resolves it?",
+          "id": "bc-consensus-purpose",
+          "mins": 5,
+          "objectives": [
+            "Consensus",
+            "Agreement"
+          ],
+          "prompt": "What problem does consensus solve?",
+          "situation": "You're explaining consensus to a backend engineer.",
+          "title": "Agreeing without a boss",
+          "why": "Consensus is the mechanism by which decentralized participants converge on one ledger state — ordering transactions and resolving conflicts without a trusted coordinator. Without it, every participant has their own version of truth and double-spending is trivial. Different mechanisms (PoW, PoS, XRPL consensus) make different trade-offs, but the problem they solve is identical: agreement among adversaries."
+        },
+        {
+          "answer": 1,
+          "choices": [
+            "They're the same thing",
+            "Permissionless: anyone can participate, security from economics/cryptography. Permissioned: known identified participants, access controlled — different trust assumptions, different fits",
+            "Permissioned is always more secure",
+            "Permissionless is always better"
+          ],
+          "evidence": [],
+          "hint": "Who are you defending against in each model — anonymous attackers, or known-but-curious partners?",
+          "id": "bc-permissioned",
+          "mins": 6,
+          "objectives": [
+            "Permissioned vs permissionless",
+            "Trust assumptions"
+          ],
+          "prompt": "When is each model appropriate?",
+          "situation": "An enterprise consortium debates public vs permissioned for inter-bank settlement.",
+          "title": "Choosing the model",
+          "why": "The models encode different trust assumptions: permissionless assumes adversarial anonymity (secured by economic incentives), permissioned assumes known identities with contractual/legal accountability. Inter-bank settlement among regulated entities fits permissioned — identity, privacy, and governance matter more than censorship resistance. The wrong model choice is the most expensive architectural mistake in the space."
+        },
+        {
+          "answer": 0,
+          "choices": [
+            "Finality means a transaction can never be reversed under the protocol's guarantees — probabilistic (PoW confirmations) vs deterministic (BFT-style) finality",
+            "Finality means the transaction is fast",
+            "All chains have the same finality",
+            "Finality doesn't matter for applications"
+          ],
+          "evidence": [],
+          "hint": "After one Bitcoin confirmation, how sure are you — and after six?",
+          "id": "bc-finality",
+          "mins": 6,
+          "objectives": [
+            "Finality",
+            "Confirmations"
+          ],
+          "prompt": "What is finality, and why do the models differ?",
+          "situation": "Your app must decide when a deposit is 'safe' to credit.",
+          "title": "When is it final?",
+          "why": "Finality is the guarantee a transaction won't be reversed: Bitcoin offers probabilistic finality (each confirmation exponentially reduces reversal odds — hence the 6-confirmation convention for large value), while BFT-style systems offer deterministic finality at ledger close. Your crediting policy must match the chain's finality model — crediting instantly on a PoW chain is how exchanges get double-spent."
+        },
+        {
+          "answer": 1,
+          "choices": [
+            "Blockchain fixes everything",
+            "When multiple distrusting parties need shared, tamper-evident state without a trusted intermediary — and not when one party is trusted, throughput matters most, or data must be deletable",
+            "Whenever there's a database",
+            "For all financial software"
+          ],
+          "evidence": [],
+          "hint": "What does the chain give you that nothing else does — and what does it cost you?",
+          "id": "bc-when-not",
+          "mins": 5,
+          "objectives": [
+            "Fit assessment",
+            "Honest engineering"
+          ],
+          "prompt": "When should you NOT use a blockchain?",
+          "situation": "A team proposes blockchain for an internal single-company inventory system.",
+          "title": "The wrong tool",
+          "why": "Blockchain's benefits (trust minimization, tamper-evidence across distrusting parties) come at real costs: throughput limits, complexity, immutability conflicts with data-deletion requirements. A single trusted company running inventory gets all cost and no benefit — a database with audit logs is the honest answer. Saying 'no' to blockchain is often the most senior engineering call."
+        },
+        {
+          "answer": 1,
+          "choices": [
+            "Decentralization means no one is in charge of anything",
+            "A spectrum: distribution of control across participants, varying by layer (mining/validation, development, governance) — assess each layer, not the label",
+            "It's just marketing",
+            "Only node count matters"
+          ],
+          "evidence": [],
+          "hint": "A chain with 10,000 nodes but 2 mining pools — how decentralized is it, really?",
+          "id": "bc-decentralization",
+          "mins": 6,
+          "objectives": [
+            "Decentralization",
+            "Critical thinking"
+          ],
+          "prompt": "How should engineers evaluate decentralization claims?",
+          "situation": "A vendor claims their chain is 'fully decentralized.'",
+          "title": "Measuring decentralization",
+          "why": "Decentralization is multi-layered: consensus power, client development, governance, and infrastructure can each centralize independently. Node counts mislead when mining pools or validators concentrate. Engineers should ask: who can censor transactions? Who can change the rules? Who do I depend on? — per layer. The label is marketing; the power distribution is engineering."
+        }
+      ]
+    },
+    {
+      "id": "bitcoin",
+      "name": "Bitcoin Protocol",
+      "scenarios": [
+        {
+          "answer": 1,
+          "choices": [
+            "Accounts with balances, like a bank",
+            "UTXOs: unspent transaction outputs — each transaction consumes inputs and creates outputs; your 'balance' is the set of UTXOs you can spend",
+            "A single global balance sheet",
+            "It doesn't track ownership"
+          ],
+          "evidence": [],
+          "hint": "When you 'send' bitcoin, what exactly are you consuming — and what are you creating?",
+          "id": "bc-utxo",
+          "mins": 6,
+          "objectives": [
+            "UTXO model",
+            "Transaction structure"
+          ],
+          "prompt": "How does Bitcoin track ownership?",
+          "situation": "You're explaining to an Ethereum developer why Bitcoin has no accounts.",
+          "title": "Coins, not accounts",
+          "why": "Bitcoin's UTXO model: value lives in discrete unspent outputs, each locked to a spending condition. Transactions consume UTXOs as inputs and create new ones as outputs (with change returning to the sender). No account balances exist at the protocol level — wallets compute them by summing UTXOs. This shapes everything: privacy (new addresses per UTXO), validation, and fee estimation."
+        },
+        {
+          "answer": 1,
+          "choices": [
+            "To waste electricity",
+            "To make rewriting history prohibitively expensive: the longest-work chain wins, so altering a buried transaction requires redoing all subsequent work",
+            "To create new coins only",
+            "Miners enjoy puzzles"
+          ],
+          "evidence": [],
+          "hint": "What would it cost to change a transaction six blocks deep?",
+          "id": "bc-pow",
+          "mins": 6,
+          "objectives": [
+            "Proof of work",
+            "Security model"
+          ],
+          "prompt": "What security property does proof of work provide?",
+          "situation": "A skeptic calls PoW 'wasteful computation.'",
+          "title": "Work as security",
+          "why": "PoW converts energy into immutability: each block's work accumulates, so rewriting history means outpacing the honest network's ongoing work — economically infeasible for deep burials. The 'waste' critique misses the point: the cost IS the security. Whether that trade-off is worth it is a legitimate debate; what PoW buys is objective, verifiable, leaderless consensus."
+        },
+        {
+          "answer": 1,
+          "choices": [
+            "Blocks come whenever miners feel like it",
+            "Every 2016 blocks, difficulty retargets to maintain ~10-minute average block times despite changing hash power",
+            "Difficulty never changes",
+            "It's adjusted daily by developers"
+          ],
+          "evidence": [],
+          "hint": "What keeps block times stable when hash power doubles overnight?",
+          "id": "bc-difficulty",
+          "mins": 6,
+          "objectives": [
+            "Difficulty adjustment",
+            "Monetary policy"
+          ],
+          "prompt": "How does Bitcoin keep block times stable?",
+          "situation": "Network hash rate doubled after a price rally.",
+          "title": "The retarget",
+          "why": "The difficulty retarget (every 2016 blocks, ~2 weeks) adjusts mining difficulty based on actual vs target block times, holding the ~10-minute average regardless of hash power. This is Bitcoin's monetary-policy engine room: stable block times mean predictable issuance. It's also why the network survived massive hash-rate shocks — the protocol adapts automatically, no committee required."
+        },
+        {
+          "answer": 1,
+          "choices": [
+            "Transactions confirm instantly",
+            "The lifecycle: creation → signing → broadcast → mempool → miner selection (fee market) → block inclusion → confirmations",
+            "Miners create transactions",
+            "The mempool is permanent storage"
+          ],
+          "evidence": [],
+          "hint": "Where does a transaction wait — and who decides which waits end?",
+          "id": "bc-tx-lifecycle",
+          "mins": 6,
+          "objectives": [
+            "Transaction lifecycle",
+            "Mempool",
+            "Fee market"
+          ],
+          "prompt": "What happens between clicking 'send' and confirmation?",
+          "situation": "A user's transaction is 'stuck' — unconfirmed for hours.",
+          "title": "Stuck in the mempool",
+          "why": "The mempool is the waiting room: unconfirmed transactions queue, and miners select by fee rate (satoshis per virtual byte) — it's a fee market, not a queue. 'Stuck' means underbid: the fix is fee bumping (RBF/CPFP), not resending. Understanding the lifecycle turns 'the network is broken' into 'the fee was too low' — and informs wallet fee-estimation design."
+        },
+        {
+          "answer": 1,
+          "choices": [
+            "SegWit was just a block-size increase",
+            "A protocol upgrade that fixed transaction malleability and separated witness data — enabling Layer 2 (Lightning) and changing fee economics",
+            "SegWit made Bitcoin centralized",
+            "It only affected miners"
+          ],
+          "evidence": [],
+          "hint": "What did malleability break — and what does fixing it enable?",
+          "id": "bc-segwit",
+          "mins": 7,
+          "objectives": [
+            "SegWit",
+            "Malleability"
+          ],
+          "prompt": "Why did SegWit matter?",
+          "situation": "You're reviewing Bitcoin's upgrade history for protocol literacy.",
+          "title": "Segregating the witness",
+          "why": "SegWit fixed transaction malleability (third parties could alter txids before confirmation, breaking chains of unconfirmed transactions) by moving signatures out of the txid computation — which unblocked Layer 2 protocols like Lightning that depend on stable txids. It also introduced block weight, effectively raising capacity. Protocol upgrades are case studies in decentralized governance actually working."
+        },
+        {
+          "answer": 1,
+          "choices": [
+            "Lightning is a separate coin",
+            "A Layer 2 of payment channels: parties transact off-chain instantly and cheaply, settling net results on-chain — inheriting Bitcoin's security for the settlement",
+            "Lightning replaces Bitcoin",
+            "Channels require trusting a third party"
+          ],
+          "evidence": [],
+          "hint": "What goes on-chain — every coffee purchase, or just the channel open and close?",
+          "id": "bc-lightning",
+          "mins": 7,
+          "objectives": [
+            "Lightning Network",
+            "Layer 2"
+          ],
+          "prompt": "How does Lightning scale Bitcoin?",
+          "situation": "A merchant needs instant, low-fee Bitcoin payments.",
+          "title": "Off-chain, secured on-chain",
+          "why": "Lightning moves the volume off-chain: two parties lock funds in a channel, transact instantly via signed updates, and only the open/close (or disputes) touch the blockchain. Security comes from the ability to always settle on-chain — the chain is the court of final appeal. It's the layered-scaling thesis: base layer for settlement security, upper layers for speed and cost."
+        }
+      ]
+    },
+    {
+      "id": "xrpl",
+      "name": "XRPL",
+      "scenarios": [
+        {
+          "answer": 1,
+          "choices": [
+            "Miners compete with proof of work",
+            "A consensus process among trusted validators: rounds of proposal and voting converge on the next ledger version every 3–5 seconds — no mining",
+            "A central server decides",
+            "It's proof of stake"
+          ],
+          "evidence": [],
+          "hint": "If there's no mining, what do validators actually do every few seconds?",
+          "id": "bc-xrpl-consensus",
+          "mins": 7,
+          "objectives": [
+            "XRPL consensus",
+            "Validator voting"
+          ],
+          "prompt": "How does the XRP Ledger reach agreement without mining?",
+          "situation": "You're comparing XRPL's consensus to Bitcoin's for an architecture review.",
+          "title": "Consensus without mining",
+          "why": "XRPL validators iteratively propose and vote on transaction sets until a supermajority agrees — converging on a validated ledger every 3–5 seconds. Security comes from validator overlap and the supermajority threshold, not energy expenditure. The trade-off: faster deterministic-ish close and low energy, versus Bitcoin's permissionless mining security model. Different trust assumptions, different design."
+        },
+        {
+          "answer": 1,
+          "choices": [
+            "XRP is just for speculation",
+            "XRP as a bridge currency and anti-spam mechanism: it enables cross-currency payments and each transaction destroys a tiny amount, making spam expensive",
+            "XRP has no protocol function",
+            "It's only for fees"
+          ],
+          "evidence": [],
+          "hint": "What sits between two illiquid currencies in a payment path — and what stops someone from flooding the network?",
+          "id": "bc-xrp-role",
+          "mins": 6,
+          "objectives": [
+            "XRP",
+            "Bridge currency"
+          ],
+          "prompt": "What is XRP's protocol-level function?",
+          "situation": "A payments engineer asks why XRP exists in the design.",
+          "title": "More than a token",
+          "why": "XRP serves two protocol functions: bridge currency (any currency can route through XRP for liquidity between otherwise illiquid pairs) and spam prevention (tiny destroyed fee per transaction makes flooding the ledger economically irrational). Understanding the native asset's mechanical role — not its price — is protocol literacy."
+        },
+        {
+          "answer": 1,
+          "choices": [
+            "Trust lines are just contacts",
+            "Trust lines: explicit on-ledger authorizations to hold an issuer's currency, with limits — the mechanism for issued currencies (stablecoins, etc.) on XRPL",
+            "Anyone can issue unlimited currency to anyone",
+            "Trust lines are off-chain"
+          ],
+          "evidence": [],
+          "hint": "Why should the ledger let anyone force you to hold their IOU?",
+          "id": "bc-trustlines",
+          "mins": 7,
+          "objectives": [
+            "Trust lines",
+            "Issued currencies"
+          ],
+          "prompt": "How do non-XRP currencies work on the ledger?",
+          "situation": "A fintech wants to issue a USD stablecoin on XRPL.",
+          "title": "IOUs with consent",
+          "why": "Issued currencies on XRPL are IOUs: they only exist between an issuer and holders connected by trust lines — explicit, limited authorizations to hold that issuer's currency. No trust line, no balance. This elegantly models credit risk on-ledger: holding issued currency IS trusting the issuer, and the ledger records exactly who trusts whom, to what limit."
+        },
+        {
+          "answer": 1,
+          "choices": [
+            "Payments only work in XRP",
+            "Pathfinding: the ledger finds multi-hop paths across order books and trust lines to deliver the requested currency — auto-bridging through XRP or other currencies",
+            "You must hold every currency",
+            "Paths are manual"
+          ],
+          "evidence": [],
+          "hint": "How does a payment in EUR reach someone who wants USD, with neither party touching the conversion?",
+          "id": "bc-pathfinding",
+          "mins": 7,
+          "objectives": [
+            "Pathfinding",
+            "Auto-bridging"
+          ],
+          "prompt": "How do cross-currency payments work?",
+          "situation": "A user wants to pay USD to a recipient who wants EUR.",
+          "title": "Finding the path",
+          "why": "XRPL pathfinding computes routes through the ledger's liquidity graph — order books and trust lines — auto-bridging across currencies (often via XRP) so sender and recipient each deal in their own currency. The protocol does the FX. This is the payments-engine vision: currency-agnostic value transfer with the ledger as the exchange."
+        },
+        {
+          "answer": 0,
+          "choices": [
+            "Ledger close is probabilistic like Bitcoin",
+            "Validated ledgers close every 3–5 seconds with supermajority agreement — fast, regular settlement",
+            "Close times are random",
+            "Faster close means less security automatically"
+          ],
+          "evidence": [],
+          "hint": "What does a 3–5 second rhythm buy a payments use case — and what does it assume?",
+          "id": "bc-ledger-close",
+          "mins": 5,
+          "objectives": [
+            "Ledger close",
+            "Settlement speed"
+          ],
+          "prompt": "What does the 3–5 second ledger close mean practically?",
+          "situation": "You're sizing XRPL for a remittance product.",
+          "title": "Seconds, not minutes",
+          "why": "A validated ledger every 3–5 seconds means payment finality on a human-interaction timescale — the remittance use case actually works. The speed comes from the validator-voting consensus rather than PoW's probabilistic race. The engineering question is always the trade: what trust assumption buys this speed, and does your use case accept it?"
+        },
+        {
+          "answer": 1,
+          "choices": [
+            "XRPL has no smart contracts at all",
+            "The ledger prioritizes native transaction types and robustness over general programmability — a deliberate design trade differing from EVM-style chains",
+            "It's less advanced",
+            "Native types are a limitation with no benefit"
+          ],
+          "evidence": [],
+          "hint": "What bugs are impossible when the transaction types are fixed and native?",
+          "id": "bc-xrpl-design",
+          "mins": 6,
+          "objectives": [
+            "Design philosophy",
+            "Native functions"
+          ],
+          "prompt": "How does XRPL's design philosophy differ from EVM chains?",
+          "situation": "A Solidity developer asks why XRPL 'lacks' smart contracts.",
+          "title": "Native vs programmable",
+          "why": "XRPL's philosophy: implement core financial operations (payments, DEX, escrow, channels) as native, reviewed transaction types rather than user smart contracts. The trade: less general programmability, but the most-exploited contract bug classes simply can't exist in native code paths. It's a different point on the flexibility-safety spectrum — understand the trade before judging the design."
+        }
+      ]
+    },
+    {
+      "id": "solidity-evm",
+      "name": "Solidity & EVM",
+      "scenarios": [
+        {
+          "answer": 1,
+          "choices": [
+            "The EVM is just a slow computer",
+            "A deterministic stack-based virtual machine: every node executes the same bytecode and reaches the same state — the foundation of smart-contract trustlessness",
+            "It's only for Solidity",
+            "Gas is optional"
+          ],
+          "evidence": [],
+          "hint": "Why must execution be deterministic — what breaks if two nodes compute different results?",
+          "id": "bc-evm-model",
+          "mins": 6,
+          "objectives": [
+            "EVM",
+            "Deterministic execution"
+          ],
+          "prompt": "What is the EVM's execution model, and why deterministic?",
+          "situation": "You're explaining smart contracts to a traditional backend engineer.",
+          "title": "The world computer's rules",
+          "why": "The EVM is a deterministic state machine: given the same state and transaction, every node computes the identical result — that's what lets mutually distrusting nodes agree on contract outcomes. Determinism forbids randomness, wall-clock time, and external calls inside execution; oracles and commit-reveal exist precisely because of this constraint. The determinism IS the trust model."
+        },
+        {
+          "answer": 1,
+          "choices": [
+            "Gas is just a fee",
+            "Gas meters computation: every operation costs gas, bounding execution (halting problem solved economically) and pricing block space — out-of-gas reverts state changes",
+            "Gas is refunded always",
+            "Unlimited loops are fine"
+          ],
+          "evidence": [],
+          "hint": "What stops an infinite loop on a blockchain — and who pays for the attempt?",
+          "id": "bc-gas",
+          "mins": 6,
+          "objectives": [
+            "Gas",
+            "Execution bounds"
+          ],
+          "prompt": "What problem does gas solve?",
+          "situation": "A developer's contract keeps running out of gas.",
+          "title": "Paying for computation",
+          "why": "Gas solves the halting problem economically: computation must terminate because the sender's gas runs out, and every operation's price reflects its cost to the network. Out-of-gas reverts state (but consumes the gas — the work was done). For developers, gas shapes design: storage is brutally expensive, loops over unbounded arrays are bugs, and 'gas golfing' is real engineering."
+        },
+        {
+          "answer": 1,
+          "choices": [
+            "They're the same — both store data",
+            "Storage persists on-chain across transactions (expensive, ~20k gas per slot); memory is transient per-call (cheap). Choosing wrong wastes enormous gas or loses data",
+            "Always use storage — it's safer",
+            "Memory persists between calls"
+          ],
+          "evidence": [],
+          "hint": "What happens to memory when the call ends — and what does a storage write cost?",
+          "id": "bc-storage-memory",
+          "mins": 6,
+          "objectives": [
+            "Storage vs memory",
+            "Gas optimization"
+          ],
+          "prompt": "When do you use storage vs memory?",
+          "situation": "A contract stores loop temporaries in storage and costs a fortune.",
+          "title": "Storage is the expensive one",
+          "why": "EVM storage (SSTORE) writes to permanent chain state — ~20,000 gas per new slot, the most expensive common operation. Memory is per-call scratch space, cheap and discarded. The bug pattern: using storage for temporaries, or reading storage repeatedly in loops instead of caching to memory. Gas-aware Solidity starts with knowing where each variable lives."
+        },
+        {
+          "answer": 1,
+          "choices": [
+            "Events are just logs for debugging",
+            "Events: cheap append-only logs (bloom-filter indexed) for off-chain consumption — the contract-to-world communication channel; they don't affect state",
+            "Events can change state",
+            "Off-chain apps should poll storage instead"
+          ],
+          "evidence": [],
+          "hint": "How does a frontend learn a transfer happened — by re-reading all state, or by listening?",
+          "id": "bc-events",
+          "mins": 5,
+          "objectives": [
+            "Events",
+            "Off-chain integration"
+          ],
+          "prompt": "What are events for?",
+          "situation": "A dApp frontend needs to track token transfers in real time.",
+          "title": "The contract speaks",
+          "why": "Events are the EVM's cheap broadcast mechanism: contracts emit them, off-chain indexers and frontends subscribe — no polling, no state reads. They're orders of magnitude cheaper than storage and bloom-indexed for efficient filtering. But they're write-only from the chain's perspective: contracts can't read their own events. Design the off-chain architecture around events from day one."
+        },
+        {
+          "answer": 1,
+          "choices": [
+            "Contracts call each other like normal functions — no special risk",
+            "External calls hand control to untrusted code: the called contract can reenter before state updates — the reentrancy class. Update state BEFORE external calls (checks-effects-interactions)",
+            "Reentrancy is theoretical",
+            "Only call trusted contracts"
+          ],
+          "evidence": [
+            [
+              "vuln.sol",
+              "function withdraw() public {\n  uint amt = balances[msg.sender];\n  (bool ok,) = msg.sender.call{value: amt}(\"\");\n  require(ok);\n  balances[msg.sender] = 0;\n}"
+            ]
+          ],
+          "hint": "What happens if msg.sender is a contract whose fallback calls withdraw() again — before balances is zeroed?",
+          "id": "bc-reentrancy",
+          "mins": 8,
+          "objectives": [
+            "Reentrancy",
+            "Checks-effects-interactions"
+          ],
+          "prompt": "What is the vulnerability?",
+          "situation": "An audit flags this withdrawal function.",
+          "title": "The DAO's lesson",
+          "why": "The external call happens BEFORE the balance is zeroed — a malicious recipient contract reenters withdraw() and drains funds repeatedly. This exact pattern caused The DAO hack. The fix pattern (checks-effects-interactions): update state first, then interact. Every external call is a trust boundary; the EVM will happily call attacker code mid-function."
+        },
+        {
+          "answer": 1,
+          "choices": [
+            "Contracts are immutable — deal with it",
+            "Upgradeability is a deliberate trade: proxy patterns enable fixes but reintroduce trust (who controls the upgrade?) — choose explicitly and disclose it",
+            "Upgrades are always safe",
+            "Immutable contracts need no audits"
+          ],
+          "evidence": [],
+          "hint": "What does 'immutable' protect — and what does it cost when there's a bug?",
+          "id": "bc-upgradeability",
+          "mins": 6,
+          "objectives": [
+            "Upgradeability",
+            "Trust trade-offs"
+          ],
+          "prompt": "How should teams think about upgradeable contracts?",
+          "situation": "The team debates proxy-upgradeable vs immutable deployment.",
+          "title": "To upgrade or not",
+          "why": "Immutability is a security property (users know the rules can't change) and an operational risk (bugs are forever). Proxy patterns buy fixability at the cost of reintroducing trusted upgrade authority — which must itself be governed (multisig, timelock). There's no universally right answer; there's only the explicit trade-off, disclosed to users. 'Upgradeable' without governance is just centralized control."
+        }
+      ]
+    },
+    {
+      "id": "chain-security",
+      "name": "Security",
+      "scenarios": [
+        {
+          "answer": 1,
+          "choices": [
+            "Only the contract's own functions matter",
+            "Every external call, oracle input, and privileged role is a trust boundary — map them explicitly and minimize trust at each",
+            "Trust boundaries don't apply on-chain",
+            "Only the admin is a boundary"
+          ],
+          "evidence": [],
+          "hint": "Where does untrusted input or control enter your contract?",
+          "id": "bc-trust-boundaries",
+          "mins": 6,
+          "objectives": [
+            "Trust boundaries",
+            "Threat modeling"
+          ],
+          "prompt": "How do you threat-model a smart contract?",
+          "situation": "You're reviewing a DeFi contract before audit.",
+          "title": "Mapping the boundaries",
+          "why": "Contract threat modeling enumerates trust boundaries: external calls (untrusted code execution), oracle feeds (who controls the data?), privileged roles (who can rug?), and economic assumptions (what breaks if prices move?). Each boundary gets a control: reentrancy guards, oracle validation, timelocks, circuit breakers. Unmapped boundaries are where the exploits live."
+        },
+        {
+          "answer": 1,
+          "choices": [
+            "Ownable is enough for everything",
+            "Role-based access control: least-privilege roles, timelocked admin actions, and ideally multisig for critical functions — single-key admin is a centralization risk",
+            "Access control doesn't matter on-chain",
+            "Give everyone admin"
+          ],
+          "evidence": [],
+          "hint": "What happens when the single admin key is compromised — or the admin turns malicious?",
+          "id": "bc-access-control",
+          "mins": 6,
+          "objectives": [
+            "Access control",
+            "Admin risk"
+          ],
+          "prompt": "What is proper access control for a protocol contract?",
+          "situation": "The contract has a single owner with sweeping powers and no timelock.",
+          "title": "The god key",
+          "why": "A single EOA admin is a single point of failure AND a rug vector: compromise or malice drains the protocol. Mature designs use role-based permissions (minting ≠ upgrading ≠ pausing), timelocks on sensitive actions (users can exit before changes), and multisig control. 'Decentralized protocol, centralized admin' is the contradiction auditors flag first."
+        },
+        {
+          "answer": 1,
+          "choices": [
+            "Oracles are trusted by definition",
+            "Oracle risk: contracts consuming off-chain data inherit the oracle's trust assumptions — validate feeds (multiple sources, deviation checks, staleness guards, circuit breakers)",
+            "Use one oracle — simpler",
+            "Oracle data can't be manipulated"
+          ],
+          "evidence": [],
+          "hint": "What is the contract actually trusting — the data, or the mechanism that delivered it?",
+          "id": "bc-oracle",
+          "mins": 7,
+          "objectives": [
+            "Oracle risk",
+            "Data validation"
+          ],
+          "prompt": "How do you handle price-feed risk?",
+          "situation": "A lending contract liquidates based on a single DEX spot price.",
+          "title": "The oracle problem",
+          "why": "A single-source spot price is manipulable (flash-loan attacks have drained protocols exactly this way). Defense in depth: multiple independent sources, time-weighted averages, deviation circuit breakers, and staleness checks. The contract's security is bounded by its weakest oracle — 'the price feed said so' is not a defense when the feed was the attack vector."
+        },
+        {
+          "answer": 1,
+          "choices": [
+            "Front-running is impossible on-chain",
+            "Ordering risk: public mempools let searchers see and outbid your transaction — design with commit-reveal, batch auctions, or MEV-aware mechanisms where ordering matters",
+            "It's only a miner problem",
+            "Users don't need to know"
+          ],
+          "evidence": [],
+          "hint": "Who sees your transaction before it's confirmed — and what can they do with that preview?",
+          "id": "bc-mev",
+          "mins": 7,
+          "objectives": [
+            "MEV",
+            "Front-running"
+          ],
+          "prompt": "What is the front-running/MEV risk for your DEX?",
+          "situation": "Users complain their trades execute at worse prices than quoted.",
+          "title": "The invisible tax",
+          "why": "Public mempools are an all-see preview: searchers sandwich user trades (buy before, sell after) or outbid liquidations. It's a structural property of transparent ordering, not a bug in your contract — but your design must account for it: slippage limits protect users partially; commit-reveal or batch auctions change the game. Ignoring MEV means your users pay it."
+        },
+        {
+          "answer": 1,
+          "choices": [
+            "Audits guarantee security",
+            "Audits are expert review, not proof: scope them tightly, fix findings, re-audit fixes, and layer defenses (bounties, monitoring, circuit breakers, upgrade governance) — defense in depth past the audit",
+            "One audit is enough forever",
+            "Only audit after launch"
+          ],
+          "evidence": [],
+          "hint": "What does an audit actually certify — and what happens the day after?",
+          "id": "bc-audit-mindset",
+          "mins": 6,
+          "objectives": [
+            "Audits",
+            "Defense in depth"
+          ],
+          "prompt": "How should teams treat security audits?",
+          "situation": "'We're audited, so we're safe,' the team says post-audit.",
+          "title": "Beyond the audit",
+          "why": "An audit is a point-in-time expert review of scoped code — it reduces risk, it doesn't eliminate it. Findings need fixing AND re-verification; code changes after the audit need re-review; and runtime defenses (monitoring, pause mechanisms, bug bounties) catch what audits miss. 'Audited' as a security blanket is how protocols get surprised. Treat the audit as one layer, not the wall."
+        },
+        {
+          "answer": 1,
+          "choices": [
+            "Test the happy path thoroughly",
+            "Adversarial testing: invariant testing/fuzzing, economic attack simulation, and fork-testing against mainnet state — assume the attacker is smarter and better funded than you",
+            "Mainnet is the testnet",
+            "Formal verification is unnecessary overhead to even consider"
+          ],
+          "evidence": [],
+          "hint": "Who is your adversary — a user who misclicks, or a fund with a team of exploit developers?",
+          "id": "bc-adversarial-test",
+          "mins": 6,
+          "objectives": [
+            "Adversarial testing",
+            "Fuzzing"
+          ],
+          "prompt": "What does adequate pre-launch testing look like?",
+          "situation": "Launch is next week. Testing so far is unit tests of happy paths.",
+          "title": "Testing like an attacker",
+          "why": "Your adversary runs invariant fuzzers, simulates economic attacks, and tests against real mainnet state — your testing must too. Happy-path unit tests verify intent; adversarial testing (property-based fuzzing, fork tests, economic modeling) verifies robustness. The budget for pre-launch testing is the cheapest security spend in the lifecycle; post-launch it's incident response."
+        }
+      ]
+    },
+    {
+      "id": "hyperledger",
+      "name": "Hyperledger Concepts",
+      "scenarios": [
+        {
+          "answer": 1,
+          "choices": [
+            "It's a cryptocurrency",
+            "Hyperledger Foundation hosts enterprise blockchain frameworks (like Fabric) — permissioned, modular, identity-based — under the Linux Foundation umbrella",
+            "It's a single product",
+            "It's only for finance"
+          ],
+          "evidence": [],
+          "hint": "What does 'enterprise' demand that public chains don't optimize for — identity, privacy, throughput?",
+          "id": "bc-hyperledger-what",
+          "mins": 5,
+          "objectives": [
+            "Hyperledger",
+            "Enterprise blockchain"
+          ],
+          "prompt": "What is Hyperledger?",
+          "situation": "An enterprise architect asks about Hyperledger vs public chains.",
+          "title": "Blockchain for business",
+          "why": "Hyperledger is a Linux Foundation greenhouse of enterprise blockchain frameworks — permissioned networks, known identities, modular consensus, private transactions. The enterprise requirements (who's on the network, who sees what data, how many TPS) drive fundamentally different designs than permissionless chains. It's not a coin; it's infrastructure for consortia that need governance, not anonymity."
+        },
+        {
+          "answer": 1,
+          "choices": [
+            "Channels are just chat rooms",
+            "Channels: private subnets within the network where subsets of participants transact confidentially — data isolation between business relationships on shared infrastructure",
+            "Everyone sees everything",
+            "Channels are off-chain"
+          ],
+          "evidence": [],
+          "hint": "Two banks share infrastructure but must not see each other's trades — how?",
+          "id": "bc-fabric-channels",
+          "mins": 6,
+          "objectives": [
+            "Channels",
+            "Data isolation"
+          ],
+          "prompt": "How does Fabric handle confidentiality between participants?",
+          "situation": "A consortium needs shared infrastructure with private bilateral data.",
+          "title": "Private lanes",
+          "why": "Channels partition the ledger: each channel has its own ledger, members, and chaincode — participants only see channels they belong to. This models real business confidentiality (bilateral deals invisible to competitors) on shared infrastructure. Channel design IS the data-governance architecture; getting it wrong leaks competitively sensitive data to the consortium."
+        },
+        {
+          "answer": 1,
+          "choices": [
+            "Chaincode is just a smart contract by another name",
+            "Chaincode: programs running on peers that encode business logic — similar concept to smart contracts, but executing in the permissioned, identity-known Fabric model with endorsement policies",
+            "Chaincode can't be updated",
+            "It's written only in Go"
+          ],
+          "evidence": [],
+          "hint": "Who must approve a transaction before it's committed — and how is that policy expressed?",
+          "id": "bc-chaincode",
+          "mins": 6,
+          "objectives": [
+            "Chaincode",
+            "Endorsement"
+          ],
+          "prompt": "What is chaincode, and how does endorsement work?",
+          "situation": "You're porting a business process to Fabric.",
+          "title": "Code with endorsers",
+          "why": "Chaincode encodes the business rules, but Fabric's distinctive mechanism is endorsement: transactions must be endorsed (simulated and signed) by specified peers per policy BEFORE ordering and commitment. Endorsement policies express business trust ('both counterparties' peers plus the regulator's') in protocol terms. It's smart-contract logic wrapped in consortium governance."
+        },
+        {
+          "answer": 1,
+          "choices": [
+            "Miners order transactions",
+            "The ordering service: a dedicated component that sequences transactions into blocks — separated from execution/endorsement (execute-order-validate architecture)",
+            "Ordering is done by clients",
+            "Order doesn't matter"
+          ],
+          "evidence": [],
+          "hint": "What breaks if two peers commit transactions in different orders?",
+          "id": "bc-ordering",
+          "mins": 6,
+          "objectives": [
+            "Ordering service",
+            "Execute-order-validate"
+          ],
+          "prompt": "What does the ordering service do, and why is it separate?",
+          "situation": "You're explaining Fabric's architecture to a Fabric-newcomer.",
+          "title": "Ordering the chaos",
+          "why": "Fabric separates execution (endorsement) from ordering (sequencing) from validation (commit) — the ordering service establishes the single canonical transaction order all peers then validate and commit deterministically. This separation enables the modular consensus (Raft/Kafka-based ordering) and is the architectural signature distinguishing Fabric from order-execute chains. Order is consensus; execution is endorsement."
+        },
+        {
+          "answer": 1,
+          "choices": [
+            "Participants are anonymous",
+            "Identity via PKI: every participant has a cryptographic identity from a Membership Service Provider — accountability is built into the permissioned model",
+            "Identity doesn't matter",
+            "It's username/password"
+          ],
+          "evidence": [],
+          "hint": "In a consortium of known banks, what does anonymity buy you — and what does identity buy?",
+          "id": "bc-fabric-identity",
+          "mins": 5,
+          "objectives": [
+            "Identity",
+            "MSP",
+            "PKI"
+          ],
+          "prompt": "How is identity handled?",
+          "situation": "Compliance requires knowing exactly who did what on the network.",
+          "title": "Known participants",
+          "why": "Fabric's Membership Service Providers bind every actor to a PKI identity — every transaction is signed by a known party, giving the accountability and auditability enterprises and regulators require. This is the permissioned model's core bargain: you trade anonymity for accountability. For regulated consortia, it's the feature that makes blockchain deployable."
+        },
+        {
+          "answer": 1,
+          "choices": [
+            "Permissioned means less secure",
+            "Fit assessment: permissioned enterprise ledgers suit known-participant consortia needing privacy, throughput, and governance; permissionless suits open, censorship-resistant use — match the model to the trust reality",
+            "Enterprise should always use public chains",
+            "Throughput is the only criterion"
+          ],
+          "evidence": [],
+          "hint": "Who are the participants, what do they need to hide, and who governs changes?",
+          "id": "bc-enterprise-fit",
+          "mins": 6,
+          "objectives": [
+            "Fit assessment",
+            "Governance"
+          ],
+          "prompt": "How do you choose between Hyperledger-style and public-chain approaches?",
+          "situation": "A supply-chain consortium is choosing its platform.",
+          "title": "Fitting the platform",
+          "why": "The decision rests on trust reality: known, contracted participants with confidentiality needs and governance requirements fit permissioned frameworks; open participation with censorship resistance needs fits permissionless. Supply-chain consortia (known partners, competitive data, throughput needs) typically land permissioned. Platform choice follows the trust model — not the hype cycle."
+        }
+      ]
+    }
+  ],
+  "lessons": [
+    {
+      "domain_id": "blockchain-basics",
+      "title": "Blockchain Basics — Core concepts",
+      "concepts": [
+        "Distributed ledger: consensus is the mechanism by which decentralized participants converge on one ledger state — ordering transactions and resolving conflicts without a trusted coordinator.",
+        "Trust model: the models encode different trust assumptions: permissionless assumes adversarial anonymity (secured by economic incentives), permissioned assumes known identities with contractual/legal accountability.",
+        "Consensus: different mechanisms (PoW, PoS, XRPL consensus) make different trade-offs, but the problem they solve is identical: agreement among adversaries. Decentralization is multi-layered: consensus power, client development, governance, and infrastructure can each centralize independently.",
+        "Permissioned vs permissionless: inter-bank settlement among regulated entities fits permissioned — identity, privacy, and governance matter more than censorship resistance.",
+        "Trust assumptions: blockchain's benefits (trust minimization, tamper-evidence across distrusting parties) come at real costs: throughput limits, complexity, immutability conflicts with data-deletion requirements."
+      ],
+      "example": {
+        "lang": "text",
+        "code": "Worked example — distributed ledger\nSetup: The models encode different trust assumptions: permissionless assumes adversarial anonymity (secured by economic incentives), permissioned assumes…\nReasoning: A blockchain is a trust technology, not a database technology: multiple mutually-distrusting parties agree on shared state without a central…\nTakeaway: Consensus is the mechanism by which decentralized participants converge on one ledger state — ordering transactions and resolving conflicts without a…",
+        "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."
+      },
+      "pitfalls": [
+        "Common trap: decentralization means no one is in charge of anything.",
+        "Common trap: finality means the transaction is fast.",
+        "Common trap: finality doesn't matter for applications."
+      ],
+      "try_it": "Work through this in the Terminal tab →"
+    },
+    {
+      "domain_id": "bitcoin",
+      "title": "Bitcoin Protocol — Core concepts",
+      "concepts": [
+        "UTXO model: bitcoin's UTXO model: value lives in discrete unspent outputs, each locked to a spending condition.",
+        "Transaction structure: segWit fixed transaction malleability (third parties could alter txids before confirmation, breaking chains of unconfirmed transactions) by moving signatures out of the txid computation — which unblocked Layer 2 protocols like Lightning that depend on stable txids.",
+        "Proof of work: poW converts energy into immutability: each block's work accumulates, so rewriting history means outpacing the honest network's ongoing work — economically infeasible for deep burials.",
+        "Security model: it's the layered-scaling thesis: base layer for settlement security, upper layers for speed and cost.",
+        "Difficulty adjustment: the difficulty retarget (every 2016 blocks, ~2 weeks) adjusts mining difficulty based on actual vs target block times, holding the ~10-minute average regardless of hash power."
+      ],
+      "example": {
+        "lang": "text",
+        "code": "Worked example — utxo model\nSetup: SegWit fixed transaction malleability (third parties could alter txids before confirmation, breaking chains of unconfirmed transactions) by moving…\nReasoning: PoW converts energy into immutability: each block's work accumulates, so rewriting history means outpacing the honest network's ongoing work —…\nTakeaway: Bitcoin's UTXO model: value lives in discrete unspent outputs, each locked to a spending condition.",
+        "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."
+      },
+      "pitfalls": [
+        "Common trap: segWit made Bitcoin centralized.",
+        "Common trap: blocks come whenever miners feel like it.",
+        "Common trap: channels require trusting a third party.",
+        "Common trap: accounts with balances, like a bank."
+      ],
+      "try_it": "Work through this in the Terminal tab →"
+    },
+    {
+      "domain_id": "xrpl",
+      "title": "XRPL — Core concepts",
+      "concepts": [
+        "XRPL pathfinding computes routes through the ledger's liquidity graph — order books and trust lines — auto-bridging across currencies (often via XRP) so sender and recipient each deal in their own currency.",
+        "Validator voting: security comes from validator overlap and the supermajority threshold, not energy expenditure.",
+        "XRP serves two protocol functions: bridge currency (any currency can route through XRP for liquidity between otherwise illiquid pairs) and spam prevention (tiny destroyed fee per transaction makes flooding the ledger economically irrational).",
+        "Bridge currency: this elegantly models credit risk on-ledger: holding issued currency IS trusting the issuer, and the ledger records exactly who trusts whom, to what limit.",
+        "Trust lines: the engineering question is always the trade: what trust assumption buys this speed, and does your use case accept it? Different trust assumptions, different design."
+      ],
+      "example": {
+        "lang": "text",
+        "code": "Worked example — xrpl consensus\nSetup: XRPL pathfinding computes routes through the ledger's liquidity graph — order books and trust lines — auto-bridging across currencies (often via XRP)…\nReasoning: XRP serves two protocol functions: bridge currency (any currency can route through XRP for liquidity between otherwise illiquid pairs) and spam…\nTakeaway: Issued currencies on XRPL are IOUs: they only exist between an issuer and holders connected by trust lines — explicit, limited authorizations to hold…",
+        "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."
+      },
+      "pitfalls": [
+        "Common trap: validated ledgers close every 3–5 seconds with supermajority agreement.",
+        "Common trap: faster close means less security automatically.",
+        "Common trap: anyone can issue unlimited currency to anyone.",
+        "Common trap: you must hold every currency."
+      ],
+      "try_it": "Work through this in the Terminal tab →"
+    },
+    {
+      "domain_id": "solidity-evm",
+      "title": "Solidity & EVM — Core concepts",
+      "concepts": [
+        "EVM storage (SSTORE) writes to permanent chain state — ~20,000 gas per new slot, the most expensive common operation. Events are the EVM's cheap broadcast mechanism: contracts emit them, off-chain indexers and frontends subscribe — no polling, no state reads.",
+        "Deterministic execution: the EVM is a deterministic state machine: given the same state and transaction, every node computes the identical result — that's what lets mutually distrusting nodes agree on contract outcomes.",
+        "Gas: for developers, gas shapes design: storage is brutally expensive, loops over unbounded arrays are bugs, and 'gas golfing' is real engineering. Gas-aware Solidity starts with knowing where each variable lives.",
+        "Execution bounds: determinism forbids randomness, wall-clock time, and external calls inside execution; oracles and commit-reveal exist precisely because of this constraint.",
+        "Storage vs memory: memory is per-call scratch space, cheap and discarded. They're orders of magnitude cheaper than storage and bloom-indexed for efficient filtering.",
+        "Gas solves the halting problem economically: computation must terminate because the sender's gas runs out, and every operation's price reflects its cost to the network."
+      ],
+      "example": {
+        "lang": "text",
+        "code": "function withdraw() public {\n  uint amt = balances[msg.sender];\n  (bool ok,) = msg.sender.call{value: amt}(\"\");\n  require(ok);\n  balances[msg.sender] = 0;\n}",
+        "walkthrough": "The external call happens BEFORE the balance is zeroed — a malicious recipient contract reenters withdraw() and drains funds repeatedly. This exact pattern caused The DAO hack. The fix pattern (checks-effects-interactions): update state first, then interact."
+      },
+      "pitfalls": [
+        "Common trap: off-chain apps should poll storage instead.",
+        "Common trap: contracts call each other like normal functions.",
+        "Common trap: immutable contracts need no audits."
+      ],
+      "try_it": "Work through this in the Terminal tab →"
+    },
+    {
+      "domain_id": "chain-security",
+      "title": "Security — Core concepts",
+      "concepts": [
+        "Trust boundaries: contract threat modeling enumerates trust boundaries: external calls (untrusted code execution), oracle feeds (who controls the data?), privileged roles (who can rug?), and economic assumptions (what breaks if prices move?).",
+        "Threat modeling: happy-path unit tests verify intent; adversarial testing (property-based fuzzing, fork tests, economic modeling) verifies robustness.",
+        "Access control: each boundary gets a control: reentrancy guards, oracle validation, timelocks, circuit breakers.",
+        "Admin risk: a single EOA admin is a single point of failure AND a rug vector: compromise or malice drains the protocol. An audit is a point-in-time expert review of scoped code — it reduces risk, it doesn't eliminate it.",
+        "Oracle risk: the contract's security is bounded by its weakest oracle — 'the price feed said so' is not a defense when the feed was the attack vector."
+      ],
+      "example": {
+        "lang": "text",
+        "code": "Worked example — trust boundaries\nSetup: Contract threat modeling enumerates trust boundaries: external calls (untrusted code execution), oracle feeds (who controls the data?), privileged…\nReasoning: Happy-path unit tests verify intent; adversarial testing (property-based fuzzing, fork tests, economic modeling) verifies robustness.\nTakeaway: Each boundary gets a control: reentrancy guards, oracle validation, timelocks, circuit breakers.",
+        "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."
+      },
+      "pitfalls": [
+        "Common trap: access control doesn't matter on-chain.",
+        "Common trap: trust boundaries don't apply on-chain.",
+        "Common trap: formal verification is unnecessary overhead to even consider.",
+        "Common trap: one audit is enough forever."
+      ],
+      "try_it": "Work through this in the Terminal tab →"
+    },
+    {
+      "domain_id": "hyperledger",
+      "title": "Hyperledger Concepts — Core concepts",
+      "concepts": [
+        "Hyperledger is a Linux Foundation greenhouse of enterprise blockchain frameworks — permissioned networks, known identities, modular consensus, private transactions.",
+        "Enterprise blockchain: the enterprise requirements (who's on the network, who sees what data, how many TPS) drive fundamentally different designs than permissionless chains. For regulated consortia, it's the feature that makes blockchain deployable.",
+        "Channels partition the ledger: each channel has its own ledger, members, and chaincode — participants only see channels they belong to.",
+        "Data isolation: channel design IS the data-governance architecture; getting it wrong leaks competitively sensitive data to the consortium. Supply-chain consortia (known partners, competitive data, throughput needs) typically land permissioned.",
+        "Chaincode encodes the business rules, but Fabric's distinctive mechanism is endorsement: transactions must be endorsed (simulated and signed) by specified peers per policy BEFORE ordering and commitment.",
+        "Endorsement: fabric separates execution (endorsement) from ordering (sequencing) from validation (commit) — the ordering service establishes the single canonical transaction order all peers then validate and commit deterministically."
+      ],
+      "example": {
+        "lang": "text",
+        "code": "Worked example — hyperledger\nSetup: Hyperledger is a Linux Foundation greenhouse of enterprise blockchain frameworks — permissioned networks, known identities, modular consensus…\nReasoning: Chaincode encodes the business rules, but Fabric's distinctive mechanism is endorsement: transactions must be endorsed (simulated and signed) by…\nTakeaway: Fabric separates execution (endorsement) from ordering (sequencing) from validation (commit) — the ordering service establishes the single canonical…",
+        "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."
+      },
+      "pitfalls": [
+        "Common trap: chaincode is just a smart contract by another name.",
+        "Common trap: enterprise should always use public chains.",
+        "Common trap: permissioned means less secure."
+      ],
+      "try_it": "Work through this in the Terminal tab →"
+    }
+  ],
+  "sections": [
+    {
+      "id": "foundations",
+      "title": "Foundations",
+      "kind": "foundation",
+      "lectures": [
+        "m-binary",
+        "f-programming-basics-0",
+        "f-programming-basics-1",
+        "f-programming-basics-2",
+        "f-networking-0",
+        "f-networking-1",
+        "f-networking-2",
+        "f-networking-3"
+      ],
+      "lab_ids": [],
+      "drill_domain_ids": []
+    },
+    {
+      "id": "core",
+      "title": "Core",
+      "kind": "core",
+      "lectures": [
+        "c-blockchain-basics",
+        "c-bitcoin",
+        "c-xrpl",
+        "c-solidity-evm",
+        "c-hyperledger"
+      ],
+      "lab_ids": [
+        "blockchain-dev-lab-1",
+        "blockchain-dev-lab-2"
+      ],
+      "drill_domain_ids": [
+        "blockchain-basics",
+        "bitcoin",
+        "xrpl",
+        "solidity-evm",
+        "hyperledger"
+      ]
+    },
+    {
+      "id": "advanced",
+      "title": "Advanced",
+      "kind": "advanced",
+      "lectures": [
+        "c-chain-security"
+      ],
+      "lab_ids": [
+        "blockchain-dev-lab-3",
+        "blockchain-dev-lab-4"
+      ],
+      "drill_domain_ids": [
+        "chain-security"
+      ]
+    },
+    {
+      "id": "exam-prep",
+      "title": "Exam Prep",
+      "kind": "exam-prep",
+      "lectures": [],
+      "lab_ids": [],
+      "drill_domain_ids": [
+        "blockchain-basics",
+        "bitcoin",
+        "xrpl",
+        "solidity-evm",
+        "chain-security",
+        "hyperledger"
+      ]
+    }
+  ],
+  "slug": "blockchain-dev",
+  "tagline": "Bitcoin, XRPL, Solidity, and LF blockchain concepts",
+  "title": "Blockchain Development",
+  "vendor": {
+    "certs": "HFCP, BCP (concepts)",
+    "docs": "",
+    "name": "Linux Foundation / vendor-neutral"
+  },
+  "labs": [
+    {
+      "id": "blockchain-dev-lab-1",
+      "title": "Distributed ledger — terminal drill",
+      "objective": "Run a short sequence of terminal commands that demonstrates distributed ledger, then verify each result against the expected output.",
+      "steps": [
+        "This lab reworks the Blockchain Basics practice scenario \"Why a chain?\" into commands you run yourself — same concept, hands-on instead of multiple choice.",
+        "Open the Terminal tab for this bootcamp — every command below runs there.",
+        "Type exactly: echo distributed-ledger ready — echo prints your concept token back verbatim",
+        "Type exactly: whoami — the shell reports the lab identity 'candidate'",
+        "Type exactly: date — the date output includes the year 2026",
+        "In your own words, say what each command's output taught you about distributed ledger."
+      ],
+      "checks": [
+        {
+          "command_pattern": "echo",
+          "expect_contains": "distributed-ledger",
+          "hint": "In the Terminal tab, run `echo distributed-ledger ready`. If the check fails, confirm you typed it exactly and that the output contains \"distributed-ledger\"."
+        },
+        {
+          "command_pattern": "whoami",
+          "expect_contains": "candidate",
+          "hint": "In the Terminal tab, run `whoami`. If the check fails, confirm you typed it exactly and that the output contains \"candidate\"."
+        },
+        {
+          "command_pattern": "date",
+          "expect_contains": "2026",
+          "hint": "In the Terminal tab, run `date`. If the check fails, confirm you typed it exactly and that the output contains \"2026\"."
+        }
+      ],
+      "success_message": "Lab complete — distributed ledger practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."
+    },
+    {
+      "id": "blockchain-dev-lab-2",
+      "title": "UTXO model — terminal drill",
+      "objective": "Use the terminal to explore UTXO model hands-on: type each command, read what comes back, and connect the output to the concept.",
+      "steps": [
+        "Inspired by the Bitcoin Protocol scenario \"Coins, not accounts\": take its core idea and prove it live in the terminal instead of answering on paper.",
+        "Open the Terminal tab for this bootcamp — every command below runs there.",
+        "Type exactly: date — the date output includes the year 2026",
+        "Type exactly: uname — the kernel name reported is Linux",
+        "Type exactly: echo utxo-model ready — echo prints your concept token back verbatim",
+        "In your own words, say what each command's output taught you about UTXO model."
+      ],
+      "checks": [
+        {
+          "command_pattern": "date",
+          "expect_contains": "2026",
+          "hint": "In the Terminal tab, run `date`. If the check fails, confirm you typed it exactly and that the output contains \"2026\"."
+        },
+        {
+          "command_pattern": "uname",
+          "expect_contains": "Linux",
+          "hint": "In the Terminal tab, run `uname`. If the check fails, confirm you typed it exactly and that the output contains \"Linux\"."
+        },
+        {
+          "command_pattern": "echo",
+          "expect_contains": "utxo-model",
+          "hint": "In the Terminal tab, run `echo utxo-model ready`. If the check fails, confirm you typed it exactly and that the output contains \"utxo-model\"."
+        }
+      ],
+      "success_message": "Lab complete — UTXO model practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."
+    },
+    {
+      "id": "blockchain-dev-lab-3",
+      "title": "XRPL consensus — terminal drill",
+      "objective": "Prove you can apply XRPL consensus in the terminal — follow the steps, watch the output, and confirm every check passes.",
+      "steps": [
+        "The XRPL scenario \"Consensus without mining\" tests this concept as a question. This lab makes you demonstrate it with real commands.",
+        "Open the Terminal tab for this bootcamp — every command below runs there.",
+        "Type exactly: echo xrpl-consensus ready — echo prints your concept token back verbatim",
+        "Type exactly: whoami — the shell reports the lab identity 'candidate'",
+        "Type exactly: date — the date output includes the year 2026",
+        "In your own words, say what each command's output taught you about XRPL consensus."
+      ],
+      "checks": [
+        {
+          "command_pattern": "echo",
+          "expect_contains": "xrpl-consensus",
+          "hint": "In the Terminal tab, run `echo xrpl-consensus ready`. If the check fails, confirm you typed it exactly and that the output contains \"xrpl-consensus\"."
+        },
+        {
+          "command_pattern": "whoami",
+          "expect_contains": "candidate",
+          "hint": "In the Terminal tab, run `whoami`. If the check fails, confirm you typed it exactly and that the output contains \"candidate\"."
+        },
+        {
+          "command_pattern": "date",
+          "expect_contains": "2026",
+          "hint": "In the Terminal tab, run `date`. If the check fails, confirm you typed it exactly and that the output contains \"2026\"."
+        }
+      ],
+      "success_message": "Lab complete — XRPL consensus practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."
+    },
+    {
+      "id": "blockchain-dev-lab-4",
+      "title": "EVM — terminal drill",
+      "objective": "Run a short sequence of terminal commands that demonstrates EVM, then verify each result against the expected output.",
+      "steps": [
+        "This lab reworks the Solidity & EVM practice scenario \"The world computer's rules\" into commands you run yourself — same concept, hands-on instead of multiple choice.",
+        "Open the Terminal tab for this bootcamp — every command below runs there.",
+        "Type exactly: date — the date output includes the year 2026",
+        "Type exactly: uname — the kernel name reported is Linux",
+        "Type exactly: echo evm ready — echo prints your concept token back verbatim",
+        "In your own words, say what each command's output taught you about EVM."
+      ],
+      "checks": [
+        {
+          "command_pattern": "date",
+          "expect_contains": "2026",
+          "hint": "In the Terminal tab, run `date`. If the check fails, confirm you typed it exactly and that the output contains \"2026\"."
+        },
+        {
+          "command_pattern": "uname",
+          "expect_contains": "Linux",
+          "hint": "In the Terminal tab, run `uname`. If the check fails, confirm you typed it exactly and that the output contains \"Linux\"."
+        },
+        {
+          "command_pattern": "echo",
+          "expect_contains": "evm",
+          "hint": "In the Terminal tab, run `echo evm ready`. If the check fails, confirm you typed it exactly and that the output contains \"evm\"."
+        }
+      ],
+      "success_message": "Lab complete — EVM practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."
+    },
+    {
+      "checks": [
+        {
+          "command_pattern": "^cat\\s+notes\\.txt",
+          "expect_contains": "blockchain",
+          "hint": "Type: cat notes.txt"
+        },
+        {
+          "command_pattern": "^node\\s+--version",
+          "expect_contains": "v22.11.0",
+          "hint": "Type: node --version"
+        }
+      ],
+      "difficulty": 1,
+      "id": "blockchain-dev-lab-5",
+      "objective": "Read the blockchain briefing and verify the Node.js toolchain version.",
+      "steps": [
+        "Open the terminal view for this bootcamp",
+        "Run: cat notes.txt",
+        "Run: node --version",
+        "Confirm the simulated v22.11.0 toolchain",
+        "Run: go version"
+      ],
+      "success_message": "Briefing read; toolchain verified.",
+      "title": "Read briefing, check toolchain"
+    },
+    {
+      "checks": [
+        {
+          "command_pattern": "^echo\\s+hello",
+          "expect_contains": "hello",
+          "hint": "Type: echo hello"
+        },
+        {
+          "command_pattern": "^ls",
+          "expect_contains": "app.py",
+          "hint": "Type: ls"
+        }
+      ],
+      "difficulty": 1,
+      "id": "blockchain-dev-lab-6",
+      "objective": "Confirm shell output works and inventory the dev workspace.",
+      "steps": [
+        "Open the terminal view for this bootcamp",
+        "Run: echo hello",
+        "Run: ls",
+        "Run: pwd",
+        "Run: whoami"
+      ],
+      "success_message": "Shell confirmed; workspace inventoried.",
+      "title": "Shell basics"
+    },
+    {
+      "checks": [
+        {
+          "command_pattern": "^cat\\s+app\\.py",
+          "expect_contains": "import",
+          "hint": "Type: cat app.py"
+        },
+        {
+          "command_pattern": "^wc\\s+-l\\s+app\\.py",
+          "expect_contains": "40",
+          "hint": "Type: wc -l app.py"
+        }
+      ],
+      "difficulty": 2,
+      "id": "blockchain-dev-lab-7",
+      "objective": "Read the sample application and size it.",
+      "steps": [
+        "Open the terminal view for this bootcamp",
+        "Run: cat app.py",
+        "Run: wc -l app.py",
+        "Identify the imports at the top",
+        "Run: grep -i import app.py"
+      ],
+      "success_message": "Sample app read and sized.",
+      "title": "Read the sample app"
+    },
+    {
+      "checks": [
+        {
+          "command_pattern": "^grep\\s+-r\\s+sha\\s+\\.",
+          "expect_contains": "notes.txt",
+          "hint": "Type: grep -r sha ."
+        },
+        {
+          "command_pattern": "^tail\\s+-n\\s+2\\s+logs/app\\.log",
+          "expect_contains": "504",
+          "hint": "Type: tail -n 2 logs/app.log"
+        }
+      ],
+      "difficulty": 3,
+      "id": "blockchain-dev-lab-8",
+      "objective": "Search the workspace for hash references and read the node log tail.",
+      "steps": [
+        "Open the terminal view for this bootcamp",
+        "Run: grep -r -i sha .",
+        "Run: ls -la logs",
+        "Run: tail -n 2 logs/app.log",
+        "Summarize the hash references found"
+      ],
+      "success_message": "Hash references found; log tail read.",
+      "title": "Hunt hash references"
+    }
+  ],
+  "foundations": [
+    {
+      "track": "programming-basics",
+      "why_needed": "Smart contracts and protocols are code. Learn what programs are before studying consensus and cryptography."
+    },
+    {
+      "track": "networking",
+      "why_needed": "Peer-to-peer networks are the substrate of every blockchain. Addresses and ports come before protocols."
+    }
+  ],
+  "math": [
+    "binary"
+  ],
+  "simulations": [
+    {
+      "brief": "A transaction you broadcast is stuck unconfirmed for hours. Diagnose it.",
+      "debrief": "Stuck transactions are almost always fee problems. Replace-by-fee or child-pays-for-parent unsticks them — resending the same fee changes nothing.",
+      "difficulty": 2,
+      "domain_id": "bitcoin",
+      "id": "bc-sim-stuck-tx",
+      "kind": "troubleshoot",
+      "points": 14,
+      "steps": [
+        {
+          "correct": 0,
+          "evidence": [
+            [
+              "mempool.txt",
+              "Your tx: 1 sat/vB. Mempool minimum for next block: 25 sat/vB."
+            ],
+            [
+              "wallet.txt",
+              "Transaction broadcast 6 hours ago, 0 confirmations."
+            ]
+          ],
+          "explain": "At 1 sat/vB against a 25 sat/vB market, miners will not pick it up. The fee is the problem, not the network.",
+          "options": [
+            "The fee is far below market — bump it with replace-by-fee",
+            "The network is broken; wait indefinitely",
+            "Rebroadcast the identical transaction",
+            "Delete the wallet"
+          ],
+          "symptom": "Transaction unconfirmed after 6 hours."
+        },
+        {
+          "correct": 0,
+          "evidence": [
+            [
+              "rbf.txt",
+              "Transaction was broadcast with RBF enabled (sequence < max)."
+            ]
+          ],
+          "explain": "RBF signaling means you can replace the transaction with a higher-fee version. Without RBF, child-pays-for-parent is the fallback.",
+          "options": [
+            "Use replace-by-fee to broadcast a higher-fee replacement",
+            "Double-spend it to yourself secretly",
+            "Ask miners nicely on social media",
+            "Abandon the funds"
+          ],
+          "symptom": "RBF was enabled. What is the fix?"
+        },
+        {
+          "correct": 0,
+          "evidence": [
+            [
+              "confirm.txt",
+              "Replacement confirmed in the next block."
+            ]
+          ],
+          "explain": "The replacement confirmed because it paid the market rate. Fee estimation before broadcast prevents the whole episode.",
+          "options": [
+            "Check fee estimates before broadcasting next time",
+            "Always use 1 sat/vB",
+            "Never enable RBF",
+            "Use the same fee out of habit"
+          ],
+          "symptom": "Confirmed. What is the lasting lesson?"
+        }
+      ],
+      "title": "Stuck transaction"
+    },
+    {
+      "brief": "A new dev wants to deploy a token contract today: write, deploy, audit, test. Put the safe order in place.",
+      "debrief": "Write, test, audit, then deploy — on a testnet first. Mainnet is forever; 'move fast' on immutable code is how millions get locked.",
+      "difficulty": 1,
+      "domain_id": "solidity-evm",
+      "id": "bc-sim-deploy-order",
+      "kind": "ordering",
+      "points": 10,
+      "steps": {
+        "context": "Drag the safe contract deployment steps into the correct order.",
+        "correct_order": [
+          0,
+          2,
+          1,
+          3
+        ],
+        "items": [
+          "Write the contract",
+          "Audit the code",
+          "Test on a testnet",
+          "Deploy to mainnet"
+        ]
+      },
+      "title": "Order safe deployment"
+    },
+    {
+      "brief": "A token contract submitted for review fails. Click the lines that are wrong (2 issues).",
+      "debrief": "Reentrancy and missing access control are the two classic contract killers. The checks-effects-interactions pattern and explicit ownership exist because real money was lost learning them.",
+      "difficulty": 3,
+      "domain_id": "chain-security",
+      "id": "bc-sim-contract-review",
+      "kind": "config-check",
+      "points": 14,
+      "steps": {
+        "config": "function withdraw() public {\n  uint amt = balances[msg.sender];\n  (bool ok,) = msg.sender.call{value: amt}(\"\");\n  balances[msg.sender] = 0;\n  require(ok);\n}\nfunction mint(address to, uint n) public {\n  balances[to] += n;\n}",
+        "find": 2,
+        "issues": [
+          {
+            "description": "External call happens before the balance is zeroed — classic reentrancy: the caller can re-enter withdraw repeatedly",
+            "fix": "Set balances[msg.sender] = 0 before the external call (checks-effects-interactions)",
+            "line": 3
+          },
+          {
+            "description": "mint() has no access control — anyone can mint unlimited tokens",
+            "fix": "Restrict mint to the contract owner",
+            "line": 7
+          }
+        ]
+      },
+      "title": "Spot the contract flaws"
+    },
+    {
+      "brief": "Your node falls out of sync and shows a different chain tip than two block explorers. Decide.",
+      "debrief": "A node out of sync is a node you cannot trust. Resync from trusted peers, verify the tip against multiple sources, and never transact on a stale view.",
+      "difficulty": 2,
+      "domain_id": "blockchain-basics",
+      "id": "bc-sim-desync-branch",
+      "kind": "branching",
+      "points": 14,
+      "steps": [
+        {
+          "choices": [
+            {
+              "feedback": "Transacting on a stale chain risks double-spends and lost funds.",
+              "label": "Keep transacting; your node is probably fine",
+              "next": "END",
+              "outcome": "bad",
+              "points": 0
+            },
+            {
+              "feedback": "Correct — stop trusting the stale view first.",
+              "label": "Stop transacting and investigate the sync state",
+              "next": "s2",
+              "points": 2
+            },
+            {
+              "feedback": "Deleting the chain without a plan wastes days of sync.",
+              "label": "Delete the whole chain immediately",
+              "next": "END",
+              "outcome": "bad",
+              "points": 0
+            }
+          ],
+          "id": "s1",
+          "text": "Node tip disagrees with two explorers. First move?"
+        },
+        {
+          "choices": [
+            {
+              "feedback": "Correct — consensus across sources is the ground truth.",
+              "label": "Resync and verify the tip against multiple explorers",
+              "next": "END",
+              "outcome": "good",
+              "points": 2
+            },
+            {
+              "feedback": "Trusting one source is how you follow a fork.",
+              "label": "Trust the first explorer you checked",
+              "next": "END",
+              "outcome": "bad",
+              "points": 0
+            }
+          ],
+          "id": "s2",
+          "text": "Sync is the suspect. How do you confirm the truth?"
+        }
+      ],
+      "title": "Node out of sync"
+    }
+  ],
+  "consoleSims": [
+    {
+      "brief": "Write a minimal smart contract sketch in the code editor: a storage variable with a setter function.",
+      "console": "code-editor",
+      "debrief": "Contracts are deterministic programs with real money attached. Read every line twice — on-chain bugs cannot be patched with a hotfix.",
+      "difficulty": 2,
+      "domain_id": "solidity-evm",
+      "id": "bc-console-code-1",
+      "tasks": [
+        {
+          "hint": "Create a file named Storage.sol.",
+          "id": "t1",
+          "instruction": "Create the contract file Storage.sol.",
+          "validate": {
+            "action": "create",
+            "params": {
+              "name": "Storage.sol",
+              "type": "file"
+            }
+          }
+        },
+        {
+          "hint": "Set the content to the contract sketch.",
+          "id": "t2",
+          "instruction": "Write the storage contract into the file.",
+          "validate": {
+            "action": "set-field",
+            "params": {
+              "field": "Storage.sol-content",
+              "value": "contract Storage { uint256 value; function set(uint256 v) public { value = v; } }"
+            }
+          }
+        },
+        {
+          "hint": "Click compile-check.",
+          "id": "t3",
+          "instruction": "Run the compile check.",
+          "validate": {
+            "action": "click",
+            "params": {
+              "target": "compile-check"
+            }
+          }
+        }
+      ],
+      "title": "Sketch a storage contract"
+    },
+    {
+      "brief": "Annotate a transaction flow in the code editor: mark the UTXO inputs and outputs.",
+      "console": "code-editor",
+      "debrief": "UTXO thinking is the core Bitcoin skill: coins are not balances, they are unspent outputs consumed and created by transactions.",
+      "difficulty": 3,
+      "domain_id": "bitcoin",
+      "id": "bc-console-code-2",
+      "tasks": [
+        {
+          "hint": "Create a file named tx-notes.txt.",
+          "id": "t1",
+          "instruction": "Create the transaction notes file.",
+          "validate": {
+            "action": "create",
+            "params": {
+              "name": "tx-notes.txt",
+              "type": "file"
+            }
+          }
+        },
+        {
+          "hint": "Annotate the UTXO flow.",
+          "id": "t2",
+          "instruction": "Mark inputs and outputs in the flow.",
+          "validate": {
+            "action": "set-field",
+            "params": {
+              "field": "tx-notes.txt-content",
+              "value": "input: utxo#A (0.5 BTC) -> outputs: 0.3 to Bob, 0.2 change"
+            }
+          }
+        }
+      ],
+      "title": "Annotate a UTXO flow"
+    }
+  ],
+  "terminalMissions": [
+    {
+      "brief": "Verify the Node.js toolchain.",
+      "checks": [
+        {
+          "command_pattern": "^node\\s+--version",
+          "expect_contains": "v22.11.0",
+          "hint": "Type: node --version"
+        }
+      ],
+      "difficulty": 1,
+      "domain_id": "blockchain-basics",
+      "id": "blockchain-dev-mission-1",
+      "objectives": [
+        "Run node --version"
+      ],
+      "success_message": "Node.js toolchain verified.",
+      "title": "Check Node version"
+    },
+    {
+      "brief": "Verify the Go toolchain.",
+      "checks": [
+        {
+          "command_pattern": "^go\\s+version",
+          "expect_contains": "go1.23.4",
+          "hint": "Type: go version"
+        }
+      ],
+      "difficulty": 1,
+      "domain_id": "blockchain-basics",
+      "id": "blockchain-dev-mission-2",
+      "objectives": [
+        "Run go version"
+      ],
+      "success_message": "Go toolchain verified.",
+      "title": "Check Go version"
+    },
+    {
+      "brief": "Read the blockchain briefing.",
+      "checks": [
+        {
+          "command_pattern": "^cat\\s+notes\\.txt",
+          "expect_contains": "blockchain",
+          "hint": "Type: cat notes.txt"
+        }
+      ],
+      "difficulty": 2,
+      "domain_id": "blockchain-basics",
+      "id": "blockchain-dev-mission-3",
+      "objectives": [
+        "Read notes.txt"
+      ],
+      "success_message": "Briefing read.",
+      "title": "Read the briefing"
+    },
+    {
+      "brief": "Confirm your working directory.",
+      "checks": [
+        {
+          "command_pattern": "^pwd",
+          "expect_contains": "/home/candidate",
+          "hint": "Type: pwd"
+        }
+      ],
+      "difficulty": 2,
+      "domain_id": "bitcoin",
+      "id": "blockchain-dev-mission-4",
+      "objectives": [
+        "Run pwd"
+      ],
+      "success_message": "Directory confirmed.",
+      "title": "Confirm directory"
+    },
+    {
+      "brief": "Search the workspace for hash mentions.",
+      "checks": [
+        {
+          "command_pattern": "^grep\\s+-ri\\s+sha\\s+\\.",
+          "expect_contains": "notes.txt",
+          "hint": "Type: grep -ri sha ."
+        }
+      ],
+      "difficulty": 3,
+      "domain_id": "chain-security",
+      "id": "blockchain-dev-mission-5",
+      "objectives": [
+        "Recursive case-insensitive grep for sha"
+      ],
+      "success_message": "Hash mentions found.",
+      "title": "Hunt hash mentions"
+    },
+    {
+      "brief": "Read the sample application.",
+      "checks": [
+        {
+          "command_pattern": "^cat\\s+app\\.py",
+          "expect_contains": "import",
+          "hint": "Type: cat app.py"
+        }
+      ],
+      "difficulty": 3,
+      "domain_id": "hyperledger",
+      "id": "blockchain-dev-mission-6",
+      "objectives": [
+        "Read app.py"
+      ],
+      "success_message": "Sample app read.",
+      "title": "Read the sample app"
+    }
+  ],
+  "media": [
+    {
+      "id": "blockchain-dev-blockchain-basics-diag",
+      "kind": "diagram",
+      "title": "How Blocks Chain Together",
+      "svg": "assets/diagrams/blockchain-dev-blockchain-basics.svg",
+      "lesson_ref": "c-blockchain-basics",
+      "caption": "Each block commits to the one before it.",
+      "alt": "How Blocks Chain Together. Shows: Transactions, Merkle root, Block header, Hash puzzle, Chain link."
+    },
+    {
+      "id": "blockchain-dev-bitcoin-diag",
+      "kind": "diagram",
+      "title": "Bitcoin Essentials",
+      "svg": "assets/diagrams/blockchain-dev-bitcoin.svg",
+      "lesson_ref": "c-bitcoin",
+      "caption": "Digital scarcity enforced by proof of work.",
+      "alt": "Bitcoin Essentials. Shows: 21M cap, ~10 min blocks, Halving ~4 years, SHA-256 PoW, UTXO model."
+    },
+    {
+      "id": "blockchain-dev-xrpl-diag",
+      "kind": "diagram",
+      "title": "XRP Ledger Essentials",
+      "svg": "assets/diagrams/blockchain-dev-xrpl.svg",
+      "lesson_ref": "c-xrpl",
+      "caption": "Fast settlement without mining.",
+      "alt": "XRP Ledger Essentials. Shows: UNL consensus, 3–5 s settlement, XRP, No mining."
+    },
+    {
+      "id": "blockchain-dev-solidity-evm-diag",
+      "kind": "diagram",
+      "title": "Solidity → EVM Execution",
+      "svg": "assets/diagrams/blockchain-dev-solidity-evm.svg",
+      "lesson_ref": "c-solidity-evm",
+      "caption": "Write, compile, deploy, call.",
+      "alt": "Solidity → EVM Execution. Shows: Solidity, Compile, Deploy, Call, State."
+    },
+    {
+      "id": "blockchain-dev-chain-security-diag",
+      "kind": "diagram",
+      "title": "Smart Contract Security",
+      "svg": "assets/diagrams/blockchain-dev-chain-security.svg",
+      "lesson_ref": "c-chain-security",
+      "caption": "Code is law — audit like it.",
+      "alt": "Smart Contract Security. Shows: Reentrancy, Access control, Oracles, Key management, Audits."
+    },
+    {
+      "id": "blockchain-dev-hyperledger-diag",
+      "kind": "diagram",
+      "title": "Hyperledger Fabric",
+      "svg": "assets/diagrams/blockchain-dev-hyperledger.svg",
+      "lesson_ref": "c-hyperledger",
+      "caption": "Permissioned blockchain for enterprises.",
+      "alt": "Hyperledger Fabric. Tiers: Network, Privacy, Logic."
+    }
+  ],
+  "resources": {
+    "cheatsheet": {
+      "title": "Blockchain Development — Cheat Sheet",
+      "sections": [
+        {
+          "heading": "Blockchain Basics",
+          "items": [
+            "Distributed ledger — consensus is the mechanism by which decentralized participants converge on one ledger state — ordering transactions and resolving conflicts without a trusted coordinator.",
+            "Trust model — the models encode different trust assumptions: permissionless assumes adversarial anonymity (secured by economic incentives), permissioned assumes known identities with contractual/legal accountability.",
+            "Consensus — different mechanisms (PoW, PoS, XRPL consensus) make different trade-offs, but the problem they solve is identical: agreement among adversaries. Decentralization is multi-layered: consensus power, client development, governance, and infrastructure can each…",
+            "Permissioned vs permissionless — inter-bank settlement among regulated entities fits permissioned — identity, privacy, and governance matter more than censorship resistance.",
+            "Trust assumptions — blockchain's benefits (trust minimization, tamper-evidence across distrusting parties) come at real costs: throughput limits, complexity, immutability conflicts with data-deletion requirements.",
+            "Common trap — decentralization means no one is in charge of anything.",
+            "Common trap — finality means the transaction is fast.",
+            "Common trap — finality doesn't matter for applications.",
+            "Read — Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."
+          ]
+        },
+        {
+          "heading": "Bitcoin Protocol",
+          "items": [
+            "UTXO model — bitcoin's UTXO model: value lives in discrete unspent outputs, each locked to a spending condition.",
+            "Transaction structure — segWit fixed transaction malleability (third parties could alter txids before confirmation, breaking chains of unconfirmed transactions) by moving signatures out of the txid computation — which unblocked Layer 2 protocols like Lightning that depend on stabl…",
+            "Proof of work — poW converts energy into immutability: each block's work accumulates, so rewriting history means outpacing the honest network's ongoing work — economically infeasible for deep burials.",
+            "Security model — it's the layered-scaling thesis: base layer for settlement security, upper layers for speed and cost.",
+            "Difficulty adjustment — the difficulty retarget (every 2016 blocks, ~2 weeks) adjusts mining difficulty based on actual vs target block times, holding the ~10-minute average regardless of hash power.",
+            "Common trap — segWit made Bitcoin centralized.",
+            "Common trap — blocks come whenever miners feel like it.",
+            "Common trap — channels require trusting a third party.",
+            "Common trap — accounts with balances, like a bank."
+          ]
+        },
+        {
+          "heading": "XRPL",
+          "items": [
+            "XRPL pathfinding computes routes through the ledger's liquidity graph — order books and trust lines — auto-bridging across currencies (often via XRP) so sender and recipient each deal in their own currency.",
+            "Validator voting — security comes from validator overlap and the supermajority threshold, not energy expenditure.",
+            "XRP serves two protocol functions — bridge currency (any currency can route through XRP for liquidity between otherwise illiquid pairs) and spam prevention (tiny destroyed fee per transaction makes flooding the ledger economically irrational).",
+            "Bridge currency — this elegantly models credit risk on-ledger: holding issued currency IS trusting the issuer, and the ledger records exactly who trusts whom, to what limit.",
+            "Trust lines — the engineering question is always the trade: what trust assumption buys this speed, and does your use case accept it? Different trust assumptions, different design.",
+            "Common trap — validated ledgers close every 3–5 seconds with supermajority agreement.",
+            "Common trap — faster close means less security automatically.",
+            "Common trap — anyone can issue unlimited currency to anyone.",
+            "Common trap — you must hold every currency."
+          ]
+        },
+        {
+          "heading": "Solidity & EVM",
+          "items": [
+            "EVM storage (SSTORE) writes to permanent chain state — ~20,000 gas per new slot, the most expensive common operation. Events are the EVM's cheap broadcast mechanism: contracts emit them, off-chain indexers and frontends subscribe — no polling, no state reads.",
+            "Deterministic execution — the EVM is a deterministic state machine: given the same state and transaction, every node computes the identical result — that's what lets mutually distrusting nodes agree on contract outcomes.",
+            "Gas — for developers, gas shapes design: storage is brutally expensive, loops over unbounded arrays are bugs, and 'gas golfing' is real engineering. Gas-aware Solidity starts with knowing where each variable lives.",
+            "Execution bounds — determinism forbids randomness, wall-clock time, and external calls inside execution; oracles and commit-reveal exist precisely because of this constraint.",
+            "Storage vs memory — memory is per-call scratch space, cheap and discarded. They're orders of magnitude cheaper than storage and bloom-indexed for efficient filtering.",
+            "Gas solves the halting problem economically — computation must terminate because the sender's gas runs out, and every operation's price reflects its cost to the network.",
+            "Common trap — off-chain apps should poll storage instead.",
+            "Common trap — contracts call each other like normal functions.",
+            "Common trap — immutable contracts need no audits.",
+            "The external call happens BEFORE the balance is zeroed — a malicious recipient contract reenters withdraw() and drains funds repeatedly. This exact pattern caused The DAO hack. The fix pattern (checks-effects-interactions): update state first, then interact."
+          ]
+        },
+        {
+          "heading": "Security",
+          "items": [
+            "Trust boundaries — contract threat modeling enumerates trust boundaries: external calls (untrusted code execution), oracle feeds (who controls the data?), privileged roles (who can rug?), and economic assumptions (what breaks if prices move?).",
+            "Threat modeling — happy-path unit tests verify intent; adversarial testing (property-based fuzzing, fork tests, economic modeling) verifies robustness.",
+            "Access control — each boundary gets a control: reentrancy guards, oracle validation, timelocks, circuit breakers.",
+            "Admin risk — a single EOA admin is a single point of failure AND a rug vector: compromise or malice drains the protocol. An audit is a point-in-time expert review of scoped code — it reduces risk, it doesn't eliminate it.",
+            "Oracle risk — the contract's security is bounded by its weakest oracle — 'the price feed said so' is not a defense when the feed was the attack vector.",
+            "Common trap — access control doesn't matter on-chain.",
+            "Common trap — trust boundaries don't apply on-chain.",
+            "Common trap — formal verification is unnecessary overhead to even consider.",
+            "Common trap — one audit is enough forever."
+          ]
+        },
+        {
+          "heading": "Hyperledger Concepts",
+          "items": [
+            "Hyperledger — is a Linux Foundation greenhouse of enterprise blockchain frameworks — permissioned networks, known identities, modular consensus, private transactions.",
+            "Enterprise blockchain — the enterprise requirements (who's on the network, who sees what data, how many TPS) drive fundamentally different designs than permissionless chains. For regulated consortia, it's the feature that makes blockchain deployable.",
+            "Channels partition the ledger — each channel has its own ledger, members, and chaincode — participants only see channels they belong to.",
+            "Data isolation — channel design IS the data-governance architecture; getting it wrong leaks competitively sensitive data to the consortium. Supply-chain consortia (known partners, competitive data, throughput needs) typically land permissioned.",
+            "Chaincode — Chaincode encodes the business rules, but Fabric's distinctive mechanism is endorsement: transactions must be endorsed (simulated and signed) by specified peers per policy BEFORE ordering and commitment.",
+            "Endorsement — fabric separates execution (endorsement) from ordering (sequencing) from validation (commit) — the ordering service establishes the single canonical transaction order all peers then validate and commit deterministically.",
+            "Common trap — chaincode is just a smart contract by another name.",
+            "Common trap — enterprise should always use public chains.",
+            "Common trap — permissioned means less secure."
+          ]
+        }
+      ]
+    },
+    "glossary": [
+      {
+        "term": "XRPL",
+        "def": "Issued currencies on XRPL are IOUs: they only exist between an issuer and holders connected by trust lines — explicit, limited authorizations to hold that issuer's currency. No trust line, no balance."
+      },
+      {
+        "term": "EVM",
+        "def": "Deterministic execution: the EVM is a deterministic state machine: given the same state and transaction, every node computes the identical result — that's what lets mutually distrusting nodes agree on contract outcomes."
+      },
+      {
+        "term": "BEFORE",
+        "def": "The external call happens BEFORE the balance is zeroed — a malicious recipient contract reenters withdraw() and drains funds repeatedly. This exact pattern caused The DAO hack."
+      },
+      {
+        "term": "XRP",
+        "def": "XRPL pathfinding computes routes through the ledger's liquidity graph — order books and trust lines — auto-bridging across currencies (often via XRP) so sender and recipient each deal in their own currency."
+      },
+      {
+        "term": "Who",
+        "def": "Who are you defending against in each model — anonymous attackers, or known-but-curious partners?"
+      },
+      {
+        "term": "Bitcoin",
+        "def": "After one Bitcoin confirmation, how sure are you — and after six?"
+      },
+      {
+        "term": "PoW",
+        "def": "PoW converts energy into immutability: each block's work accumulates, so rewriting history means outpacing the honest network's ongoing work — economically infeasible for deep burials. The 'waste' critique misses the point: the cost IS t…"
+      },
+      {
+        "term": "EOA",
+        "def": "Admin risk: a single EOA admin is a single point of failure AND a rug vector: compromise or malice drains the protocol. An audit is a point-in-time expert review of scoped code — it reduces risk, it doesn't eliminate it."
+      },
+      {
+        "term": "Trust",
+        "def": "Trust lines: the engineering question is always the trade: what trust assumption buys this speed, and does your use case accept it? Different trust assumptions, different design."
+      },
+      {
+        "term": "Fabric",
+        "def": "Fabric separates execution (endorsement) from ordering (sequencing) from validation (commit) — the ordering service establishes the single canonical transaction order all peers then validate and commit deterministically. This separation…"
+      },
+      {
+        "term": "SSTORE",
+        "def": "EVM storage (SSTORE) writes to permanent chain state — ~20,000 gas per new slot, the most expensive common operation. Events are the EVM's cheap broadcast mechanism: contracts emit them, off-chain indexers and frontends subscribe — no po…"
+      },
+      {
+        "term": "Gas",
+        "def": "Gas: for developers, gas shapes design: storage is brutally expensive, loops over unbounded arrays are bugs, and 'gas golfing' is real engineering. Gas-aware Solidity starts with knowing where each variable lives."
+      },
+      {
+        "term": "Different",
+        "def": "Consensus is the mechanism by which decentralized participants converge on one ledger state — ordering transactions and resolving conflicts without a trusted coordinator. Without it, every participant has their own version of truth and d…"
+      },
+      {
+        "term": "Events",
+        "def": "Events are the EVM's cheap broadcast mechanism: contracts emit them, off-chain indexers and frontends subscribe — no polling, no state reads. They're orders of magnitude cheaper than storage and bloom-indexed for efficient filtering."
+      },
+      {
+        "term": "Consensus",
+        "def": "Consensus: different mechanisms (PoW, PoS, XRPL consensus) make different trade-offs, but the problem they solve is identical: agreement among adversaries. Decentralization is multi-layered: consensus power, client development, governanc…"
+      },
+      {
+        "term": "Hyperledger",
+        "def": "Hyperledger is a Linux Foundation greenhouse of enterprise blockchain frameworks — permissioned networks, known identities, modular consensus, private transactions."
+      },
+      {
+        "term": "Endorsement",
+        "def": "Endorsement: fabric separates execution (endorsement) from ordering (sequencing) from validation (commit) — the ordering service establishes the single canonical transaction order all peers then validate and commit deterministically."
+      },
+      {
+        "term": "Decentralization",
+        "def": "Decentralization is multi-layered: consensus power, client development, governance, and infrastructure can each centralize independently. Node counts mislead when mining pools or validators concentrate."
+      },
+      {
+        "term": "PKI",
+        "def": "Fabric's Membership Service Providers bind every actor to a PKI identity — every transaction is signed by a known party, giving the accountability and auditability enterprises and regulators require. This is the permissioned model's core…"
+      },
+      {
+        "term": "Understanding",
+        "def": "The mempool is the waiting room: unconfirmed transactions queue, and miners select by fee rate (satoshis per virtual byte) — it's a fee market, not a queue. 'Stuck' means underbid: the fix is fee bumping (RBF/CPFP), not resending."
+      },
+      {
+        "term": "EUR",
+        "def": "How does a payment in EUR reach someone who wants USD, with neither party touching the conversion?"
+      },
+      {
+        "term": "Linux Foundation",
+        "def": "Hyperledger is a Linux Foundation greenhouse of enterprise blockchain frameworks — permissioned networks, known identities, modular consensus, private transactions."
+      },
+      {
+        "term": "Data",
+        "def": "Data isolation: channel design IS the data-governance architecture; getting it wrong leaks competitively sensitive data to the consortium. Supply-chain consortia (known partners, competitive data, throughput needs) typically land permiss…"
+      },
+      {
+        "term": "IOUs",
+        "def": "Issued currencies on XRPL are IOUs: they only exist between an issuer and holders connected by trust lines — explicit, limited authorizations to hold that issuer's currency. No trust line, no balance."
+      },
+      {
+        "term": "Admin",
+        "def": "Admin risk: a single EOA admin is a single point of failure AND a rug vector: compromise or malice drains the protocol. An audit is a point-in-time expert review of scoped code — it reduces risk, it doesn't eliminate it."
+      }
+    ],
+    "links": [
+      {
+        "label": "Bitcoin developer documentation",
+        "url": "https://developer.bitcoin.org/",
+        "note": "Official Bitcoin developer docs"
+      },
+      {
+        "label": "Ethereum developer documentation",
+        "url": "https://ethereum.org/en/developers/docs/",
+        "note": "Official Ethereum developer docs"
+      },
+      {
+        "label": "XRPL documentation",
+        "url": "https://xrpl.org/docs.html",
+        "note": "Official XRP Ledger docs"
+      },
+      {
+        "label": "Stellar developers",
+        "url": "https://developers.stellar.org/",
+        "note": "Official Stellar developer docs"
+      }
+    ],
+    "checklist": [
+      "Define 'done' for the session: one working feature or one fixed bug.",
+      "Read the relevant docs section before writing code.",
+      "Commit early and often with clear commit messages.",
+      "Test each change in the sandbox before moving on.",
+      "When stuck for 30 minutes, explain the problem aloud or re-read the walkthrough.",
+      "Review the domain glossary terms you used today — can you define each one?",
+      "End the session with a short note: what worked, and what is next.",
+      "Re-run your weakest-domain drill until mastery is at least 80%.",
+      "Build one small thing that exercises Blockchain Basics end to end.",
+      "Refactor yesterday's Bitcoin Protocol work using a glossary term you just learned.",
+      "Build one small thing that exercises XRPL end to end."
+    ]
+  }
+}
