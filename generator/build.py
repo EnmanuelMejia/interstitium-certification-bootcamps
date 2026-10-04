@@ -8,14 +8,15 @@ Reads:
   templates/{hub,bootcamp,chat}.html
   engine/*                   — shared JS/CSS (copied verbatim)
 
-Writes the deployable tree under site/:
-  site/index.html                  — hub landing (static cards + hub.js filters)
-  site/catalog-map.json            — machine-readable slug -> catalog node refs
-  site/bootcamps/<slug>/index.html — thin shell (loads engine + ./content.json)
+Writes the deployable tree under site/ (all paths nested under /bootcamps so
+<host>/bootcamps/* routes map directly onto the asset tree — pure static
+assets, no edge worker):
+  site/bootcamps/index.html            — hub landing (static cards + hub.js filters)
+  site/bootcamps/catalog-map.json      — machine-readable slug -> catalog node refs
+  site/bootcamps/engine/*              — shared engine (style.css, bootcamp.js, chat.js, hub.js)
+  site/bootcamps/<slug>/index.html     — thin shell (loads ../engine + ./content.json)
   site/bootcamps/<slug>/chat/index.html — thin shell for the chat companion
-  site/bootcamps/<slug>/content.json    — copied content (when valid)
-  site/engine/*                  — copied shared engine
-  site/worker.js                 — main_module: strips /bootcamps prefix, serves assets
+  site/bootcamps/<slug>/content.json   — copied content (when valid)
 
 Usage:
   python3 generator/build.py [--clean]
@@ -200,7 +201,7 @@ def render_bootcamp(entry, tpl, content, stats, prev_entry, next_entry, build_da
         "{{DOMAIN_COUNT}}": str(len(entry["domains"])),
         "{{SIM_MINUTES}}": str(sim_minutes),
         "{{ACCENT_STYLE}}": accent_style((content or {}).get("accent")),
-        "{{HUB_URL}}": "../../index.html",
+        "{{HUB_URL}}": "../index.html",
         "{{CHAT_URL}}": "./chat/",
         "{{BOOTCAMP_URL}}": "./",
         "{{PREV_LINK}}": nav_link(prev_entry, "←"),
@@ -218,7 +219,7 @@ def render_chat(entry, tpl, content, build_date):
         "{{SLUG}}": esc(entry["slug"]),
         "{{TITLE}}": esc(entry["title"]),
         "{{ACCENT_STYLE}}": accent_style((content or {}).get("accent")),
-        "{{HUB_URL}}": "../../../index.html",
+        "{{HUB_URL}}": "../../index.html",
         "{{BOOTCAMP_URL}}": "../index.html",
         "{{BUILD_DATE}}": build_date,
     }
@@ -236,7 +237,7 @@ def hub_card(entry, stats, has_content):
     count_tag = ('<span class="tag accent">%d scenarios</span>' % stats["scenarios"]
                  if has_content else '<span class="badge-soon">IN BUILD</span>')
     return (
-        '<a class="hub-card" href="bootcamps/%s/" data-group="%s" data-vendor="%s" data-search="%s">'
+        '<a class="hub-card" href="%s/" data-group="%s" data-vendor="%s" data-search="%s">'
         '<p class="vendor">%s</p><h3>%s</h3><p>%s</p>'
         '<div class="hub-meta">%s<span class="tag">%d domains</span>'
         '<span class="go">Open →</span></div></a>'
@@ -344,13 +345,14 @@ def main():
         for w in warns:
             warnings.append("%s: %s" % (slug, w))
 
-    # Engine (copied verbatim) + edge router
-    eng_out = os.path.join(SITE, "engine")
+    # Engine (copied verbatim) — lives under /bootcamps/engine/ so all
+    # route-relative references resolve on every domain.
+    eng_out = os.path.join(SITE, "bootcamps", "engine")
     os.makedirs(eng_out, exist_ok=True)
     for f in ["style.css", "bootcamp.js", "chat.js", "hub.js"]:
         shutil.copy2(os.path.join(ENGINE_DIR, f), os.path.join(eng_out, f))
-    with open(os.path.join(SITE, "worker.js"), "w", encoding="utf-8") as f:
-        f.write(WORKER_JS)
+    # NOTE: pure static-assets deploy — no edge worker. The asset tree already
+    # carries the /bootcamps prefix, so <host>/bootcamps/* routes map directly.
 
     # Bootcamp pages
     for i, e in enumerate(entries):
@@ -370,8 +372,8 @@ def main():
             with open(os.path.join(bdir, "content.json"), "w", encoding="utf-8") as f:
                 json.dump(content, f, ensure_ascii=False)
 
-    # Hub + catalog map
-    with open(os.path.join(SITE, "index.html"), "w", encoding="utf-8") as f:
+    # Hub + catalog map (both live under /bootcamps/ to match the routes)
+    with open(os.path.join(SITE, "bootcamps", "index.html"), "w", encoding="utf-8") as f:
         f.write(render_hub(entries, contents, stats_map, tpl_hub, build_date, version))
 
     catalog_map = {
@@ -393,7 +395,7 @@ def main():
             } for e in entries
         },
     }
-    with open(os.path.join(SITE, "catalog-map.json"), "w", encoding="utf-8") as f:
+    with open(os.path.join(SITE, "bootcamps", "catalog-map.json"), "w", encoding="utf-8") as f:
         json.dump(catalog_map, f, ensure_ascii=False, indent=1)
 
     # Report
