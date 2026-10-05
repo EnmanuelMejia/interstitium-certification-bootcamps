@@ -529,7 +529,8 @@ function profileFor(slug){
   if (['sql','oracle-sql','dp-203','data-engineering','data-analyst'].indexOf(s) >= 0) return PROFILES.sql;
   if (['linux-essentials','rhcsa','rhce','sre-platform','comptia-core','comptia-cyber',
        'comptia-infra','cissp','cism','pentest','soc-analyst','zerotrust','dod-8140',
-       'nice-framework','hackers-arise','nsa-codebreaker','systems-cs'].indexOf(s) >= 0) return PROFILES.bash;
+       'nice-framework','hackers-arise','nsa-codebreaker','systems-cs',
+       'full-spectrum-dominance'].indexOf(s) >= 0) return PROFILES.bash;
   if (s.indexOf('python') >= 0 || s.indexOf('datascience') >= 0 ||
       s.indexOf('llm-engineering') >= 0 || s.indexOf('nvidia-ai') >= 0 ||
       s.indexOf('dsa') >= 0 || has('ml')) return PROFILES.python;
@@ -2240,6 +2241,8 @@ defineProfile('bash', {
       return '';
     }},
     whoami: { d: 'Print current user', run: function(){ return 'candidate'; } },
+    hostname: { d: 'Print system hostname', run: function(){ return 'interstitium'; } },
+    id: { d: 'Print user identity', run: function(){ return 'uid=1000(candidate) gid=1000(candidate) groups=1000(candidate)'; } },
     uname: { d: 'Print system info', run: function(a){
       if (a.indexOf('-a') >= 0) return 'Linux interstitium 6.8.0-ilb x86_64 GNU/Linux (simulated)';
       return 'Linux';

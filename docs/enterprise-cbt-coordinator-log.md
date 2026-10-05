@@ -18,7 +18,13 @@ Phase 1: DONE — spec at docs/enterprise-cbt-spec.md
 - W6 content C: f27eaec1 — m365, oracle-oci, oracle-sql, oracle-db, sql, mongodb, data-engineering, data-analyst, datascience-ml, llm-engineering, linux-essentials, rhcsa, rhce, k8s-associate, cka, ckad, docker
 - W7 content D: c5bf3578 — terraform, vault-consul, openshift, sre-platform, soc-analyst, pentest, hackers-arise, zerotrust, dod-8140, nsa-codebreaker, nice-framework, blockchain-dev, math-tech, career-launch, nvidia-ai, creative-code, hermetica
 
-## Phase 3 checklist (when all workers report)
+## Phase 3 — DONE 2026-10-04 ~17:10 EDT
+- Merged all fragments (68/68, 0 errors after fixing 2 bad dp-203 domain_ids); volumes: 544 labs (8/bc), 272 simulations (4/bc), 136 consoleSims (2/bc), 408 missions (6/bc), 410 media diagrams, full resource packs. Fragments deleted.
+- Terminal fixes: mongoMatch $gt/$gte/$lt/$lte/$ne chain bug fixed (verified); added nmap/dig/curl/ping/ip/ss/systemctl/journalctl/free/sha256sum(real SHA-256, vector-verified)/ssh-notice to bash; git stash/merge/tag; consul kv/members to vault profile. All verified via ENGINE_TEST seam.
+- Fixed 2 config-check off-by-one line refs (openshift, rhce); structural validator clean across 68.
+- node --check all pass; smoke tests ALL PASS; build.py exit 0; 6/6 spot-check slugs have all 15 HTML needles; 40/40 sampled SVGs parse.
+- Deployed cert-bootcamps worker 2026-10-04T21:08:43Z (699 files, 552 uploaded). Curl-verified 21/21 200s across interstitiumlabs.dev, learn.interstitiumlabs.dev, enmanueldmejia.com (hub, 2 bootcamp pages, 3 engine JS, 1 SVG per domain); deployed content.json confirmed full payload.
+- Committed d3abbec, tree clean.
 1. Merge fragments: content/<slug>.json ← fragments/extended.json (labs+=labs_add), media.json, resources.json; delete fragments/
 2. Add NEEDS-COMMAND profile commands to engine/terminal.js (from W4-W7 reports)
 3. python3 generator/build.py (rebuild all 68); node --check all engine JS; validate all content.json parse + schema keys
