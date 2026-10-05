@@ -1,6 +1,6 @@
 # Interstitium Labs — Certification Bootcamp Catalog
 
-An enterprise-grade platform of **68 interactive, adaptive certification-prep bootcamps** covering the full Interstitium Labs catalog: programming languages, web frameworks, developer tooling, CompTIA, AWS, Microsoft/Azure, Oracle, databases, Linux, cloud-native, security, government/NSA programs, data/AI, and career tracks.
+An enterprise-grade platform of **69 interactive, adaptive certification-prep bootcamps** covering the full Interstitium Labs catalog: programming languages, web frameworks, developer tooling, CompTIA, AWS, Microsoft/Azure, Oracle, databases, Linux, cloud-native, security, government/NSA programs, data/AI, and career tracks.
 
 **Live hub:** https://enmanueldmejia.com/bootcamps/
 
