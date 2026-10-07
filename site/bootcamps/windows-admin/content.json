@@ -1,0 +1,466 @@
+{
+ "slug": "windows-admin",
+ "title": "Windows Systems Administration",
+ "tagline": "From installation to automation: core Windows administration, Active Directory basics, PowerShell, and the networking services that keep a Windows environment running.",
+ "vendor": {
+  "name": "Independent",
+  "certs": [],
+  "docs": []
+ },
+ "disclaimer": "Independent study material by Interstitium Labs. Not affiliated with or endorsed by any vendor. Confers no certificate.",
+ "accent": "#3b82f6",
+ "domains": [
+  {
+   "id": "windows-admin",
+   "name": "Windows Systems Administration",
+   "summary": "The complete Windows administrator's foundation: core OS management, identity with Active Directory, automation with PowerShell, and Windows networking services.",
+   "scenarios": [
+    {
+     "id": "windows-admin-sc1",
+     "title": "The Service That Won't Start",
+     "situation": "A line-of-business app stops working on a Windows Server. You open Services (services.msc) and find its service in a Stopped state; its Startup Type is Automatic. A colleague says to just click Start and move on.",
+     "prompt": "What is the correct first response, and what do you check after?",
+     "evidence": [],
+     "choices": [
+      "Start the service, then immediately check the Event Logs (System and Application) for the errors that stopped it — restarting without a cause lets it fail again.",
+      "Reinstall the application; a stopped service always means a corrupt install.",
+      "Set the startup type to Manual so it cannot crash again.",
+      "Reboot the server immediately without checking anything."
+     ],
+     "answer": 0,
+     "why": "Services with Automatic startup do not stop themselves — something told the service to stop. Event Viewer (System log for service-control events, Application log for the app's own errors) is the causal layer; services.msc is only the control layer. The professional habit is control first, cause second, fix third.",
+     "hint": "Which two windows show you what the service did (control) versus why it did it (cause)?",
+     "objectives": [
+      "Windows core administration: services and event logs"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "windows-admin-sc2",
+     "title": "NTFS vs Share Permissions",
+     "situation": "A user complains they cannot write to a shared folder, though their manager swears 'everyone has full control on the share.' You inspect the folder and see NTFS permissions grant the user's group Read-only.",
+     "prompt": "Why is the user blocked, and what is the right fix?",
+     "evidence": [],
+     "choices": [
+      "Windows applies the most restrictive of the combined share and NTFS permissions — NTFS Read-only wins. Grant Write in the NTFS permissions (following least privilege) rather than opening the share further.",
+      "Share permissions override NTFS, so the user should already have access — the problem must be the network.",
+      "Give the user Full Control at both layers to eliminate all future tickets.",
+      "Delete the share and recreate it; permissions do not survive a share rebuild."
+     ],
+     "answer": 0,
+     "why": "Effective access is the intersection of share and NTFS permissions: the most restrictive permission always wins. The modern best practice is to set the share to broad access (e.g., Authenticated Users: Full Control) and enforce the real policy at the NTFS layer, where permissions are granular, inheritable, and auditable.",
+     "hint": "When two layers both say something, which one wins — the generous one or the strict one?",
+     "objectives": [
+      "Windows core administration: NTFS and sharing"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "windows-admin-sc3",
+     "title": "The Locked-Out Finance User",
+     "situation": "A finance user cannot log in and the help desk unlocked their account twice today. You check Active Directory Users and Computers and see the account is in the Finance OU, which has a Group Policy requiring a 15-character password, while the user keeps setting a 10-character one.",
+     "prompt": "What is the root cause and the proper resolution?",
+     "evidence": [],
+     "choices": [
+      "A Group Policy on the Finance OU enforces 15-character passwords; the user's 10-character password fails policy, so logons fail. Reset the password to a policy-compliant value and explain the requirement.",
+      "The user is being hacked; disable the account immediately.",
+      "Move the user to a different OU to escape the policy.",
+      "Group Policy is broken and should be unlinked from the Finance OU."
+     ],
+     "answer": 0,
+     "why": "Group Policy applies by OU: policies linked to the Finance OU win for accounts in that OU (the LSDOU order — Local, Site, Domain, OU — means the closest link wins on conflict). The unlocks treated the symptom; the password-policy mismatch was the cause. The fix is a compliant password plus user education — not moving the user or breaking policy for one person.",
+     "hint": "If a setting lives on the OU and the user lives in the OU, where do you look first — the user or the policy?",
+     "objectives": [
+      "Active Directory: OUs and Group Policy"
+     ],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "windows-admin-sc4",
+     "title": "PowerShell: The Pipeline Fix",
+     "situation": "You need a list of all services currently running on a server whose names start with 'SQL', and you want just their names and statuses on screen. You know Get-Service lists services and Where-Object filters them.",
+     "prompt": "Which command does this correctly?",
+     "evidence": [],
+     "choices": [
+      "Get-Service | Where-Object { $_.Status -eq 'Running' -and $_.Name -like 'SQL*' } | Select-Object Name, Status",
+      "Get-Service -Name 'SQL*' | Where-Object Status = Running",
+      "Where-Object { Name -like 'SQL*' } | Get-Service -Running",
+      "Get-Service | Select-Object -First 10"
+     ],
+     "answer": 0,
+     "why": "The pipeline passes objects, not text: Get-Service emits service objects, Where-Object filters on their Status and Name properties ($_.Status, $_.Name), and Select-Object projects just the properties you want. The -like operator with a wildcard handles the 'starts with SQL' match. Memorizing the cmdlet names matters less than the pattern: get → filter → shape.",
+     "hint": "What does the pipeline carry between commands — text lines or objects with properties?",
+     "objectives": [
+      "PowerShell automation: the pipeline"
+     ],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "windows-admin-sc5",
+     "title": "DNS: The Intranet Mystery",
+     "situation": "Users report that 'intranet' resolves to an old IP on some workstations but the correct new IP on others. The DNS zone on the Windows DNS server was updated an hour ago. You confirm the server returns the new address.",
+     "prompt": "What is the most likely cause, and how do you confirm it on a broken workstation?",
+     "evidence": [],
+     "choices": [
+      "Stale resolver cache or an outdated DHCP-provided DNS configuration on the affected workstations. Run ipconfig /displaydns to inspect the cache and ipconfig /flushdns plus ipconfig /registerdns to refresh it.",
+      "The DNS server is lying; rebuild the zone from scratch.",
+      "The workstations need new network cards.",
+      "Block port 53 at the firewall to force a different resolution path."
+     ],
+     "answer": 0,
+     "why": "Windows caches DNS answers locally, and clients keep using the cache until its TTL expires — so a zone change propagates unevenly. ipconfig /displaydns shows the cached entry, /flushdns clears it, and /registerdns re-registers the client. When 'some machines work and some don't' after a DNS change, the cache is suspect number one.",
+     "hint": "If the server is right but the client is wrong, where between them can an old answer hide?",
+     "objectives": [
+      "Windows networking: DNS and DHCP"
+     ],
+     "mins": 6,
+     "difficulty": 3
+    },
+    {
+     "id": "windows-admin-sc6",
+     "title": "Kerberos vs NTLM at 2 AM",
+     "situation": "After a domain migration, a legacy application authenticates users but its audit logs show NTLM authentication instead of Kerberos. The app runs on a server joined to the new domain, and users authenticate fine — but security policy requires Kerberos everywhere it is supported.",
+     "prompt": "What is the most likely reason the app fell back to NTLM?",
+     "evidence": [],
+     "choices": [
+      "The application or its service principal name (SPN) is misconfigured — Kerberos needs a valid SPN for the service, and without one (or with a duplicate SPN), Windows silently falls back to NTLM. Check SPN registration with setspn -L and the event logs for Kerberos errors.",
+      "NTLM is stronger than Kerberos, so this is an improvement.",
+      "Kerberos requires the firewall to be disabled.",
+      "The domain controllers need to be rebooted nightly for Kerberos to work."
+     ],
+     "answer": 0,
+     "why": "Kerberos authentication requires the client to find a ticket for the exact service principal name; a missing or duplicated SPN breaks ticket issuance and Windows degrades to NTLM without telling the user. This is why legacy apps 'work but show NTLM' after migrations: the app was never registered properly in the new domain. setspn -L <account> lists registered SPNs; duplicates are a classic migration artifact.",
+     "hint": "Kerberos answers the question 'who vouches for this service?' What record provides that answer?",
+     "objectives": [
+      "Active Directory: Kerberos and NTLM authentication"
+     ],
+     "mins": 6,
+     "difficulty": 3
+    }
+   ]
+  }
+ ],
+ "lessons": [
+  {
+   "domain_id": "windows-admin",
+   "title": "Windows Systems Administration — Core concepts",
+   "concepts": [
+    "Core administration: services.msc controls service state and startup type; the Registry holds system configuration; Event Viewer (System, Application, Security logs) is the causal record — control first, cause second, fix third.",
+    "NTFS vs share permissions: effective access is the most restrictive of the two layers; enforce policy at the NTFS layer and keep shares simple.",
+    "Active Directory: forests contain trees of domains; OUs organize objects for Group Policy, which applies in LSDOU order (Local, Site, Domain, OU — closest link wins).",
+    "Authentication: Kerberos is the default domain protocol (ticket-based, needs correct SPNs); NTLM is the legacy fallback — its appearance in logs signals a misconfiguration to investigate.",
+    "PowerShell: the pipeline passes objects with properties — Get-VerbNoun cmdlets retrieve, Where-Object filters, Select-Object shapes output.",
+    "Windows networking: DNS resolves names (watch the client cache), DHCP assigns addresses and options; file/print services and Remote Desktop/Remote Access complete the server's network role set."
+   ],
+   "example": {
+    "lang": "shell",
+    "code": "# Audit: find every running service whose name starts with SQL,\n# show name and status, export to CSV for the change ticket\nGet-Service |\n    Where-Object { $_.Status -eq 'Running' -and $_.Name -like 'SQL*' } |\n    Select-Object Name, Status, StartType |\n    Export-Csv C:\\audit\\sql-services.csv -NoTypeInformation\n# Verify the file landed:\nGet-Item C:\\audit\\sql-services.csv | Select-Object Length, LastWriteTime",
+    "walkthrough": "This is the get → filter → shape pattern in one pipeline: Get-Service emits service objects, Where-Object keeps only running ones matching 'SQL*', Select-Object projects three properties, and Export-Csv persists the evidence. The final Get-Item confirms the artifact exists — the habit of verifying output is what separates a script from a hope."
+   },
+   "pitfalls": [
+    "Common trap: restarting a failed service without checking Event Viewer — you treated the symptom and the failure will recur.",
+    "Common trap: opening share permissions instead of fixing NTFS — the most restrictive layer wins, so broad shares plus tight NTFS is the correct posture.",
+    "Common trap: unlinking a Group Policy to fix one user's problem — policy is OU-scoped; fix the object or the setting, not the whole policy.",
+    "Common trap: treating NTLM in the logs as normal — its presence usually means Kerberos broke down (bad or duplicate SPN), and that deserves investigation."
+   ],
+   "try_it": "Work through this in the Labs tab."
+  }
+ ],
+ "labs": [
+  {
+   "id": "windows-admin-lab1",
+   "domain_id": "windows-admin",
+   "title": "Service Triage and NTFS Repair",
+   "objective": "Diagnose a stopped service via event logs and repair a file-share access problem at the NTFS layer.",
+   "steps": [
+    "Open Services and identify the stopped line-of-business service; note its startup type.",
+    "Open Event Viewer and filter the System log for Service Control Manager events around the stop time.",
+    "Record the error and its likely cause in your notes before restarting anything.",
+    "Restart the service and confirm it stays running for two minutes.",
+    "For the share issue: inspect both the share permissions and the NTFS ACL on the folder.",
+    "Grant the user group Modify at the NTFS layer, leave the share at Authenticated Users: Full Control, and re-test access."
+   ],
+   "checks": [
+    {
+     "command_pattern": "^Get-WinEvent\\s",
+     "expect_contains": "Service Control Manager",
+     "hint": "Use Get-WinEvent -LogName System and filter for the Service Control Manager source."
+    },
+    {
+     "command_pattern": "^icacls\\s",
+     "expect_contains": "Modify",
+     "hint": "Run icacls on the folder to view or set the NTFS ACL granting Modify."
+    }
+   ]
+  },
+  {
+   "id": "windows-admin-lab2",
+   "domain_id": "windows-admin",
+   "title": "AD OU Design and PowerShell Remoting",
+   "objective": "Create an OU structure, link a Group Policy correctly, and run a one-to-many PowerShell command across servers.",
+   "steps": [
+    "In Active Directory Users and Computers, create an OU named Workstations-Finance under the domain root.",
+    "Link a password-policy GPO to the new OU and confirm it does not apply outside the OU.",
+    "Run gpresult /r on a test machine to verify the policy applies (LSDOU order).",
+    "Enable PowerShell remoting and open a session to a lab server with Enter-PSSession.",
+    "From your workstation, run Get-Service -Name Spooler -ComputerName SRV01,SRV02 to query both servers at once.",
+    "Write a Desired State Configuration concept note: what 'state' would you declare for the Spooler service, and why DSC declares outcomes instead of steps."
+   ],
+   "checks": [
+    {
+     "command_pattern": "^gpresult\\s",
+     "expect_contains": "Applied Group Policy Objects",
+     "hint": "Run gpresult /r (or /h) to show which GPOs applied to the machine."
+    },
+    {
+     "command_pattern": "^Enter-PSSession\\s",
+     "expect_contains": "connected",
+     "hint": "Type Enter-PSSession -ComputerName <server> to open the remote session."
+    }
+   ]
+  }
+ ],
+ "sections": [
+  {
+   "id": "windows-admin-sec",
+   "title": "Windows Systems Administration — administrator path",
+   "kind": "path",
+   "lectures": [],
+   "lab_ids": [
+    "windows-admin-lab1",
+    "windows-admin-lab2"
+   ],
+   "drill_domain_ids": [
+    "windows-admin"
+   ]
+  }
+ ],
+ "behavioral": [
+  {
+   "prompt": "Walk me through how you troubleshoot a server that users say is 'down.'",
+   "framework": "Show a layered method: verify scope (one user vs all), check services, read event logs, test network, then communicate status.",
+   "points": [
+    "Scope the blast radius first",
+    "Evidence before action (logs before reboots)",
+    "Keep users informed while you work"
+   ],
+   "pitfalls": [
+    "Rebooting as the first step",
+    "No communication plan"
+   ]
+  },
+  {
+   "prompt": "Tell me about a time you automated a repetitive task with PowerShell or scripting.",
+   "framework": "STAR: the repetitive task, the script or one-liner you wrote, the time saved, and how you made it safe (testing, -WhatIf).",
+   "points": [
+    "Concrete before/after time savings",
+    "Testing approach before running against production",
+    "Sharing the script with the team"
+   ],
+   "pitfalls": [
+    "A script with no testing story",
+    "Automating something you did not fully understand"
+   ]
+  },
+  {
+   "prompt": "How do you handle a change that could affect every user in the domain, like a Group Policy update?",
+   "framework": "Change control: test OU, pilot group, maintenance window, rollback plan, communication.",
+   "points": [
+    "Never link untested policy at the domain level",
+    "Pilot on a representative OU first",
+    "Documented rollback"
+   ],
+   "pitfalls": [
+    "Deploying domain-wide on a Friday afternoon",
+    "No rollback plan"
+   ]
+  },
+  {
+   "prompt": "A user with an urgent deadline asks you to 'just give me admin rights for today.' How do you respond?",
+   "framework": "Least privilege + alternatives: understand the actual need, offer a scoped solution (temporary group membership, run-as), follow approval process.",
+   "points": [
+    "Empathy for the deadline without caving",
+    "A scoped alternative that solves the real problem",
+    "Follows the access-request process"
+   ],
+   "pitfalls": [
+    "Granting standing admin to be helpful",
+    "Refusing with no alternative offered"
+   ]
+  },
+  {
+   "prompt": "Describe a time you had to learn an unfamiliar Windows Server role or feature quickly.",
+   "framework": "STAR: the unfamiliar technology, how you learned it (docs, lab, testing), and how you proved it worked.",
+   "points": [
+    "Lab-first approach before touching production",
+    "Official documentation as the source of truth",
+    "Validation step before declaring done"
+   ],
+   "pitfalls": [
+    "Learning directly on the production server",
+    "No verification of the result"
+   ]
+  },
+  {
+   "prompt": "How do you document your administrative work so the next person can follow it?",
+   "framework": "Show the habit: change tickets, runbooks, scripts in version control, and notes that explain the why.",
+   "points": [
+    "Documentation written for a stranger, not yourself",
+    "Why alongside the what",
+    "Kept where the team actually looks"
+   ],
+   "pitfalls": [
+    "Documentation that lives only in your head",
+    "Steps with no reasoning attached"
+   ]
+  },
+  {
+   "prompt": "Tell me about a disagreement with a colleague over how to configure something.",
+   "framework": "STAR: the technical disagreement, how you evaluated the options (docs, testing, risk), and how you reached a decision.",
+   "points": [
+    "Evidence over ego — test or cite documentation",
+    "Respectful disagreement focused on the system",
+    "Team decision once made is supported"
+   ],
+   "pitfalls": [
+    "Winning the argument but damaging the relationship",
+    "Caving without evaluating the technical merit"
+   ]
+  },
+  {
+   "prompt": "Where do you see your Windows administration skills going in the next two years?",
+   "framework": "Connect current skills to growth: automation depth, identity/hybrid, and security hardening.",
+   "points": [
+    "Automation as a force multiplier (PowerShell, DSC concepts)",
+    "Identity as the security perimeter",
+    "Continuous learning habit"
+   ],
+   "pitfalls": [
+    "No direction at all",
+    "A plan that ignores security entirely"
+   ]
+  }
+ ],
+ "resources": {
+  "cheatsheet": [
+   "services.msc: state (Running/Stopped) + startup type (Automatic/Manual/Disabled). Automatic services that stop did so for a reason — check logs.",
+   "Event Viewer: System (OS/service events), Application (app errors), Security (logons, audits). Filter by source and time.",
+   "NTFS vs share: effective access = most restrictive of both. Broad share + tight NTFS is the standard posture.",
+   "icacls: view and set NTFS ACLs from the command line.",
+   "AD: forest → trees → domains → OUs. GPOs apply in LSDOU order; closest link wins conflicts.",
+   "Kerberos = default domain auth (needs correct SPNs; setspn -L to inspect). NTLM in logs = investigate.",
+   "PowerShell pipeline: Get-* | Where-Object { $_.Prop -op value } | Select-Object Prop1, Prop2. Objects, not text.",
+   "Get-WinEvent -LogName System: modern event-log querying. gpresult /r: which GPOs applied.",
+   "DNS: ipconfig /displaydns, /flushdns, /registerdns. DHCP: scope, lease, reservations, options (DNS server, gateway).",
+   "Enter-PSSession / Invoke-Command: PowerShell remoting. DSC: declare desired state, the engine converges to it."
+  ],
+  "glossary": [
+   {
+    "term": "Forest",
+    "def": "The top-level Active Directory container: one or more domain trees sharing a schema, configuration, and global catalog."
+   },
+   {
+    "term": "Domain",
+    "def": "An AD partition with its own security boundary and authentication authority; users and computers join a domain."
+   },
+   {
+    "term": "OU (Organizational Unit)",
+    "def": "A container inside a domain used to organize objects and scope Group Policy."
+   },
+   {
+    "term": "Group Policy",
+    "def": "Centralized configuration management for AD-joined machines and users, applied in LSDOU order."
+   },
+   {
+    "term": "LSDOU",
+    "def": "Local, Site, Domain, OU — the order Group Policy applies; the closest link wins on conflict."
+   },
+   {
+    "term": "Kerberos",
+    "def": "The default Windows domain authentication protocol: ticket-based, requires correct service principal names."
+   },
+   {
+    "term": "NTLM",
+    "def": "Legacy Windows challenge-response authentication; its appearance in logs usually signals a Kerberos failure to investigate."
+   },
+   {
+    "term": "SPN",
+    "def": "Service Principal Name: the identifier Kerberos uses to issue tickets for a service; missing or duplicate SPNs break Kerberos."
+   },
+   {
+    "term": "NTFS permissions",
+    "def": "File-system-level access control on Windows volumes: granular, inheritable, and the correct enforcement layer."
+   },
+   {
+    "term": "PowerShell remoting",
+    "def": "Running commands on remote machines via Enter-PSSession (interactive) or Invoke-Command (one-to-many)."
+   },
+   {
+    "term": "DSC",
+    "def": "Desired State Configuration: declare the state a machine should be in; the engine converges the system to it."
+   },
+   {
+    "term": "DNS",
+    "def": "Domain Name System: resolves names to IPs; Windows clients cache answers locally (ipconfig /displaydns)."
+   },
+   {
+    "term": "DHCP",
+    "def": "Dynamic Host Configuration Protocol: assigns IP addresses, subnet masks, gateways, and DNS servers automatically."
+   }
+  ],
+  "links": [
+   {
+    "label": "Microsoft Learn — Windows Server",
+    "url": "https://learn.microsoft.com/en-us/windows-server/",
+    "note": "Official documentation: installation, roles, management, and PowerShell references."
+   },
+   {
+    "label": "Microsoft Learn — Active Directory Domain Services",
+    "url": "https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/active-directory-domain-services",
+    "note": "Official AD DS overview: forests, domains, trusts, and administration."
+   },
+   {
+    "label": "Microsoft Learn — PowerShell",
+    "url": "https://learn.microsoft.com/en-us/powershell/",
+    "note": "Official PowerShell docs: language, remoting, and DSC."
+   },
+   {
+    "label": "Microsoft Learn — Group Policy",
+    "url": "https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/manage/group-policy/group-policy-overview",
+    "note": "How Group Policy processing and precedence work."
+   }
+  ],
+  "checklist": [
+   "I can triage a stopped service: check startup type, read the System and Application logs, then act.",
+   "I can explain why NTFS permissions are the enforcement layer and shares stay simple.",
+   "I can diagram forest → tree → domain → OU and state the LSDOU order.",
+   "I can write a get → filter → shape PowerShell pipeline from scratch.",
+   "I can explain when Kerberos is expected and what NTLM in the logs means.",
+   "I can clear a stale DNS cache and verify DHCP-provided settings on a client."
+  ]
+ },
+ "chat": {
+  "persona": "You are a patient senior Windows administrator mentoring a junior admin. Walk through real troubleshooting, quiz PowerShell pipelines, and rehearse admin judgment calls. Teach reasoning, never reproduce vendor or exam content. All practice is original.",
+  "topics": [
+   "Windows core administration: services, registry, event logs",
+   "NTFS and share permissions troubleshooting",
+   "Active Directory: forests, domains, OUs, Group Policy",
+   "Kerberos vs NTLM and SPN troubleshooting",
+   "PowerShell pipelines, remoting, and DSC concepts",
+   "Windows networking: DNS, DHCP, file/print, remote access",
+   "Admin judgment: change control, least privilege, documentation"
+  ]
+ },
+ "simulation": {
+  "items": 10,
+  "minutes": 30,
+  "evidence_cost_mins": 2
+ },
+ "media": [],
+ "foundations": [],
+ "math": []
+}

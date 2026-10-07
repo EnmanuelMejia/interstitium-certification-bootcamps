@@ -1,0 +1,419 @@
+{
+  "slug": "ai-lab",
+  "title": "AI Lab: Engineering Around the Model",
+  "tagline": "Ship the system, not just the weights.",
+  "vendor": {
+    "name": "Independent",
+    "certs": [],
+    "docs": []
+  },
+  "disclaimer": "Independent study material by Interstitium Labs. Not affiliated with or endorsed by any vendor. Confers no certificate.",
+  "accent": "#8b5cf6",
+  "domains": [
+    {
+      "id": "ai-lab",
+      "name": "AI Lab: Engineering Around the Model",
+      "summary": "The engineering around the model: local inference economics, the agent operations loop, and the review patterns that keep agentic systems honest.",
+      "scenarios": [
+        {
+          "id": "ai-lab-sc1",
+          "title": "The Weights Arrived",
+          "situation": "Your team downloads an open-weight 32B model and drops the weights into a folder. The founder declares the AI product 'basically done' \u2014 the model knows things, after all.",
+          "prompt": "What is the highest-leverage next engineering step?",
+          "evidence": [],
+          "choices": [
+            "Build the scaffolding around the model folder: prompt pipeline, tool definitions, memory, a sandboxed execution runtime, behavior tests, and trace inspection \u2014 then wire the loop from request to deploy.",
+            "Download a bigger model, since a more capable model automatically becomes a better product.",
+            "Fine-tune immediately on customer data to make the model 'know the product'.",
+            "Write more documentation describing what the model could theoretically do."
+          ],
+          "answer": 0,
+          "why": "A trained model is a file: weights, a tokenizer, a config. Everything that turns it into a product \u2014 retrieval, memory, tool use, sandboxing, evaluation, monitoring \u2014 is infrastructure you build, operate, and pay for. Ask what the folders around the model folder contain; that is where the engineering, and the failure modes, live.",
+          "hint": "If the weights folder disappeared tomorrow, which folders would still be 'the product'?",
+          "objectives": [
+            "model-vs-system"
+          ],
+          "mins": 6,
+          "difficulty": 1
+        },
+        {
+          "id": "ai-lab-sc2",
+          "title": "The Quantization Exchange Rate",
+          "situation": "You have a workstation with 24 GB of VRAM and want to run a 70B-parameter open model locally. At full 16-bit precision the weights alone need roughly 140 GB; at 8-bit roughly 70 GB; at 4-bit roughly 35 GB plus overhead.",
+          "prompt": "Which quantization choice survives first contact with this hardware?",
+          "evidence": [],
+          "choices": [
+            "Load the model at 4-bit precision (GGUF Q4), accept the modest fidelity loss, and keep the KV cache on a diet \u2014 it's the only tier that fits, and the exchange rate (memory for fidelity) is exactly the trade local inference exists to manage.",
+            "Run it at 8-bit and let the OS swap to RAM; paging is just slower memory.",
+            "Run it at full 16-bit precision; quantization destroys model quality anyway.",
+            "Split the model across two laptops over Wi-Fi to pool their VRAM."
+          ],
+          "answer": 0,
+          "why": "Quantization \u2014 storing weights at reduced precision \u2014 is what makes local inference survivable: a model that needs a datacenter at full precision fits on a workstation at 4-bit. The skill is knowing the exchange rate: what you lose in fidelity at each level, what VRAM and memory bandwidth actually bound, and when the honest answer is 'this workload belongs on an API.'",
+          "hint": "What is the actual binding constraint \u2014 parameter count, or memory capacity?",
+          "objectives": [
+            "quantization-economics"
+          ],
+          "mins": 6,
+          "difficulty": 1
+        },
+        {
+          "id": "ai-lab-sc3",
+          "title": "Local Means Private? Not Yet.",
+          "situation": "You run an open-weight model locally, but you query it through a chat UI that phones home telemetry, and the notes you attach are synced to a vendor cloud by the desktop client.",
+          "prompt": "Is this a private system?",
+          "evidence": [],
+          "choices": [
+            "No. Privacy is a property of the whole data path, not of where the weights sit \u2014 the telemetry-phoning UI and the cloud-synced client break the privacy story even though inference is local.",
+            "Yes. The weights are on your hardware, so nothing leaves the machine.",
+            "Yes, as long as the model itself is open-weight.",
+            "No, because the model was trained on public internet data."
+          ],
+          "answer": 0,
+          "why": "Local inference is an economics and control decision \u2014 privacy is one motive, but it only holds if every hop of the data path is accounted for. Audit the UI, the sync layer, the plugin folder, and the network; the weights' location is necessary but not sufficient.",
+          "hint": "Follow one prompt from keyboard to answer: how many network hops does it make?",
+          "objectives": [
+            "privacy-data-path"
+          ],
+          "mins": 6,
+          "difficulty": 2
+        },
+        {
+          "id": "ai-lab-sc4",
+          "title": "The Green Dashboard",
+          "situation": "Your agent stack's eval dashboard is all green. The suite is 40 hand-written cases, judged by another LLM from the same model family, and the long-tail failure modes were never sampled.",
+          "prompt": "How should you read that dashboard?",
+          "evidence": [],
+          "choices": [
+            "As evidence the agent passed the evals \u2014 nothing more. LLM-as-judge inherits the judge's biases, small suites miss the long tail, and a green dashboard on a bad metric manufactures confidence. The honest question is always: what would this eval miss?",
+            "As proof the agent works in production; green is green.",
+            "As a signal to delete the eval suite and trust user feedback instead.",
+            "As proof the agent needs no human review, since the judge is itself an AI."
+          ],
+          "answer": 0,
+          "why": "Evals test LLM behavior the way unit tests test code \u2014 which means they have exactly the same blind spots: coverage gaps, oracle bias, and the gap between the test distribution and production. Treat a green dashboard as a claim to interrogate, not a verdict to celebrate.",
+          "hint": "Who grades the grader, and what distribution did the grader see?",
+          "objectives": [
+            "evals-honesty"
+          ],
+          "mins": 6,
+          "difficulty": 2
+        },
+        {
+          "id": "ai-lab-sc5",
+          "title": "One Model, Two Hats",
+          "situation": "Your agentic coding setup has a single model that writes code and then, in the same session, 'reviews' its own output before committing. Bugs are shipping anyway, and the reviews read like the model congratulating itself.",
+          "prompt": "What structural change fixes the review loop?",
+          "evidence": [],
+          "choices": [
+            "Separate generation from verification structurally: a main writer optimized for momentum, a silent advisor that reviews only at defined trigger points (plan approval, stuck errors, pre-commit), specialist subagents dividing labor, and a cheap router keeping the expensive model on genuinely hard decisions.",
+            "Prompt the model harder to 'be more careful' during self-review.",
+            "Add a second identical model that also reviews everything; two approvals are better than one.",
+            "Disable the review step entirely \u2014 it was only slowing the pipeline."
+          ],
+          "answer": 0,
+          "why": "A model that writes and a model that checks should not be the same process wearing two hats. The writer is optimized for momentum \u2014 propose, build, move on. The verifier is optimized for suspicion \u2014 is this the right plan, is this error a dead end, what did speed skip? Running both in one undifferentiated session produces confident output with unchecked assumptions. The main-writer / silent-advisor pattern makes the separation structural: distinct roles, distinct trigger points, cheap decisions routed away from the expensive mind.",
+          "hint": "When the reviewer disagrees with the writer, who in your current setup is allowed to disagree?",
+          "objectives": [
+            "generation-vs-verification"
+          ],
+          "mins": 6,
+          "difficulty": 3
+        },
+        {
+          "id": "ai-lab-sc6",
+          "title": "vLLM on the Laptop",
+          "situation": "A teammate proposes installing vLLM on everyone's laptop for local inference, arguing 'it's the best inference engine, so it must be best everywhere.'",
+          "prompt": "What's wrong with this plan?",
+          "evidence": [],
+          "choices": [
+            "vLLM is a production serving stack for operators \u2014 batched, multi-GPU, throughput-oriented \u2014 a different discipline for a different audience. The local tier is llama.cpp, Ollama, LM Studio, Jan, and web UIs like Open WebUI; matching the runtime tier to the job is the skill.",
+            "Nothing \u2014 the best engine is the best engine regardless of setting.",
+            "vLLM doesn't run on laptops because of licensing restrictions.",
+            "The plan is fine; laptops just need more RAM."
+          ],
+          "answer": 0,
+          "why": "The inference ecosystem has honest tiers: the runtime layer (llama.cpp, Ollama, LocalAI), the desktop layer (LM Studio, Jan, GPT4All), the web-UI layer (Open WebUI, text-generation-webui), and the production serving tier (vLLM) \u2014 which is for operators running fleets, not desktops. Using the wrong tier buys operational complexity without the workload that justifies it.",
+          "hint": "Who is the audience of each runtime tier \u2014 a developer's laptop, or a fleet operator?",
+          "objectives": [
+            "runtime-tiers"
+          ],
+          "mins": 6,
+          "difficulty": 3
+        }
+      ]
+    }
+  ],
+  "lessons": [
+    {
+      "domain_id": "ai-lab",
+      "title": "AI Lab: Engineering Around the Model \u2014 Core concepts",
+      "concepts": [
+        "The model is one folder: weights, tokenizer, config. The product is the scaffolding around it \u2014 prompt pipeline, tools, memory, sandbox, tests, traces.",
+        "Local inference is an economics decision: trade API bills and data egress for capital cost and operational burden; quantization (notably the GGUF format) sets the exchange rate.",
+        "Match the runtime tier to the job: llama.cpp/Ollama at the runtime layer, LM Studio/Jan on the desktop, Open WebUI in the browser \u2014 and vLLM only as a production serving stack for operators.",
+        "The agent loop is one operations loop: request \u2192 agent \u2192 memory \u2192 tools \u2192 runtime \u2192 eval \u2192 retry \u2192 deploy. Frameworks, memory systems, sandboxed execution, evals, and observability are each a layer with its own failure modes.",
+        "Generation must be separated from verification: a main writer for momentum, a silent advisor reviewing at three trigger points, specialist subagents dividing labor, a cheap router protecting the expensive model's attention.",
+        "Memory is not one thing: persistent vector memory and temporal knowledge graphs answer different questions \u2014 store retrievable facts in one, evolving relationships in the other.",
+        "Evals prove the agent passed the evals. LLM-as-judge inherits judge bias; small suites miss the long tail; the honest question is always 'what would this eval miss?'"
+      ],
+      "example": {
+        "lang": "shell",
+        "code": "ollama pull llama3.1:8b\nollama run llama3.1:8b \"Summarize the local-vs-API tradeoff in one sentence.\"\n# Query the same model over HTTP like a product would:\ncurl -s http://localhost:11434/api/generate -d '{\"model\":\"llama3.1:8b\",\"prompt\":\"What is quantization?\",\"stream\":false}' | python3 -c \"import json,sys; print(json.load(sys.stdin)['response'])\"",
+        "walkthrough": "Pull an open-weight model, run it interactively, then hit the same model over its local HTTP API \u2014 the exact shape a product's request path takes. Notice the third step needs no new model: the 'product' is the API wrapper, the prompt pipeline, and whatever you build around the response."
+      },
+      "pitfalls": [
+        "Common trap: 'Open weights means open source.' The artifact is open; the license governs use, and licenses range from permissive to research-only to commercial-restricted. Read the model card.",
+        "Common trap: 'Local means private.' Privacy is a property of the whole data path \u2014 telemetry-phoning UIs and cloud-synced clients void it.",
+        "Common trap: treating vLLM as a desktop tool. It is a serving stack for operators; on a laptop it is operational weight without the workload.",
+        "Common trap: upgrading the model while neglecting the scaffolding. Past a capability floor, product quality is dominated by retrieval quality, tool design, eval coverage, and the review loop \u2014 a smarter engine in the same broken car."
+      ],
+      "try_it": "Work through this in the Labs tab: pull a local model, serve it over its API, then sketch the folders your product would need around the weights folder."
+    }
+  ],
+  "labs": [
+    {
+      "id": "ai-lab-lab1",
+      "domain_id": "ai-lab",
+      "title": "Local AI Lab: pull, serve, and query a model",
+      "objective": "Install a local inference runtime, pull an open-weight model, and query it over HTTP the way a product's request path would.",
+      "steps": [
+        "Install Ollama (or llama.cpp) following its official install docs; verify the daemon is running.",
+        "Pull a small open-weight model (e.g. llama3.1:8b) and note the download size vs. your available disk.",
+        "Run it interactively for one prompt; note first-token latency and tokens/second in your lab notes.",
+        "Query the same model via the local HTTP API (POST /api/generate) and print the response text.",
+        "Record the hardware reality: resident memory (ollama ps), quantization of the pulled model, and whether it sits on GPU or CPU."
+      ],
+      "checks": [
+        {
+          "command_pattern": "^ollama\\s",
+          "expect_contains": "",
+          "hint": "Run an ollama command (pull, run, ps, list)."
+        },
+        {
+          "command_pattern": "^curl\\s",
+          "expect_contains": "response",
+          "hint": "POST to the local API and look for the 'response' field in the JSON."
+        }
+      ]
+    },
+    {
+      "id": "ai-lab-lab2",
+      "domain_id": "ai-lab",
+      "title": "Agent stack review loop: design the silent advisor",
+      "objective": "Design a main-writer / silent-advisor review configuration for an agentic coding loop, with explicit trigger points and role separation.",
+      "steps": [
+        "Write a one-page design doc (ai-lab/review-loop.md) naming the writer role and the advisor role as distinct processes.",
+        "Define exactly three advisor trigger points: plan approval, stuck-error review, and pre-commit diff review.",
+        "Specify the cheap router: which decisions the small model handles, which escalate to the expensive model.",
+        "Add an eval plan: 10 behavior cases for the loop, the judge setup, and one paragraph on what the eval would miss.",
+        "Print the design doc to the terminal to confirm it exists and reads cleanly."
+      ],
+      "checks": [
+        {
+          "command_pattern": "^cat\\s",
+          "expect_contains": "trigger",
+          "hint": "cat your review-loop.md and confirm the three trigger points are named."
+        },
+        {
+          "command_pattern": "^wc\\s|^cat\\s",
+          "expect_contains": "",
+          "hint": "Verify the doc exists (wc -l or cat)."
+        }
+      ]
+    }
+  ],
+  "sections": [
+    {
+      "id": "ai-lab-sec",
+      "title": "AI Lab: Engineering Around the Model",
+      "kind": "path",
+      "lectures": [],
+      "lab_ids": [
+        "ai-lab-lab1",
+        "ai-lab-lab2"
+      ],
+      "drill_domain_ids": [
+        "ai-lab"
+      ]
+    }
+  ],
+  "behavioral": [
+    {
+      "prompt": "Walk me through the system you built around a language model \u2014 not the model itself, but everything else.",
+      "framework": "System walkthrough: name the layers (prompt pipeline, tools, memory, sandbox, eval, observability), then one failure mode per layer you actually handled.",
+      "points": [
+        "Names concrete layers, not just the model",
+        "One real failure mode per layer",
+        "Shows ops thinking (monitoring, rollback)"
+      ],
+      "pitfalls": [
+        "Only talks about prompts",
+        "No mention of evals or observability"
+      ]
+    },
+    {
+      "prompt": "Tell me about a time an agent or automation did something confidently wrong in production. What did you change?",
+      "framework": "STAR: the incident, the blast radius, the structural fix (role separation, trigger points, sandboxing), the prevention.",
+      "points": [
+        "Owns the incident",
+        "Structural fix, not a prompt tweak",
+        "Blast-radius thinking"
+      ],
+      "pitfalls": [
+        "Blames the model",
+        "No prevention step"
+      ]
+    },
+    {
+      "prompt": "How do you decide between running a model locally versus calling an API?",
+      "framework": "Tradeoff analysis: cost, latency, privacy of the full data path, operational burden, the quantization exchange rate.",
+      "points": [
+        "Quantitative reasoning (VRAM, bills)",
+        "Privacy as whole-path property",
+        "Knows when API is the honest answer"
+      ],
+      "pitfalls": [
+        "'Local is always better'",
+        "Ignores ops cost"
+      ]
+    },
+    {
+      "prompt": "Describe a review process you designed for AI-generated code. How did it catch mistakes?",
+      "framework": "Describe the separation: writer vs verifier, trigger points, what got caught, what still slips through.",
+      "points": [
+        "Structural separation of generation and verification",
+        "Concrete caught-bug example",
+        "Honest about residual risk"
+      ],
+      "pitfalls": [
+        "Self-review by the same model presented as sufficient",
+        "No examples"
+      ]
+    },
+    {
+      "prompt": "Your eval dashboard is green but users report bad behavior. Walk me through your diagnosis.",
+      "framework": "Coverage gap \u2192 oracle bias \u2192 distribution shift; what the eval would miss; how you extend the suite.",
+      "points": [
+        "Distrusts green dashboards appropriately",
+        "Names specific failure classes",
+        "Concrete next eval to add"
+      ],
+      "pitfalls": [
+        "'The evals must be wrong, ship anyway'",
+        "No plan to close the gap"
+      ]
+    },
+    {
+      "prompt": "How do you keep a long-running agent's memory useful instead of letting it rot?",
+      "framework": "Separate persistent vector memory (facts) from temporal knowledge graphs (relationships); pruning, provenance, and when to forget.",
+      "points": [
+        "Memory as distinct systems",
+        "Pruning/forgetting strategy",
+        "Provenance of stored facts"
+      ],
+      "pitfalls": [
+        "One giant context window as the whole strategy"
+      ]
+    },
+    {
+      "prompt": "Explain quantization to a non-technical stakeholder deciding on hardware budget.",
+      "framework": "Plain-language analogy: the exchange rate between memory and fidelity; what the budget buys at each tier; the honest limits.",
+      "points": [
+        "No jargon dump",
+        "Connects to money",
+        "States limits plainly"
+      ],
+      "pitfalls": [
+        "Implies 4-bit is 'just as good'",
+        "Ignores fidelity loss"
+      ]
+    },
+    {
+      "prompt": "Tell me about a time you chose the boring, smaller solution over the impressive one.",
+      "framework": "STAR: the temptation (bigger model, fancier stack), the constraint analysis, the boring choice, the outcome.",
+      "points": [
+        "Constraint-driven reasoning",
+        "Comfort with unglamorous answers",
+        "Measured outcome"
+      ],
+      "pitfalls": [
+        "Picks impressive anyway",
+        "No outcome evidence"
+      ]
+    }
+  ],
+  "resources": {
+    "cheatsheet": [
+      "Model = folder: weights + tokenizer + config. Product = everything around it.",
+      "Quantization exchange rate: 16-bit \u2192 8-bit \u2192 4-bit halves memory each step; fidelity cost is the price.",
+      "Runtime tiers: llama.cpp/Ollama (runtime) \u2192 LM Studio/Jan (desktop) \u2192 Open WebUI (browser) \u2192 vLLM (production serving, operators only).",
+      "Agent loop: request \u2192 agent \u2192 memory \u2192 tools \u2192 runtime \u2192 eval \u2192 retry \u2192 deploy.",
+      "Main-writer / silent-advisor: separate the roles; review at plan approval, stuck errors, pre-commit.",
+      "Evals prove the agent passed the evals. Always ask what the eval would miss.",
+      "Open weights \u2260 open source. Local \u2260 private. Bigger model \u2260 fixed product."
+    ],
+    "glossary": [
+      {
+        "term": "Quantization",
+        "def": "Storing model weights at reduced numerical precision (e.g. 4-bit) to cut memory use at some fidelity cost."
+      },
+      {
+        "term": "GGUF",
+        "def": "A model file format designed for efficient local inference with quantized weights."
+      },
+      {
+        "term": "Agent loop",
+        "def": "The operations cycle from request through agent, memory, tools, runtime, eval, retry, to deploy."
+      },
+      {
+        "term": "LLM-as-judge",
+        "def": "Using a language model to score another model's outputs; inherits the judge's biases."
+      },
+      {
+        "term": "Silent advisor",
+        "def": "A reviewer role in agentic coding that inspects work only at defined trigger points, separate from the writer."
+      }
+    ],
+    "links": [
+      {
+        "label": "AI Lab study track",
+        "url": "https://interstitiumlabs.dev/learn/ai-lab/"
+      },
+      {
+        "label": "Ollama",
+        "url": "https://ollama.com"
+      },
+      {
+        "label": "llama.cpp",
+        "url": "https://github.com/ggerganov/llama.cpp"
+      }
+    ],
+    "checklist": [
+      "I can name every folder a product needs around the model folder.",
+      "I can size a local inference setup to available VRAM via quantization tiers.",
+      "I match the runtime tier to the job (desktop vs. production serving).",
+      "My agent designs separate generation from verification structurally.",
+      "My eval plan names what the eval would miss."
+    ]
+  },
+  "chat": {
+    "persona": "A pragmatic AI-systems tutor: skeptical of hype, fluent in the hardware-to-review-loop stack, always asking what the scaffolding contains.",
+    "topics": [
+      "local inference economics",
+      "quantization tiers",
+      "agent stack layers",
+      "generation vs verification",
+      "eval design",
+      "privacy of the data path"
+    ]
+  },
+  "simulation": {
+    "items": 10,
+    "minutes": 30,
+    "evidence_cost_mins": 2
+  },
+  "media": [],
+  "foundations": [],
+  "math": []
+}

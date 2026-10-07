@@ -1,1 +1,1061 @@
-{"slug": "dsa", "title": "Data Structures & Algorithms", "tagline": "The interview-and-exam core: structures, algorithms, complexity", "vendor": {"name": "Vendor-neutral", "certs": "", "docs": ""}, "disclaimer": "Independent practice material by Interstitium Labs. Not affiliated with, endorsed by, or sponsored by any vendor. Confers no certificate. All scenarios are original; no exam content is reproduced.", "domains": [{"id": "complexity-analysis", "name": "Complexity Analysis", "scenarios": [{"id": "dsa-dominant-term", "title": "The Big-O of a mixed loop nest", "situation": "A teammate analyzes a routine with an O(n) setup pass, an O(n^2) double loop, and an O(n log n) sort, then reports O(n^2 + n log n + n).", "prompt": "What is the correct asymptotic bound, and why?", "evidence": [["analysis.txt", "setup:   O(n)\nprocess:  O(n^2)   <- double loop\nsort:     O(n log n)\nclaimed:  O(n^2 + n log n + n)"]], "choices": ["O(n^2) — Big-O keeps only the dominant term as n grows; lower-order terms and constant factors are dropped", "O(n^2 + n log n + n) — every phase contributes and must be listed", "O(n^3) — the phases multiply because they run in sequence", "O(n log n) — sorting dominates all polynomial loops"], "answer": 0, "why": "Big-O describes growth rate as n→∞: the fastest-growing term eventually dwarfs the rest, so O(n^2 + n log n + n) simplifies to O(n^2). Sequential phases add (not multiply) — multiplication applies to nested loops. Constants are dropped because the notation compares shapes of growth, not exact step counts.", "hint": "As n gets very large, which term outgrows the others — and what does Big-O keep?", "objectives": ["Big-O simplification", "Dominant term", "Sequential vs nested"], "mins": 5}, {"id": "dsa-amortized", "title": "The append that is usually cheap", "situation": "A dynamic array doubles its capacity when full. A reviewer claims append is O(n) because of the occasional resize.", "prompt": "What is the amortized cost of append, and why?", "evidence": [["dynarray.txt", "append x: if full, allocate 2x capacity and copy all n elements (O(n)), then insert (O(1))\nresizes happen at sizes 1, 2, 4, 8, ..."]], "choices": ["Amortized O(1) — the expensive resizes are geometrically spaced, so total copy work over n appends is O(n)", "O(n) — the worst single append dominates the analysis", "O(log n) — capacity doubles, so cost grows logarithmically", "O(n^2) — each append may copy everything before it"], "answer": 0, "why": "Resizes at sizes 1,2,4,...,n copy 1+2+4+...+n = 2n-1 total elements — a geometric series bounded by 2n. Spread over n appends, that is O(1) each on average. Amortized analysis averages the total cost of a sequence; it does not promise any single operation is cheap (a latency-sensitive system may still prefer pre-sized arrays).", "hint": "Add up the copy work of every resize across n appends. What series is 1+2+4+...+n, and what does it sum to?", "objectives": ["Amortized analysis", "Dynamic arrays", "Geometric series"], "mins": 7}, {"id": "dsa-space-recursion", "title": "The recursion that blew the stack, not the heap", "situation": "A recursive binary-tree traversal uses O(1) extra heap but crashes with stack overflow on a degenerate (linked-list-shaped) tree.", "prompt": "What is the space complexity, and why does the tree shape matter?", "evidence": [["traverse.py", "def height(node):\n    if not node: return 0\n    return 1 + max(height(node.left), height(node.right))\n# degenerate tree: recursion depth = n"]], "choices": ["O(h) call-stack space where h is tree height — O(log n) balanced, O(n) degenerate; the stack frames are the hidden space cost", "O(1) — recursion uses no extra space beyond the input", "O(n) always — every node gets a stack frame simultaneously", "O(n^2) — each level re-scans the subtree"], "answer": 0, "why": "Each recursive call holds a stack frame until its children return, so peak stack depth equals the longest root-to-leaf path: the tree height h. Balanced trees give O(log n); a degenerate chain gives O(n) — enough to overflow the call stack. Space analysis must count the call stack, not just allocated containers.", "hint": "How many calls are on the stack at the deepest moment — and what determines that number?", "objectives": ["Space complexity", "Recursion depth", "Call stack"], "mins": 6}, {"id": "dsa-quicksort-worst", "title": "The sort that degrades on sorted input", "situation": "Quicksort with a first-element pivot runs in O(n log n) on random data but O(n^2) on already-sorted input — exactly the input a pipeline produces.", "prompt": "Why does the pivot choice cause quadratic behavior?", "evidence": [["qs.txt", "pivot = first element\nsorted input: every partition splits off 1 element and leaves n-1\nT(n) = T(n-1) + O(n)  ->  O(n^2)"]], "choices": ["A bad pivot makes partitions maximally unbalanced — random or median-of-three pivots make the worst case vanishingly unlikely", "Sorted input is inherently quadratic for all comparison sorts", "The partition loop is O(n^2) by itself — rewrite it", "Quicksort is O(n^2) average-case — the random-data timing was luck"], "answer": 0, "why": "Quicksort's O(n log n) average assumes roughly balanced partitions. A fixed first-element pivot on sorted input always picks the minimum, producing 1 vs n-1 splits: T(n) = T(n-1) + O(n) = O(n^2). Randomizing the pivot (or median-of-three) makes adversarial input unlikely; the recurrence then averages to O(n log n). Worst-case O(n^2) remains theoretically possible but practically irrelevant.", "hint": "What do the partition sizes look like when the pivot is always the smallest element?", "objectives": ["Quicksort analysis", "Pivot selection", "Average vs worst case"], "mins": 7}, {"id": "dsa-log-halving", "title": "Why binary search is logarithmic", "situation": "A junior engineer believes binary search is O(n) 'because it looks at elements one at a time like linear search'.", "prompt": "How do you derive the O(log n) bound?", "evidence": [["bs.txt", "each step discards half the range: n -> n/2 -> n/4 -> ... -> 1\nhalvings until 1: k where n / 2^k = 1  ->  k = log2(n)"]], "choices": ["Each comparison halves the search space, so reaching one element takes log2(n) halvings — O(log n)", "Binary search examines log n elements per step — O(n log n) total", "The midpoint computation is O(1), so the whole search is O(1)", "Halving is exponential decay, which is O(2^n) inverted — O(sqrt n)"], "answer": 0, "why": "One comparison eliminates half the candidates. After k steps, n/2^k candidates remain; the search ends when one remains, so k = log2(n). The key insight: the work per step is constant and the problem size shrinks geometrically — that combination always yields logarithmic complexity.", "hint": "If each step throws away half of what remains, how many steps until one element is left?", "objectives": ["Logarithmic complexity", "Binary search analysis"], "mins": 5}, {"id": "dsa-recurrence", "title": "The recurrence that keeps appearing", "situation": "Merge sort's analysis gives T(n) = 2T(n/2) + O(n). A teammate guesses O(n^2) 'because there are two recursive calls'.", "prompt": "What does this recurrence solve to, and what is the intuition?", "evidence": [["ms.txt", "T(n) = 2T(n/2) + O(n)   (two halves + linear merge)\nrecursion tree: log n levels, O(n) work per level"]], "choices": ["O(n log n) — the recursion tree has log n levels, each doing O(n) total merge work", "O(n^2) — two subproblems means squaring", "O(n) — the halves cancel out", "O(2^n) — branching factor 2 gives exponential growth"], "answer": 0, "why": "Draw the recursion tree: level 0 does O(n) merge work; level 1 has two nodes each merging n/2 (total O(n)); every level totals O(n). There are log2(n) levels (halving until size 1), so total work is O(n log n). This is the Master Theorem's case 2 (a=2, b=2, f(n)=Θ(n) = Θ(n^log_b a)).", "hint": "At each level of the recursion tree, the subproblem sizes sum to n. How many levels are there?", "objectives": ["Recurrences", "Recursion trees", "Master Theorem"], "mins": 7}]}, {"id": "arrays-strings-dsa", "name": "Arrays & Strings", "scenarios": [{"id": "dsa-two-pointer-sum", "title": "The pair sum in a sorted array", "situation": "Given a sorted array, find two numbers summing to a target. The brute force is O(n^2); the interviewer wants O(n).", "prompt": "How do the two pointers converge on the answer?", "evidence": [["pair.py", "def two_sum_sorted(a, target):\n    lo, hi = 0, len(a) - 1\n    while lo < hi:\n        s = a[lo] + a[hi]\n        if s == target: return (lo, hi)\n        elif s < target: lo += 1\n        else: hi -= 1"]], "choices": ["Pointers start at both ends; if the sum is too small, advance lo (larger value needed); if too big, retreat hi — each step discards one element that cannot be part of any solution", "Move both pointers inward every step — the middle pair is checked last", "Start both at the middle and expand outward — symmetric coverage", "Two pointers only work on unsorted arrays — sort a copy first"], "answer": 0, "why": "Sortedness makes each comparison decisive: a[lo]+a[hi] < target means a[lo] is too small to pair with anything (even the largest a[hi]), so lo is eliminated; symmetrically for hi. Each step removes one candidate in O(1), giving O(n) total with O(1) space — no hash map needed.", "hint": "When the sum is too small, which pointer can you prove is useless — and why does sortedness make that proof work?", "objectives": ["Two pointers", "Sorted array techniques"], "mins": 6}, {"id": "dsa-sliding-window", "title": "The longest substring without repeats", "situation": "Find the longest substring with all unique characters. The O(n^2) check-every-substring approach times out.", "prompt": "How does the sliding window achieve O(n)?", "evidence": [["window.py", "def longest_unique(s):\n    seen, lo, best = {}, 0, 0\n    for hi, ch in enumerate(s):\n        if ch in seen: lo = max(lo, seen[ch] + 1)\n        seen[ch] = hi\n        best = max(best, hi - lo + 1)\n    return best"]], "choices": ["Expand hi each step; when a duplicate appears, jump lo past its previous occurrence — each index enters and leaves the window once", "Restart the window from scratch at each duplicate — simpler and still O(n)", "Use two nested loops but break early on duplicates — average case O(n)", "Sort the characters first, then scan — O(n log n) is close enough"], "answer": 0, "why": "The window [lo, hi] always holds a valid (duplicate-free) substring. hi advances n times total; lo only moves forward (at most n times). Each character is processed a constant number of times — O(n) time, O(min(n, alphabet)) space for the last-seen map. The invariant 'window is always valid' is what makes one pass sufficient.", "hint": "How many times can lo move forward across the whole run — and what does that imply about total work?", "objectives": ["Sliding window", "Two pointers", "Invariants"], "mins": 7}, {"id": "dsa-prefix-sum", "title": "The range sum asked a million times", "situation": "An analytics service answers sum(l, r) queries over a static array. Each query scans the range: O(n) per query, too slow at scale.", "prompt": "How do you answer each query in O(1) after O(n) preprocessing?", "evidence": [["prefix.py", "P = [0]\nfor x in a: P.append(P[-1] + x)   # P[i] = sum of a[0..i)\n# sum(l, r) inclusive = P[r+1] - P[l]"]], "choices": ["Build a prefix-sum array P where P[i] is the sum of the first i elements; range sum(l,r) = P[r+1] - P[l]", "Sort the array first — range sums are faster on sorted data", "Cache query results in a dict — repeated queries hit the cache", "Use a segment tree — O(log n) per query is the best possible"], "answer": 0, "why": "P[r+1] - P[l] cancels the shared prefix: (a0+...+ar) - (a0+...+a{l-1}) = a{l}+...+ar. Preprocessing is O(n) time and space; every query is O(1). (Segment trees/Fenwick trees answer in O(log n) but support point updates — the right tool when the array changes; prefix sums win for static data.)", "hint": "If you knew the sum of everything before l and everything through r, how would you isolate just [l, r]?", "objectives": ["Prefix sums", "Preprocessing", "Range queries"], "mins": 6}, {"id": "dsa-rotate-inplace", "title": "The rotation without extra memory", "situation": "Rotate an array right by k positions. The easy version allocates a second array; the constraint is O(1) extra space.", "prompt": "How does the triple-reverse trick work?", "evidence": [["rotate.py", "def rotate(a, k):\n    k %= len(a)\n    a.reverse()          # reverse all\n    a[:k] = reversed(a[:k])      # reverse first k\n    a[k:] = reversed(a[k:])      # reverse the rest"]], "choices": ["Reverse the whole array, then reverse the first k and the remaining n-k separately — three O(n) passes, O(1) space", "Swap symmetric pairs k times — O(nk) but in place", "Reverse only once — one reversal equals a rotation", "In-place rotation is impossible — the extra array is required"], "answer": 0, "why": "Reversing the whole array puts the last k elements first but backwards; reversing each of the two segments restores their internal order. Each element moves a constant number of times: O(n) time, O(1) auxiliary space. (k %= n handles k > n; juggling cycles is the alternative single-pass method.)", "hint": "What does reversing do to the positions of the last k elements — and what would un-reverse each block?", "objectives": ["In-place algorithms", "Array reversal", "Rotation"], "mins": 6}, {"id": "dsa-anagram", "title": "The anagram check that sorts", "situation": "A teammate checks anagrams by sorting both strings: O(n log n). The strings are lowercase English letters.", "prompt": "How do you check anagrams in O(n)?", "evidence": [["anagram.py", "from collections import Counter\ndef is_anagram(a, b):\n    return Counter(a) == Counter(b)  # O(n) frequency comparison"]], "choices": ["Compare character frequency counts — anagrams are exactly strings with identical multisets of characters", "Sorting is optimal for anagram detection — O(n log n) cannot be beaten", "Compare the sets of characters — set(a) == set(b) ignores multiplicities correctly", "XOR all characters — equal XOR means anagram"], "answer": 0, "why": "Two strings are anagrams iff every character occurs the same number of times in both — a frequency-count comparison in O(n) time and O(alphabet) space. Sorting works but pays O(n log n). (Set comparison is wrong: 'aab' vs 'abb' have equal sets but are not anagrams. XOR checksums collide.)", "hint": "What property, exactly, defines an anagram — order, or something countable?", "objectives": ["Frequency counting", "Anagrams", "Counter"], "mins": 5}, {"id": "dsa-dedup-sorted", "title": "The dedup that must stay in place", "situation": "Remove duplicates from a sorted array in place, returning the new length. Extra-array solutions violate the O(1)-space constraint.", "prompt": "How do the two pointers cooperate?", "evidence": [["dedup.py", "def dedup(a):\n    w = 0\n    for r in range(len(a)):\n        if r == 0 or a[r] != a[r-1]:\n            a[w] = a[r]; w += 1\n    return w"]], "choices": ["A read pointer scans everything; a write pointer advances only on new values — sortedness means duplicates are adjacent, so one comparison per element suffices", "Shift the whole tail left on each duplicate — O(n^2) but in place", "Use a set to track seen values — O(n) space is acceptable in practice", "Duplicates cannot be removed in place — the constraint is unsatisfiable"], "answer": 0, "why": "Because the array is sorted, all copies of each value are adjacent — a[r] != a[r-1] detects exactly the first occurrence of each distinct value. The write pointer compacts those first occurrences to the front. Each element is read once and written at most once: O(n) time, O(1) space.", "hint": "In a sorted array, where do duplicates sit relative to each other — and what does that let a single scan detect?", "objectives": ["Two pointers", "In-place compaction", "Sorted arrays"], "mins": 6}]}, {"id": "linked-structures", "name": "Linked Structures", "scenarios": [{"id": "dsa-reverse-list", "title": "The list reversed with three pointers", "situation": "Reverse a singly linked list in place. Recursive solutions risk stack overflow on long lists; the iterative version is required.", "prompt": "How do the three pointers rewire the list in one pass?", "evidence": [["reverse.py", "def reverse(head):\n    prev = None\n    cur = head\n    while cur:\n        nxt = cur.next   # save before overwriting\n        cur.next = prev  # flip the link\n        prev, cur = cur, nxt\n    return prev"]], "choices": ["Save next, point cur at prev, then advance both — each link is flipped exactly once, O(n) time and O(1) space", "Swap the values of symmetric nodes instead of rewiring — simpler and equivalent", "Collect nodes in a stack then relink — O(n) space is fine", "Recursion is the only correct way — iteration cannot reverse links"], "answer": 0, "why": "The invariant: prev heads the already-reversed prefix, cur heads the unreversed suffix. Saving nxt before overwriting cur.next is the crucial step — without it the rest of the list is lost. Each iteration flips one link; after n iterations prev is the new head. O(n) time, O(1) space, no recursion depth risk.", "hint": "What must you save before you overwrite cur.next — and why?", "objectives": ["Linked list reversal", "Pointer manipulation", "Invariants"], "mins": 6}, {"id": "dsa-cycle-floyd", "title": "The loop nobody can see", "situation": "A linked list may contain a cycle. A visited-set detects it in O(n) space; the constraint is O(1) space.", "prompt": "How does Floyd's tortoise-and-hare detect a cycle?", "evidence": [["cycle.py", "def has_cycle(head):\n    slow, fast = head, head\n    while fast and fast.next:\n        slow = slow.next\n        fast = fast.next.next\n        if slow is fast: return True\n    return False"]], "choices": ["Two pointers move at 1x and 2x speed — in a cycle the fast one laps the slow one and they meet; without a cycle the fast one hits the end", "The fast pointer jumps to the end and walks back — meeting means a cycle", "Count the steps of each pointer — different counts prove a cycle", "Floyd's algorithm needs a doubly linked list — it fails on singly linked"], "answer": 0, "why": "On a cycle, the distance between the pointers shrinks by 1 each step (fast gains one node per round), so they must meet within one lap. Without a cycle, fast reaches the null terminator. O(n) time (at most ~2n steps), O(1) space — the classic space-for-time trade against the visited set. (The meeting point also locates the cycle start with a second phase.)", "hint": "On a circular track, what happens when one runner is twice as fast as the other?", "objectives": ["Cycle detection", "Floyd's algorithm", "Two pointers"], "mins": 7}, {"id": "dsa-merge-sorted", "title": "The merge of two sorted lists", "situation": "Merge two sorted linked lists into one sorted list. Allocating new nodes wastes the existing ones.", "prompt": "How do you merge by rewiring, in O(n+m)?", "evidence": [["merge.py", "def merge(a, b):\n    dummy = tail = Node(0)\n    while a and b:\n        if a.val <= b.val: tail.next, a = a, a.next\n        else: tail.next, b = b, b.next\n        tail = tail.next\n    tail.next = a or b\n    return dummy.next"]], "choices": ["Repeatedly attach the smaller head to the tail and advance — the dummy node eliminates the empty-result special case; append the remainder when one list empties", "Concatenate then sort — O((n+m) log(n+m)) is acceptable", "Copy all values into an array, sort, rebuild — simpler pointer logic", "Interleave nodes alternately — sortedness is preserved by alternation"], "answer": 0, "why": "Both lists are sorted, so the merged head is always the smaller of the two current heads — attach it and advance that list. The dummy/sentinel node means tail always exists, removing the 'first node' special case. When one list empties, the other is already sorted and attaches whole. Each node is visited once: O(n+m), O(1) extra space.", "hint": "Given two sorted lists, where must the next merged element come from?", "objectives": ["Merging", "Sentinel nodes", "Sorted lists"], "mins": 6}, {"id": "dsa-queue-two-stacks", "title": "The queue built from stacks", "situation": "An interviewer asks to implement a FIFO queue using only stacks, with amortized O(1) operations.", "prompt": "How do two stacks make a queue?", "evidence": [["queue.py", "class Queue:\n    def __init__(self): self.inbox, self.outbox = [], []\n    def push(self, x): self.inbox.append(x)\n    def pop(self):\n        if not self.outbox:\n            while self.inbox: self.outbox.append(self.inbox.pop())\n        return self.outbox.pop()"]], "choices": ["Push onto inbox; pop from outbox, refilling it by pouring inbox over (reversing order) only when empty — each element moves between stacks at most twice", "Push onto both stacks and pop from either — redundancy gives FIFO", "Alternate pushes between the stacks — round-robin ordering", "One stack suffices — pop from the bottom with indexing"], "answer": 0, "why": "Pouring inbox into outbox reverses the LIFO order into FIFO — the oldest pushed element ends up on top of outbox. Refilling only when outbox is empty means each element is moved at most twice across its lifetime: amortized O(1) per operation. The lazy transfer is the whole trick; eager transfer on every pop would be O(n).", "hint": "What does moving every element from one stack to another do to their order?", "objectives": ["Stacks", "Queues", "Amortized analysis"], "mins": 7}, {"id": "dsa-midpoint", "title": "The middle without counting", "situation": "Find the middle node of a singly linked list in one pass, without knowing the length first.", "prompt": "How do the two pointers find the middle?", "evidence": [["mid.py", "def middle(head):\n    slow, fast = head, head\n    while fast and fast.next:\n        slow = slow.next\n        fast = fast.next.next\n    return slow"]], "choices": ["Fast moves twice as fast — when it reaches the end, slow has covered half the distance: the middle", "Slow moves backward from fast — they meet in the middle", "Advance slow every other step of fast — equivalent but clearer", "One pass is impossible — count first, then walk to n/2"], "answer": 0, "why": "When fast has taken 2k steps, slow has taken k — slow is always halfway along fast's path. When fast can no longer advance, slow sits at the middle (the second middle for even lengths, a common convention). One pass, O(n) time, O(1) space — the same tortoise-and-hare idea as cycle detection, repurposed.", "hint": "If one pointer is always twice as far along, where is the slower one when the faster finishes?", "objectives": ["Two pointers", "Middle finding", "Single pass"], "mins": 5}, {"id": "dsa-lru-cache", "title": "The cache that forgets the right things", "situation": "Design an LRU cache: get and put in O(1), evicting the least-recently-used key when full.", "prompt": "Which two structures combine to give O(1) LRU?", "evidence": [["lru.py", "class LRU:\n    # hash map: key -> node in doubly linked list\n    # list order: most-recent at head, least-recent at tail\n    # get: move node to head (splice O(1)); put: insert at head, evict tail"]], "choices": ["A hash map (key to list node) plus a doubly linked list (recency order) — the map finds nodes in O(1), the list reorders/evicts in O(1)", "A hash map plus a heap keyed by timestamp — O(log n) eviction is fine", "A single sorted dict by access time — re-sorting on each access", "A queue of keys plus linear scan — O(n) eviction is acceptable"], "answer": 0, "why": "The hash map gives O(1) lookup of the node; the doubly linked list gives O(1) splice-to-front on access and O(1) tail eviction — but only doubly linked, since removing a node needs its predecessor. Either structure alone fails: the map cannot order by recency, the list cannot find by key. (Python's OrderedDict / functools.lru_cache package this pattern.)", "hint": "What does each operation need — finding by key, and reordering by recency — and which structure provides each in O(1)?", "objectives": ["LRU cache", "Hash map + doubly linked list", "Design"], "mins": 8}]}, {"id": "trees-graphs", "name": "Trees & Graphs", "scenarios": [{"id": "dsa-bst-validate", "title": "The BST that is not", "situation": "A tree satisfies 'left < node < right' at every parent, yet a deep descendant violates the BST property. The local check passed.", "prompt": "Why is the local check insufficient, and what is the correct validation?", "evidence": [["bst.py", "def is_bst(node, lo=float('-inf'), hi=float('inf')):\n    if not node: return True\n    if not (lo < node.val < hi): return False\n    return is_bst(node.left, lo, node.val) and is_bst(node.right, node.val, hi)"]], "choices": ["The BST property is global — each node must respect bounds inherited from all ancestors; thread (lo, hi) bounds down the recursion", "Local checks are sufficient — the tree must have duplicate values", "BST validation requires sorting the values first — O(n log n)", "Only the root needs checking — subtrees of a valid root are valid"], "answer": 0, "why": "Checking only parent-vs-child misses violations like a right-descendant of the left subtree exceeding the root. The correct invariant: every node in the left subtree is < node < every node in the right subtree — enforced by passing down (lo, hi) bounds that tighten at each level. (Equivalently, an in-order traversal of a valid BST yields sorted order.)", "hint": "Which ancestors constrain a deep node's value — just its parent, or all of them?", "objectives": ["BST validation", "Bounds threading", "Global invariants"], "mins": 7}, {"id": "dsa-bfs-shortest", "title": "The shortest path in an unweighted graph", "situation": "Find the fewest-hops route between two users in a social graph. DFS finds a route, but not the shortest one.", "prompt": "Why does BFS guarantee the shortest path in unweighted graphs?", "evidence": [["bfs.py", "from collections import deque\ndef shortest_path(graph, start, goal):\n    q = deque([(start, 0)])\n    seen = {start}\n    while q:\n        node, d = q.popleft()\n        if node == goal: return d\n        for nb in graph[node]:\n            if nb not in seen: seen.add(nb); q.append((nb, d+1))"]], "choices": ["BFS explores in increasing distance order — the first time the goal is dequeued, its distance is minimal, because all shorter paths were examined first", "BFS is faster than DFS — speed is what guarantees optimality", "The queue sorts nodes by distance — priority ordering finds the shortest", "DFS with backtracking also guarantees shortest — the implementation has a bug"], "answer": 0, "why": "BFS visits nodes level by level: all distance-1 nodes before distance-2, and so on. The goal's first visit therefore happens at its minimum distance — no shorter path can exist undiscovered. DFS dives deep first and may find a long path before a short one. (For weighted graphs, Dijkstra's priority queue generalizes this idea; BFS is Dijkstra with uniform weights.)", "hint": "In what order does BFS first encounter nodes — and what does 'first encounter' mean for the goal?", "objectives": ["BFS", "Shortest path", "Unweighted graphs"], "mins": 6}, {"id": "dsa-tree-height-balanced", "title": "The tree that degraded to a list", "situation": "A BST built from sorted input has height n, turning O(log n) operations into O(n).", "prompt": "What distinguishes a balanced tree, and how do self-balancing trees maintain it?", "evidence": [["bal.txt", "sorted insert 1..n into plain BST: height = n (a chain)\nsame input into AVL/red-black: height <= ~1.44 log2(n)"]], "choices": ["Balance means height O(log n) — self-balancing trees (AVL, red-black) restore it with rotations after each update, keeping the height logarithmic", "Sorted input always balances trees — the implementation is buggy", "Balance means equal node counts left and right — rebalance by rebuilding", "Height does not affect BST operations — the slowdown is elsewhere"], "answer": 0, "why": "BST operations cost O(height). Inserting sorted keys into a naive BST builds a chain — height n, operations O(n). Self-balancing trees enforce a height invariant (AVL: child heights differ by ≤1; red-black: a looser coloring rule) via rotations on insert/delete, guaranteeing O(log n) height and thus O(log n) operations with small constants.", "hint": "What is the height of the degenerate tree — and what must any fix guarantee about height?", "objectives": ["Balanced trees", "AVL/red-black", "Rotations"], "mins": 7}, {"id": "dsa-heap-k-largest", "title": "The top-k without sorting everything", "situation": "Find the k largest of n stream elements. Full sort is O(n log n); k is tiny compared to n.", "prompt": "How does a min-heap of size k solve this in O(n log k)?", "evidence": [["topk.py", "import heapq\ndef top_k(stream, k):\n    h = []\n    for x in stream:\n        heapq.heappush(h, x)\n        if len(h) > k: heapq.heappop(h)  # discard smallest\n    return h  # the k largest"]], "choices": ["Keep a min-heap of the k largest seen so far — each new element either displaces the smallest (O(log k)) or is discarded; the heap always holds the current top-k", "A max-heap of all n elements popped k times — O(n + k log n), simpler", "Heaps cannot do top-k — use quickselect for O(n) average", "Keep a sorted list of size k with bisect — O(nk) but simple"], "answer": 0, "why": "The min-heap's root is the smallest of the current top-k — the threshold any newcomer must beat. Each element costs O(log k) heap work, total O(n log k), with O(k) memory — and it works on streams where n is unknown. (Quickselect is O(n) average but needs the full array and mutates it; the heap streams.)", "hint": "If you always knew the k largest so far, what single value would tell you whether a newcomer belongs?", "objectives": ["Heaps", "Top-k", "Streaming algorithms"], "mins": 6}, {"id": "dsa-dijkstra", "title": "The GPS that needs non-negative roads", "situation": "Dijkstra's algorithm computes shortest paths fast, but a teammate adds 'discount' edges with negative weights and the results go wrong.", "prompt": "Why does Dijkstra require non-negative weights?", "evidence": [["dij.txt", "Dijkstra settles nodes in order of final distance (greedy).\nNegative edge later can offer a SHORTER path to an already-settled node -> wrong answer.\nFix: Bellman-Ford handles negatives (slower); or reweight (Johnson)."]], "choices": ["Dijkstra's greedy settling assumes the first time a node is extracted its distance is final — a negative edge can later undercut it, breaking the invariant", "Negative weights cause infinite loops — the algorithm never terminates", "Priority queues cannot hold negative keys — use a FIFO queue instead", "Dijkstra works with negatives if you initialize distances to negative infinity"], "answer": 0, "why": "Dijkstra extracts the unsettled node with smallest tentative distance and declares it final — valid only because non-negative edges cannot provide a shorter route to it later. A negative edge can: a settled node's distance may still improve, silently producing wrong answers. Bellman-Ford relaxes all edges n-1 times (O(VE)) and additionally detects negative cycles.", "hint": "What promise does Dijkstra make the moment it removes a node from the priority queue — and which edge type can break that promise afterward?", "objectives": ["Dijkstra", "Non-negative weights", "Greedy invariant"], "mins": 7}, {"id": "dsa-topo-sort", "title": "The build order with a cycle", "situation": "Tasks have dependencies; compute a valid execution order. One dependency set contains a cycle, and naive DFS ordering silently produces an invalid schedule.", "prompt": "How does topological sort work, and how does it expose cycles?", "evidence": [["topo.py", "def topo(graph):\n    # Kahn's: repeatedly emit nodes with no incoming edges\n    # nodes remaining with incoming edges at the end => cycle exists"]], "choices": ["Kahn's algorithm peels off zero-in-degree nodes iteratively — if nodes remain unpeeled, a cycle exists and no valid order is possible", "DFS finishing order always yields a valid schedule, cycles included", "Cycles are impossible in dependency graphs — validate the input instead", "Sort tasks alphabetically — dependencies resolve by name order"], "answer": 0, "why": "A topological order exists iff the graph is a DAG. Kahn's algorithm repeatedly removes nodes with no remaining prerequisites; each removal can only enable valid next steps. If the process stalls with nodes left, those nodes depend on each other circularly — a cycle, which is both the diagnosis and the proof that no schedule exists. (DFS-based topo sort detects cycles via back edges / node coloring.)", "hint": "Which tasks are safe to run first — and what does it mean if no task ever becomes safe?", "objectives": ["Topological sort", "Kahn's algorithm", "Cycle detection", "DAGs"], "mins": 7}]}, {"id": "sorting-searching", "name": "Sorting & Searching", "scenarios": [{"id": "dsa-quicksort-partition", "title": "The partition that does the real work", "situation": "A teammate implements quicksort's recursion but hand-waves the partition step, producing an O(n^2) 'sort' that barely sorts.", "prompt": "What is partition's contract, and why does Lomuto/Hoare matter?", "evidence": [["part.py", "def partition(a, lo, hi):\n    pivot = a[hi]  # Lomuto: pivot = last\n    i = lo\n    for j in range(lo, hi):\n        if a[j] <= pivot:\n            a[i], a[j] = a[j], a[i]; i += 1\n    a[i], a[hi] = a[hi], a[i]\n    return i  # pivot's final index; left <= pivot <= right"]], "choices": ["Partition rearranges so the pivot lands in its final sorted position with smaller elements left and larger right — recursion then sorts each side independently", "Partition fully sorts the segment — the recursion is just verification", "The pivot must be the median — Lomuto with last-element pivot is incorrect", "Partition is O(n log n) by itself — quicksort's total is O(n log^2 n)"], "answer": 0, "why": "Partition's postcondition — pivot at index i, everything left ≤ pivot ≤ everything right — is what makes the recursion valid: the pivot never moves again, and the two sides are independent subproblems. Lomuto is simple but does extra swaps with duplicates; Hoare's scheme (two inward pointers) does fewer swaps and is the common library choice. Either way, the contract — not the scheme — is the point.", "hint": "After partition returns i, what do you know about a[i] versus every other element — and why does that let the recursion split?", "objectives": ["Partition schemes", "Quicksort", "Postconditions"], "mins": 7}, {"id": "dsa-merge-stable", "title": "The sort that preserves order", "situation": "Records sorted by name must keep their original relative order for equal names (a prior timestamp sort). Quicksort scrambles the ties.", "prompt": "Why is merge sort stable, and what does stability cost?", "evidence": [["stable.txt", "input:  [(amy,2), (bob,1), (amy,1)] sorted by name\nstable result:  [(amy,2), (amy,1), (bob,1)]  -- original order kept for ties\nquicksort may give: [(amy,1), (amy,2), (bob,1)]"]], "choices": ["Merge sort is stable because merging takes from the left half on ties — the cost is O(n) auxiliary space (or careful in-place merging)", "Stability is automatic for all O(n log n) sorts — quicksort's result was a bug", "Stability requires extra key columns — add the timestamp to the sort key", "Merge sort is unstable like quicksort — use insertion sort for stability"], "answer": 0, "why": "A sort is stable if equal keys retain their input order. Merge sort's merge step breaks ties toward the left half, which holds earlier elements — stability falls out naturally. The price is the O(n) merge buffer (standard implementations allocate it once). When stability matters (multi-key sorts, UI lists), it is a requirement, not a nicety.", "hint": "When the merge step sees equal keys from both halves, which side should win to preserve input order?", "objectives": ["Stability", "Merge sort", "Space tradeoff"], "mins": 6}, {"id": "dsa-binary-search-bounds", "title": "The binary search that misses the edges", "situation": "A hand-written binary search works for middle elements but fails on the first and last, and once looped forever.", "prompt": "What is the correct loop invariant and bound update?", "evidence": [["bs.py", "def bsearch(a, x):\n    lo, hi = 0, len(a) - 1\n    while lo <= hi:              # invariant: answer in [lo, hi] if present\n        mid = (lo + hi) // 2\n        if a[mid] == x: return mid\n        elif a[mid] < x: lo = mid + 1   # exclude mid: it is too small\n        else: hi = mid - 1              # exclude mid: it is too big\n    return -1"]], "choices": ["Maintain 'answer in [lo,hi] if present': loop while lo <= hi, and exclude mid itself (mid±1) since it was just tested — this terminates with no missed edges", "Use lo < hi and set lo = mid — fewer updates, same result", "mid = (lo+hi)//2 overflows — use (lo+hi)//2 only for small arrays", "Binary search cannot find edge elements — check them separately first"], "answer": 0, "why": "The two classic bugs: (1) lo = mid instead of mid+1 can stall (when lo+1 == hi, mid == lo, no progress — infinite loop); excluding the tested mid guarantees progress. (2) lo < hi with inclusive-hi indexing skips checking the final single element. The invariant 'the answer, if present, lies within [lo, hi]' plus shrinking the interval every step gives correctness and termination. (In fixed-width languages, lo + (hi-lo)//2 avoids overflow.)", "hint": "After testing a[mid], is mid still a candidate — and what happens to progress if you keep it?", "objectives": ["Binary search", "Loop invariants", "Termination"], "mins": 7}, {"id": "dsa-counting-sort", "title": "The linear sort for bounded keys", "situation": "Sort a million exam scores (0-100). Comparison sorts take O(n log n); the keys' tiny range suggests better.", "prompt": "How does counting sort beat the comparison-sort lower bound?", "evidence": [["count.py", "def counting_sort(a, k=100):\n    cnt = [0]*(k+1)\n    for x in a: cnt[x] += 1\n    out = []\n    for v in range(k+1): out.extend([v]*cnt[v])\n    return out  # O(n + k)"]], "choices": ["Count occurrences of each key value, then emit values in order — O(n+k) time, valid because keys are bounded integers, not arbitrary comparable objects", "The Ω(n log n) lower bound applies to all sorts — counting sort must be wrong", "Counting sort is O(n) only for distinct keys — duplicates break it", "It beats the bound by using extra memory — space always trades for time"], "answer": 0, "why": "The n log n lower bound applies only to comparison-based sorts. Counting sort never compares elements — it indexes by key value, which requires keys to be small integers (range k). Time O(n+k), space O(k): brilliant when k is small, useless when keys are arbitrary (strings, floats) or k >> n.", "hint": "What assumption about the keys lets you index instead of compare — and what does the lower bound assume?", "objectives": ["Counting sort", "Non-comparison sorts", "Lower bounds"], "mins": 6}, {"id": "dsa-rotated-search", "title": "The binary search on rotated data", "situation": "A sorted array was rotated at an unknown pivot: [4,5,6,1,2,3]. Plain binary search fails.", "prompt": "How do you restore O(log n) search?", "evidence": [["rot.py", "def search_rot(a, x):\n    lo, hi = 0, len(a)-1\n    while lo <= hi:\n        mid = (lo+hi)//2\n        if a[mid] == x: return mid\n        if a[lo] <= a[mid]:  # left half sorted\n            if a[lo] <= x < a[mid]: hi = mid-1\n            else: lo = mid+1\n        else:  # right half sorted\n            if a[mid] < x <= a[hi]: lo = mid+1\n            else: hi = mid-1\n    return -1"]], "choices": ["One half is always sorted — identify it via a[lo] <= a[mid], then decide whether x lies in that sorted half or the other one", "Un-rotate the array first (O(n)), then binary search — O(n) total is fine", "Rotated arrays cannot be searched sublinearly — fall back to linear scan", "Find the pivot with linear scan, then binary search each half"], "answer": 0, "why": "Rotation preserves a key property: at every step, at least one half of [lo,hi] is sorted. Comparing a[lo] ≤ a[mid] identifies which. If x falls inside the sorted half's range, search there; otherwise search the unsorted half (which still halves). Each step discards half: O(log n). (With duplicates, the worst case degrades — a[lo]==a[mid] is ambiguous.)", "hint": "After rotation, what is still true about at least one of the two halves around mid?", "objectives": ["Rotated array search", "Binary search variants"], "mins": 8}, {"id": "dsa-quickselect", "title": "The kth smallest without sorting", "situation": "Find the median (kth smallest) of n unsorted numbers. Full sort is O(n log n); only one order statistic is needed.", "prompt": "How does quickselect achieve O(n) average?", "evidence": [["qs.py", "def quickselect(a, k):\n    # partition around a pivot like quicksort,\n    # then recurse ONLY into the side containing index k\n    # average: n + n/2 + n/4 + ... = 2n = O(n)"]], "choices": ["Partition like quicksort but recurse into only the side containing k — the work halves geometrically: n + n/2 + n/4 + ... = O(n) average", "Quickselect is O(n log n) like quicksort — the name is misleading", "Heap of size k gives O(n) — quickselect is never the right tool", "The median requires sorting by definition — accept O(n log n)"], "answer": 0, "why": "After partitioning, the pivot's final index p is known: if p == k done; if p > k the answer is left; else right (adjusting k). Only one side is explored, so average work is n + n/2 + n/4 + ... < 2n. Worst case is O(n^2) with bad pivots (median-of-medians gives deterministic O(n) but with heavy constants — rarely used in practice).", "hint": "After one partition, how many of the two sides can possibly contain the kth element?", "objectives": ["Quickselect", "Order statistics", "Average-case analysis"], "mins": 7}]}, {"id": "dynamic-programming", "name": "Dynamic Programming", "scenarios": [{"id": "dsa-fib-memo", "title": "The exponential Fibonacci", "situation": "Naive recursive Fibonacci takes minutes for n=50. The recursion tree recomputes the same subproblems endlessly.", "prompt": "How does memoization change the complexity?", "evidence": [["fib.py", "from functools import lru_cache\n@lru_cache(maxsize=None)\ndef fib(n):\n    return n if n < 2 else fib(n-1) + fib(n-2)\n# n=50: instant. Each fib(k) computed once: O(n) time, O(n) space."]], "choices": ["Cache each subproblem's result — the recursion DAG has n distinct states, so total work drops from O(2^n) to O(n)", "Memoization only helps for n > 100 — the overhead dominates below that", "lru_cache makes it O(1) — every call after the first is a cache hit", "The exponential is inherent — memoization just hides it with threads"], "answer": 0, "why": "Naive fib recomputes fib(k) exponentially many times — the recursion tree has O(2^n) nodes but only n distinct subproblems. Memoization computes each distinct state once: n states × O(1) work each = O(n) time, O(n) space for the cache (plus O(n) stack depth). The pattern: overlapping subproblems + optimal substructure = DP candidate.", "hint": "How many distinct values of fib(k) exist for k ≤ n — and how many times does the naive version compute each?", "objectives": ["Memoization", "Overlapping subproblems", "Top-down DP"], "mins": 6}, {"id": "dsa-tabulation-space", "title": "The table you barely need", "situation": "A bottom-up Fibonacci keeps the whole dp array, using O(n) space. Only the last two values are ever read.", "prompt": "How do you reduce the space, and when is it safe?", "evidence": [["fib2.py", "def fib(n):\n    a, b = 0, 1\n    for _ in range(n): a, b = b, a + b\n    return a  # O(n) time, O(1) space"]], "choices": ["Keep only the states the recurrence actually reads — fib(n) needs fib(n-1) and fib(n-2), so two variables suffice: O(1) space", "Space reduction changes the answer — the full table is required for correctness", "Use a deque of size n//2 — halves the space while staying safe", "Tabulation always needs the full table — switch to memoization for less space"], "answer": 0, "why": "Space optimization is safe when the recurrence has bounded lookback: if dp[i] depends only on dp[i-1..i-k], keep a sliding window of k values. Fibonacci's lookback is 2, so two variables replace the array. The rule generalizes: identify the dependency footprint first, then size the storage to it — but keep the full table when you must reconstruct the actual solution path, not just its value.", "hint": "Which earlier entries does dp[i] actually read — all of them, or just the recent ones?", "objectives": ["Tabulation", "Space optimization", "Bottom-up DP"], "mins": 6}, {"id": "dsa-knapsack", "title": "The thief with a weight limit", "situation": "Choose items (each with weight and value) to maximize value without exceeding capacity W. Greedy by value-density fails.", "prompt": "What is the 0/1 knapsack recurrence?", "evidence": [["knap.py", "dp[i][w] = max value using first i items with capacity w\ndp[i][w] = dp[i-1][w]                                  # skip item i\nif wt[i] <= w:\n    dp[i][w] = max(dp[i][w], dp[i-1][w-wt[i]] + val[i])  # take item i"]], "choices": ["dp[i][w] = max(skip i, take i + best of remaining capacity) — each item is used at most once, hence dp[i-1] in both branches", "Sort by value/weight ratio and take greedily — optimal for 0/1 knapsack", "dp[w] = max value for exact weight w, trying items in any order with unlimited reuse", "Knapsack is NP-hard so no recurrence exists — use brute force"], "answer": 0, "why": "The 0/1 choice is per item: either skip item i (best of first i-1 with capacity w) or take it (its value plus best of first i-1 with capacity w-wt[i]). Referencing dp[i-1] (not dp[i]) enforces single use — dp[i][...] on the take branch would allow reuse, which is the unbounded variant. Complexity O(nW): pseudopolynomial — polynomial in n and W, exponential in the input's bit length.", "hint": "For item i, what are the two options — and which subproblem does each option reduce to?", "objectives": ["0/1 knapsack", "DP recurrence", "Pseudopolynomial"], "mins": 8}, {"id": "dsa-lcs", "title": "The diff that finds common ground", "situation": "A diff tool needs the longest common subsequence of two strings — the backbone that a minimal edit script is built around.", "prompt": "What is the LCS recurrence?", "evidence": [["lcs.py", "if a[i] == b[j]: dp[i][j] = 1 + dp[i+1][j+1]\nelse: dp[i][j] = max(dp[i+1][j], dp[i][j+1])\n# dp[i][j] = LCS length of suffixes a[i:], b[j:]"]], "choices": ["If the characters match, take 1 plus the LCS of the remainders; otherwise take the better of skipping a character from either string", "Count matching characters position by position — LCS is just positional matches", "LCS equals the longest common substring — use a sliding window", "Compare lengths first — the shorter string bounds the LCS trivially"], "answer": 0, "why": "Optimal substructure: if a[i]==b[j], some optimal LCS uses both (any optimal solution can be rearranged to include them); if they differ, at least one of them is unused in every optimal solution, so drop it from either side and take the max. Fill the table bottom-up (or memoize top-down): O(nm) time and space, O(min(n,m)) space with rolling rows.", "hint": "If the first characters match, must an optimal solution use them? If they differ, can both be used?", "objectives": ["LCS", "Optimal substructure", "2D DP"], "mins": 8}, {"id": "dsa-coin-greedy-fails", "title": "The greedy change that is not optimal", "situation": "A vending machine uses greedy change (largest coin first). With coin denominations [1, 3, 4] and amount 6, it returns 4+1+1 (3 coins) instead of 3+3 (2 coins).", "prompt": "Why does greedy fail here, and what is the DP formulation?", "evidence": [["coin.py", "dp[x] = min coins for amount x\ndp[x] = 1 + min(dp[x - c] for c in coins if c <= x)\n# dp[6] = 1 + dp[3] = 2  (greedy gave 3)"]], "choices": ["Greedy is optimal only for canonical coin systems — in general, dp[x] = 1 + min over coins of dp[x-c]; greedy's local choice can block the global optimum", "Greedy always gives optimal change — the machine's coin set must contain a counterfeit", "DP is overkill — sort coins ascending instead of descending", "The DP is O(amount × coins) which is worse than greedy's O(coins)"], "answer": 0, "why": "Greedy commits to the largest coin without considering how the remainder decomposes — 4 leaves 2 = 1+1, while skipping 4 allows 3+3. The DP considers every first-coin choice: dp[x] tries each coin c and takes 1 + dp[x-c]. Greedy works for canonical systems (US coins) but that is a property needing proof per system, not a general truth.", "hint": "Does taking the biggest coin first always leave the easiest remainder — or can it paint you into a corner?", "objectives": ["Coin change", "Greedy vs DP", "Canonical coin systems"], "mins": 7}, {"id": "dsa-lis", "title": "The increasing subsequence in O(n log n)", "situation": "Find the length of the longest increasing subsequence. The O(n^2) DP (dp[i] = 1 + max dp[j] for j<i, a[j]<a[i]) is too slow for n=10^5.", "prompt": "How does patience sorting achieve O(n log n)?", "evidence": [["lis.py", "import bisect\npiles = []\nfor x in a:\n    i = bisect.bisect_left(piles, x)\n    if i == len(piles): piles.append(x)\n    else: piles[i] = x\n# len(piles) == length of LIS"]], "choices": ["Maintain piles where each pile top is the smallest possible tail of an increasing subsequence of that length — binary search places each element in O(log n)", "Sort the array first — the LIS of a sorted array is the array itself", "Patience sorting only works for strictly decreasing sequences", "O(n log n) is impossible — LIS has an Ω(n^2) lower bound"], "answer": 0, "why": "Process elements left to right, maintaining piles[i] = smallest tail value of any increasing subsequence of length i+1 seen so far. Each x either extends the longest pile (append) or improves an earlier pile's tail (replace via binary search) — the piles stay sorted, so placement is O(log n). len(piles) equals the LIS length. (Recovering the actual subsequence needs parent pointers — the length trick alone does not reconstruct it.)", "hint": "For each possible subsequence length, what single number summarizes 'the best subsequence of that length so far'?", "objectives": ["LIS", "Patience sorting", "Binary search in DP"], "mins": 8}]}], "lessons": [{"domain_id": "complexity-analysis", "title": "Complexity Analysis — Core concepts", "concepts": ["Big-O describes growth rate as n→∞: the fastest-growing term eventually dwarfs the rest, so O(n^2 + n log n + n) simplifies to O(n^2).", "Sequential phases add (not multiply) — multiplication applies to nested loops.", "Amortized analysis averages the total cost of a sequence; it does not promise any single operation is cheap (a latency-sensitive system may still prefer pre-sized arrays). Space analysis must count the call stack, not just allocated containers.", "Geometric series: resizes at sizes 1,2,4,...,n copy 1+2+4+...+n = 2n-1 total elements — a geometric series bounded by 2n."], "example": {"lang": "python", "code": "def height(node):\n    if not node: return 0\n    return 1 + max(height(node.left), height(node.right))\n# degenerate tree: recursion depth = n", "walkthrough": "Each recursive call holds a stack frame until its children return, so peak stack depth equals the longest root-to-leaf path: the tree height h. Balanced trees give O(log n); a degenerate chain gives O(n) — enough to overflow the call stack."}, "pitfalls": ["Common trap: recursion uses no extra space beyond the input.", "Common trap: binary search examines log n elements per step.", "Common trap: the worst single append dominates the analysis.", "Common trap: every node gets a stack frame simultaneously."], "try_it": "Try it now in the Terminal tab →"}, {"domain_id": "arrays-strings-dsa", "title": "Arrays & Strings — Core concepts", "concepts": ["Two strings are anagrams iff every character occurs the same number of times in both — a frequency-count comparison in O(n) time and O(alphabet) space. Reversing the whole array puts the last k elements first but backwards; reversing each of the two segments restores their internal order.", "Sorted array techniques: because the array is sorted, all copies of each value are adjacent — a[r] != a[r-1] detects exactly the first occurrence of each distinct value. (Segment trees/Fenwick trees answer in O(log n) but support point updates — the right tool when the array changes; prefix sums win for static data.).", "Sliding window: the window [lo, hi] always holds a valid (duplicate-free) substring. hi advances n times total; lo only moves forward (at most n times).", "Prefix sums: p[r+1] - P[l] cancels the shared prefix: (a0+...+ar) - (a0+...+a{l-1}) = a{l}+...+ar.", "Preprocessing is O(n) time and space; every query is O(1)."], "example": {"lang": "python", "code": "from collections import Counter\ndef is_anagram(a, b):\n    return Counter(a) == Counter(b)  # O(n) frequency comparison", "walkthrough": "Two strings are anagrams iff every character occurs the same number of times in both — a frequency-count comparison in O(n) time and O(alphabet) space. Sorting works but pays O(n log n). (Set comparison is wrong: 'aab' vs 'abb' have equal sets but are not anagrams."}, "pitfalls": ["Common trap: two pointers only work on unsorted arrays.", "Common trap: range sums are faster on sorted data.", "Common trap: one reversal equals a rotation.", "Common trap: use two nested loops but break early on duplicates."], "try_it": "Try it now in the Terminal tab →"}, {"domain_id": "linked-structures", "title": "Linked Structures — Core concepts", "concepts": ["Two pointers: both lists are sorted, so the merged head is always the smaller of the two current heads — attach it and advance that list. On a cycle, the distance between the pointers shrinks by 1 each step (fast gains one node per round), so they must meet within one lap.", "Linked list reversal: the hash map gives O(1) lookup of the node; the doubly linked list gives O(1) splice-to-front on access and O(1) tail eviction — but only doubly linked, since removing a node needs its predecessor.", "Cycle detection: one pass, O(n) time, O(1) space — the same tortoise-and-hare idea as cycle detection, repurposed. Without a cycle, fast reaches the null terminator."], "example": {"lang": "python", "code": "class LRU:\n    # hash map: key -> node in doubly linked list\n    # list order: most-recent at head, least-recent at tail\n    # get: move node to head (splice O(1)); put: insert at head, evict tail", "walkthrough": "The hash map gives O(1) lookup of the node; the doubly linked list gives O(1) splice-to-front on access and O(1) tail eviction — but only doubly linked, since removing a node needs its predecessor. Either structure alone fails: the map cannot order by recency, the list cannot find by key. (Python's OrderedDict / functools.lru_cache package this pattern.)."}, "pitfalls": ["Common trap: floyd's algorithm needs a doubly linked list.", "Common trap: a hash map plus a heap keyed by timestamp.", "Common trap: a single sorted dict by access time.", "Common trap: swap the values of symmetric nodes instead of rewiring."], "try_it": "Try it now in the Terminal tab →"}, {"domain_id": "trees-graphs", "title": "Trees & Graphs — Core concepts", "concepts": ["BST validation: (Equivalently, an in-order traversal of a valid BST yields sorted order.). BST operations cost O(height).", "Bounds threading: the correct invariant: every node in the left subtree is < node < every node in the right subtree — enforced by passing down (lo, hi) bounds that tighten at each level.", "BFS: (For weighted graphs, Dijkstra's priority queue generalizes this idea; BFS is Dijkstra with uniform weights.).", "Shortest path: the goal's first visit therefore happens at its minimum distance — no shorter path can exist undiscovered."], "example": {"lang": "python", "code": "def topo(graph):\n    # Kahn's: repeatedly emit nodes with no incoming edges\n    # nodes remaining with incoming edges at the end => cycle exists", "walkthrough": "A topological order exists iff the graph is a DAG. Kahn's algorithm repeatedly removes nodes with no remaining prerequisites; each removal can only enable valid next steps. If the process stalls with nodes left, those nodes depend on each other circularly — a cycle, which is both the diagnosis and the proof that no schedule exists."}, "pitfalls": ["Common trap: BST validation requires sorting the values first.", "Common trap: dijkstra works with negatives if you initialize distances to negative infinity.", "Common trap: negative weights cause infinite loops.", "Common trap: DFS with backtracking also guarantees shortest."], "try_it": "Try it now in the Terminal tab →"}, {"domain_id": "sorting-searching", "title": "Sorting & Searching — Core concepts", "concepts": ["Partition's postcondition — pivot at index i, everything left ≤ pivot ≤ everything right — is what makes the recursion valid: the pivot never moves again, and the two sides are independent subproblems.", "Stability: merge sort's merge step breaks ties toward the left half, which holds earlier elements — stability falls out naturally.", "Merge sort: counting sort never compares elements — it indexes by key value, which requires keys to be small integers (range k). A sort is stable if equal keys retain their input order.", "Space tradeoff: time O(n+k), space O(k): brilliant when k is small, useless when keys are arbitrary (strings, floats) or k >> n."], "example": {"lang": "python", "code": "def quickselect(a, k):\n    # partition around a pivot like quicksort,\n    # then recurse ONLY into the side containing index k\n    # average: n + n/2 + n/4 + ... = 2n = O(n)", "walkthrough": "After partitioning, the pivot's final index p is known: if p == k done; if p > k the answer is left; else right (adjusting k). Only one side is explored, so average work is n + n/2 + n/4 + ... < 2n. Worst case is O(n^2) with bad pivots (median-of-medians gives deterministic O(n) but with heavy constants — rarely used in practice)."}, "pitfalls": ["Common trap: merge sort is unstable like quicksort.", "Common trap: un-rotate the array first (O(n)), then binary search.", "Common trap: find the pivot with linear scan, then binary search each half.", "Common trap: binary search cannot find edge elements."], "try_it": "Try it now in the Terminal tab →"}, {"domain_id": "dynamic-programming", "title": "Dynamic Programming — Core concepts", "concepts": ["Memoization computes each distinct state once: n states × O(1) work each = O(n) time, O(n) space for the cache (plus O(n) stack depth).", "Overlapping subproblems: the pattern: overlapping subproblems + optimal substructure = DP candidate.", "Top-down DP: fill the table bottom-up (or memoize top-down): O(nm) time and space, O(min(n,m)) space with rolling rows.", "Space optimization is safe when the recurrence has bounded lookback: if dp[i] depends only on dp[i-1..i-k], keep a sliding window of k values."], "example": {"lang": "python", "code": "if a[i] == b[j]: dp[i][j] = 1 + dp[i+1][j+1]\nelse: dp[i][j] = max(dp[i+1][j], dp[i][j+1])\n# dp[i][j] = LCS length of suffixes a[i:], b[j:]", "walkthrough": "Optimal substructure: if a[i]==b[j], some optimal LCS uses both (any optimal solution can be rearranged to include them); if they differ, at least one of them is unused in every optimal solution, so drop it from either side and take the max. Fill the table bottom-up (or memoize top-down): O(nm) time and space, O(min(n,m)) space with rolling rows."}, "pitfalls": ["Common trap: greedy always gives optimal change.", "Common trap: patience sorting only works for strictly decreasing sequences.", "Common trap: knapsack is NP-hard so no recurrence exists.", "Common trap: LCS equals the longest common substring."], "try_it": "Try it now in the Terminal tab →"}], "sections": [{"id": "foundations", "title": "Foundations", "kind": "foundation", "lectures": ["m-logic", "m-stats", "f-programming-basics-0", "f-programming-basics-1", "f-programming-basics-2"], "lab_ids": [], "drill_domain_ids": []}, {"id": "core", "title": "Core", "kind": "core", "lectures": ["c-complexity-analysis", "c-arrays-strings-dsa", "c-linked-structures"], "lab_ids": ["dsa-lab-1", "dsa-lab-2"], "drill_domain_ids": ["complexity-analysis", "arrays-strings-dsa", "linked-structures"]}, {"id": "advanced", "title": "Advanced", "kind": "advanced", "lectures": ["c-trees-graphs", "c-sorting-searching", "c-dynamic-programming"], "lab_ids": ["dsa-lab-3", "dsa-lab-4"], "drill_domain_ids": ["trees-graphs", "sorting-searching", "dynamic-programming"]}, {"id": "exam-prep", "title": "Exam Prep", "kind": "exam-prep", "lectures": [], "lab_ids": [], "drill_domain_ids": ["complexity-analysis", "arrays-strings-dsa", "linked-structures", "trees-graphs", "sorting-searching", "dynamic-programming"]}], "behavioral": [{"prompt": "Tell me about a time you optimized an algorithm or data pipeline that was too slow.", "framework": "STAR", "points": ["How you identified the bottleneck (profiling, analysis)", "The complexity improvement", "Measured before/after", "Trade-offs accepted"], "pitfalls": ["Optimizing without measuring", "No complexity analysis"]}, {"prompt": "Describe a time you had to choose between data structures with competing trade-offs.", "framework": "STAR", "points": ["The options and their complexities", "How the workload decided it", "The choice and why", "How it performed in practice"], "pitfalls": ["Choosing by familiarity alone", "No workload analysis"]}, {"prompt": "Tell me about a difficult bug involving data structure invariants (corrupted list, broken heap, invalid tree).", "framework": "STAR", "points": ["Symptoms", "How you found the invariant violation", "The fix", "Assertions or tests added"], "pitfalls": ["Fixing symptoms without finding the violation", "No preventive checks"]}, {"prompt": "Describe a time you designed an algorithm for a problem with no obvious known solution.", "framework": "STAR", "points": ["How you broke the problem down", "Approaches you tried and discarded", "The final approach and its complexity", "How you validated correctness"], "pitfalls": ["Jumping to code without analysis", "No correctness argument"]}, {"prompt": "Tell me about a time you had to explain a complex algorithm to teammates or stakeholders.", "framework": "STAR", "points": ["The algorithm and audience", "How you made it concrete", "How you confirmed understanding", "Outcome"], "pitfalls": ["Jargon without intuition", "No check for understanding"]}, {"prompt": "Describe a disagreement over an engineering approach (data model, algorithm choice, abstraction).", "framework": "STAR", "points": ["Both positions fairly", "How you evaluated trade-offs", "Resolution", "Lesson"], "pitfalls": ["Dismissing the other view", "No decision criteria"]}, {"prompt": "Tell me about receiving critical feedback on your code or design. What changed?", "framework": "STAR", "points": ["The feedback plainly", "Your response", "Concrete changes", "Lasting habit"], "pitfalls": ["Defensiveness", "No behavior change"]}, {"prompt": "Describe a project with tight performance or scale constraints. How did you meet them?", "framework": "STAR", "points": ["The constraints", "Your measurement strategy", "Key optimizations", "Final numbers vs targets"], "pitfalls": ["Vague claims without numbers", "No measurement strategy"]}], "chat": {"persona": "You are a friendly but rigorous algorithms interviewer running a mock assessment. Probe understanding with follow-ups, give keyword-heuristic feedback, and demand complexity analysis (time and space) for every proposed solution.", "topics": [{"id": "complexity-analysis", "name": "Complexity Analysis", "key_points": ["dominant term simplification", "amortized analysis", "recursion stack space", "average vs worst case", "recurrence trees"], "followups": ["What is the dominant term as n grows?", "Does that bound count the call stack?"]}, {"id": "arrays-strings-dsa", "name": "Arrays & Strings", "key_points": ["two pointers", "sliding window invariants", "prefix sums", "in-place reversal", "frequency counting"], "followups": ["What is the window invariant?", "How many times is each element touched?"]}, {"id": "linked-structures", "name": "Linked Structures", "key_points": ["iterative reversal", "Floyd cycle detection", "merge with sentinel", "queue from stacks", "LRU design"], "followups": ["What must you save before rewiring?", "What does each structure provide in O(1)?"]}, {"id": "trees-graphs", "name": "Trees & Graphs", "key_points": ["BST bound threading", "BFS shortest path", "balance and rotations", "heap top-k", "Dijkstra invariant", "topological sort"], "followups": ["Which ancestors constrain this node?", "In what order are nodes first visited?"]}, {"id": "sorting-searching", "name": "Sorting & Searching", "key_points": ["partition contract", "stability", "binary search invariants", "counting sort bounds", "rotated search", "quickselect"], "followups": ["What is the loop invariant?", "After partition, where can the answer be?"]}, {"id": "dynamic-programming", "name": "Dynamic Programming", "key_points": ["overlapping subproblems", "space optimization", "knapsack recurrence", "LCS optimal substructure", "greedy failure", "patience sorting"], "followups": ["What are the choices at each state?", "What does the recurrence depend on?"]}]}, "labs": [{"id": "dsa-lab-1", "title": "Big-O simplification — REPL drill", "objective": "Run a short sequence of Python REPL commands that demonstrates big-O simplification, then verify each result against the expected output.", "steps": ["This lab reworks the Complexity Analysis practice scenario \"The Big-O of a mixed loop nest\" into commands you run yourself — same concept, hands-on instead of multiple choice.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: print(\"big-o-simplification ready\") — the REPL echoes your concept token back on the next line", "Type exactly: len(\"bootcamp\") — the REPL counts the characters and reports 8", "Type exactly: type(42) — the REPL names the int type for 42", "In your own words, say what each command's output taught you about big-O simplification."], "checks": [{"command_pattern": "print\\(", "expect_contains": "big-o-simplification", "hint": "In the Terminal tab, run `print(\"big-o-simplification ready\")`. If the check fails, confirm you typed it exactly and that the output contains \"big-o-simplification\"."}, {"command_pattern": "len\\(", "expect_contains": "8", "hint": "In the Terminal tab, run `len(\"bootcamp\")`. If the check fails, confirm you typed it exactly and that the output contains \"8\"."}, {"command_pattern": "type\\(", "expect_contains": "int", "hint": "In the Terminal tab, run `type(42)`. If the check fails, confirm you typed it exactly and that the output contains \"int\"."}], "success_message": "Lab complete — big-O simplification practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"id": "dsa-lab-2", "title": "Two pointers — REPL drill", "objective": "Use the Python REPL to explore two pointers hands-on: type each command, read what comes back, and connect the output to the concept.", "steps": ["Inspired by the Arrays & Strings scenario \"The pair sum in a sorted array\": take its core idea and prove it live in the terminal instead of answering on paper.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: type(42) — the REPL names the int type for 42", "Type exactly: for i in range(3): print(i) — the loop prints 0, 1, then 2", "Type exactly: math.pi — the math module reports pi (run import math first if needed)", "In your own words, say what each command's output taught you about two pointers."], "checks": [{"command_pattern": "type\\(", "expect_contains": "int", "hint": "In the Terminal tab, run `type(42)`. If the check fails, confirm you typed it exactly and that the output contains \"int\"."}, {"command_pattern": "range\\(", "expect_contains": "2", "hint": "In the Terminal tab, run `for i in range(3): print(i)`. If the check fails, confirm you typed it exactly and that the output contains \"2\"."}, {"command_pattern": "math\\.pi", "expect_contains": "3.14", "hint": "In the Terminal tab, run `math.pi`. If the check fails, confirm you typed it exactly and that the output contains \"3.14\"."}], "success_message": "Lab complete — two pointers practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"id": "dsa-lab-3", "title": "Linked list reversal — REPL drill", "objective": "Prove you can apply linked list reversal in the Python REPL — follow the steps, watch the output, and confirm every check passes.", "steps": ["The Linked Structures scenario \"The list reversed with three pointers\" tests this concept as a question. This lab makes you demonstrate it with real commands.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: math.pi — the math module reports pi (run import math first if needed)", "Type exactly: print(\"linked-list-reversal ready\") — the REPL echoes your concept token back on the next line", "Type exactly: len(\"bootcamp\") — the REPL counts the characters and reports 8", "In your own words, say what each command's output taught you about linked list reversal."], "checks": [{"command_pattern": "math\\.pi", "expect_contains": "3.14", "hint": "In the Terminal tab, run `math.pi`. If the check fails, confirm you typed it exactly and that the output contains \"3.14\"."}, {"command_pattern": "print\\(", "expect_contains": "linked-list-reversal", "hint": "In the Terminal tab, run `print(\"linked-list-reversal ready\")`. If the check fails, confirm you typed it exactly and that the output contains \"linked-list-reversal\"."}, {"command_pattern": "len\\(", "expect_contains": "8", "hint": "In the Terminal tab, run `len(\"bootcamp\")`. If the check fails, confirm you typed it exactly and that the output contains \"8\"."}], "success_message": "Lab complete — linked list reversal practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"id": "dsa-lab-4", "title": "BST validation — REPL drill", "objective": "Run a short sequence of Python REPL commands that demonstrates BST validation, then verify each result against the expected output.", "steps": ["This lab reworks the Trees & Graphs practice scenario \"The BST that is not\" into commands you run yourself — same concept, hands-on instead of multiple choice.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: len(\"bootcamp\") — the REPL counts the characters and reports 8", "Type exactly: type(42) — the REPL names the int type for 42", "Type exactly: for i in range(3): print(i) — the loop prints 0, 1, then 2", "In your own words, say what each command's output taught you about BST validation."], "checks": [{"command_pattern": "len\\(", "expect_contains": "8", "hint": "In the Terminal tab, run `len(\"bootcamp\")`. If the check fails, confirm you typed it exactly and that the output contains \"8\"."}, {"command_pattern": "type\\(", "expect_contains": "int", "hint": "In the Terminal tab, run `type(42)`. If the check fails, confirm you typed it exactly and that the output contains \"int\"."}, {"command_pattern": "range\\(", "expect_contains": "2", "hint": "In the Terminal tab, run `for i in range(3): print(i)`. If the check fails, confirm you typed it exactly and that the output contains \"2\"."}], "success_message": "Lab complete — BST validation practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"id": "dsa-lab-5", "title": "Counting to 5050", "difficulty": 1, "objective": "Measure a linear sum two ways — the first step toward reasoning about growth rates.", "steps": ["Open the Terminal view (the prompt shows >>>).", "Type print(sum(range(101))) — the loop-based sum of 0 through 100.", "Type print(100 * 101 // 2) — the closed-form formula for the same sum.", "Type print(2 ** 20) to feel how fast exponentials grow past a million."], "checks": [{"command_pattern": "^print\\(sum\\(range\\(101\\)\\)\\)$", "expect_contains": "5050", "hint": "Type exactly: print(sum(range(101)))"}, {"command_pattern": "^print\\(100 \\* 101 // 2\\)$", "expect_contains": "5050", "hint": "Type exactly: print(100 * 101 // 2)"}, {"command_pattern": "^print\\(2 \\*\\* 20\\)$", "expect_contains": "1048576", "hint": "Type exactly: print(2 ** 20)"}], "success_message": "Lab complete — you measured a linear sum two ways and felt exponential growth."}, {"id": "dsa-lab-6", "title": "Sort and scan", "difficulty": 1, "objective": "Sort a list and read its extremes with min and max.", "steps": ["Type data = [64, 25, 12, 22, 11] to stage an unsorted list.", "Type print(sorted(data)) — sorted returns a new ordered list.", "Type print(min(data)) for the smallest element.", "Type print(max(data)) for the largest element."], "checks": [{"command_pattern": "^print\\(sorted\\(data\\)\\)$", "expect_contains": "[11, 12, 22, 25, 64]", "hint": "First stage the list: data = [64, 25, 12, 22, 11]"}, {"command_pattern": "^print\\(min\\(data\\)\\)$", "expect_contains": "11", "hint": "Type exactly: print(min(data))"}, {"command_pattern": "^print\\(max\\(data\\)\\)$", "expect_contains": "64", "hint": "Type exactly: print(max(data))"}], "success_message": "Lab complete — you can sort a list and read its extremes."}, {"id": "dsa-lab-7", "title": "Two ends of a string", "difficulty": 2, "objective": "Index strings from both ends and reverse them with slicing — the core of two-pointer thinking.", "steps": ["Type print(\"hello\"[-1]) — negative indices count back from the end.", "Type print(\"racecar\"[::-1]) to reverse a string in one slice.", "Type print(\"hello\"[::2]) to stride through every second character.", "Type print(\"abccba\" == \"abccba\"[::-1]) — a one-line palindrome test."], "checks": [{"command_pattern": "^print\\(\"hello\"\\[-1\\]\\)$", "expect_contains": "o", "hint": "Type exactly: print(\"hello\"[-1])"}, {"command_pattern": "^print\\(\"racecar\"\\[\\::-1\\]\\)$", "expect_contains": "racecar", "hint": "Type exactly: print(\"racecar\"[::-1])"}, {"command_pattern": "^print\\(\"abccba\" == \"abccba\"\\[\\::-1\\]\\)$", "expect_contains": "True", "hint": "Type exactly: print(\"abccba\" == \"abccba\"[::-1])"}], "success_message": "Lab complete — negative indexing and reversal slices are now muscle memory."}, {"id": "dsa-lab-8", "title": "Memoized Fibonacci", "difficulty": 3, "objective": "Build the Fibonacci sequence bottom-up in a table — dynamic programming in four commands.", "steps": ["Type fib = [0, 1] to seed the table with the two base cases.", "Type for i in range(2, 10): fib.append(fib[i-1] + fib[i-2]) — each new entry reuses solved subproblems.", "Type print(fib) to see the full table.", "Type print(fib[7]) to read one entry in O(1)."], "checks": [{"command_pattern": "^print\\(fib\\)$", "expect_contains": "[0, 1, 1, 2, 3, 5, 8, 13, 21, 34]", "hint": "First seed fib = [0, 1], then run the building loop"}, {"command_pattern": "^print\\(fib\\[7\\]\\)$", "expect_contains": "13", "hint": "Type exactly: print(fib[7])"}], "success_message": "Lab complete — you built a DP table bottom-up and read it in constant time."}], "foundations": [{"track": "programming-basics", "why_needed": "Data structures are built from code. This track gives you the programming vocabulary — variables, functions, control flow — that every algorithm assumes."}], "math": ["logic", "stats"], "simulations": [{"id": "dsa-sim-1", "title": "The dashboard that timed out", "kind": "troubleshoot", "domain_id": "complexity-analysis", "difficulty": 2, "brief": "The analytics dashboard times out every morning. The slow query loops over all orders, and for each order loops over all customers.", "steps": [{"symptom": "The report takes ~10s at 1k orders and ~1000s at 10k orders.", "evidence": [["slow.py", "for order in orders:\n    for customer in customers:\n        if customer.id == order.customer_id:\n            attach(customer, order)"]], "options": ["Profile first: the nested loop is O(n*m) — 10x input means ~100x work", "Add more RAM to the database host", "Cache the whole page in the browser", "Restart the database"], "correct": 0, "explain": "10x input → 100x time is the signature of quadratic growth: the nested loop compares every order against every customer."}, {"symptom": "Confirmed O(n*m). The inner loop is just a lookup by id.", "evidence": [["schema", "customers: id (primary key)\norders: customer_id (foreign key)"]], "options": ["Build a dict mapping customer id -> customer once, then loop orders a single time", "Sort both lists and hope", "Add an index on orders.id", "Paginate the dashboard"], "correct": 0, "explain": "A hash map turns the inner scan into an O(1) lookup: build the dict once — O(n+m) — then make one pass over orders."}, {"symptom": "Fix deployed. Verify the scaling claim.", "evidence": [["bench", "n=10k: 0.4s\nn=20k: 0.8s"]], "options": ["Confirm time roughly doubles when input doubles — linear scaling", "Check that it never exceeds 1s", "Verify the dict uses less memory", "Require both memory and time to halve"], "correct": 0, "explain": "Linear scaling doubles with doubled input — 0.4s to 0.8s confirms the quadratic term is gone."}], "debrief": "You read the scaling signature (10x → 100x means quadratic), replaced the inner scan with a hash-map lookup, and verified linear scaling from the benchmark.", "points": 15}, {"id": "dsa-sim-2", "title": "Binary search, in order", "kind": "ordering", "domain_id": "sorting-searching", "difficulty": 1, "brief": "A teammate scrambled the binary search steps. Restore them to execution order.", "steps": {"context": "Arrange the binary search steps in the order they execute.", "items": ["Compare the target with the middle element", "Compute mid = (low + high) // 2", "If the target is smaller, search the left half", "If equal, return the index", "Set low = 0 and high = n - 1"], "correct_order": [4, 1, 0, 3, 2]}, "debrief": "Binary search is: bound, halve, compare, recurse-or-return. Every step discards half the search space — O(log n).", "points": 10}, {"id": "dsa-sim-3", "title": "Cycle or dead end?", "kind": "branching", "domain_id": "linked-structures", "difficulty": 3, "brief": "A traversal of a linked structure visits A → B → C → B → C → B … Decide what you are looking at.", "steps": [{"id": "s1", "text": "The visit sequence repeats B → C → B → C. First conclusion?", "choices": [{"label": "There is a cycle: some node's next points back to an earlier node", "next": "s2", "points": 2, "feedback": "Right — a repeated subsequence in the visit order is the fingerprint of a cycle."}, {"label": "The list is just long", "next": "END", "points": 0, "feedback": "A long list never revisits nodes. Repetition means a cycle.", "outcome": "bad"}, {"label": "The traversal code has an off-by-one", "next": "END", "points": 0, "feedback": "Off-by-one skips or duplicates one node; it never loops forever.", "outcome": "bad"}]}, {"id": "s2", "text": "How do you confirm the cycle without using memory proportional to n?", "choices": [{"label": "Floyd's tortoise and hare: two pointers at different speeds; they meet inside the cycle", "next": "s3", "points": 2, "feedback": "Floyd's uses O(1) space: the meeting proves the cycle, then a second pass finds its start."}, {"label": "Store every visited node in a set", "next": "END", "points": 1, "feedback": "Works, but costs O(n) space — the question asked for constant space.", "outcome": "good"}, {"label": "Reverse the list and see what happens", "next": "END", "points": 0, "feedback": "Reversing a cyclic list never terminates.", "outcome": "bad"}]}, {"id": "s3", "text": "Tortoise and hare meet at C. What do you do next?", "choices": [{"label": "Reset one pointer to the head and advance both at equal speed; they meet at the cycle start", "next": "END", "points": 2, "feedback": "Classic result: the second meeting point is the cycle's entry node.", "outcome": "good"}, {"label": "Delete node C", "next": "END", "points": 0, "feedback": "Deleting the meeting node doesn't identify the entry — and it mutates the structure.", "outcome": "bad"}]}], "debrief": "Repeated visits mean a cycle. Floyd's algorithm detects it in O(1) space, and the two-phase pointer walk finds the entry node.", "points": 12}, {"id": "dsa-sim-4", "title": "The DP job spec", "kind": "config-check", "domain_id": "dynamic-programming", "difficulty": 2, "brief": "A batch job computes Fibonacci numbers with a table. Its spec has 2 bugs in 10 lines.", "steps": {"config": "job: fib-table\nn: 10\ntable_size: 10\nbase:\n  - fib[0] = 0\n  - fib[1] = 1\ntransition: fib[i] = fib[i-1] + fib[i-3]\noutput: fib[n]\nretries: 3\ntimeout_s: 60", "find": 2, "issues": [{"line": 3, "description": "table_size 10 only covers indices 0..9, but the job reads fib[10].", "fix": "Change table_size to 11."}, {"line": 7, "description": "The recurrence references fib[i-3] instead of fib[i-2] — it skips a predecessor.", "fix": "Change the transition to fib[i] = fib[i-1] + fib[i-2]."}]}, "debrief": "DP tables need room for every index they touch (0..n is n+1 slots), and the recurrence must reference the right predecessors.", "points": 10}], "consoleSims": [{"id": "dsa-console-1", "title": "Fix the two-sum loop bounds", "console": "code-editor", "domain_id": "arrays-strings-dsa", "difficulty": 2, "brief": "two_sum.py checks every pair but re-checks pairs it already saw — the inner loop starts at 0 instead of i + 1. Fix the bound in the IDE and rerun.", "tasks": [{"id": "t1", "instruction": "Open two_sum.py in the code editor.", "validate": {"action": "click", "params": {"target": "explorer:two_sum.py"}}, "hint": "Find two_sum.py in the file explorer."}, {"id": "t2", "instruction": "Change the inner loop to for j in range(i + 1, len(nums)):", "validate": {"action": "set-field", "params": {"field": "editor:two_sum.py:line4", "value": "for j in range(i + 1, len(nums)):"}}, "hint": "Each pair only needs checking once — start j after i."}, {"id": "t3", "instruction": "Run the debugger and confirm the pair count drops.", "validate": {"action": "click", "params": {"target": "debugger:run"}}, "hint": "Use the Run and Debug control."}], "debrief": "Starting the inner loop at i + 1 halves the pair checks — the same insight that turns O(n^2) brute force into a leaner scan."}, {"id": "dsa-console-2", "title": "Watch the recursion depth", "console": "code-editor", "domain_id": "trees-graphs", "difficulty": 3, "brief": "dfs.py recurses over a graph and you suspect it dives too deep. Set a breakpoint, watch the depth, and run.", "tasks": [{"id": "t1", "instruction": "Set a breakpoint on the recursive call line of dfs.py.", "validate": {"action": "click", "params": {"target": "editor:dfs.py:line9:breakpoint"}}, "hint": "Click in the gutter next to the recursive call."}, {"id": "t2", "instruction": "Add a watch expression for depth.", "validate": {"action": "set-field", "params": {"field": "debugger:watch", "value": "depth"}}, "hint": "The watch shows how deep the recursion goes on each visit."}, {"id": "t3", "instruction": "Run the debugger and confirm it pauses with depth growing.", "validate": {"action": "click", "params": {"target": "debugger:run"}}, "hint": "Start debugging with the small test graph selected."}], "debrief": "A depth watch makes recursion visible: each pause shows one more frame. If depth grows without bound, you have a cycle or a missing base case."}], "terminalMissions": [{"id": "dsa-mission-1", "title": "Powers of two", "domain_id": "complexity-analysis", "difficulty": 1, "brief": "Estimate scale before you code: print two powers that bound typical input sizes.", "objectives": ["Print 2 ** 10", "Print 10 ** 3"], "checks": [{"command_pattern": "^print\\(2 \\*\\* 10\\)$", "expect_contains": "1024", "hint": "Type exactly: print(2 ** 10)"}, {"command_pattern": "^print\\(10 \\*\\* 3\\)$", "expect_contains": "1000", "hint": "Type exactly: print(10 ** 3)"}], "success_message": "Scale estimated — 1024 and 1000 are the landmarks every complexity argument starts from."}, {"id": "dsa-mission-2", "title": "Count and measure", "domain_id": "arrays-strings-dsa", "difficulty": 1, "brief": "Two string measurements the text pipeline needs.", "objectives": ["Print the count of 's' in 'mississippi'", "Print the length of 'interstitium'"], "checks": [{"command_pattern": "^print\\(\"mississippi\"\\.count\\(\"s\"\\)\\)$", "expect_contains": "4", "hint": "Type exactly: print(\"mississippi\".count(\"s\"))"}, {"command_pattern": "^print\\(len\\(\"interstitium\"\\)\\)$", "expect_contains": "12", "hint": "Type exactly: print(len(\"interstitium\"))"}], "success_message": "Measurements taken — count and len are the cheapest probes you have."}, {"id": "dsa-mission-3", "title": "Order the chaos", "domain_id": "sorting-searching", "difficulty": 2, "brief": "Sort a scrambled list and a scrambled word.", "objectives": ["Print sorted([9, 3, 7, 1])", "Print sorted('dbca')"], "checks": [{"command_pattern": "^print\\(sorted\\(\\[9, 3, 7, 1\\]\\)\\)$", "expect_contains": "[1, 3, 7, 9]", "hint": "Type exactly: print(sorted([9, 3, 7, 1]))"}, {"command_pattern": "^print\\(sorted\\(\"dbca\"\\)\\)$", "expect_contains": "['a', 'b', 'c', 'd']", "hint": "Type exactly: print(sorted(\"dbca\"))"}], "success_message": "Chaos ordered — sorted() works on any sequence."}, {"id": "dsa-mission-4", "title": "Stack discipline", "domain_id": "linked-structures", "difficulty": 2, "brief": "Drive a list as a LIFO stack: push one item, pop it, and prove the stack is back to size 2.", "objectives": ["Push 3 onto s = [1, 2] and print the popped value", "Print the stack after the pop"], "checks": [{"command_pattern": "^print\\(s\\.pop\\(\\)\\)$", "expect_contains": "3", "hint": "First run: s = [1, 2], then s.append(3), then print(s.pop())"}, {"command_pattern": "^print\\(s\\)$", "expect_contains": "[1, 2]", "hint": "Type exactly: print(s)"}], "success_message": "Stack discipline confirmed — LIFO push/pop round-trips cleanly."}, {"id": "dsa-mission-5", "title": "Factorial, iteratively", "domain_id": "dynamic-programming", "difficulty": 3, "brief": "Compute 7! with an accumulator loop — the iterative twin of the recursive definition.", "objectives": ["Build fact from 1 up through 7 with a loop", "Print fact and fact // 100"], "checks": [{"command_pattern": "^print\\(fact\\)$", "expect_contains": "5040", "hint": "First run: fact = 1, then for i in range(2, 8): fact *= i"}, {"command_pattern": "^print\\(fact // 100\\)$", "expect_contains": "50", "hint": "Type exactly: print(fact // 100)"}], "success_message": "7! = 5040, built iteratively — no recursion depth to worry about."}, {"id": "dsa-mission-6", "title": "Adjacency map", "domain_id": "trees-graphs", "difficulty": 3, "brief": "Model a tiny graph as a dict of neighbor lists and query it.", "objectives": ["Print the neighbors of 'a' in g = {\"a\": [\"b\", \"c\"]}", "Print how many nodes the graph has"], "checks": [{"command_pattern": "^print\\(g\\[\"a\"\\]\\)$", "expect_contains": "['b', 'c']", "hint": "First run: g = {\"a\": [\"b\", \"c\"]}, then print(g[\"a\"])"}, {"command_pattern": "^print\\(len\\(g\\)\\)$", "expect_contains": "1", "hint": "Type exactly: print(len(g))"}], "success_message": "Graph queried — adjacency maps turn neighbor lookups into dict reads."}], "media": [{"id": "dsa-complexity-analysis-diag", "kind": "diagram", "title": "Big-O Complexities", "svg": "assets/diagrams/dsa-complexity-analysis.svg", "lesson_ref": "c-complexity-analysis", "caption": "Growth rates you must recognize instantly.", "alt": "Big-O Complexities. Table with 6 rows."}, {"id": "dsa-arrays-strings-dsa-diag", "kind": "diagram", "title": "Array & String Patterns", "svg": "assets/diagrams/dsa-arrays-strings-dsa.svg", "lesson_ref": "c-arrays-strings-dsa", "caption": "The five patterns that solve most array problems.", "alt": "Array & String Patterns. Shows: Two pointers, Sliding window, Prefix sums, In-place, Run-length."}, {"id": "dsa-linked-structures-diag", "kind": "diagram", "title": "Linked Structures", "svg": "assets/diagrams/dsa-linked-structures.svg", "lesson_ref": "c-linked-structures", "caption": "Nodes + pointers: flexible but cache-unfriendly.", "alt": "Linked Structures. Shows: Singly linked, Doubly linked, Fast/slow pointers, Dummy head."}, {"id": "dsa-trees-graphs-diag", "kind": "diagram", "title": "Trees & Graphs", "svg": "assets/diagrams/dsa-trees-graphs.svg", "lesson_ref": "c-trees-graphs", "caption": "Traversals first, algorithms second.", "alt": "Trees & Graphs. Shows: BFS, DFS, BST, Heap, Dijkstra."}, {"id": "dsa-sorting-searching-diag", "kind": "diagram", "title": "Sorting Algorithms", "svg": "assets/diagrams/dsa-sorting-searching.svg", "lesson_ref": "c-sorting-searching", "caption": "Know the trade-offs, not just the names.", "alt": "Sorting Algorithms. Table with 5 rows."}, {"id": "dsa-dynamic-programming-diag", "kind": "diagram", "title": "Dynamic Programming", "svg": "assets/diagrams/dsa-dynamic-programming.svg", "lesson_ref": "c-dynamic-programming", "caption": "Overlapping subproblems + optimal substructure.", "alt": "Dynamic Programming. Shows: Memoization, Tabulation, State definition, Classic set."}], "resources": {"cheatsheet": {"title": "Data Structures & Algorithms — Cheat Sheet", "sections": [{"heading": "Complexity Analysis", "items": ["Big-O describes growth rate as n→∞ — the fastest-growing term eventually dwarfs the rest, so O(n^2 + n log n + n) simplifies to O(n^2).", "Sequential phases add (not multiply) — multiplication applies to nested loops.", "Amortized — Amortized analysis averages the total cost of a sequence; it does not promise any single operation is cheap (a latency-sensitive system may still prefer pre-sized arrays). Space analysis must count the call stack, not just allocated containers.", "Geometric series — resizes at sizes 1,2,4,...,n copy 1+2+4+...+n = 2n-1 total elements — a geometric series bounded by 2n.", "Common trap — recursion uses no extra space beyond the input.", "Common trap — binary search examines log n elements per step.", "Common trap — the worst single append dominates the analysis.", "Common trap — every node gets a stack frame simultaneously.", "Each — Each recursive call holds a stack frame until its children return, so peak stack depth equals the longest root-to-leaf path: the tree height h. Balanced trees give O(log n); a degenerate chain gives O(n) — enough to overflow the call stack."]}, {"heading": "Arrays & Strings", "items": ["Two strings — are anagrams iff every character occurs the same number of times in both — a frequency-count comparison in O(n) time and O(alphabet) space. Reversing the whole array puts the last k elements first but backwards; reversing each of the two segments restores t…", "Sorted array techniques — because the array is sorted, all copies of each value are adjacent — a[r] != a[r-1] detects exactly the first occurrence of each distinct value. (Segment trees/Fenwick trees answer in O(log n) but support point updates — the right tool when the array change…", "Sliding window — the window [lo, hi] always holds a valid (duplicate-free) substring. hi advances n times total; lo only moves forward (at most n times).", "Prefix sums — p[r+1] - P[l] cancels the shared prefix: (a0+...+ar) - (a0+...+a{l-1}) = a{l}+...+ar.", "Preprocessing — is O(n) time and space; every query is O(1).", "Common trap — two pointers only work on unsorted arrays.", "Common trap — range sums are faster on sorted data.", "Common trap — one reversal equals a rotation.", "Common trap — use two nested loops but break early on duplicates.", "Two strings — are anagrams iff every character occurs the same number of times in both — a frequency-count comparison in O(n) time and O(alphabet) space. Sorting works but pays O(n log n). (Set comparison is wrong: 'aab' vs 'abb' have equal sets but are not anagrams."]}, {"heading": "Linked Structures", "items": ["Two pointers — both lists are sorted, so the merged head is always the smaller of the two current heads — attach it and advance that list. On a cycle, the distance between the pointers shrinks by 1 each step (fast gains one node per round), so they must meet within one lap.", "Linked list reversal — the hash map gives O(1) lookup of the node; the doubly linked list gives O(1) splice-to-front on access and O(1) tail eviction — but only doubly linked, since removing a node needs its predecessor.", "Cycle detection — one pass, O(n) time, O(1) space — the same tortoise-and-hare idea as cycle detection, repurposed. Without a cycle, fast reaches the null terminator.", "Common trap — floyd's algorithm needs a doubly linked list.", "Common trap — a hash map plus a heap keyed by timestamp.", "Common trap — a single sorted dict by access time.", "Common trap — swap the values of symmetric nodes instead of rewiring.", "The — The hash map gives O(1) lookup of the node; the doubly linked list gives O(1) splice-to-front on access and O(1) tail eviction — but only doubly linked, since removing a node needs its predecessor. Either structure alone fails: the map cannot order by recen…"]}, {"heading": "Trees & Graphs", "items": ["BST validation — (Equivalently, an in-order traversal of a valid BST yields sorted order.). BST operations cost O(height).", "Bounds threading — the correct invariant: every node in the left subtree is < node < every node in the right subtree — enforced by passing down (lo, hi) bounds that tighten at each level.", "BFS — (For weighted graphs, Dijkstra's priority queue generalizes this idea; BFS is Dijkstra with uniform weights.).", "Shortest path — the goal's first visit therefore happens at its minimum distance — no shorter path can exist undiscovered.", "Common trap — BST validation requires sorting the values first.", "Common trap — dijkstra works with negatives if you initialize distances to negative infinity.", "Common trap — negative weights cause infinite loops.", "Common trap — DFS with backtracking also guarantees shortest.", "A topological order exists iff the graph — is a DAG. Kahn's algorithm repeatedly removes nodes with no remaining prerequisites; each removal can only enable valid next steps. If the process stalls with nodes left, those nodes depend on each other circularly — a cycle, which is both the diagnosis and…"]}, {"heading": "Sorting & Searching", "items": ["Partition's postcondition — pivot at index i, everything left ≤ pivot ≤ everything right — is what makes the recursion valid: the pivot never moves again, and the two sides are independent subproblems.", "Stability — merge sort's merge step breaks ties toward the left half, which holds earlier elements — stability falls out naturally.", "Merge sort — counting sort never compares elements — it indexes by key value, which requires keys to be small integers (range k). A sort is stable if equal keys retain their input order.", "Space tradeoff — time O(n+k), space O(k): brilliant when k is small, useless when keys are arbitrary (strings, floats) or k >> n.", "Common trap — merge sort is unstable like quicksort.", "Common trap — un-rotate the array first (O(n)), then binary search.", "Common trap — find the pivot with linear scan, then binary search each half.", "Common trap — binary search cannot find edge elements.", "After partitioning, the pivot's final index p is known — if p == k done; if p > k the answer is left; else right (adjusting k). Only one side is explored, so average work is n + n/2 + n/4 + ... < 2n. Worst case is O(n^2) with bad pivots (median-of-medians gives deterministic O(n) but with heavy constants — rarely…"]}, {"heading": "Dynamic Programming", "items": ["Memoization computes each distinct state once — n states × O(1) work each = O(n) time, O(n) space for the cache (plus O(n) stack depth).", "Overlapping subproblems — the pattern: overlapping subproblems + optimal substructure = DP candidate.", "Top-down DP — fill the table bottom-up (or memoize top-down): O(nm) time and space, O(min(n,m)) space with rolling rows.", "Space optimization is safe when the recurrence has bounded lookback — if dp[i] depends only on dp[i-1..i-k], keep a sliding window of k values.", "Common trap — greedy always gives optimal change.", "Common trap — patience sorting only works for strictly decreasing sequences.", "Common trap — knapsack is NP-hard so no recurrence exists.", "Common trap — LCS equals the longest common substring.", "Optimal substructure — if a[i]==b[j], some optimal LCS uses both (any optimal solution can be rearranged to include them); if they differ, at least one of them is unused in every optimal solution, so drop it from either side and take the max. Fill the table bottom-up (or memoize…"]}]}, "glossary": [{"term": "node", "def": "Bounds threading: the correct invariant: every node in the left subtree is < node < every node in the right subtree — enforced by passing down (lo, hi) bounds that tighten at each level."}, {"term": "BST", "def": "Common trap: BST validation requires sorting the values first."}, {"term": "BFS", "def": "BFS: (For weighted graphs, Dijkstra's priority queue generalizes this idea; BFS is Dijkstra with uniform weights.)."}, {"term": "Space", "def": "Space tradeoff: time O(n+k), space O(k): brilliant when k is small, useless when keys are arbitrary (strings, floats) or k >> n."}, {"term": "DP", "def": "Top-down DP: fill the table bottom-up (or memoize top-down): O(nm) time and space, O(min(n,m)) space with rolling rows."}, {"term": "How", "def": "How many calls are on the stack at the deepest moment — and what determines that number?"}, {"term": "Dijkstra", "def": "BFS: (For weighted graphs, Dijkstra's priority queue generalizes this idea; BFS is Dijkstra with uniform weights.)."}, {"term": "LCS", "def": "Optimal substructure: if a[i]==b[j], some optimal LCS uses both (any optimal solution can be rearranged to include them); if they differ, at least one of them is unused in every optimal solution, so drop it from either side and take the…"}, {"term": "Either", "def": "Partition's postcondition — pivot at index i, everything left ≤ pivot ≤ everything right — is what makes the recursion valid: the pivot never moves again, and the two sides are independent subproblems. Lomuto is simple but does extra swa…"}, {"term": "Big-O", "def": "Big-O describes growth rate as n→∞: the fastest-growing term eventually dwarfs the rest, so O(n^2 + n log n + n) simplifies to O(n^2)."}, {"term": "Preprocessing", "def": "Preprocessing is O(n) time and space; every query is O(1)."}, {"term": "Set", "def": "Two strings are anagrams iff every character occurs the same number of times in both — a frequency-count comparison in O(n) time and O(alphabet) space. Sorting works but pays O(n log n)."}, {"term": "AVL", "def": "BST operations cost O(height). Inserting sorted keys into a naive BST builds a chain — height n, operations O(n)."}, {"term": "Segment", "def": "Sorted array techniques: because the array is sorted, all copies of each value are adjacent — a[r] != a[r-1] detects exactly the first occurrence of each distinct value. (Segment trees/Fenwick trees answer in O(log n) but support point u…"}, {"term": "Fenwick", "def": "Sorted array techniques: because the array is sorted, all copies of each value are adjacent — a[r] != a[r-1] detects exactly the first occurrence of each distinct value. (Segment trees/Fenwick trees answer in O(log n) but support point u…"}, {"term": "Sorting", "def": "Two strings are anagrams iff every character occurs the same number of times in both — a frequency-count comparison in O(n) time and O(alphabet) space. Sorting works but pays O(n log n)."}, {"term": "LIFO", "def": "Pouring inbox into outbox reverses the LIFO order into FIFO — the oldest pushed element ends up on top of outbox. Refilling only when outbox is empty means each element is moved at most twice across its lifetime: amortized O(1) per opera…"}, {"term": "Sorted", "def": "Sorted array techniques: because the array is sorted, all copies of each value are adjacent — a[r] != a[r-1] detects exactly the first occurrence of each distinct value. (Segment trees/Fenwick trees answer in O(log n) but support point u…"}, {"term": "Greedy", "def": "Greedy commits to the largest coin without considering how the remainder decomposes — 4 leaves 2 = 1+1, while skipping 4 allows 3+3. The DP considers every first-coin choice: dp[x] tries each coin c and takes 1 + dp[x-c]."}, {"term": "Optimal", "def": "Optimal substructure: if a[i]==b[j], some optimal LCS uses both (any optimal solution can be rearranged to include them); if they differ, at least one of them is unused in every optimal solution, so drop it from either side and take the…"}, {"term": "Because", "def": "Because the array is sorted, all copies of each value are adjacent — a[r] != a[r-1] detects exactly the first occurrence of each distinct value. The write pointer compacts those first occurrences to the front."}, {"term": "Stability", "def": "Stability: merge sort's merge step breaks ties toward the left half, which holds earlier elements — stability falls out naturally."}, {"term": "Top-down DP", "def": "Top-down DP: fill the table bottom-up (or memoize top-down): O(nm) time and space, O(min(n,m)) space with rolling rows."}, {"term": "UI", "def": "A sort is stable if equal keys retain their input order. Merge sort's merge step breaks ties toward the left half, which holds earlier elements — stability falls out naturally."}, {"term": "Worst", "def": "After partitioning, the pivot's final index p is known: if p == k done; if p > k the answer is left; else right (adjusting k). Only one side is explored, so average work is n + n/2 + n/4 + ..."}], "links": [{"label": "Python 3 documentation", "url": "https://docs.python.org/3/", "note": "Official Python docs"}, {"label": "Python tutorial", "url": "https://docs.python.org/3/tutorial/", "note": "Official Python tutorial"}, {"label": "Python standard library", "url": "https://docs.python.org/3/library/", "note": "Official standard library reference"}, {"label": "Python TimeComplexity wiki", "url": "https://wiki.python.org/moin/TimeComplexity", "note": "Official Python wiki on algorithm complexity"}, {"label": "Big-O Cheat Sheet", "url": "https://www.bigocheatsheet.com/", "note": "Well-known complexity reference"}, {"label": "VisuAlgo", "url": "https://visualgo.net/en", "note": "Algorithm visualization reference"}], "checklist": ["Get 7–8 hours of sleep the night before — fatigue destroys recall faster than any topic gap.", "Bring valid government-issued photo ID and arrive at the test center 30 minutes early.", "Eat a real meal beforehand; bring water and a light snack if the center allows them.", "Read every question twice before scanning the answer choices.", "Flag uncertain questions and move on — return with fresh eyes at the end.", "Eliminate the obviously wrong answers first, then compare the survivors.", "Budget your time: answer steadily and keep a 10–15 minute review buffer.", "Re-run your weakest-domain drill until mastery is at least 80%.", "For Complexity Analysis: restate the 'why' behind each scenario answer in your own words — if you can't explain it, you don't own it.", "Redo one Arrays & Strings lab from scratch without looking at the steps.", "Recite the key Linked Structures terms from the glossary aloud from memory."]}}
+{
+ "slug": "dsa",
+ "title": "Data Structures & Algorithms",
+ "tagline": "Data structures and algorithms: Big-O analysis, trees and graphs, sorting, and dynamic programming. This is an independent training course with no vendor affiliation; it confers no certificate.",
+ "vendor": {
+  "name": "Independent interview prep (not affiliated with ThreatLocker)",
+  "certs": "",
+  "docs": "https://www.threatlocker.com"
+ },
+ "disclaimer": "Independent interview-prep material by Interstitium Labs. Not affiliated with, endorsed by, or sponsored by ThreatLocker or any vendor mentioned. Confers no certificate. All scenarios are original practice content; no exam or vendor-training content is reproduced.",
+ "accent": "#e5484d",
+ "domains": [
+  {
+   "id": "dsa",
+   "name": "Data Structures & Algorithms",
+   "summary": "Data structures and algorithms: Big-O analysis, trees and graphs, sorting, and dynamic programming. This is an independent training course with no vendor affiliation; it confers no certificate.",
+   "scenarios": [
+    {
+     "id": "dsa-sc1",
+     "title": "Picking the right lookup structure",
+     "situation": "A service must answer 100k membership queries per second against a set of 10M user IDs that changes rarely. Latency budget is sub-millisecond.",
+     "prompt": "Which structure fits best, and why?",
+     "evidence": [
+      [
+       "Workload",
+       "- 10M IDs, rarely updated\n- 100k point lookups/sec\n- p99 < 1ms"
+      ]
+     ],
+     "choices": [
+      "A hash set (HashSet / Python set): average O(1) membership with no ordering overhead, easily meeting the latency budget at this scale",
+      "A balanced BST (TreeSet): O(log n) lookups plus ordered iteration the workload never uses",
+      "A sorted array with binary search: O(log n) lookups and expensive inserts on the rare updates",
+      "A linked list scanned linearly: O(n) per query is fine because 10M is 'not that big'"
+     ],
+     "answer": 0,
+     "why": "Membership queries with no ordering requirement are the hash set's home turf: average O(1), tiny constants, no rebalancing. The BST and sorted array pay log factors for ordering nobody needs; the linked list is five orders of magnitude off the latency budget.",
+     "hint": "The workload needs membership only \u2014 no ordering, no range scans. Which structure is built exactly for that?",
+     "objectives": [
+      "hash set",
+      "Big-O",
+      "data structure selection"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "dsa-sc2",
+     "title": "The hidden quadratic",
+     "situation": "A deduplication routine builds a result list with `if x not in result: result.append(x)` over 200k items. It takes minutes; the author assumed it was linear.",
+     "prompt": "What is the actual complexity, and what is the fix?",
+     "evidence": [
+      [
+       "Code",
+       "result = []\nfor x in items:          # 200k items\n    if x not in result:    # linear scan!\n        result.append(x)"
+      ]
+     ],
+     "choices": [
+      "The `in` check scans the growing list: O(n) per item, O(n^2) total. Keep a companion set for O(1) membership: `seen = set()` checked alongside the list append",
+      "The loop is O(n) and Python is just slow; rewrite it in C",
+      "append is O(n) because the list reallocates every time; preallocate with [None]*n",
+      "The fix is to sort items first, making the scan O(n log n)"
+     ],
+     "answer": 0,
+     "why": "`x not in result` on a list is a linear scan, so total work is 1+2+...+n = O(n^2) \u2014 200k items means ~20B comparisons. A set gives O(1) membership, restoring O(n) total while the list preserves order.",
+     "hint": "What does `x not in result` cost when result already holds 100,000 items?",
+     "objectives": [
+      "Big-O",
+      "quadratic",
+      "hashing"
+     ],
+     "mins": 7,
+     "difficulty": 1
+    },
+    {
+     "id": "dsa-sc3",
+     "title": "BFS vs DFS for shortest path",
+     "situation": "A routing service needs the fewest-hops path between two nodes in an unweighted network graph with millions of nodes. An engineer proposes iterative DFS because 'it uses less memory'.",
+     "prompt": "Which algorithm is correct for fewest hops, and what is the memory trade-off?",
+     "evidence": [
+      [
+       "Graph",
+       "- Unweighted, millions of nodes\n- Query: minimum-hop path between A and B"
+      ]
+     ],
+     "choices": [
+      "BFS from the source: it explores in increasing distance order, so the first time B is reached the path is shortest. DFS may find a longer path first and cannot certify minimality. BFS's frontier can be large, but bidirectional BFS halves the explored space in practice",
+      "DFS with iterative deepening: it finds the shortest path and uses O(depth) memory",
+      "Dijkstra's algorithm: required because hop counts are weights that must be relaxed",
+      "DFS is correct and uses less memory, so keep it and sort the resulting paths by length"
+     ],
+     "answer": 0,
+     "why": "BFS's level-order expansion is exactly what makes the first arrival shortest in an unweighted graph \u2014 DFS has no such property. Iterative deepening DFS does recover shortest-path-ness but re-explores levels repeatedly; bidirectional BFS is the standard scaling answer for huge graphs.",
+     "hint": "Which search expands nodes in order of distance from the start?",
+     "objectives": [
+      "BFS",
+      "shortest path",
+      "graphs"
+     ],
+     "mins": 8,
+     "difficulty": 2
+    },
+    {
+     "id": "dsa-sc4",
+     "title": "Quicksort's worst case in production",
+     "situation": "A service sorts user-supplied arrays with a textbook quicksort that always picks the first element as pivot. An adversary sends already-sorted input and the service's latency explodes.",
+     "prompt": "What is happening, and what is the robust fix?",
+     "evidence": [
+      [
+       "Behavior",
+       "- Random input: fast\n- Sorted input: latency explodes, stack depth grows, occasional StackOverflowError"
+      ]
+     ],
+     "choices": [
+      "First-element pivot on sorted input always partitions degenerately (one side empty): O(n^2) time and O(n) recursion depth. Fix with a randomized pivot (or median-of-three) plus a depth cutoff that falls back to heapsort (introsort) \u2014 or just use the standard library sort",
+      "Quicksort is inherently O(n^2); replace it with bubble sort, which is O(n) on sorted input",
+      "The fix is a bigger thread stack so the recursion can complete",
+      "Sorted input should be detected and skipped \u2014 add an is_sorted pre-check"
+     ],
+     "answer": 0,
+     "why": "Deterministic first-element pivot is the classic algorithmic-complexity attack: sorted input makes every partition maximally lopsided. Randomizing the pivot makes the worst case vanishingly unlikely, and introsort (used by most stdlib sorts) guarantees O(n log n) by switching to heapsort past a depth limit.",
+     "hint": "With the first element as pivot on sorted input, how big is each partition?",
+     "objectives": [
+      "quicksort",
+      "worst case",
+      "introsort"
+     ],
+     "mins": 8,
+     "difficulty": 2
+    },
+    {
+     "id": "dsa-sc5",
+     "title": "Memoization vs tabulation",
+     "situation": "A recursive Fibonacci-like DP with overlapping subproblems is memoized top-down and now runs fast \u2014 but on large inputs it crashes with RecursionError/stack overflow.",
+     "prompt": "What is the right next step?",
+     "evidence": [
+      [
+       "Code",
+       "from functools import lru_cache\n@lru_cache(maxsize=None)\ndef f(n):\n    return f(n-1) + f(n-2) + g(n)   # deep recursion"
+      ]
+     ],
+     "choices": [
+      "The recursion depth is the problem, not the memoization: convert to bottom-up tabulation (iterate n from 0 upward, keeping only the states the recurrence needs) \u2014 same O(n) time, O(1) or O(k) space, no call stack",
+      "Increase the recursion limit with sys.setrecursionlimit \u2014 the algorithm is correct, just constrained",
+      "Memoization is the wrong technique; dynamic programming requires tabulation from the start",
+      "Add more RAM; the lru_cache is evicting entries and recomputing"
+     ],
+     "answer": 0,
+     "why": "Memoization fixed the exponential recomputation but the call chain is still n deep \u2014 Python's stack (default limit 1000) cannot hold it. Bottom-up tabulation computes the same recurrence iteratively with constant stack, and keeping only the last k states also shrinks memory.",
+     "hint": "The cache fixed the time \u2014 but what resource does the recursion itself still consume linearly?",
+     "objectives": [
+      "dynamic programming",
+      "memoization",
+      "tabulation"
+     ],
+     "mins": 9,
+     "difficulty": 3
+    },
+    {
+     "id": "dsa-sc6",
+     "title": "Proving a greedy choice",
+     "situation": "For activity selection (max number of non-overlapping intervals), the team uses 'pick the activity with the earliest finish time, repeat'. A skeptic asks why not 'shortest duration first'.",
+     "prompt": "Which greedy choice is correct, and what is the core of the proof?",
+     "evidence": [
+      [
+       "Counter-example for shortest-first",
+       "Intervals [1,3], [2,4], [3,5], all duration 2. Shortest-first may pick [2,4] first on a tie, blocking both others -> 1 activity. Earliest-finish sorts by end time (3,4,5), takes [1,3] then [3,5] -> 2, which is optimal."
+      ],
+      [
+       "Earliest-finish rule",
+       "Sort by finish time; greedily take each activity that starts at/after the last taken one finishes."
+      ]
+     ],
+     "choices": [
+      "Earliest-finish-time is correct and shortest-duration-first is not, as the counter-example shows. The exchange argument proves it: an optimal solution's first activity can be swapped for the earliest-finishing one without hurting optimality (it ends no later, so feasibility is preserved), and induction extends this",
+      "Shortest-duration-first is correct and simpler; the exchange argument applies to it equally",
+      "Neither greedy works; activity selection requires dynamic programming",
+      "Earliest-start-time is the correct greedy choice, not earliest-finish"
+     ],
+     "answer": 0,
+     "why": "The exchange argument is the proof technique: take an optimal solution, replace its first activity with the earliest-finishing compatible one \u2014 feasibility is preserved (it ends no later) and size is unchanged \u2014 then induct on the remainder. Shortest-first has no such exchange property and admits counterexamples where a short middle interval blocks two compatible ones.",
+     "hint": "If you swap an optimal solution's first activity for the earliest-finishing one, can the solution get worse?",
+     "objectives": [
+      "greedy algorithms",
+      "activity selection",
+      "proof"
+     ],
+     "mins": 9,
+     "difficulty": 3
+    }
+   ]
+  }
+ ],
+ "lessons": [
+  {
+   "domain_id": "dsa",
+   "title": "Data Structures & Algorithms \u2014 Core concepts",
+   "concepts": [
+    "Big-O describes growth: O(1) constant, O(log n) halving, O(n) linear, O(n log n) efficient sorting, O(n^2) nested loops, O(2^n) brute force. Analyze the dominant term for large n, but remember constants and the actual n decide real-world winners.",
+    "Choose structures by access pattern: hash tables for O(1) membership without ordering, balanced trees for ordered data and range queries, heaps for repeated min/max extraction, tries for prefix queries. The wrong structure turns a linear algorithm quadratic.",
+    "Trees and graphs are traversed, not just stored: BFS (queue, level order) gives shortest paths in unweighted graphs; DFS (stack/recursion, depth-first) suits topological sort, cycle detection, and exhaustive search. Recursion depth is a real budget \u2014 Python's default limit is 1000 frames.",
+    "Sorting is O(n log n) in the general comparison case (mergesort, heapsort, introsort); quicksort is fast on average but needs a randomized pivot or depth cutoff to avoid O(n^2) adversarial input. Stability (equal elements keep order) matters when sorting by multiple keys in passes.",
+    "Dynamic programming solves overlapping subproblems once: identify the recurrence and the state, then implement top-down with memoization or bottom-up tabulation. Memoization keeps the natural recursion but inherits stack depth; tabulation is iterative and lets you compress state to O(1)\u2013O(k) space.",
+    "Greedy algorithms commit locally and never backtrack \u2014 they demand proof. The exchange argument (swap an optimal solution's first choice for the greedy one without harming it) is the standard tool; when it fails, reach for DP instead of hoping."
+   ],
+   "example": {
+    "lang": "python",
+    "code": "from collections import deque\n\ndef bfs_shortest(graph, start, goal):\n    q = deque([(start, [start])])\n    seen = {start}\n    while q:\n        node, path = q.popleft()\n        if node == goal:\n            return path              # first arrival = fewest hops\n        for nb in graph[node]:\n            if nb not in seen:\n                seen.add(nb)\n                q.append((nb, path + [nb]))\n    return None",
+    "walkthrough": "The deque is the BFS frontier: popleft expands nodes in order of distance from start, so the first time we pop the goal its path is shortest. The seen set prevents re-exploration \u2014 without it, cyclic graphs loop forever."
+   },
+   "pitfalls": [
+    "Common trap: `x in list` inside a loop \u2014 O(n) per check makes the loop quadratic; use a set.",
+    "Common trap: assuming recursion is free \u2014 deep recursion overflows the stack; prefer iteration or raise limits deliberately.",
+    "Common trap: using DFS when you need shortest path \u2014 only BFS (unweighted) or Dijkstra (weighted) certify minimality.",
+    "Common trap: sorting with a bad pivot strategy on untrusted input \u2014 adversarial data turns quicksort quadratic."
+   ],
+   "try_it": "Work through this in the Labs tab."
+  }
+ ],
+ "labs": [
+  {
+   "id": "dsa-lab1",
+   "domain_id": "dsa",
+   "title": "Binary search, tested",
+   "objective": "Implement iterative binary search and prove its O(log n) behavior and correctness with tests.",
+   "steps": [
+    "Write /tmp/fsd-dsa/bsearch.py with an iterative binary search returning the index or -1",
+    "Add a test harness comparing against list.index on 10k random sorted lists (property-style check)",
+    "Test edge cases: empty list, single element, target at both ends, duplicates, target absent",
+    "Instrument the comparison count and confirm it stays under ~2*log2(n) for n=1M",
+    "Break it deliberately (use `hi = len(a)` instead of `len(a)-1`) and watch which test catches it",
+    "Fix it and summarize the loop invariant in one sentence (a[lo] <= target < a[hi] or similar)"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^python3\\s+/tmp/fsd-dsa/bsearch\\.py",
+     "expect_contains": "",
+     "hint": "Run the implementation plus tests: python3 /tmp/fsd-dsa/bsearch.py"
+    }
+   ]
+  },
+  {
+   "id": "dsa-lab2",
+   "domain_id": "dsa",
+   "title": "BFS shortest path on a grid",
+   "objective": "Implement BFS on a grid with obstacles and verify shortest-path optimality against a brute force.",
+   "steps": [
+    "Write /tmp/fsd-dsa/gridbfs.py: BFS over a 2D grid (4-directional moves, # = wall) returning the path length",
+    "Generate random 20x20 grids with 25% walls; confirm BFS returns None exactly when start/goal are disconnected",
+    "Brute-force small 5x5 grids with DFS enumerating all simple paths; confirm BFS length equals the minimum",
+    "Time BFS on 200x200 grids and confirm near-linear scaling in cells visited",
+    "Extend to weighted cells (cost 1 vs 5) and show BFS fails; implement Dijkstra with heapq and confirm it succeeds",
+    "Write one sentence on when BFS is valid (uniform cost) vs when Dijkstra is required"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^python3\\s+/tmp/fsd-dsa/gridbfs\\.py",
+     "expect_contains": "",
+     "hint": "Run the grid BFS lab: python3 /tmp/fsd-dsa/gridbfs.py"
+    }
+   ]
+  }
+ ],
+ "simulations": [],
+ "consoleSims": [],
+ "terminalMissions": [],
+ "sections": [
+  {
+   "id": "sec-full-spectrum",
+   "title": "Full Spectrum Dominance \u2014 core path",
+   "kind": "core",
+   "lectures": [],
+   "lab_ids": [
+    "fsd-tl-lab-1",
+    "fsd-tl-lab-2",
+    "fsd-tl-lab-3",
+    "fsd-sg-lab-1",
+    "fsd-sg-lab-2",
+    "fsd-sg-lab-3",
+    "fsd-ai-lab-1",
+    "fsd-ai-lab-2",
+    "fsd-ai-lab-3"
+   ],
+   "drill_domain_ids": [
+    "tl-interview",
+    "tl-endpoint-ops",
+    "sec-graphs",
+    "graph-defense",
+    "ml-defense",
+    "ai-agent-sec"
+   ]
+  }
+ ],
+ "behavioral": [
+  {
+   "prompt": "Tell me about the most technically difficult problem you have run into \u2014 a homelab, a broken environment, anything \u2014 and how you solved it.",
+   "framework": "STAR",
+   "points": [
+    "Pick ONE problem with a real evidence trail: the symptom, what you measured, the hypothesis you tested",
+    "Show the loop: scope, observe, hypothesize, smallest safe change, validate \u2014 interviewers score the method, not just the fix",
+    "Name the tools (VM build, networking, logs) and the lesson it taught you",
+    "Close with the result in concrete terms: what works now that did not before"
+   ],
+   "pitfalls": [
+    "Choosing a story with no real obstacle (\u201cI Googled it\u201d is not a story)",
+    "Skipping validation \u2014 saying it worked without proving it",
+    "Rambling past two minutes without reaching the result"
+   ]
+  },
+  {
+   "prompt": "Tell me about a time you dealt with a frustrated customer or user while something was broken.",
+   "framework": "STAR",
+   "points": [
+    "Lead with empathy and ownership: acknowledge the impact before the technical detail",
+    "Show translation: what you told them, in their language, plus the timeline you committed to",
+    "Show judgment: the narrow fix you chose and what you refused to do (e.g., disabling the control to clear the symptom)",
+    "Close with the relationship outcome, not just the technical one"
+   ],
+   "pitfalls": [
+    "Badmouthing the customer to sound decisive",
+    "Promising a timeline you could not keep",
+    "Framing the user as the problem rather than the situation"
+   ]
+  },
+  {
+   "prompt": "Why ThreatLocker, and why cybersecurity?",
+   "framework": "STAR",
+   "points": [
+    "Connect prevention to something concrete: a moment you saw detection arrive too late, or a system you hardened",
+    "Tie their model to your instincts: deny-by-default matches how you already think about trust",
+    "Show service orientation: the Cyber Hero culture rewards the 2 a.m. helper \u2014 give an example of being one",
+    "Name one forward-looking reason: Zero Trust, the MSP mission, or the bootcamp community investment"
+   ],
+   "pitfalls": [
+    "Generic flattery with no specifics about the company",
+    "Leading with compensation, title, or location convenience",
+    "Claiming expertise in products you have only read about \u2014 frame it as studied, not mastered"
+   ]
+  },
+  {
+   "framework": "STAR",
+   "pitfalls": [
+    "Staying vague ('I analyzed the data') instead of naming what you connected.",
+    "Skipping your own role: what did YOU see that others missed?",
+    "No outcome: what changed because you joined the dots?"
+   ],
+   "points": [
+    "The scattered signals and why nobody had connected them yet",
+    "The specific links you drew between them (shared host, time, infrastructure)",
+    "What the bigger picture turned out to be and what action it drove",
+    "What the experience taught you about investigating"
+   ],
+   "prompt": "Tell me about a time you connected scattered clues into a bigger picture that others had missed."
+  },
+  {
+   "framework": "STAR",
+   "pitfalls": [
+    "Claiming you fixed everything: credibility comes from trade-offs, not heroics.",
+    "Hiding the constraint: the limitation is what makes the prioritization story real.",
+    "No metric: 'better' needs a before-and-after."
+   ],
+   "points": [
+    "The constraint (time, budget, staff) and the size of the backlog",
+    "How you decided what mattered most (what was reachable, what was critical)",
+    "What you did first and what you deliberately deferred",
+    "The measurable result of the prioritization"
+   ],
+   "prompt": "Describe a time you had to prioritize risks or fixes with limited time or resources. How did you decide what came first?"
+  },
+  {
+   "framework": "STAR",
+   "pitfalls": [
+    "Reciting jargon to a non-technical audience and calling it communication.",
+    "Skipping the audience's reaction: did they actually understand and act?",
+    "Making yourself the hero instead of the translator."
+   ],
+   "points": [
+    "The technical finding and why it mattered",
+    "Who the audience was and what they cared about",
+    "How you reframed it (a picture, an analogy, a story)",
+    "What decision or action the audience took because they understood"
+   ],
+   "prompt": "Tell me about a time you explained a complex technical finding to a non-technical audience and it changed a decision."
+  },
+  {
+   "prompt": "Tell me about a time you used automation or AI to solve a security problem.",
+   "framework": "STAR",
+   "points": [
+    "The repetitive security task and what it cost in analyst time",
+    "The automation or AI approach you built and how you validated it",
+    "Measured outcome: time saved, detection gained, false positives changed"
+   ],
+   "pitfalls": [
+    "Describing the tool but never the validation",
+    "No measurable outcome"
+   ]
+  },
+  {
+   "prompt": "Describe a time you had to decide whether to trust an automated security decision.",
+   "framework": "STAR",
+   "points": [
+    "The stakes of the automated action and its blast radius",
+    "How you verified before acting (or the gate you built)",
+    "What happened and what you would automate differently next time"
+   ],
+   "pitfalls": [
+    "Saying you always trust the tool",
+    "No mention of blast radius or reversibility"
+   ]
+  }
+ ],
+ "resources": {
+  "cheatsheet": {
+   "title": "Full Spectrum Dominance \u2014 field reference",
+   "sections": [
+    {
+     "heading": "Company facts (verified)",
+     "items": [
+      "Founded 2017 in Orlando, FL \u2014 Danny Jenkins (CEO), Sami Jenkins (COO), John Carolan (QA)",
+      "Philosophy: deny-by-default / default-deny \u2014 approve known-good, deny the rest",
+      "Customers: 70,000+ organizations, sold heavily through the MSP channel",
+      "Funding: $190M Series F, July 2026 (Elephant-led); ~730 employees",
+      "Interview address: 1901 Summit Tower Blvd, Orlando, FL 32810",
+      "Culture: in-office 5 days/week; free lunch; post-offer background + drug screening"
+     ]
+    },
+    {
+     "heading": "Product stack",
+     "items": [
+      "Allowlisting \u2014 default-deny execution control for apps, DLLs, scripts, installers",
+      "Ringfencing \u2014 constrains allowed apps: app-to-app, file, registry, network",
+      "Storage Control \u2014 USB/device policy by serial, user, file type, encryption",
+      "Elevation Control \u2014 just-in-time per-app admin, no standing rights",
+      "Network Control \u2014 host firewall; port/IP/dynamic-ACL rules; ZTNA foundation",
+      "Web Control \u2014 agent-based DNS/URL category filtering, works off-network",
+      "Cyber Hero MDR \u2014 24/7/365 US-based response, ~60-second average",
+      "Testing Environment \u2014 one-button VDI sandbox; checks AV flags, canary files, registry changes"
+     ]
+    },
+    {
+     "heading": "Rule strength (strongest to weakest)",
+     "items": [
+      "Certificate/publisher rules \u2014 survive version updates",
+      "Hash rules \u2014 precise but break on every new version",
+      "Path rules \u2014 weakest; never in user-writable locations",
+      "Learning Mode catalogs before enforcement; Installation Mode pauses blocking \u2014 scope and time-box both"
+     ]
+    },
+    {
+     "heading": "Terminal evidence commands",
+     "items": [
+      "nmap <host> \u2014 which ports answer (22/80/443 open)",
+      "dig <name> \u2014 ANSWER SECTION with the A record",
+      "ss \u2014 listening sockets",
+      "systemctl status <svc> \u2014 unit state",
+      "journalctl -u <svc> \u2014 service logs",
+      "sha256sum <file> \u2014 real SHA-256 identity",
+      "grep <pattern> <file> \u2014 search the record",
+      "ps \u2014 what is actually running"
+     ]
+    },
+    {
+     "heading": "Graph vocabulary",
+     "items": [
+      "node \u2014 any entity tracked in the model (user, host, IP, domain, file hash, vulnerability)",
+      "edge \u2014 a labeled relationship between two nodes (logged into, resolved to, downloaded)",
+      "degree \u2014 number of edges on a node; high-degree nodes are attacker highways",
+      "centrality \u2014 how much traffic or how many paths flow through a node",
+      "directed edge \u2014 a relationship with a direction (A downloaded FROM B)",
+      "security graph \u2014 the living model of your whole environment as nodes and edges",
+      "attack graph \u2014 the subgraph of exploitable paths to your targets",
+      "knowledge graph \u2014 threat-intel indicators linked to campaigns and actors"
+     ]
+    },
+    {
+     "heading": "Attack-graph playbook",
+     "items": [
+      "inventory first \u2014 you cannot graph what you have not discovered",
+      "model flaws AND misconfigs as exploit edges",
+      "compute shortest paths to the crown jewels",
+      "find the choke point (highest betweenness on those paths)",
+      "break the path: patch, segment, or remove the edge",
+      "re-scan and re-run the graph to prove the path is gone",
+      "never trust yesterday's graph \u2014 redeployments redraw the map"
+     ]
+    },
+    {
+     "heading": "Zero Trust + graphs",
+     "items": [
+      "never trust, always verify \u2014 re-evaluate every access decision",
+      "assume breach \u2014 treat unexpected edges as hostile until proven otherwise",
+      "microsegmentation \u2014 allow-list approved edges, alert on new ones",
+      "ReBAC \u2014 policies are path queries on the identity graph",
+      "continuous verification \u2014 device/location/behavior edges change, trust follows",
+      "anomalous edge \u2014 a first-seen connection between strangers is the classic signal"
+     ]
+    },
+    {
+     "heading": "ML detection vocabulary",
+     "items": [
+      "Supervised learning \u2014 learns from labeled examples; strong on known threats, blind to novel ones",
+      "Unsupervised learning \u2014 finds structure without labels; clustering and dimensionality reduction",
+      "Anomaly detection \u2014 models 'normal' and flags deviations; the workhorse for novel threats",
+      "UEBA \u2014 user and entity behavior analytics: per-user baselines plus peer-group comparison",
+      "Feature engineering \u2014 encoding raw logs into model inputs (login velocity, rare processes, domain entropy)",
+      "Concept drift \u2014 model decay as attacker behavior and legitimate traffic shift over time"
+     ]
+    },
+    {
+     "heading": "Detection metrics",
+     "items": [
+      "Precision \u2014 of all flagged alerts, how many were real",
+      "Recall \u2014 of all real attacks, how many were flagged",
+      "Threshold tuning \u2014 sliding the decision cutoff trades precision against recall",
+      "Alert fatigue \u2014 when false positives train analysts to ignore the queue",
+      "DGA \u2014 domain generation algorithm; detected via character entropy of domain names"
+     ]
+    },
+    {
+     "heading": "Agent and LLM security",
+     "items": [
+      "Direct prompt injection \u2014 attacker input overrides app instructions (OWASP LLM01:2025, the #1 LLM risk)",
+      "Indirect prompt injection \u2014 hidden instructions inside retrieved data (email, web, docs)",
+      "Jailbreak \u2014 defeating the model's own safety policy; distinct from hijacking app behavior",
+      "Tool poisoning \u2014 malicious tool descriptions or metadata steer an agent to misuse its tools (MCP ecosystem risk)",
+      "Insecure output handling \u2014 executing or trusting model output without validation",
+      "Least-privilege tools \u2014 grant each tool only the scope its task requires"
+     ]
+    },
+    {
+     "heading": "Adversarial ML and governance",
+     "items": [
+      "Evasion \u2014 perturbing inputs at inference time to dodge a classifier",
+      "Poisoning \u2014 corrupting training data to corrupt the model",
+      "Extraction \u2014 querying a model to steal its behavior or parameters",
+      "MITRE ATLAS \u2014 knowledge base of adversarial ML tactics and techniques",
+      "Red-teaming and evals \u2014 adversarial testing of AI systems before deployment",
+      "Human-in-the-loop \u2014 required approval for high-impact or irreversible agent actions",
+      "SOAR \u2014 security orchestration, automation and response; automate enrichment, gate containment"
+     ]
+    }
+   ]
+  },
+  "glossary": [
+   {
+    "term": "Allowlisting",
+    "def": "Default-deny execution control: only explicitly approved applications, scripts, and installers may run."
+   },
+   {
+    "term": "Blocklisting",
+    "def": "Default-allow model: everything runs except recognized-bad items \u2014 the window zero-days live in."
+   },
+   {
+    "term": "Default-deny",
+    "def": "Deny-by-default posture: unknown code, devices, or connections are refused unless explicitly approved."
+   },
+   {
+    "term": "Ringfencing",
+    "def": "Containment applied on top of allowlisting; restricts what a permitted app may do across app-to-app, file, registry, and network dimensions."
+   },
+   {
+    "term": "Learning Mode",
+    "def": "Agent mode that catalogs applications and dependencies and auto-builds policies before enforcement; temporarily disables file blocking."
+   },
+   {
+    "term": "Installation Mode",
+    "def": "Temporary mode that pauses file blocking for installs \u2014 must be tightly scoped and time-boxed."
+   },
+   {
+    "term": "Elevation Control",
+    "def": "Grants specific approved applications admin rights for standard users \u2014 just-in-time, per-app, time-boxed \u2014 without standing admin rights."
+   },
+   {
+    "term": "Application hopping",
+    "def": "An elevated or trusted process spawning another tool (e.g., PowerShell) to inherit its privileges \u2014 countered by ringfencing the elevated process."
+   },
+   {
+    "term": "Storage Control",
+    "def": "Device and path policy: USB approved by serial, user, file type, time, and encryption; unapproved devices do not connect."
+   },
+   {
+    "term": "Network Control",
+    "def": "Centrally managed host firewall; rules by port, source IP, and dynamic ACLs; egress allowlisting pins apps to approved destinations."
+   },
+   {
+    "term": "ZTNA",
+    "def": "Zero Trust Network Access: per-session, per-application brokered connections (commonly over port 443) with no open inbound ports \u2014 deny-by-default for network access."
+   },
+   {
+    "term": "Approval Center",
+    "def": "Portal queue where end-user software requests arrive for admin review and decision."
+   },
+   {
+    "term": "Unified Audit",
+    "def": "Real-time audit showing what was allowed or denied across endpoints \u2014 and why; the evidence layer for triage."
+   },
+   {
+    "term": "Testing Environment",
+    "def": "One-button cloud VDI sandbox launched from an approval request; logs AV flags, canary-file access, and registry/system changes."
+   },
+   {
+    "term": "Cyber Hero MDR",
+    "def": "24/7/365 US-based managed detection and response team; validates alerts, isolates hosts, acts on customer runbooks; ~60-second average response."
+   },
+   {
+    "term": "Assume breach",
+    "def": "Design and operate as if the attacker already has a foothold \u2014 least privilege, containment, and monitoring everywhere."
+   },
+   {
+    "term": "Living off the land",
+    "def": "Attacks that hijack trusted built-in tools (Word, PowerShell) instead of dropping malware \u2014 defeated by behavior containment, not signatures."
+   },
+   {
+    "term": "Change control",
+    "def": "Scoped, ticketed, tested changes with validation and rollback \u2014 emergency speed never cancels the process."
+   },
+   {
+    "def": "A node in an attack graph representing a system or weakness, connected by edges that represent steps an attacker could take between them.",
+    "term": "attack graph"
+   },
+   {
+    "def": "How central a node is to paths through the graph (for example, betweenness: how many shortest paths cross it).",
+    "term": "centrality"
+   },
+   {
+    "def": "The most valuable assets in the environment (customer data, finance systems, source code): what attack paths are measured against.",
+    "term": "crown jewels"
+   },
+   {
+    "def": "A labeled connection between two nodes, representing a relationship such as 'logged into' or 'resolved to'.",
+    "term": "edge"
+   },
+   {
+    "def": "A graph of threat indicators (IPs, domains, hashes) linked to campaigns, actors, and each other through shared infrastructure.",
+    "term": "knowledge graph"
+   },
+   {
+    "def": "The practice of mapping relationships in data to reveal hidden associations; rooted in Euler's 1736 graph theory, 1970s paper link charts, and post-2001 intelligence work.",
+    "term": "link analysis"
+   },
+   {
+    "def": "A segment of the network so small that its allowed communications can be enumerated as a graph of approved edges.",
+    "term": "microsegmentation"
+   },
+   {
+    "def": "An entity in the graph: a user, host, IP address, domain, file, or vulnerability.",
+    "term": "node"
+   },
+   {
+    "def": "Access control where policy is evaluated by traversing relationships on a graph (for example: user reports_to manager who owns the resource's project).",
+    "term": "ReBAC"
+   },
+   {
+    "def": "A machine-learning model that operates directly on graph structure to classify nodes or subgraphs, for example labeling attack vs normal behavior.",
+    "term": "graph neural network (GNN)"
+   },
+   {
+    "def": "Monitoring user and entity behavior by modeling their normal relationship patterns and flagging structural anomalies.",
+    "term": "UEBA"
+   },
+   {
+    "term": "Supervised learning",
+    "def": "ML trained on labeled examples; classifies new inputs into known categories."
+   },
+   {
+    "term": "Anomaly detection",
+    "def": "ML approach that models normal behavior and flags statistically rare deviations."
+   },
+   {
+    "term": "Feature engineering",
+    "def": "Turning raw telemetry into numeric model inputs, e.g. login velocity or domain entropy."
+   },
+   {
+    "term": "Precision",
+    "def": "Share of flagged alerts that were real; the false-positive economics of the queue."
+   },
+   {
+    "term": "Recall",
+    "def": "Share of real attacks the detector flagged; the miss rate's complement."
+   },
+   {
+    "term": "Concept drift",
+    "def": "Decay of model performance as the data distribution shifts over time."
+   },
+   {
+    "term": "Prompt injection",
+    "def": "Attacker-crafted instructions that override an LLM application's intended behavior; direct (user input) or indirect (retrieved data)."
+   },
+   {
+    "term": "Jailbreak",
+    "def": "Crafted input that defeats an LLM's own safety policy or refusal behavior."
+   },
+   {
+    "term": "Tool poisoning",
+    "def": "Malicious tool descriptions or metadata that manipulate an AI agent into misusing its tools."
+   },
+   {
+    "term": "Insecure output handling",
+    "def": "Failing to validate LLM output before acting on it, e.g. executing generated commands."
+   },
+   {
+    "term": "Evasion attack",
+    "def": "Adversarial ML technique: perturbing inputs to cross a classifier's decision boundary."
+   },
+   {
+    "term": "MITRE ATLAS",
+    "def": "Adversarial Threat Landscape for AI Systems; MITRE's knowledge base of AI attack tactics."
+   },
+   {
+    "term": "SOAR",
+    "def": "Security orchestration, automation and response; playbooks that enrich automatically and gate containment on humans."
+   },
+   {
+    "term": "Human-in-the-loop",
+    "def": "Required human approval before high-impact or irreversible automated actions."
+   }
+  ],
+  "links": [
+   {
+    "label": "ThreatLocker Zero Trust platform explainer (official)",
+    "url": "https://www.threatlocker.com/blog/edr-xdr-vs-zero-trust-prevention",
+    "note": "EDR/XDR vs Zero Trust prevention \u2014 the deny-by-default argument in their own words."
+   },
+   {
+    "label": "ThreatLocker Bootcamp page (official)",
+    "url": "https://www.threatlocker.com/bootcamp",
+    "note": "Free six-week program: phases, format, and what completion leads to."
+   },
+   {
+    "label": "ThreatLocker Careers (official)",
+    "url": "https://www.threatlocker.com/company/careers",
+    "note": "Open roles and the hiring-event listing; roles are in-office in Orlando."
+   },
+   {
+    "label": "Elevation Control (official)",
+    "url": "https://www.threatlocker.com/secure-privileges-without-sacrificing-agility",
+    "note": "Just-in-time privilege without standing admin."
+   },
+   {
+    "label": "Storage Control (official)",
+    "url": "https://www.threatlocker.com/capabilities/external-storage-device-control",
+    "note": "USB/device policy by serial, user, file type, encryption."
+   },
+   {
+    "label": "Web Control (official)",
+    "url": "https://www.threatlocker.com/capabilities/web-content-control",
+    "note": "Agent-based DNS/URL filtering, including off-network."
+   },
+   {
+    "label": "Cyber Hero MDR (official)",
+    "url": "https://www.threatlocker.com/get-threat-response-in-minutes",
+    "note": "24/7/365 managed response positioning."
+   },
+   {
+    "label": "MDR capabilities (official)",
+    "url": "https://www.threatlocker.com/capabilities/managed-detection-and-response",
+    "note": "Detection and response capability detail."
+   },
+   {
+    "label": "NIST SP 800-207 \u2014 Zero Trust Architecture",
+    "url": "https://csrc.nist.gov/pubs/sp/800/207/final",
+    "note": "The canonical Zero Trust reference: tenets, deployment models, policy engine trust algorithm."
+   },
+   {
+    "label": "CISA Zero Trust Maturity Model",
+    "url": "https://www.cisa.gov/zero-trust-maturity-model",
+    "note": "Federal maturity steps across identity, devices, networks, applications, and data."
+   },
+   {
+    "label": "MITRE ATT&CK",
+    "note": "The adversary-tactics framework; codify its tactic chains as subgraphs to hunt for in your security graph.",
+    "url": "https://attack.mitre.org/"
+   },
+   {
+    "label": "CISA \u2014 Cybersecurity and Infrastructure Security Agency",
+    "note": "US government advisories, alerts, and guidance frequently referenced in threat-intel work.",
+    "url": "https://www.cisa.gov/"
+   },
+   {
+    "label": "Neo4j getting started",
+    "note": "A widely used graph database; the book's call to action suggests piloting graph queries on exported security data with tools like this.",
+    "url": "https://neo4j.com/docs/getting-started/"
+   },
+   {
+    "label": "OWASP GenAI Security Project",
+    "url": "https://genai.owasp.org/",
+    "note": "Home of the LLM Top 10 and GenAI security guidance"
+   },
+   {
+    "label": "OWASP Top 10 for LLM Applications",
+    "url": "https://genai.owasp.org/llm-top-10/",
+    "note": "The ranked LLM risk list \u2014 prompt injection is #1"
+   },
+   {
+    "label": "NIST AI Risk Management Framework",
+    "url": "https://www.nist.gov/itl/ai-risk-management-framework",
+    "note": "The standard governance framework for managing AI risk"
+   },
+   {
+    "label": "MITRE ATLAS",
+    "url": "https://atlas.mitre.org/",
+    "note": "Adversarial Threat Landscape for AI Systems \u2014 tactics and techniques"
+   },
+   {
+    "label": "CISA AI guidance",
+    "url": "https://www.cisa.gov/ai",
+    "note": "CISA's AI security resources and guidance"
+   }
+  ],
+  "checklist": [
+   "Sixty-second company brief rehearsed out loud: year, city, philosophy, three products, one milestone",
+   "Two STAR stories ready: hardest technical problem; a frustrated customer or user",
+   "\u201cWhy ThreatLocker / why cybersecurity\u201d answer tied to prevention and service, not slogans",
+   "Ringfencing explained in one plain-English sentence (the Word-on-a-leash version)",
+   "Elevation Control answer ready: just-in-time, per-app, time-boxed, ringfenced, logged",
+   "Triage loop memorized: scope \u2192 observe \u2192 hypothesize \u2192 smallest safe change \u2192 validate \u2192 explain",
+   "Three questions to ask them: team on-call shape, approval SLA expectations, what \u201cmost helpful\u201d looks like on the team",
+   "Logistics: 1901 Summit Tower Blvd, Orlando FL; in-office role; ID and references ready",
+   "Define your crown jewels before you model anything.",
+   "Build the asset-and-access graph from live sources (scans, configs, identity), not from the CMDB alone.",
+   "Model vulnerabilities AND misconfigurations as exploit edges.",
+   "Compute shortest attack paths to each crown jewel; name the choke points.",
+   "Prioritize remediation by path risk, not by raw severity score.",
+   "Express at least one access policy as a relationship path (ReBAC pilot).",
+   "Baseline approved communication edges per segment; alert on first-seen edges.",
+   "Brief the next incident or risk review with the graph, not a spreadsheet.",
+   "Can you explain supervised vs unsupervised vs anomaly detection with a security example for each?",
+   "Can you name three log features you would engineer for a C2 detector and why?",
+   "Can you walk through a UEBA alert (baseline, deviation, verification) end to end?",
+   "Can you explain the precision/recall tradeoff and how you would set a threshold for a fatigued SOC?",
+   "Can you define concept drift and describe a retraining process?",
+   "Can you distinguish direct vs indirect prompt injection and jailbreaking?",
+   "Can you explain tool poisoning in the MCP ecosystem and three controls against it?",
+   "Can you describe insecure output handling and how you would validate agent output?",
+   "Can you name the three adversarial ML attack classes and one defense for evasion?",
+   "Can you design a SOAR playbook gate: what automates freely, what needs human approval?"
+  ]
+ },
+ "chat": {
+  "persona": "You are a rigorous but encouraging interviewer preparing a candidate for a Zero Trust endpoint security role. Probe with 'why' and 'how would you explain that' follow-ups. Stay on topic: ThreatLocker-style endpoint defense, security graphs, and AI-powered security. All practice is original; never reproduce vendor material.",
+  "topics": [
+   {
+    "id": "tl-interview",
+    "name": "ThreatLocker Interview Prep",
+    "key_points": [
+     "allowlisting",
+     "ringfencing",
+     "default-deny",
+     "cyber hero",
+     "zero trust tenets",
+     "STAR stories"
+    ],
+    "followups": [
+     "Can you give an example?",
+     "How would you explain that to a CFO?"
+    ]
+   },
+   {
+    "id": "tl-endpoint-ops",
+    "name": "Zero Trust Endpoint Operations",
+    "key_points": [
+     "default-deny",
+     "ringfencing dimensions",
+     "elevation control",
+     "storage control",
+     "network control",
+     "change control"
+    ],
+    "followups": [
+     "Walk me through the triage order.",
+     "When would you deny outright?"
+    ]
+   },
+   {
+    "followups": [
+     "Can you walk through an example?",
+     "How does this change patch prioritization?",
+     "What is the difference between a security graph and an attack graph?"
+    ],
+    "id": "sec-graphs",
+    "key_points": [
+     "nodes",
+     "edges",
+     "attack graphs",
+     "kill chain",
+     "link analysis",
+     "threat intel graphs"
+    ],
+    "name": "Security Graphs: Think Like an Attacker"
+   },
+   {
+    "followups": [
+     "How do graphs change patch prioritization?",
+     "What is ReBAC and how is it different from RBAC?",
+     "How would a small team start with graphs?"
+    ],
+    "id": "graph-defense",
+    "key_points": [
+     "attack-path analysis",
+     "insider threat",
+     "vulnerability graphs",
+     "Zero Trust",
+     "microsegmentation",
+     "blast radius"
+    ],
+    "name": "Graph-Powered Defense Operations"
+   },
+   {
+    "id": "ml-defense",
+    "name": "ML-Powered Threat Defense",
+    "key_points": [
+     "anomaly detection",
+     "UEBA",
+     "alert fatigue",
+     "concept drift",
+     "threat hunting",
+     "precision recall"
+    ],
+    "followups": [
+     "Walk me through an example.",
+     "How do you handle false positives?"
+    ]
+   },
+   {
+    "id": "ai-agent-sec",
+    "name": "Securing AI Systems & Agents",
+    "key_points": [
+     "prompt injection",
+     "tool poisoning",
+     "MCP risks",
+     "insecure output handling",
+     "SOAR gates",
+     "adversarial ML"
+    ],
+    "followups": [
+     "Walk me through an example.",
+     "How do you secure an AI agent end to end?"
+    ]
+   }
+  ]
+ },
+ "simulation": {
+  "items": 12,
+  "minutes": 180,
+  "evidence_cost_mins": 2
+ },
+ "media": [
+  {
+   "id": "tl-allowlist-vs-blocklist",
+   "kind": "diagram",
+   "title": "Allowlisting vs blocklisting: default-deny vs default-allow",
+   "svg": "assets/diagrams/tl-allowlist-vs-blocklist.svg",
+   "lesson_ref": "c-tl-endpoint-ops",
+   "caption": "Default-deny stops unknown code without a signature; default-allow runs it until one exists.",
+   "alt": "Side-by-side comparison: on the left, a default-deny gate runs known-good payroll software and denies unknown ransomware with no signature needed; on the right, a default-allow gate runs both until the ransomware is recognized as bad."
+  },
+  {
+   "id": "tl-ringfencing",
+   "kind": "diagram",
+   "title": "Ringfencing: four leashes on an allowed application",
+   "svg": "assets/diagrams/tl-ringfencing.svg",
+   "lesson_ref": "c-tl-endpoint-ops",
+   "caption": "Word stays approved, but it cannot spawn PowerShell, read the credential store, or reach the internet \u2014 while opening its document is allowed.",
+   "alt": "An approved Word application inside a dashed containment ring: arrows show PowerShell launch denied, credential-store registry access denied, external network denied, and document file access allowed."
+  },
+  {
+   "id": "tl-zero-trust-stack",
+   "kind": "diagram",
+   "title": "The Zero Trust endpoint stack",
+   "svg": "assets/diagrams/tl-zero-trust-stack.svg",
+   "lesson_ref": "c-tl-interview",
+   "caption": "Five deny-by-default layers \u2014 Allowlisting, Ringfencing, Elevation, Storage, Network \u2014 watched by Web Control, the Testing Environment, Unified Audit, and the Cyber Hero MDR team.",
+   "alt": "A vertical stack of five layers from Allowlisting at the foundation up through Ringfencing, Elevation Control, Storage Control, and Network Control, with side boxes for Web Control, Testing Environment, Unified Audit, and Cyber Hero MDR."
+  },
+  {
+   "id": "tl-triage-flow",
+   "kind": "diagram",
+   "title": "Application-request triage flow",
+   "svg": "assets/diagrams/tl-triage-flow.svg",
+   "lesson_ref": "c-tl-endpoint-ops",
+   "caption": "Gather evidence first, then branch: trusted gets a scoped rule, unknown goes to the sandbox, malicious gets a documented deny.",
+   "alt": "Flowchart from request arrival through evidence gathering to a decision diamond branching into three outcomes: approve with a scoped rule, detonate in the Testing Environment then ringfence, or deny with documented evidence."
+  },
+  {
+   "alt": "Diagram of four labeled nodes (user, host, file, domain, IP) joined by labeled directed edges such as logged into, downloaded, and resolved to, illustrating graph vocabulary.",
+   "caption": "Nodes are the things; edges are the relationships. Attackers move along the edges.",
+   "id": "sg-graph-vocabulary",
+   "kind": "diagram",
+   "lesson_ref": "c-sec-graphs",
+   "svg": "assets/diagrams/sg-graph-vocabulary.svg",
+   "title": "Graph vocabulary: nodes and edges"
+  },
+  {
+   "alt": "Attack graph with four nodes in a chain: external attacker to VPN gateway to file server to customer database, with a dead-end branch to a printer, showing the shortest path to the crown jewel.",
+   "caption": "The shortest path to the crown jewel is length 3. Break the choke point and the campaign dies.",
+   "id": "sg-attack-path",
+   "kind": "diagram",
+   "lesson_ref": "c-sec-graphs",
+   "svg": "assets/diagrams/sg-attack-path.svg",
+   "title": "Attack graph: shortest path to the crown jewels"
+  },
+  {
+   "alt": "Seven kill-chain stages as connected graph nodes: reconnaissance, weaponization, delivery, exploitation, installation, command and control, actions. Three alerts are annotated at delivery, installation, and command and control.",
+   "caption": "Three 'unrelated' alerts, one kill-chain subgraph. Correlate by shared entities, not by severity.",
+   "id": "sg-kill-chain",
+   "kind": "diagram",
+   "lesson_ref": "c-sec-graphs",
+   "svg": "assets/diagrams/sg-kill-chain.svg",
+   "title": "Kill chain as a graph"
+  },
+  {
+   "alt": "A policy engine at the center of a small graph evaluates an access request from a finance user on an untrusted laptop to an R and D code server. The request is denied because there is no prior relationship edge and the device is untrusted.",
+   "caption": "Valid credentials are not enough. The graph checks device trust, history, and relationships on every request.",
+   "id": "sg-zero-trust",
+   "kind": "diagram",
+   "lesson_ref": "c-graph-defense",
+   "svg": "assets/diagrams/sg-zero-trust.svg",
+   "title": "Zero Trust runs on relationships"
+  },
+  {
+   "id": "ai-ml-pipeline",
+   "kind": "diagram",
+   "title": "ML detection pipeline: telemetry to triage",
+   "svg": "assets/diagrams/ai-ml-pipeline.svg",
+   "lesson_ref": "c-ml-defense",
+   "caption": "How raw telemetry becomes scored alerts: features feed the model, the model scores, analysts triage top-down \u2014 and analyst verdicts feed retraining.",
+   "alt": "Flow diagram: telemetry sources feed feature extraction, which feeds an ML model, which outputs scored alerts into an analyst triage queue, with a feedback arrow for retraining."
+  },
+  {
+   "id": "ai-ueba-baseline-diagram",
+   "kind": "diagram",
+   "title": "UEBA: baseline vs deviation",
+   "svg": "assets/diagrams/ai-ueba-baseline.svg",
+   "lesson_ref": "c-ml-defense",
+   "caption": "UEBA learns each user's normal hours, locations, and volumes, then scores deviations from that baseline.",
+   "alt": "24-hour timeline showing a shaded normal login window from 8 AM to 6 PM with normal logins inside it, and a red anomaly marker at 2:47 AM for a foreign login scoring 97 out of 100."
+  },
+  {
+   "id": "ai-injection-flow",
+   "kind": "diagram",
+   "title": "Indirect prompt injection attack flow",
+   "svg": "assets/diagrams/ai-injection-flow.svg",
+   "lesson_ref": "c-ai-agent-sec",
+   "caption": "An attacker hides instructions in data the agent retrieves; the agent mistakes data for instructions and misuses its tools.",
+   "alt": "Attack flow diagram: hidden instruction in an email is read by an AI agent, which mistakes it for a command and calls a privileged tool, causing fraud; three defense boxes below: sanitize content, least-privilege tools, human approval."
+  }
+ ],
+ "foundations": [
+  {
+   "track": "linux-cli",
+   "why_needed": "Terminal labs and missions run in a simulated Linux shell; command-line fluency is required to complete them."
+  },
+  {
+   "track": "security-basics",
+   "why_needed": "Security-graph and ML-detection lessons assume baseline vocabulary (CIA triad, malware types, incident response phases)."
+  }
+ ],
+ "math": [
+  "stats",
+  "probability"
+ ]
+}

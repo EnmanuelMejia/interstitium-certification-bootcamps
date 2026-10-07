@@ -1,1 +1,1061 @@
-{"behavioral": [{"framework": "STAR", "pitfalls": ["'We just used the cloud' with no specifics", "No failure-mode analysis"], "points": ["The failure modes you considered", "How you mapped them to isolation constructs", "Measured availability outcome"], "prompt": "Tell me about a time you designed for high availability across failure domains."}, {"framework": "STAR", "pitfalls": ["Blaming the vendor", "No preventive control named"], "points": ["How you found the spend", "Controls you put in place (budgets, tags, quotas)", "Savings or prevention since"], "prompt": "Describe a cost surprise in the cloud and what you changed."}, {"framework": "STAR", "pitfalls": ["Minimizing the exposure", "No preventive follow-through"], "points": ["How you detected it", "Your remediation steps", "How you prevented recurrence"], "prompt": "Tell me about a security misconfiguration you discovered and remediated."}, {"framework": "STAR", "pitfalls": ["Skipping the rollback plan", "Vague on your own role"], "points": ["Migration approach (rehost/replatform)", "Biggest obstacle and your workaround", "Cutover result"], "prompt": "Describe migrating a workload to the cloud under a deadline."}, {"framework": "STAR", "pitfalls": ["Automation with no measured benefit", "Over-engineering a one-off"], "points": ["What was manual before", "What you built (templates, pools, pipelines)", "Time or error-rate improvement"], "prompt": "Tell me about a time you automated repetitive infrastructure work."}, {"framework": "STAR", "pitfalls": ["Random changes until it worked", "No verification step"], "points": ["Your isolation method (layer by layer)", "The root cause", "How you verified the fix"], "prompt": "Describe a network connectivity problem you troubleshot."}, {"framework": "STAR", "pitfalls": ["Framing the other person as wrong", "No resolution described"], "points": ["Both positions fairly stated", "How you reached a decision", "What you learned"], "prompt": "Tell me about a disagreement over architecture with a teammate."}, {"framework": "STAR", "pitfalls": ["'I just figured it out' with no method", "No application to real work"], "points": ["Your learning method", "How you validated understanding", "How you applied it"], "prompt": "Describe how you learned a new cloud platform quickly for a project."}], "chat": {"persona": "You are a friendly but rigorous OCI interviewer running a mock assessment for Oracle Cloud Infrastructure foundations and architecture concepts.", "topics": [{"followups": ["What failure does a fault domain NOT protect against?", "Why can't you move a home region?"], "id": "regions-ads", "key_points": ["availability domains isolate power/cooling/network", "fault domains are racks within an AD", "home region is immutable", "realms isolate commercial vs government", "distributed cloud options"], "name": "Regions & ADs"}, {"followups": ["When would you pick bare metal over a VM?", "What workload fits preemptible instances?"], "id": "compute", "key_points": ["flex shapes customize OCPU/memory", "preemptible instances trade guarantee for discount", "functions are event-driven serverless", "instance pools scale from configurations", "bare metal vs VM trade-offs"], "name": "Compute"}, {"followups": ["Why did the database answer everyone?", "Which gateway for private-subnet patch downloads?"], "id": "networking", "key_points": ["peering requires non-overlapping CIDRs", "security lists are stateless/subnet-level", "NSGs are stateful/VNIC-level", "NAT gateway is outbound-only", "DRG connects VCNs and on-premises"], "name": "Networking (VCN)"}, {"followups": ["Where do cold backups belong?", "How do you share a bucket with a partner safely?"], "id": "storage", "key_points": ["block volumes for databases", "object storage standard vs archive tiers", "versioning protects overwrites", "backup policies automate volume backups", "PARs grant expiring access"], "name": "Storage"}, {"followups": ["Why not bake an API key into the image?", "Who owns a misconfigured bucket policy?"], "id": "iam-security", "key_points": ["compartments are the isolation boundary", "dynamic groups give instances identity", "shared responsibility: Oracle secures OF, you secure IN", "cloud guard detects misconfigurations", "vault holds customer-managed keys"], "name": "IAM & Security"}, {"followups": ["Budget vs quota — which stops the bleeding?", "How do you attribute a 40% cost jump?"], "id": "pricing-governance", "key_points": ["budgets alert, quotas enforce", "cost-tracking tags enable attribution", "PAYG vs universal credits", "always free limits and overages", "support tier SLAs"], "name": "Pricing & Governance"}]}, "disclaimer": "Independent practice material by Interstitium Labs. Not affiliated with, endorsed by, or sponsored by Oracle. Confers no certificate. All scenarios are original; no exam content is reproduced.", "domains": [{"id": "regions-ads", "name": "Regions & ADs", "scenarios": [{"answer": 0, "choices": ["Fault domains — spread instances across the 3 fault domains inside one AD to survive a rack-level failure, and availability domains to survive an AD-level failure", "Compartments — isolate workloads with policies so a power event cannot cross a policy boundary", "VCN route tables — route database traffic to a backup table when the primary fails", "Object Storage buckets — replicate data across buckets, which are isolated power zones"], "evidence": [], "hint": "OCI has two levels of isolation: one is a set of fault domains sharing a datacenter, the other is an independent datacenter entirely.", "id": "oci-ad-vs-fd", "mins": 6, "objectives": ["Availability domains", "Fault domains"], "prompt": "Which OCI construct maps to 'different power/cooling/network' isolation, and how would you use it?", "situation": "A startup runs its database primary on one rack and the replica on another rack in the same building. A power bus failure takes down the whole building. The CTO says: 'In OCI, how would we have isolated the two failures — hardware and power?'", "title": "The two-failure scenario", "why": "An availability domain is one or more datacenters with independent power, cooling, and networking — an AD-level failure is contained. Within an AD, three fault domains group racks on different hardware, so a rack failure affects only one fault domain. The pattern: replicate across ADs for site resilience, and across fault domains inside an AD for hardware resilience."}, {"answer": 0, "choices": ["Fault domains protect against rack-level failure inside one AD, but not a full region outage — cross-region replication or a multi-AD region is needed for regional DR", "Fault domains require 3 ADs to function; with one AD they silently do nothing", "A single-AD region cannot run compute instances, only storage", "Multi-AD HA is impossible in OCI; every design must be single-AD"], "evidence": [], "hint": "Ask: what is the blast radius of a fault domain versus a region?", "id": "oci-region-ha", "mins": 6, "objectives": ["Regions", "Disaster recovery scope"], "prompt": "What is wrong with this design?", "situation": "A team wants multi-AD high availability for their order system. They pick a region that has only one availability domain and deploy 'primary in fault domain 1, standby in fault domain 2'. Their DR test then kills the whole region.", "title": "The single-AD region bet", "why": "Fault domains are intra-AD resilience (independent racks, shared datacenter infrastructure), while regions are independent geographies. Some OCI regions have 1 AD and some have 3. Surviving a region-level event requires a second region (e.g., async replication to a paired region), not more fault domains. Match the failure scope to the isolation construct."}, {"answer": 0, "choices": ["Dedicated Region — a full OCI region operated by Oracle inside the customer's own datacenter, meeting residency and on-premises requirements", "A second public region — data residency is satisfied by any EU region", "Object Storage Archive tier — archived data is exempt from residency law", "IAM compartments — policies can pin data to a country"], "evidence": [], "hint": "Which OCI option literally puts an entire region inside the customer's building?", "id": "oci-distributed-cloud", "mins": 6, "objectives": ["OCI Distributed Cloud", "Dedicated Region"], "prompt": "Which OCI deployment option fits?", "situation": "A European bank must keep customer data inside its own country and needs cloud services behind its firewall for low-latency trading. Public OCI regions don't satisfy legal.", "title": "The data-residency request", "why": "OCI's distributed cloud includes Dedicated Region (a complete OCI region in the customer's datacenter), Oracle Alloy (partners run their own cloud), and Roving Edge for disconnected edge sites. Dedicated Region is the answer for strict residency plus cloud services on-premises; a public region in the same country may satisfy residency but not the behind-the-firewall requirement."}, {"answer": 0, "choices": ["The home region cannot be changed after tenancy creation — IAM resources live in the home region; subscribe to additional regions for workloads instead", "The home region can be moved once per year via a support ticket", "Changing the home region is automatic when the billing address changes", "The home region follows the first VCN created, not the tenancy"], "evidence": [], "hint": "Which tenancy-level construct is permanently anchored where the tenancy was born?", "id": "oci-subscription-region", "mins": 5, "objectives": ["Home region", "Tenancy"], "prompt": "What happens?", "situation": "A new tenancy is created with home region us-ashburn-1. Six months later, compliance requires IAM changes to be administered from the EU. The admin tries to 'move' the home region to eu-frankfurt-1.", "title": "The home region lock-in", "why": "The home region is chosen at signup and is immutable: it hosts the tenancy's IAM definitions. You can subscribe to other regions for compute, storage, and networking workloads, but IAM (users, groups, compartments, policies) is anchored to the home region. Choose it deliberately at signup."}, {"answer": 0, "choices": ["A realm is an isolated logical collection of regions (e.g., commercial vs. government realms) with separate identity — workloads cannot span realms, so government work needs a tenancy in the government realm", "A realm is a billing construct — all regions in a realm share one invoice", "A realm is a synonym for availability domain in older documentation", "Realms are optional labels with no isolation effect"], "evidence": [], "hint": "Think of realms as the highest-level isolation boundary — above even regions.", "id": "oci-realm", "mins": 5, "objectives": ["Realms", "Government regions"], "prompt": "What is a realm in OCI, and what is the practical implication?", "situation": "A US federal contractor asks whether their OCI tenancy can share identity and network plumbing with their commercial workloads. They heard the phrase 'realm' and want to know if it matters.", "title": "The government cloud question", "why": "Realms partition OCI's global infrastructure into isolated collections of regions — the commercial realm, government realms, and others. Identity, and therefore tenancies, do not cross realm boundaries. A contractor needing government-region services must operate a tenancy inside that realm; they cannot extend a commercial tenancy into it."}, {"answer": 0, "choices": ["Put a CDN/content-delivery layer in front of the bucket (e.g., serve via edge caching) so assets are cached near users; moving the bucket helps but only for one region's users", "Archive tier moves data physically closer to requestors, so switch the bucket to Archive", "Object Storage is global, so the bucket location is irrelevant — the issue must be DNS", "Increase the bucket's storage class to 'Performance' tier"], "evidence": [], "hint": "The users are global, but the bucket is regional. What sits between them?", "id": "oci-edge-locations", "mins": 5, "objectives": ["Object Storage regions", "Edge caching"], "prompt": "What is the more targeted fix, and why?", "situation": "Users in São Paulo report slow page loads for static assets served from an Object Storage bucket in us-ashburn-1. The team proposes moving the bucket to sa-saopaulo-1.", "title": "The latency complaint", "why": "Object Storage buckets live in a specific region; cross-ocean reads add latency. A CDN caches content at edge locations close to users worldwide, which fixes latency for all geographies at once. Moving the bucket only relocates the problem. (There is no 'Performance' tier for Object Storage — Standard and Archive are the tiers.)"}]}, {"id": "compute", "name": "Compute", "scenarios": [{"answer": 0, "choices": ["Resize to a smaller Flex shape (e.g., 2 OCPUs / 16 GB) — Flex shapes let you pick OCPU and memory independently instead of fixed sizes", "Switch to a bare-metal shape — bare metal is always cheaper than VMs", "Flex shapes are fixed at 64 OCPUs; the only fix is terminating the tenancy", "Move to Dedicated VM Hosts — tenancy-level billing is cheaper"], "evidence": [], "hint": "What does 'Flex' actually flex?", "id": "oci-flex-shape", "mins": 5, "objectives": ["Compute shapes", "Flex shapes"], "prompt": "What is the right compute choice, and what makes Flex shapes useful?", "situation": "A team launches a VM.Standard.E5.Flex instance with 64 OCPUs and 512 GB RAM for a small internal wiki. The bill shocks them. The workload needs about 2 OCPUs.", "title": "The overprovisioned VM", "why": "Flex shapes (VM.Standard.E4/E5/E6.Flex) let you customize the OCPU count and memory, so you pay for what the workload needs. Fixed shapes come in preset sizes; bare metal gives a whole server (no hypervisor) for isolation/noisy-neighbor-sensitive workloads, not for saving money on a wiki."}, {"answer": 0, "choices": ["Preemptible instances — deep discount in exchange for capacity that OCI can reclaim with short notice; fine for checkpointed, resumable batch work", "Reserved capacity — cheaper, but it locks the workload to a fixed shape for a year", "Burstable instances — same price, better peak performance", "Spot markets do not exist in OCI; the only option is on-demand"], "evidence": [], "hint": "Which pricing option trades a guarantee for a discount?", "id": "oci-preemptible", "mins": 5, "objectives": ["Preemptible instances", "Pricing options"], "prompt": "Which OCI option fits, and what is the trade-off?", "situation": "A nightly ETL batch is fault-tolerant, checkpointed, and stateless — it can be interrupted and resumed. The team pays on-demand rates and wants the bill cut without code changes.", "title": "The batch-job discount", "why": "Preemptible instances offer steep discounts because OCI may reclaim the capacity when needed — ideal for interruptible, checkpointed batch/CI workloads. The trade-off is exactly that interruption risk. Reserved capacity is for steady-state committed use; burstable instances handle spiky CPU on small shapes, not bulk discounts."}, {"answer": 0, "choices": ["OCI Functions — serverless, event-triggered, pay-per-execution; no cluster to manage, ideal for sporadic event-driven work", "OKE — cheaper because Kubernetes nodes are free", "Compute VMs with cron — simplest and most 'cloud native'", "Object Storage lifecycle rules can run the thumbnailing natively"], "evidence": [], "hint": "Which service runs code without you provisioning anything that runs it?", "id": "oci-oke-vs-functions", "mins": 6, "objectives": ["OCI Functions", "OKE", "Serverless"], "prompt": "Which fits better, and why?", "situation": "Every image uploaded to an Object Storage bucket must be thumbnailed within seconds, a few hundred times a day, with zero servers to manage. The team debates OKE vs Functions.", "title": "The event-driven thumbnailer", "why": "OCI Functions is the serverless platform: code runs on events (like an Object Storage upload via Events service + Notifications), scales to zero, and bills per execution. OKE (managed Kubernetes) is for container orchestration you manage — overkill for a sporadic thumbnailer. Lifecycle rules manage object retention/tiering, not code execution."}, {"answer": 0, "choices": ["Instance configurations (template of launch parameters + custom image) combined with instance pools for multi-AD rollout and autoscaling", "Manual launch 50 times and document the clicks in a runbook", "Block volume clones — clone one volume 50 times and boot from each", "IAM policies can stamp out identical instances when written per-AD"], "evidence": [], "hint": "What OCI object is literally a saved 'launch this again' template?", "id": "oci-instance-config", "mins": 6, "objectives": ["Instance configurations", "Instance pools", "Custom images"], "prompt": "Which OCI features automate this repeatably?", "situation": "A team must launch 50 identical web servers across 3 ADs, each from a hardened custom image with the same cloud-init bootstrap. Doing it by hand in the console is error-prone.", "title": "The golden-image rollout", "why": "An instance configuration captures the launch recipe (shape, image, metadata/cloud-init, networking). An instance pool uses it to launch and manage many instances across ADs/fault domains, with autoscaling and rolling updates. Custom images preserve the hardened OS state; cloud-init handles per-boot setup."}, {"answer": 0, "choices": ["OCI Bastion service — managed, time-limited SSH sessions to private instances with no public IPs or standing jump hosts; access is granted per-session and audited", "Open SSH (port 22) on the database servers' public IPs with key auth", "A NAT gateway — it proxies inbound SSH securely", "IAM policies that allow SSH from anywhere"], "evidence": [], "hint": "Which service gives you SSH to a private instance without the instance — or any jump box — having a public IP?", "id": "oci-bastion", "mins": 5, "objectives": ["Bastion", "Private subnets"], "prompt": "What is the OCI-native replacement?", "situation": "Engineers SSH to a public jump host, then hop to private-subnet database servers. The jump host is internet-facing with a public IP, and the security team wants that pattern gone.", "title": "The SSH jump-box habit", "why": "Bastion provides just-in-time SSH access to private-subnet resources without public IPs or a persistent bastion host: sessions are time-boxed, authenticated via IAM, and logged. A NAT gateway only allows outbound-initiated traffic (no inbound SSH), and public IPs on databases expand the attack surface."}, {"answer": 0, "choices": ["OS Management Hub — manages packages/errata across fleets, schedules patch jobs, and reports compliance from one place", "Cloud Guard — it pushes OS patches as part of threat remediation", "Block Volume backups — restoring from backup applies patches", "The Events service — it emails when patches are available"], "evidence": [], "hint": "Which service's whole job is 'which of my 200 servers is missing this erratum'?", "id": "oci-os-management", "mins": 5, "objectives": ["OS Management Hub", "Fleet management"], "prompt": "Which OCI service centralizes this?", "situation": "200 Oracle Linux instances across three compartments need the same security errata applied on a schedule, with a report of which instances are non-compliant. Today it's ad-hoc SSH loops.", "title": "The patch Tuesday sprawl", "why": "OS Management Hub is the fleet patch-management service for Oracle Linux (and Windows): register instances, define software sources, schedule patch windows, and get compliance reporting. Cloud Guard is a security-posture/threat detector, not a patcher; backups are recovery, not maintenance."}]}, {"id": "networking", "name": "Networking (VCN)", "scenarios": [{"answer": 0, "choices": ["Peered VCNs must have non-overlapping CIDRs — re-create one VCN with a distinct range (e.g., 10.1.0.0/16); plan IP space before peering", "VCNs in different regions can never be peered", "The CIDR is too large; peering requires /24 or smaller", "Peering requires both VCNs to be in the same compartment"], "evidence": [], "hint": "If two networks both claim 10.0.0.0/16, where does a packet to 10.0.5.7 go?", "id": "oci-vcn-cidr", "mins": 6, "objectives": ["VCN peering", "CIDR planning"], "prompt": "Why, and what is the fix?", "situation": "A company builds VCN-A (10.0.0.0/16) and VCN-B (10.0.0.0/16) in different regions, then tries to peer them so apps can talk privately. Peering creation fails.", "title": "The overlapping CIDR trap", "why": "VCN peering (local via LPG, or remote via DRG) routes between CIDR blocks — overlapping ranges make routes ambiguous, so OCI requires non-overlapping CIDRs (up to 5 CIDR blocks per VCN including the primary). Remote peering across regions is supported; compartment placement doesn't matter for peering, only IAM."}, {"answer": 0, "choices": ["Network Security Groups — stateful rules applied to a set of VNICs (the app tier), independent of subnet; security lists are subnet-level and stateless", "A second VCN — databases must live in their own VCN", "Route tables — deny routes are more precise than security rules", "Change the database port — security through obscurity is sufficient"], "evidence": [], "hint": "Which construct is stateful, and which one follows the VNIC instead of the subnet?", "id": "oci-security-list-vs-nsg", "mins": 6, "objectives": ["Security lists", "NSGs", "Stateful vs stateless"], "prompt": "What should they use, and what is the key difference from security lists?", "situation": "A database in a private subnet accepts connections from any instance in the VCN because the security list allows 0.0.0.0/0 on port 1521. The team wants only the app tier to reach it, with rules that move with the instances.", "title": "The database that answered everyone", "why": "Security lists attach to subnets and are stateless (return traffic needs explicit egress rules). NSGs attach to VNICs and are stateful (return traffic is automatically allowed), and membership follows the instance, not the subnet. For tier-to-tier filtering (only app servers → DB:1521), NSGs are the precise tool."}, {"answer": 0, "choices": ["NAT gateway — allows outbound-initiated connections to the internet while blocking inbound initiation; an internet gateway requires public IPs and permits inbound", "Internet gateway — private subnets can use it as long as route tables are correct", "Service gateway — it proxies all internet traffic, not just OCI services", "Dynamic Routing Gateway — it NATs outbound traffic automatically"], "evidence": [], "hint": "Which gateway's entire purpose is 'outbound only'?", "id": "oci-gateway-choice", "mins": 6, "objectives": ["NAT gateway", "Internet gateway", "Service gateway"], "prompt": "Which gateway is correct, and why not an internet gateway?", "situation": "App servers in a private subnet (no public IPs) must download OS patches from the internet, but nothing on the internet may initiate connections to them. The team considers an internet gateway.", "title": "The private subnet that needed updates", "why": "A NAT gateway gives private resources outbound internet access (patch downloads) with no inbound path; instances keep no public IPs. An internet gateway enables two-way traffic and needs public IPs. A service gateway reaches OCI services (Object Storage, etc.) over the private backbone — not the public internet. DRG connects to on-premises/other VCNs."}, {"answer": 0, "choices": ["Dynamic Routing Gateway — attach the VCNs and connect on-premises via Site-to-Site VPN or FastConnect; the DRG routes between them", "Internet gateway on each VCN with VPN software on an instance", "Local peering gateways chained VCN-to-VCN-to-datacenter", "A NAT gateway with static routes to the datacenter"], "evidence": [], "hint": "Which component is literally called a 'gateway' that routes between VCNs and the corporate network?", "id": "oci-drg", "mins": 6, "objectives": ["DRG", "FastConnect", "Site-to-Site VPN"], "prompt": "What is the OCI hub for this, and which connection types attach to it?", "situation": "A company must connect its datacenter to three OCI VCNs (prod, dev, shared-services) over a private encrypted path, with on-premises routes propagated automatically.", "title": "The on-prem bridge", "why": "The DRG is the regional virtual router: VCNs attach to it, and on-premises networks connect through it via IPSec Site-to-Site VPN (encrypted over internet) or FastConnect (private dedicated circuit). Remote peering between VCNs also goes through the DRG. LPGs peer VCNs but don't reach on-premises."}, {"answer": 0, "choices": ["The subnets use different DNS label configurations or the VCN's DNS label is missing — private DNS resolution of hostnames requires consistent DNS labels; check the VCN/subnet DNS settings", "Instances in different subnets can never resolve each other", "DNS only works with public IPs in OCI", "The instances need an internet gateway for DNS"], "evidence": [], "hint": "Hostname resolution in OCI depends on what label settings?", "id": "oci-dns", "mins": 5, "objectives": ["Private DNS", "DNS labels"], "prompt": "What is the most likely cause?", "situation": "Two instances in the same VCN can't resolve each other by hostname. DNS resolution is enabled on the VCN, and the instances are in different subnets.", "title": "The hostname that wouldn't resolve", "why": "OCI's private DNS resolves instance hostnames within a VCN when DNS resolution is enabled and DNS labels are set on the VCN/subnets (instances get FQDNs like host.subnet.vcn.oraclevcn.com). Missing labels or disabled resolution breaks hostname lookup; security rules don't block DNS to the VCN resolver (169.254.169.254). Cross-subnet private DNS works fine."}, {"answer": 0, "choices": ["The load-balancing policy (e.g., round-robin vs. least-connections vs. IP-hash) and session persistence settings — IP-hash or sticky sessions can pin clients to one backend", "Add more backend servers — uneven traffic always means under-capacity", "The VCN CIDR is too small to balance across", "Health check interval — passing checks prove the policy is correct"], "evidence": [], "hint": "If health checks pass but traffic is lopsided, what decides which backend gets each request?", "id": "oci-load-balancer", "mins": 5, "objectives": ["Load Balancer", "Balancing policies"], "prompt": "What should be investigated first?", "situation": "Three web servers sit behind a load balancer, but one server gets most traffic and occasionally times out. Health checks are passing.", "title": "The uneven traffic complaint", "why": "OCI Load Balancer supports policies like weighted round robin, least connections, and IP hash, plus session persistence. IP-hash or sticky sessions concentrate clients on one backend even when all are healthy — that's a policy behavior, not a capacity problem. Verify the policy and persistence config before scaling."}]}, {"id": "storage", "name": "Storage", "scenarios": [{"answer": 0, "choices": ["(a) Block Volumes for the database — low-latency block devices; (b) Object Storage Archive tier for backups — cheapest long-term retention, restored when needed", "(a) Object Storage for the database — objects are faster than blocks; (b) Block Volumes for backups", "(a) File Storage for both — NFS handles databases and backups equally", "(a) Boot volumes for the database — boot volumes are optimized for data files"], "evidence": [], "hint": "Databases need block devices; cold backups need the cheapest byte. Which services are which?", "id": "oci-block-vs-object", "mins": 6, "objectives": ["Block Volumes", "Object Storage tiers"], "prompt": "Which OCI storage services fit each need?", "situation": "A team needs storage for (a) a database's data files requiring low-latency block access, and (b) 10 TB of immutable nightly backups retained for years, rarely read.", "title": "The backup-target debate", "why": "Block Volumes provide durable, low-latency block storage for databases (attachable/detachable, with backup policies). Object Storage Archive tier is the lowest-cost option for rarely-accessed data with long retention; Standard tier is for hot data. File Storage (NFS) suits shared file workloads, not database data files."}, {"answer": 0, "choices": ["Object versioning — keeps prior versions of an object when overwritten or deleted, so the previous report is recoverable from the version history", "Multipart upload — it automatically keeps a copy of each part", "Pre-authenticated requests — they snapshot the bucket on each read", "Replication — it copies objects to another region instantly"], "evidence": [], "hint": "Which bucket setting keeps history when an object is replaced?", "id": "oci-object-versioning", "mins": 5, "objectives": ["Object versioning", "Data protection"], "prompt": "What Object Storage feature would have saved them, and how does it behave?", "situation": "A monthly financial report in Object Storage was overwritten by a bad upload. The team needs yesterday's version back.", "title": "The overwritten report", "why": "Enabling versioning on a bucket preserves earlier versions whenever an object is overwritten or deleted — you can list and restore the prior version. Replication copies data to another region for DR (doesn't help recover an overwritten object in-place), and PARs grant time-limited access, not history."}, {"answer": 0, "choices": ["A scheduled block-volume backup policy (e.g., daily incremental) assigned to the volume — automated, incremental backups with defined retention", "Object Storage lifecycle rules — they back up block volumes automatically", "Volume clones — clones are continuous backups", "RAID inside the instance — the cloud equivalent of a backup policy"], "evidence": [], "hint": "Which feature is literally a recurring schedule attached to the volume?", "id": "oci-block-backup-policy", "mins": 5, "objectives": ["Backup policies", "Block volume backups"], "prompt": "What should have been in place?", "situation": "A corrupted block volume took down production at 2 AM. The last manual snapshot was 3 weeks old. The DBA asks: 'Why wasn't this automatic?'", "title": "The 2 AM page", "why": "OCI backup policies attach to block/boot volumes and run scheduled full + incremental backups to Object Storage with retention rules — the standard automated protection. Clones are point-in-time copies (useful for dev/test), not a backup schedule. Lifecycle rules manage object retention, not volume backups."}, {"answer": 0, "choices": ["File Storage — a managed NFS file system mountable by many instances concurrently", "Block Volumes — attach one volume to all 12 instances in read-write mode", "Object Storage — mount it as a POSIX filesystem for config files", "Boot volumes — share one boot volume across instances"], "evidence": [], "hint": "Which service speaks NFS to many clients at once?", "id": "oci-file-storage", "mins": 5, "objectives": ["File Storage", "Shared filesystems"], "prompt": "Which OCI service replaces the rsync mesh?", "situation": "Twelve web servers need read/write access to the same configuration directory and shared uploads. Each server currently rsyncs from a primary — drift and conflicts are constant.", "title": "The shared-config problem", "why": "File Storage provides a managed NFSv3 file system that many compute instances mount simultaneously — the native shared-filesystem answer. A block volume attaches to one instance (multi-attach is limited/specialized); Object Storage is an object API, not POSIX file semantics."}, {"answer": 0, "choices": ["Pre-authenticated request — a time-limited URL granting upload access to the bucket/prefix without an IAM identity", "Make the bucket public for 30 days, then private again", "Share the tenancy admin credentials with an expiry note", "Object Storage lifecycle rules grant temporary write access"], "evidence": [], "hint": "Which feature is a signed, expiring URL for a bucket?", "id": "oci-par", "mins": 5, "objectives": ["Pre-authenticated requests", "Secure sharing"], "prompt": "What is the right mechanism?", "situation": "An external partner must upload weekly CSVs into a private Object Storage bucket for 30 days. The team must not create an IAM user for them.", "title": "The partner upload link", "why": "Pre-authenticated requests (PARs) grant scoped, expiring access to a bucket or object prefix via URL — no IAM user needed. They can allow writes (uploads) as well as reads, and expire automatically. Public buckets and shared credentials are never the answer."}, {"answer": 0, "choices": ["Data Transfer service (offline disk shipment) — copy to encrypted transfer disks/devices, ship to Oracle, data is uploaded to Object Storage", "Keep the 100 Mbps upload running and throttle it to business hours", "Compress the archives — compression ratios guarantee it fits in a week", "FastConnect — it increases the existing internet uplink speed"], "evidence": [], "hint": "When the network is the bottleneck and the data is huge, what moves instead of packets?", "id": "oci-data-transfer", "mins": 5, "objectives": ["Data Transfer service", "Migration"], "prompt": "What is the practical OCI option?", "situation": "A datacenter with a 100 Mbps uplink must move 40 TB of archives into OCI Object Storage. At current speed the transfer takes over a month, and the uplink is saturated.", "title": "The 40 TB migration", "why": "For bulk offline ingest, OCI's Data Transfer service ships encrypted disks (or the Transfer Appliance for petabytes) to Oracle for direct upload — far faster than a thin uplink for 40 TB. FastConnect is a private network circuit (great for steady hybrid traffic, not a magic uplink upgrade), and compression can't be assumed to fix a 37-day transfer."}]}, {"id": "iam-security", "name": "IAM & Security", "scenarios": [{"answer": 0, "choices": ["Design a compartment hierarchy (e.g., by environment/team) and scope policies to the least-privilege compartment — compartments are the primary isolation and policy boundary", "Create more admin users so no single key is critical", "Move everything to a new tenancy — compartments can't be added later", "Disable IAM — it adds complexity without security benefit"], "evidence": [], "hint": "What is the unit that both organizes resources and scopes policies?", "id": "oci-compartment-design", "mins": 6, "objectives": ["Compartments", "Least privilege"], "prompt": "What is the foundational IAM remediation?", "situation": "Everything — prod, dev, finance data — lives in the root compartment with broad admin policies. An intern's compromised key touched production.", "title": "The flat-tenancy mess", "why": "Compartments are OCI's fundamental organizing and isolation unit: policies grant group permissions on specific compartments, so a compromised credential scoped to dev can't reach prod. Design the hierarchy (up to 6 levels deep, including root) around blast-radius boundaries, then write least-privilege policies per compartment."}, {"answer": 0, "choices": ["Dynamic group — define the instance(s) by OCID/compartment, then write a policy granting that dynamic group access to Vault secrets and the bucket; no static credentials", "Embed the API key and rotate it monthly via cron", "Give the instance the tenancy admin's key — simplest", "Secrets can't be read from instances; copy them at deploy time"], "evidence": [], "hint": "How can an instance itself be the 'who' in a policy, with no password involved?", "id": "oci-dynamic-group", "mins": 6, "objectives": ["Dynamic groups", "Instance principals"], "prompt": "What is the secure pattern, and how is it authorized?", "situation": "An app on a compute instance must read secrets from Vault and write to a specific bucket. The team is tempted to bake an IAM user's API key into the image.", "title": "The instance that needed a secret", "why": "Dynamic groups let OCI resources (instances, functions) act as principals: matching rules select them, and policies grant the dynamic group permissions — the instance authenticates with its own identity via instance principals, no stored keys. Baking user keys into images leaks credentials to anyone with the image."}, {"answer": 0, "choices": ["Oracle secures the cloud (physical, hypervisor, network fabric); the customer secures what's IN the cloud — data, IAM policies, OS patching, security lists", "Oracle handles everything above the hypervisor, including customer IAM policies", "The customer handles physical datacenter security in OCI", "Responsibility is split 50/50 on every control"], "evidence": [], "hint": "Who configures the bucket policy — Oracle or you?", "id": "oci-shared-responsibility", "mins": 5, "objectives": ["Shared security model"], "prompt": "Where does the shared responsibility line fall for IaaS?", "situation": "After a misconfigured bucket leaks data, the customer tells auditors 'security is Oracle's job in the cloud.'", "title": "The 'Oracle handles it' myth", "why": "The shared model: Oracle owns security OF the cloud (facilities, hardware, virtualization, physical network); the customer owns security IN the cloud — their data classification, IAM least privilege, guest OS patching, firewall rules, and encryption choices. A public bucket is squarely customer-side."}, {"answer": 0, "choices": ["Cloud Guard — continuously monitors for misconfigurations and risky activity, flags problems, and can auto-remediate with responder rules", "Vault — it detects misconfigurations as a side effect of key storage", "Cloud Advisor — it only optimizes cost, not security", "Audit logs alone — reading them daily is the intended workflow"], "evidence": [], "hint": "Which service watches your tenancy and says 'that bucket shouldn't be public'?", "id": "oci-cloud-guard", "mins": 5, "objectives": ["Cloud Guard", "Security posture"], "prompt": "Which OCI service fits?", "situation": "Over months, buckets become public, ports open to 0.0.0.0/0, and keys go unrotated. The team wants continuous detection of these misconfigurations with guided remediation.", "title": "The drifting configuration", "why": "Cloud Guard is OCI's security-posture management: detector rules spot issues (public buckets, open security lists, etc.), and responder rules can fix them automatically. Audit service records API activity (the evidence trail); Vault stores keys/secrets. Detection + guided response is Cloud Guard's job."}, {"answer": 0, "choices": ["OCI Vault (Key Management) — create customer-managed keys, control rotation, and assign them to volumes/buckets; Oracle-managed keys are the default otherwise", "Cloud Guard — it generates encryption keys during scans", "IAM policies — they encrypt data at rest when written correctly", "Object Storage versioning — versions are encrypted with separate keys"], "evidence": [], "hint": "Which service is the key-management system, not the policy system?", "id": "oci-vault-keys", "mins": 5, "objectives": ["Vault", "Encryption at rest", "Customer-managed keys"], "prompt": "What provides this in OCI?", "situation": "Compliance requires customer-managed encryption keys for block volumes and buckets, with key rotation and no Oracle access to key material.", "title": "The encryption-key question", "why": "OCI encrypts data at rest by default with Oracle-managed keys. Vault (KMS) lets you create and control your own master keys — including keys backed by HSMs — and bind them to block volumes, boot volumes, and buckets, with rotation policies. IAM authorizes; it doesn't encrypt."}, {"answer": 0, "choices": ["OCI WAF for Layer-7 filtering (bot management, OWASP rules) in front of the app; OCI's edge/DDoS protection absorbs volumetric network-layer attacks", "Security lists — they inspect HTTP payloads", "NAT gateway — it filters inbound attack traffic", "Bastion — it proxies web traffic securely"], "evidence": [], "hint": "Which service understands HTTP requests, not just packets?", "id": "oci-waf-ddos", "mins": 5, "objectives": ["WAF", "DDoS protection"], "prompt": "Which OCI services address the network and application layers?", "situation": "A public web app behind a load balancer is hit by an HTTP flood and credential-stuffing attempts. The load balancer distributes the attack evenly to all backends.", "title": "The Layer-7 flood", "why": "WAF inspects HTTP/S traffic against managed rules (OWASP Top 10, bots, rate limiting) before it reaches the load balancer. Network-layer DDoS absorption happens at OCI's edge. Security lists are L3/L4 packet filters (no payload inspection); NAT gateways only do outbound."}]}, {"id": "pricing-governance", "name": "Pricing & Governance", "scenarios": [{"answer": 0, "choices": ["Budgets with alert rules (email/notifications at thresholds) plus Cost Analysis tracking by compartment/tag — detect spend early, attribute it precisely", "Delete the tenancy monthly and recreate it — guarantees zero carryover spend", "Budgets hard-stop resources when exceeded — set a $0 budget", "Invoices are the only cost signal OCI provides"], "evidence": [], "hint": "Which two tools give you 'warn me at 80%' and 'who spent it'?", "id": "oci-budget-alert", "mins": 6, "objectives": ["Budgets", "Cost Analysis", "Cost-tracking tags"], "prompt": "What OCI cost-control combo prevents the next surprise?", "situation": "A dev team's experiment left GPU instances running for three weeks. Finance saw it on the invoice — a month later.", "title": "The surprise invoice", "why": "Budgets track spend/forecast against thresholds and fire alerts (via Notifications) — they alert, they don't auto-terminate. Cost Analysis with compartment/tag grouping attributes spend to teams. Tagging resources (cost-tracking tags) is what makes the attribution work; quotas can actually cap resource counts."}, {"answer": 0, "choices": ["Quotas — set compartment-level limits on resource counts (e.g., max instances); autoscaling cannot exceed them", "Budgets — they terminate instances over budget", "IAM policies — they limit CPU counts directly", "Cost Analysis — it rolls back excess resources"], "evidence": [], "hint": "Which control says 'this compartment may never contain more than N instances'?", "id": "oci-quota", "mins": 5, "objectives": ["Quotas", "Governance"], "prompt": "What governance control caps resource creation regardless of autoscaling?", "situation": "An autoscaling pool in dev has no upper bound configured in policy; a bug loops scale-out and the compartment hits the tenancy's shape limits — then the request goes to support for a limit increase, which would make it worse.", "title": "The runaway autoscale", "why": "Quotas enforce hard ceilings on how many of each resource type a compartment may contain — the backstop against runaway automation. Budgets only alert on spend. IAM policies authorize actions, not quantities. Combine quotas (quantity guardrail) with budgets (spend signal)."}, {"answer": 0, "choices": ["Pay-as-you-go bills metered usage with no commitment; Universal Credits (monthly flex) commit to a spend level for discounted rates across eligible services — steady production fits commitment, spiky dev fits PAYG", "Committed credits are only for government customers", "PAYG is always cheaper regardless of usage pattern", "OCI has a single pricing model; the choice is cosmetic"], "evidence": [], "hint": "Which model rewards you for promising to spend?", "id": "oci-payg-vs-credits", "mins": 5, "objectives": ["PAYG", "Universal Credits"], "prompt": "How do the OCI pricing models compare?", "situation": "A company with steady, predictable production workloads plus spiky dev/test asks: pay-as-you-go versus committed credits?", "title": "The pricing-model choice", "why": "PAYG = no commitment, metered billing, maximum flexibility. Universal Credits = commit to an amount (monthly flex or annual) for lower rates, usable across many services — the discount rewards predictable spend. Match steady-state production to commitment and variable dev/test to PAYG."}, {"answer": 0, "choices": ["Always Free includes limited compute (Ampere/micro VMs), Autonomous Database instances, storage, and more — but verify current limits/regions; exceeding them bills at PAYG rates", "Always Free covers unlimited usage of every service for students", "Always Free requires a paid support plan", "Free tier resources can't run databases"], "evidence": [], "hint": "Free within limits — what happens past the limits?", "id": "oci-always-free", "mins": 5, "objectives": ["Always Free", "Free tier limits"], "prompt": "What does Always Free offer, and what is the catch to verify?", "situation": "A student wants to prototype on OCI for a semester project with zero budget: a small VM, an Oracle database, and some object storage.", "title": "The free-tier prototype", "why": "OCI Always Free provides a set of resources (compute VMs, Autonomous Databases, block/object storage, load balancer, etc.) free for the tenancy's life within published limits. The discipline: know the limits (e.g., VM counts/shapes, storage GB) because overages bill at PAYG — and check the current published terms, which Oracle can change."}, {"answer": 0, "choices": ["Defined (tag-namespace) cost-tracking tags applied at creation, enforced by policy/IAM, grouped in Cost Analysis — freeform tags work but defined tags are governable", "Rename all resources with project prefixes — names are the cost signal", "Compartments alone are enough; tags add nothing", "Budgets automatically infer project ownership"], "evidence": [], "hint": "Which metadata, applied to resources, does Cost Analysis group by?", "id": "oci-tagging", "mins": 5, "objectives": ["Tagging strategy", "Cost attribution"], "prompt": "What tagging discipline fixes attribution?", "situation": "Finance sees a 40% cost jump but can't tell which project caused it — resources have no consistent labels, and several teams share compartments.", "title": "The mystery spend", "why": "Cost-tracking tags let Cost Analysis slice spend by project/team/owner. Defined tags (under a tag namespace) can be restricted by IAM so only finance's namespace values are used — preventing tag sprawl. Require tags at creation (via policy or process) or attribution stays guesswork."}, {"answer": 0, "choices": ["Higher support tiers offer faster response SLAs and more channels — but choose the tier before the incident; know your current SLA and escalation path now", "All tiers have identical 15-minute response for any severity", "Support tiers only differ in documentation access", "Upgrading mid-incident retroactively speeds up the current ticket"], "evidence": [], "hint": "When is the right time to learn your support SLA — during the outage or before?", "id": "oci-support", "mins": 4, "objectives": ["Support tiers", "Incident readiness"], "prompt": "What should they know about OCI support tiers?", "situation": "Production is down at 3 AM. The team has basic OCI support and wonders whether they can get a faster response by 'upgrading mid-incident'.", "title": "The 3 AM severity-1", "why": "OCI support comes in tiers with different response-time targets, channels, and features (e.g., basic vs. paid tiers with faster Sev-1 response). The operational lesson: know your tier's SLA and escalation procedure before you need it; you can't negotiate response times during an outage."}]}], "lessons": [{"domain_id": "regions-ads", "title": "Regions & ADs — Core concepts", "concepts": ["Availability domains: the pattern: replicate across ADs for site resilience, and across fault domains inside an AD for hardware resilience. Fault domains are intra-AD resilience (independent racks, shared datacenter infrastructure), while regions are independent geographies.", "Fault domains: within an AD, three fault domains group racks on different hardware, so a rack failure affects only one fault domain. Surviving a region-level event requires a second region (e.g., async replication to a paired region), not more fault domains.", "Regions: realms partition OCI's global infrastructure into isolated collections of regions — the commercial realm, government realms, and others. You can subscribe to other regions for compute, storage, and networking workloads, but IAM (users, groups, compartments, policies) is anchored to the home region.", "Disaster recovery scope: match the failure scope to the isolation construct.", "OCI's distributed cloud includes Dedicated Region (a complete OCI region in the customer's datacenter), Oracle Alloy (partners run their own cloud), and Roving Edge for disconnected edge sites.", "Dedicated Region is the answer for strict residency plus cloud services on-premises; a public region in the same country may satisfy residency but not the behind-the-firewall requirement. The home region is chosen at signup and is immutable: it hosts the tenancy's IAM definitions."], "example": {"lang": "text", "code": "Worked example — availability domains\nSetup: OCI's distributed cloud includes Dedicated Region (a complete OCI region in the customer's datacenter), Oracle Alloy (partners run their own cloud)…\nReasoning: Realms partition OCI's global infrastructure into isolated collections of regions — the commercial realm, government realms, and others.\nTakeaway: The pattern: replicate across ADs for site resilience, and across fault domains inside an AD for hardware resilience.", "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."}, "pitfalls": ["Common trap: fault domains require 3 ADs to function; with one AD they silently do nothing.", "Common trap: the home region follows the first VCN created, not the tenancy.", "Common trap: a single-AD region cannot run compute instances, only storage.", "Common trap: changing the home region is automatic when the billing address changes."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "compute", "title": "Compute — Core concepts", "concepts": ["Compute shapes: flex shapes (VM.Standard.E4/E5/E6.Flex) let you customize the OCPU count and memory, so you pay for what the workload needs. Reserved capacity is for steady-state committed use; burstable instances handle spiky CPU on small shapes, not bulk discounts.", "Flex shapes: fixed shapes come in preset sizes; bare metal gives a whole server (no hypervisor) for isolation/noisy-neighbor-sensitive workloads, not for saving money on a wiki.", "Preemptible instances offer steep discounts because OCI may reclaim the capacity when needed — ideal for interruptible, checkpointed batch/CI workloads. OS Management Hub is the fleet patch-management service for Oracle Linux (and Windows): register instances, define software sources, schedule patch windows, and get compliance reporting.", "OCI Functions is the serverless platform: code runs on events (like an Object Storage upload via Events service + Notifications), scales to zero, and bills per execution.", "OKE (managed Kubernetes) is for container orchestration you manage — overkill for a sporadic thumbnailer."], "example": {"lang": "text", "code": "Worked example — compute shapes\nSetup: Preemptible instances offer steep discounts because OCI may reclaim the capacity when needed — ideal for interruptible, checkpointed batch/CI…\nReasoning: OS Management Hub is the fleet patch-management service for Oracle Linux (and Windows): register instances, define software sources, schedule patch…\nTakeaway: OCI Functions is the serverless platform: code runs on events (like an Object Storage upload via Events service + Notifications), scales to zero, and…", "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."}, "pitfalls": ["Common trap: flex shapes are fixed at 64 OCPUs; the only fix is terminating the tenancy.", "Common trap: IAM policies can stamp out identical instances when written per-AD.", "Common trap: spot markets do not exist in OCI; the only option is on-demand.", "Common trap: open SSH (port 22) on the database servers' public IPs with key auth."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "networking", "title": "Networking (VCN) — Core concepts", "concepts": ["VCN peering (local via LPG, or remote via DRG) routes between CIDR blocks — overlapping ranges make routes ambiguous, so OCI requires non-overlapping CIDRs (up to 5 CIDR blocks per VCN including the primary).", "Security lists attach to subnets and are stateless (return traffic needs explicit egress rules). Missing labels or disabled resolution breaks hostname lookup; security rules don't block DNS to the VCN resolver (169.254.169.254).", "NSGs attach to VNICs and are stateful (return traffic is automatically allowed), and membership follows the instance, not the subnet.", "NAT gateway: a NAT gateway gives private resources outbound internet access (patch downloads) with no inbound path; instances keep no public IPs."], "example": {"lang": "text", "code": "Worked example — vcn peering\nSetup: The DRG is the regional virtual router: VCNs attach to it, and on-premises networks connect through it via IPSec Site-to-Site VPN (encrypted over…\nReasoning: VCN peering (local via LPG, or remote via DRG) routes between CIDR blocks — overlapping ranges make routes ambiguous, so OCI requires non-overlapping…\nTakeaway: A NAT gateway gives private resources outbound internet access (patch downloads) with no inbound path; instances keep no public IPs.", "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."}, "pitfalls": ["Common trap: internet gateway on each VCN with VPN software on an instance.", "Common trap: the instances need an internet gateway for DNS.", "Common trap: the CIDR is too large; peering requires /24 or smaller.", "Common trap: a NAT gateway with static routes to the datacenter."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "storage", "title": "Storage — Core concepts", "concepts": ["Block Volumes provide durable, low-latency block storage for databases (attachable/detachable, with backup policies). OCI backup policies attach to block/boot volumes and run scheduled full + incremental backups to Object Storage with retention rules — the standard automated protection.", "Object Storage tiers: a block volume attaches to one instance (multi-attach is limited/specialized); Object Storage is an object API, not POSIX file semantics. Object Storage Archive tier is the lowest-cost option for rarely-accessed data with long retention; Standard tier is for hot data.", "Object versioning: enabling versioning on a bucket preserves earlier versions whenever an object is overwritten or deleted — you can list and restore the prior version. Pre-authenticated requests (PARs) grant scoped, expiring access to a bucket or object prefix via URL — no IAM user needed.", "Data protection: file Storage (NFS) suits shared file workloads, not database data files. For bulk offline ingest, OCI's Data Transfer service ships encrypted disks (or the Transfer Appliance for petabytes) to Oracle for direct upload — far faster than a thin uplink for 40 TB.", "Backup policies: clones are point-in-time copies (useful for dev/test), not a backup schedule.", "Block volume backups: lifecycle rules manage object retention, not volume backups."], "example": {"lang": "text", "code": "Worked example — block volumes\nSetup: OCI backup policies attach to block/boot volumes and run scheduled full + incremental backups to Object Storage with retention rules — the standard…\nReasoning: Block Volumes provide durable, low-latency block storage for databases (attachable/detachable, with backup policies).\nTakeaway: A block volume attaches to one instance (multi-attach is limited/specialized); Object Storage is an object API, not POSIX file semantics.", "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."}, "pitfalls": ["Common trap: object Storage lifecycle rules grant temporary write access.", "Common trap: they back up block volumes automatically.", "Common trap: attach one volume to all 12 instances in read-write mode.", "Common trap: share one boot volume across instances."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "iam-security", "title": "IAM & Security — Core concepts", "concepts": ["Compartments are OCI's fundamental organizing and isolation unit: policies grant group permissions on specific compartments, so a compromised credential scoped to dev can't reach prod.", "Least privilege: the shared model: Oracle owns security OF the cloud (facilities, hardware, virtualization, physical network); the customer owns security IN the cloud — their data classification, IAM least privilege, guest OS patching, firewall rules, and encryption choices.", "Dynamic groups let OCI resources (instances, functions) act as principals: matching rules select them, and policies grant the dynamic group permissions — the instance authenticates with its own identity via instance principals, no stored keys.", "Shared security model: cloud Guard is OCI's security-posture management: detector rules spot issues (public buckets, open security lists, etc.), and responder rules can fix them automatically. Security lists are L3/L4 packet filters (no payload inspection); NAT gateways only do outbound.", "Cloud Guard: detection + guided response is Cloud Guard's job."], "example": {"lang": "text", "code": "Worked example — compartments\nSetup: The shared model: Oracle owns security OF the cloud (facilities, hardware, virtualization, physical network); the customer owns security IN the cloud…\nReasoning: Dynamic groups let OCI resources (instances, functions) act as principals: matching rules select them, and policies grant the dynamic group…\nTakeaway: Cloud Guard is OCI's security-posture management: detector rules spot issues (public buckets, open security lists, etc.), and responder rules can fix…", "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."}, "pitfalls": ["Common trap: it generates encryption keys during scans.", "Common trap: oracle handles everything above the hypervisor, including customer IAM policies.", "Common trap: the customer handles physical datacenter security in OCI.", "Common trap: give the instance the tenancy admin's key."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "pricing-governance", "title": "Pricing & Governance — Core concepts", "concepts": ["Budgets: combine quotas (quantity guardrail) with budgets (spend signal). Budgets track spend/forecast against thresholds and fire alerts (via Notifications) — they alert, they don't auto-terminate.", "Cost-tracking tags let Cost Analysis slice spend by project/team/owner. Cost Analysis with compartment/tag grouping attributes spend to teams.", "Cost-tracking tags: tagging resources (cost-tracking tags) is what makes the attribution work; quotas can actually cap resource counts. Require tags at creation (via policy or process) or attribution stays guesswork.", "Quotas enforce hard ceilings on how many of each resource type a compartment may contain — the backstop against runaway automation.", "PAYG: the discipline: know the limits (e.g., VM counts/shapes, storage GB) because overages bill at PAYG — and check the current published terms, which Oracle can change. PAYG = no commitment, metered billing, maximum flexibility."], "example": {"lang": "text", "code": "Worked example — budgets\nSetup: Tagging resources (cost-tracking tags) is what makes the attribution work; quotas can actually cap resource counts.\nReasoning: The discipline: know the limits (e.g., VM counts/shapes, storage GB) because overages bill at PAYG — and check the current published terms, which…\nTakeaway: Cost-tracking tags let Cost Analysis slice spend by project/team/owner.", "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."}, "pitfalls": ["Common trap: always Free requires a paid support plan.", "Common trap: free tier resources can't run databases.", "Common trap: support tiers only differ in documentation access.", "Common trap: always Free covers unlimited usage of every service for students."], "try_it": "Work through this in the Terminal tab →"}], "sections": [{"id": "foundations", "title": "Foundations", "kind": "foundation", "lectures": ["m-subnetting", "f-cloud-concepts-0", "f-cloud-concepts-1", "f-cloud-concepts-2", "f-linux-cli-0", "f-linux-cli-1", "f-linux-cli-2"], "lab_ids": [], "drill_domain_ids": []}, {"id": "core", "title": "Core", "kind": "core", "lectures": ["c-regions-ads", "c-compute", "c-networking", "c-storage"], "lab_ids": ["oracle-oci-lab-1", "oracle-oci-lab-2"], "drill_domain_ids": ["regions-ads", "compute", "networking", "storage"]}, {"id": "advanced", "title": "Advanced", "kind": "advanced", "lectures": ["c-iam-security", "c-pricing-governance"], "lab_ids": ["oracle-oci-lab-3", "oracle-oci-lab-4"], "drill_domain_ids": ["iam-security", "pricing-governance"]}, {"id": "exam-prep", "title": "Exam Prep", "kind": "exam-prep", "lectures": [], "lab_ids": [], "drill_domain_ids": ["regions-ads", "compute", "networking", "storage", "iam-security", "pricing-governance"]}], "slug": "oracle-oci", "tagline": "OCI Foundations & Architect — 1Z0-1085/1072 concepts", "title": "Oracle Cloud Infrastructure", "vendor": {"certs": "1Z0-1085-26, 1Z0-1072-26", "docs": "https://education.oracle.com", "name": "Oracle"}, "labs": [{"id": "oracle-oci-lab-1", "title": "Availability domains — OCI CLI drill", "objective": "Run a short sequence of OCI CLI commands that demonstrates availability domains, then verify each result against the expected output.", "steps": ["This lab reworks the Regions & ADs practice scenario \"The two-failure scenario\" into commands you run yourself — same concept, hands-on instead of multiple choice.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: oci iam user list — the JSON envelope carries the data key", "Type exactly: oci compute instance list — the JSON envelope carries the data key", "In your own words, say what each command's output taught you about availability domains."], "checks": [{"command_pattern": "oci iam user list", "expect_contains": "data", "hint": "In the Terminal tab, run `oci iam user list`. If the check fails, confirm you typed it exactly and that the output contains \"data\"."}, {"command_pattern": "oci compute instance list", "expect_contains": "data", "hint": "In the Terminal tab, run `oci compute instance list`. If the check fails, confirm you typed it exactly and that the output contains \"data\"."}], "success_message": "Lab complete — availability domains practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"id": "oracle-oci-lab-2", "title": "Compute shapes — OCI CLI drill", "objective": "Use the OCI CLI to explore compute shapes hands-on: type each command, read what comes back, and connect the output to the concept.", "steps": ["Inspired by the Compute scenario \"The overprovisioned VM\": take its core idea and prove it live in the terminal instead of answering on paper.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: oci iam user list — the JSON envelope carries the data key", "Type exactly: oci compute instance list — the JSON envelope carries the data key", "In your own words, say what each command's output taught you about compute shapes."], "checks": [{"command_pattern": "oci iam user list", "expect_contains": "data", "hint": "In the Terminal tab, run `oci iam user list`. If the check fails, confirm you typed it exactly and that the output contains \"data\"."}, {"command_pattern": "oci compute instance list", "expect_contains": "data", "hint": "In the Terminal tab, run `oci compute instance list`. If the check fails, confirm you typed it exactly and that the output contains \"data\"."}], "success_message": "Lab complete — compute shapes practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"id": "oracle-oci-lab-3", "title": "VCN peering — OCI CLI drill", "objective": "Prove you can apply VCN peering in the OCI CLI — follow the steps, watch the output, and confirm every check passes.", "steps": ["The Networking (VCN) scenario \"The overlapping CIDR trap\" tests this concept as a question. This lab makes you demonstrate it with real commands.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: oci iam user list — the JSON envelope carries the data key", "Type exactly: oci compute instance list — the JSON envelope carries the data key", "In your own words, say what each command's output taught you about VCN peering."], "checks": [{"command_pattern": "oci iam user list", "expect_contains": "data", "hint": "In the Terminal tab, run `oci iam user list`. If the check fails, confirm you typed it exactly and that the output contains \"data\"."}, {"command_pattern": "oci compute instance list", "expect_contains": "data", "hint": "In the Terminal tab, run `oci compute instance list`. If the check fails, confirm you typed it exactly and that the output contains \"data\"."}], "success_message": "Lab complete — VCN peering practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"id": "oracle-oci-lab-4", "title": "Block Volumes — OCI CLI drill", "objective": "Run a short sequence of OCI CLI commands that demonstrates block Volumes, then verify each result against the expected output.", "steps": ["This lab reworks the Storage practice scenario \"The backup-target debate\" into commands you run yourself — same concept, hands-on instead of multiple choice.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: oci iam user list — the JSON envelope carries the data key", "Type exactly: oci compute instance list — the JSON envelope carries the data key", "In your own words, say what each command's output taught you about block Volumes."], "checks": [{"command_pattern": "oci iam user list", "expect_contains": "data", "hint": "In the Terminal tab, run `oci iam user list`. If the check fails, confirm you typed it exactly and that the output contains \"data\"."}, {"command_pattern": "oci compute instance list", "expect_contains": "data", "hint": "In the Terminal tab, run `oci compute instance list`. If the check fails, confirm you typed it exactly and that the output contains \"data\"."}], "success_message": "Lab complete — block Volumes practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"checks": [{"command_pattern": "oci iam compartment list", "expect_contains": "ilb-prod", "hint": "Run `oci iam compartment list` and find the compartment names."}, {"command_pattern": "oci iam compartment list", "expect_contains": "ACTIVE", "hint": "Read the lifecycle-state column of `oci iam compartment list`."}, {"command_pattern": "oci version", "expect_contains": "3.44.1", "hint": "Run `oci version`."}], "difficulty": 1, "id": "oracle-oci-lab-5", "objective": "List the tenancy's compartments and confirm the CLI version.", "steps": ["Open the Terminal tab for this bootcamp.", "Type exactly: oci iam compartment list — note each compartment's name and lifecycle-state.", "Type exactly: oci iam group list — note the admin and developer groups.", "Type exactly: oci version — record the CLI version.", "Why do compartments matter for billing and access control? One sentence."], "success_message": "Lab complete — tenancy mapped: compartments, groups, CLI version. You know where you are.", "title": "List the tenancy — OCI drill"}, {"checks": [{"command_pattern": "oci compute instance list", "expect_contains": "ilb-web-01", "hint": "Run `oci compute instance list`."}, {"command_pattern": "oci compute instance list", "expect_contains": "RUNNING", "hint": "Read the lifecycle-state column of `oci compute instance list`."}, {"command_pattern": "oci compute image list", "expect_contains": "Oracle-Linux-9.5", "hint": "Run `oci compute image list`."}], "difficulty": 1, "id": "oracle-oci-lab-6", "objective": "Inventory compute: instances with their states, and available platform images.", "steps": ["Open the Terminal tab.", "Type exactly: oci compute instance list — record each instance name, shape, and lifecycle-state.", "Note which instance is RUNNING and which is STOPPED.", "Type exactly: oci compute image list — record the platform image name and OS.", "Which image would you pick for a new Oracle Linux VM, and why?"], "success_message": "Lab complete — compute inventoried. Instances, states, images: the OCI compute picture.", "title": "Compute inventory — OCI drill"}, {"checks": [{"command_pattern": "oci compute instance launch --display-name ilb-lab-01", "expect_contains": "PROVISIONING", "hint": "Run `oci compute instance launch --display-name ilb-lab-01`."}, {"command_pattern": "oci compute instance list", "expect_contains": "ilb-lab-01", "hint": "Run `oci compute instance list` and find your new instance."}], "difficulty": 2, "id": "oracle-oci-lab-7", "objective": "Launch a compute instance and watch it enter PROVISIONING, then confirm it in the inventory.", "steps": ["Open the Terminal tab.", "Type exactly: oci compute instance launch --display-name ilb-lab-01 — read the returned lifecycle-state.", "Type exactly: oci compute instance list — confirm ilb-lab-01 is listed.", "What does PROVISIONING tell you that RUNNING does not?", "(Cleanup is optional: the simulator lets you terminate it with oci compute instance terminate --instance-id <id>.)"], "success_message": "Lab complete — instance launched and verified. PROVISIONING is the hallway between request and reality.", "title": "Launch an instance — OCI drill"}, {"checks": [{"command_pattern": "oci network vcn list", "expect_contains": "ilb-vcn", "hint": "Run `oci network vcn list`."}, {"command_pattern": "oci network vcn list", "expect_contains": "10.0.0.0/16", "hint": "Read the cidr-block column of `oci network vcn list`."}, {"command_pattern": "oci os bucket list", "expect_contains": "ilb-artifacts", "hint": "Run `oci os bucket list`."}, {"command_pattern": "oci iam user list", "expect_contains": "candidate", "hint": "Run `oci iam user list`."}], "difficulty": 3, "id": "oracle-oci-lab-8", "objective": "Survey the network, object storage, and IAM users — the full tenancy footprint.", "steps": ["Open the Terminal tab.", "Type exactly: oci network vcn list — record the VCN name and CIDR block.", "Type exactly: oci os bucket list — record the bucket name and namespace.", "Type exactly: oci iam user list — confirm your own identity in the tenancy.", "Type exactly: oci iam compartment list — tie it together: which compartment holds these resources?", "Summarize the tenancy in three sentences: network, storage, identity."], "success_message": "Lab complete — full tenancy survey: network, storage, identity. You read OCI like a map now.", "title": "Tenancy survey — OCI drill"}], "foundations": [{"track": "cloud-concepts", "why_needed": "OCI mirrors the universal cloud model: regions, availability domains, services, billing. Learn it vendor-neutral first."}, {"track": "linux-cli", "why_needed": "OCI compute is Linux over SSH. Command-line fluency unlocks the hands-on topics."}], "math": ["subnetting"], "simulations": [{"brief": "A new instance in the Frankfurt region cannot reach an instance in Ashburn, but instances inside each region talk fine. The network team suspects the cross-region path.", "debrief": "Cross-region traffic in OCI rides a remote peering connection between DRGs with matching route rules on both sides. When intra-region works but cross-region fails, the RPC or one side's route table is the suspect — not the security lists inside each VCN.", "difficulty": 2, "domain_id": "networking", "id": "oracle-oci-sim-1", "kind": "troubleshoot", "points": 15, "steps": [{"correct": 3, "evidence": [["ping test", "Frankfurt VM -> Ashburn VM: 100% packet loss. Frankfurt VM -> Frankfurt VM: OK"], ["topology", "Each region has its own VCN with a DRG attached"]], "explain": "Same-region traffic works, so the VCNs, subnets, and security lists are healthy. The failure is specific to the cross-region path, which in OCI means the remote peering connection (RPC) between the two DRGs — or the route rules pointing at it.", "options": ["Add an ingress rule to the Frankfurt security list", "Restart the Ashburn instance", "Increase the VCN CIDR block", "Check the remote peering connection between the DRGs and the route rules on both sides"], "symptom": "Cross-region ping fails; same-region ping works."}, {"correct": 1, "evidence": [["DRG console", "Frankfurt DRG: RPC status PEERED. Ashburn DRG: no RPC attachment"], ["route tables", "Frankfurt route table has a rule for 10.1.0.0/16 via the RPC; Ashburn has no route back"]], "explain": "Peering is one-sided: Frankfurt peers out, but Ashburn has no RPC attachment and no return route. Remote peering requires the RPC on both DRGs and route rules on both sides — fix by creating the Ashburn-side RPC and adding the return route.", "options": ["Delete and recreate the Frankfurt VCN", "Create the RPC attachment on the Ashburn DRG and add the return route rule", "Open all ports in both security lists", "Move both instances to the same AD"], "symptom": "RPC exists only on the Frankfurt side; no return route."}], "title": "Cross-region connectivity failure"}, {"brief": "Finance complains the dev compartment's bill doubled. Decide how to investigate and control cost.", "debrief": "Cost control in OCI is compartment-driven: tag resources, check cost analysis by compartment, find the unowned growth (usually a forgotten instance or an oversized shape), then right-size or schedule it. Budgets with alerts prevent the next surprise.", "difficulty": 2, "domain_id": "pricing-governance", "id": "oracle-oci-sim-2", "kind": "branching", "points": 15, "steps": [{"choices": [{"feedback": "Right instinct: compartment-scoped cost data shows exactly where the money went.", "label": "Open Cost Analysis filtered to the dev compartment", "next": "s2", "points": 2}, {"feedback": "Deleting blindly is how you take down someone's demo the day before a presentation.", "label": "Terminate the biggest instance immediately", "next": "END", "outcome": "bad", "points": 0}], "id": "s1", "text": "The dev bill doubled month over month. First move?"}, {"choices": [{"feedback": "Correct: right-sizing keeps the workload alive at the right price.", "label": "Right-size the shape to a smaller Flex OCPU count", "next": "END", "outcome": "good", "points": 2}, {"feedback": "Schedules save money but don't fix an oversized shape running 24/7.", "label": "Leave the shape, just add an auto-stop schedule", "next": "END", "outcome": "bad", "points": 1}], "id": "s2", "text": "Cost Analysis shows one VM.Standard.E5.Flex running at 8 OCPUs, averaging 4% CPU. It belongs to a test rig. Action?"}], "title": "The doubled dev bill"}, {"brief": "Put these compute provisioning steps in the order an OCI admin performs them.", "debrief": "Compartment first (everything needs a home), then the network the instance will attach to, then the image, then the launch itself, and finally verification that it reached RUNNING.", "difficulty": 1, "domain_id": "compute", "id": "oracle-oci-sim-3", "kind": "ordering", "points": 10, "steps": {"context": "Provisioning a new compute instance in OCI", "correct_order": [0, 1, 2, 3, 4], "items": ["Confirm the target compartment exists", "Verify the VCN and subnet for the instance", "Choose the platform image (e.g. Oracle Linux)", "Launch the instance with the chosen shape", "Verify the instance reaches RUNNING state"]}, "title": "Provision a compute instance"}, {"brief": "This IAM policy export controls the dev compartment. Click the misconfigured lines (2 issues to find).", "debrief": "Two classic IAM mistakes: a policy granting manage on everything in the tenancy (blast radius far beyond dev), and a group with no members still holding powerful grants (stale access). Scope policies to the compartment, and clean up empty groups.", "difficulty": 3, "domain_id": "iam-security", "id": "oracle-oci-sim-4", "kind": "config-check", "points": 10, "steps": {"config": "Policy: dev-admins-policy\nAllow group ilb-developers to manage all-resources in tenancy\nAllow group ilb-developers to read compartments in compartment ilb-dev\nAllow group ilb-empty-group to manage instances in compartment ilb-dev\nAllow group ilb-admins to manage all-resources in tenancy", "find": 2, "issues": [{"description": "Grants manage on ALL resources in the entire tenancy to the developers group — far beyond the dev compartment.", "fix": "Scope to the compartment: Allow group ilb-developers to manage all-resources in compartment ilb-dev.", "line": 2}, {"description": "ilb-empty-group has no members but holds manage-instances — stale grant waiting to be abused.", "fix": "Remove the policy statement or delete the empty group.", "line": 4}]}, "title": "Audit the dev IAM policy"}], "consoleSims": [{"brief": "The platform team needs a new compartment for the staging environment so IAM policies can scope to it. Create it in the cloud console.", "console": "generic-web", "debrief": "Compartments are the OCI unit of isolation and billing: every resource lives in one, and IAM policies grant access per compartment. A clean compartment hierarchy (prod/dev/staging) is the foundation of tenancy governance.", "difficulty": 2, "domain_id": "iam-security", "id": "oracle-oci-console-1", "tasks": [{"hint": "Keep it lowercase with the env suffix.", "id": "oracle-oci-console-1-t1", "instruction": "In the Identity console, create a compartment named ilb-staging.", "validate": {"action": "create", "params": {"name": "ilb-staging", "type": "compartment"}}}, {"hint": "A one-line purpose helps the next admin.", "id": "oracle-oci-console-1-t2", "instruction": "Set the compartment description to 'Staging workloads'.", "validate": {"action": "set-field", "params": {"field": "compartment-description", "value": "Staging workloads"}}}, {"hint": "Finish the wizard.", "id": "oracle-oci-console-1-t3", "instruction": "Click Create Compartment.", "validate": {"action": "click", "params": {"target": "create-compartment"}}}], "title": "Create a staging compartment"}, {"brief": "The backup team needs an Object Storage bucket for database backups in the home region. Create it with versioning enabled.", "console": "generic-web", "debrief": "Object Storage buckets hold backups, artifacts, and logs. Versioning protects against accidental overwrites, and the storage tier (Standard vs Archive) controls cost — hot backups stay Standard.", "difficulty": 2, "domain_id": "storage", "id": "oracle-oci-console-2", "tasks": [{"hint": "Name it after its purpose.", "id": "oracle-oci-console-2-t1", "instruction": "In the Object Storage console, create a bucket named ilb-db-backups.", "validate": {"action": "create", "params": {"name": "ilb-db-backups", "type": "bucket"}}}, {"hint": "Standard tier for backups you may restore quickly.", "id": "oracle-oci-console-2-t2", "instruction": "Set the storage tier to Standard.", "validate": {"action": "set-field", "params": {"field": "storage-tier", "value": "Standard"}}}, {"hint": "Protect against overwrites.", "id": "oracle-oci-console-2-t3", "instruction": "Enable Object Versioning, then click Create Bucket.", "validate": {"action": "click", "params": {"target": "create-bucket"}}}], "title": "Create a backup bucket"}], "terminalMissions": [{"brief": "List the compartments and confirm they are ACTIVE.", "checks": [{"command_pattern": "oci iam compartment list", "expect_contains": "ilb-prod", "hint": "Run `oci iam compartment list`."}, {"command_pattern": "oci iam compartment list", "expect_contains": "ACTIVE", "hint": "Read the lifecycle-state column."}], "difficulty": 1, "domain_id": "regions-ads", "id": "oracle-oci-mission-1", "objectives": ["List all compartments", "Confirm ACTIVE lifecycle state"], "success_message": "Mission complete — compartments listed and active.", "title": "Compartment roll call"}, {"brief": "Inventory the compute instances and note their states.", "checks": [{"command_pattern": "oci compute instance list", "expect_contains": "ilb-web-01", "hint": "Run `oci compute instance list`."}, {"command_pattern": "oci compute instance list", "expect_contains": "RUNNING", "hint": "Read the lifecycle-state column."}], "difficulty": 1, "domain_id": "compute", "id": "oracle-oci-mission-2", "objectives": ["List compute instances", "Identify which instances are RUNNING"], "success_message": "Mission complete — compute inventoried.", "title": "Compute roll call"}, {"brief": "Check which platform images are available for new instances.", "checks": [{"command_pattern": "oci compute image list", "expect_contains": "Oracle-Linux-9.5", "hint": "Run `oci compute image list`."}], "difficulty": 2, "domain_id": "compute", "id": "oracle-oci-mission-3", "objectives": ["List available images and their operating systems"], "success_message": "Mission complete — platform images confirmed.", "title": "Image catalog check"}, {"brief": "Verify the network and storage foundations.", "checks": [{"command_pattern": "oci network vcn list", "expect_contains": "10.0.0.0/16", "hint": "Run `oci network vcn list`."}, {"command_pattern": "oci os bucket list", "expect_contains": "ilb-artifacts", "hint": "Run `oci os bucket list`."}], "difficulty": 2, "domain_id": "networking", "id": "oracle-oci-mission-4", "objectives": ["List VCNs with CIDR blocks", "List Object Storage buckets"], "success_message": "Mission complete — network and storage verified.", "title": "Network and storage check"}, {"brief": "Launch a new instance for the lab environment.", "checks": [{"command_pattern": "oci compute instance launch --display-name ilb-mission-01", "expect_contains": "PROVISIONING", "hint": "Run `oci compute instance launch --display-name ilb-mission-01`."}, {"command_pattern": "oci compute instance list", "expect_contains": "ilb-mission-01", "hint": "Run `oci compute instance list` to confirm."}], "difficulty": 3, "domain_id": "compute", "id": "oracle-oci-mission-5", "objectives": ["Launch instance ilb-mission-01", "Confirm it appears in the instance list"], "success_message": "Mission complete — instance provisioning.", "title": "Launch a lab instance"}, {"brief": "Audit IAM: groups and users in the tenancy.", "checks": [{"command_pattern": "oci iam group list", "expect_contains": "ilb-admins", "hint": "Run `oci iam group list`."}, {"command_pattern": "oci iam user list", "expect_contains": "candidate", "hint": "Run `oci iam user list`."}], "difficulty": 3, "domain_id": "iam-security", "id": "oracle-oci-mission-6", "objectives": ["List IAM groups", "List IAM users"], "success_message": "Mission complete — IAM audited. Tenancy fully mapped.", "title": "IAM audit"}], "media": [{"id": "oracle-oci-regions-ads-diag", "kind": "diagram", "title": "OCI Region & Availability Domains", "svg": "assets/diagrams/oracle-oci-regions-ads.svg", "lesson_ref": "c-regions-ads", "caption": "Each region holds isolated ADs for fault tolerance.", "alt": "OCI Region & Availability Domains. Covers: AD-1, AD-2, AD-3, Compartments, IAM policies, Object Storage (regional)."}, {"id": "oracle-oci-compute-diag", "kind": "diagram", "title": "OCI Compute", "svg": "assets/diagrams/oracle-oci-compute.svg", "lesson_ref": "c-compute", "caption": "Bare metal to flexible VMs.", "alt": "OCI Compute. Shows: Bare Metal, VM shapes, Container Engine (OKE), Functions, Autoscaling."}, {"id": "oracle-oci-networking-diag", "kind": "diagram", "title": "OCI Virtual Cloud Network", "svg": "assets/diagrams/oracle-oci-networking.svg", "lesson_ref": "c-networking", "caption": "VCNs, subnets, and gateways per region design.", "alt": "OCI Virtual Cloud Network. Covers: Public subnet + IGW, Private subnet + NAT GW, Service gateway, DRG (on-prem link), Security lists, Route tables."}, {"id": "oracle-oci-storage-diag", "kind": "diagram", "title": "OCI Storage Options", "svg": "assets/diagrams/oracle-oci-storage.svg", "lesson_ref": "c-storage", "caption": "Block, object, and file — by access pattern.", "alt": "OCI Storage Options. Table with 4 rows."}, {"id": "oracle-oci-iam-security-diag", "kind": "diagram", "title": "OCI IAM Authorization", "svg": "assets/diagrams/oracle-oci-iam-security.svg", "lesson_ref": "c-iam-security", "caption": "Policies in compartments grant groups permissions.", "alt": "OCI IAM Authorization. Shows: User, Group, Compartment, Policy, Decision."}, {"id": "oracle-oci-pricing-governance-diag", "kind": "diagram", "title": "OCI Pricing & Governance", "svg": "assets/diagrams/oracle-oci-pricing-governance.svg", "lesson_ref": "c-pricing-governance", "caption": "Track spend and enforce structure.", "alt": "OCI Pricing & Governance. Shows: Universal Credits, Cost Analysis, Budgets, Compartments."}], "resources": {"cheatsheet": {"title": "Oracle Cloud Infrastructure — Cheat Sheet", "sections": [{"heading": "Regions & ADs", "items": ["Availability domains — the pattern: replicate across ADs for site resilience, and across fault domains inside an AD for hardware resilience. Fault domains are intra-AD resilience (independent racks, shared datacenter infrastructure), while regions are independent geographies.", "Fault domains — within an AD, three fault domains group racks on different hardware, so a rack failure affects only one fault domain. Surviving a region-level event requires a second region (e.g., async replication to a paired region), not more fault domains.", "Regions — realms partition OCI's global infrastructure into isolated collections of regions — the commercial realm, government realms, and others. You can subscribe to other regions for compute, storage, and networking workloads, but IAM (users, groups, compartments,…", "Disaster recovery scope — match the failure scope to the isolation construct.", "OCI — OCI's distributed cloud includes Dedicated Region (a complete OCI region in the customer's datacenter), Oracle Alloy (partners run their own cloud), and Roving Edge for disconnected edge sites.", "Dedicated Region — is the answer for strict residency plus cloud services on-premises; a public region in the same country may satisfy residency but not the behind-the-firewall requirement. The home region is chosen at signup and is immutable: it hosts the tenancy's IAM defin…", "Common trap — fault domains require 3 ADs to function; with one AD they silently do nothing.", "Common trap — the home region follows the first VCN created, not the tenancy.", "Common trap — a single-AD region cannot run compute instances, only storage.", "Common trap — changing the home region is automatic when the billing address changes."]}, {"heading": "Compute", "items": ["Compute shapes — flex shapes (VM.Standard.E4/E5/E6.Flex) let you customize the OCPU count and memory, so you pay for what the workload needs. Reserved capacity is for steady-state committed use; burstable instances handle spiky CPU on small shapes, not bulk discounts.", "Flex shapes — fixed shapes come in preset sizes; bare metal gives a whole server (no hypervisor) for isolation/noisy-neighbor-sensitive workloads, not for saving money on a wiki.", "Preemptible — Preemptible instances offer steep discounts because OCI may reclaim the capacity when needed — ideal for interruptible, checkpointed batch/CI workloads. OS Management Hub is the fleet patch-management service for Oracle Linux (and Windows): register instanc…", "OCI Functions is the serverless platform — code runs on events (like an Object Storage upload via Events service + Notifications), scales to zero, and bills per execution.", "OKE (managed Kubernetes) is for container orchestration you manage — overkill for a sporadic thumbnailer.", "Common trap — flex shapes are fixed at 64 OCPUs; the only fix is terminating the tenancy.", "Common trap — IAM policies can stamp out identical instances when written per-AD.", "Common trap — spot markets do not exist in OCI; the only option is on-demand.", "Common trap — open SSH (port 22) on the database servers' public IPs with key auth."]}, {"heading": "Networking (VCN)", "items": ["VCN — VCN peering (local via LPG, or remote via DRG) routes between CIDR blocks — overlapping ranges make routes ambiguous, so OCI requires non-overlapping CIDRs (up to 5 CIDR blocks per VCN including the primary).", "Security lists attach to subnets and — are stateless (return traffic needs explicit egress rules). Missing labels or disabled resolution breaks hostname lookup; security rules don't block DNS to the VCN resolver (169.254.169.254).", "NSGs attach to VNICs and — are stateful (return traffic is automatically allowed), and membership follows the instance, not the subnet.", "NAT gateway — a NAT gateway gives private resources outbound internet access (patch downloads) with no inbound path; instances keep no public IPs.", "Common trap — internet gateway on each VCN with VPN software on an instance.", "Common trap — the instances need an internet gateway for DNS.", "Common trap — the CIDR is too large; peering requires /24 or smaller.", "Common trap — a NAT gateway with static routes to the datacenter."]}, {"heading": "Storage", "items": ["Block Volumes — provide durable, low-latency block storage for databases (attachable/detachable, with backup policies). OCI backup policies attach to block/boot volumes and run scheduled full + incremental backups to Object Storage with retention rules — the standard autom…", "Object Storage tiers — a block volume attaches to one instance (multi-attach is limited/specialized); Object Storage is an object API, not POSIX file semantics. Object Storage Archive tier is the lowest-cost option for rarely-accessed data with long retention; Standard tier is fo…", "Object versioning — enabling versioning on a bucket preserves earlier versions whenever an object is overwritten or deleted — you can list and restore the prior version. Pre-authenticated requests (PARs) grant scoped, expiring access to a bucket or object prefix via URL — no I…", "Data protection — file Storage (NFS) suits shared file workloads, not database data files. For bulk offline ingest, OCI's Data Transfer service ships encrypted disks (or the Transfer Appliance for petabytes) to Oracle for direct upload — far faster than a thin uplink for 40 TB.", "Backup policies — clones are point-in-time copies (useful for dev/test), not a backup schedule.", "Block volume backups — lifecycle rules manage object retention, not volume backups.", "Common trap — object Storage lifecycle rules grant temporary write access.", "Common trap — they back up block volumes automatically.", "Common trap — attach one volume to all 12 instances in read-write mode.", "Common trap — share one boot volume across instances."]}, {"heading": "IAM & Security", "items": ["Compartments are OCI's fundamental organizing and isolation unit — policies grant group permissions on specific compartments, so a compromised credential scoped to dev can't reach prod.", "Least privilege — the shared model: Oracle owns security OF the cloud (facilities, hardware, virtualization, physical network); the customer owns security IN the cloud — their data classification, IAM least privilege, guest OS patching, firewall rules, and encryption choices.", "Dynamic — Dynamic groups let OCI resources (instances, functions) act as principals: matching rules select them, and policies grant the dynamic group permissions — the instance authenticates with its own identity via instance principals, no stored keys.", "Shared security model — cloud Guard is OCI's security-posture management: detector rules spot issues (public buckets, open security lists, etc.), and responder rules can fix them automatically. Security lists are L3/L4 packet filters (no payload inspection); NAT gateways only do o…", "Cloud Guard — detection + guided response is Cloud Guard's job.", "Common trap — it generates encryption keys during scans.", "Common trap — oracle handles everything above the hypervisor, including customer IAM policies.", "Common trap — the customer handles physical datacenter security in OCI.", "Common trap — give the instance the tenancy admin's key."]}, {"heading": "Pricing & Governance", "items": ["Budgets — combine quotas (quantity guardrail) with budgets (spend signal). Budgets track spend/forecast against thresholds and fire alerts (via Notifications) — they alert, they don't auto-terminate.", "Cost-tracking — Cost-tracking tags let Cost Analysis slice spend by project/team/owner. Cost Analysis with compartment/tag grouping attributes spend to teams.", "Cost-tracking tags — tagging resources (cost-tracking tags) is what makes the attribution work; quotas can actually cap resource counts. Require tags at creation (via policy or process) or attribution stays guesswork.", "Quotas — Quotas enforce hard ceilings on how many of each resource type a compartment may contain — the backstop against runaway automation.", "PAYG — the discipline: know the limits (e.g., VM counts/shapes, storage GB) because overages bill at PAYG — and check the current published terms, which Oracle can change. PAYG = no commitment, metered billing, maximum flexibility.", "Common trap — always Free requires a paid support plan.", "Common trap — free tier resources can't run databases.", "Common trap — support tiers only differ in documentation access.", "Common trap — always Free covers unlimited usage of every service for students."]}]}, "glossary": [{"term": "OCI", "def": "OCI Functions is the serverless platform: code runs on events (like an Object Storage upload via Events service + Notifications), scales to zero, and bills per execution."}, {"term": "IAM", "def": "Regions: realms partition OCI's global infrastructure into isolated collections of regions — the commercial realm, government realms, and others. You can subscribe to other regions for compute, storage, and networking workloads, but IAM…"}, {"term": "VCN", "def": "OCI's private DNS resolves instance hostnames within a VCN when DNS resolution is enabled and DNS labels are set on the VCN/subnets (instances get FQDNs like host.subnet.vcn.oraclevcn.com). Missing labels or disabled resolution breaks ho…"}, {"term": "Object Storage", "def": "Object Storage tiers: a block volume attaches to one instance (multi-attach is limited/specialized); Object Storage is an object API, not POSIX file semantics. Object Storage Archive tier is the lowest-cost option for rarely-accessed dat…"}, {"term": "DRG", "def": "The DRG is the regional virtual router: VCNs attach to it, and on-premises networks connect through it via IPSec Site-to-Site VPN (encrypted over internet) or FastConnect (private dedicated circuit). Remote peering between VCNs also goes…"}, {"term": "DNS", "def": "OCI's private DNS resolves instance hostnames within a VCN when DNS resolution is enabled and DNS labels are set on the VCN/subnets (instances get FQDNs like host.subnet.vcn.oraclevcn.com). Missing labels or disabled resolution breaks ho…"}, {"term": "CIDR", "def": "Common trap: the CIDR is too large; peering requires /24 or smaller."}, {"term": "PAYG", "def": "PAYG: the discipline: know the limits (e.g., VM counts/shapes, storage GB) because overages bill at PAYG — and check the current published terms, which Oracle can change. PAYG = no commitment, metered billing, maximum flexibility."}, {"term": "NFS", "def": "Data protection: file Storage (NFS) suits shared file workloads, not database data files. For bulk offline ingest, OCI's Data Transfer service ships encrypted disks (or the Transfer Appliance for petabytes) to Oracle for direct upload —…"}, {"term": "AD", "def": "Fault domains are intra-AD resilience (independent racks, shared datacenter infrastructure), while regions are independent geographies. Some OCI regions have 1 AD and some have 3."}, {"term": "OS", "def": "OS Management Hub is the fleet patch-management service for Oracle Linux (and Windows): register instances, define software sources, schedule patch windows, and get compliance reporting. Cloud Guard is a security-posture/threat detector,…"}, {"term": "OKE", "def": "OKE (managed Kubernetes) is for container orchestration you manage — overkill for a sporadic thumbnailer."}, {"term": "Security", "def": "Security lists attach to subnets and are stateless (return traffic needs explicit egress rules). Missing labels or disabled resolution breaks hostname lookup; security rules don't block DNS to the VCN resolver (169.254.169.254)."}, {"term": "POSIX", "def": "Object Storage tiers: a block volume attaches to one instance (multi-attach is limited/specialized); Object Storage is an object API, not POSIX file semantics. Object Storage Archive tier is the lowest-cost option for rarely-accessed dat…"}, {"term": "VM", "def": "Compute shapes: flex shapes (VM.Standard.E4/E5/E6.Flex) let you customize the OCPU count and memory, so you pay for what the workload needs. Reserved capacity is for steady-state committed use; burstable instances handle spiky CPU on sma…"}, {"term": "Cost Analysis", "def": "Cost-tracking tags let Cost Analysis slice spend by project/team/owner. Cost Analysis with compartment/tag grouping attributes spend to teams."}, {"term": "Cloud Guard", "def": "Cloud Guard: detection + guided response is Cloud Guard's job."}, {"term": "Free", "def": "Common trap: always Free requires a paid support plan."}, {"term": "Fault", "def": "Fault domains: within an AD, three fault domains group racks on different hardware, so a rack failure affects only one fault domain. Surviving a region-level event requires a second region (e.g., async replication to a paired region), no…"}, {"term": "Budgets", "def": "Budgets: combine quotas (quantity guardrail) with budgets (spend signal). Budgets track spend/forecast against thresholds and fire alerts (via Notifications) — they alert, they don't auto-terminate."}, {"term": "Cost-tracking", "def": "Cost-tracking tags: tagging resources (cost-tracking tags) is what makes the attribution work; quotas can actually cap resource counts. Require tags at creation (via policy or process) or attribution stays guesswork."}, {"term": "Dedicated Region", "def": "Dedicated Region is the answer for strict residency plus cloud services on-premises; a public region in the same country may satisfy residency but not the behind-the-firewall requirement. The home region is chosen at signup and is immuta…"}, {"term": "IPs", "def": "Bastion provides just-in-time SSH access to private-subnet resources without public IPs or a persistent bastion host: sessions are time-boxed, authenticated via IAM, and logged. A NAT gateway only allows outbound-initiated traffic (no in…"}, {"term": "Standard", "def": "Object Storage tiers: a block volume attaches to one instance (multi-attach is limited/specialized); Object Storage is an object API, not POSIX file semantics. Object Storage Archive tier is the lowest-cost option for rarely-accessed dat…"}, {"term": "HTTP", "def": "WAF inspects HTTP/S traffic against managed rules (OWASP Top 10, bots, rate limiting) before it reaches the load balancer. Network-layer DDoS absorption happens at OCI's edge."}], "links": [{"label": "Oracle — official site", "url": "https://education.oracle.com", "note": "Official vendor documentation and certification information"}, {"label": "Oracle Database documentation", "url": "https://docs.oracle.com/en/database/", "note": "Official Oracle Database docs"}, {"label": "Oracle Database 23ai docs", "url": "https://docs.oracle.com/en/database/oracle/oracle-database/", "note": "Official Oracle Database reference"}, {"label": "Oracle Database product page", "url": "https://www.oracle.com/database/", "note": "Official Oracle Database page"}, {"label": "Oracle Database technologies", "url": "https://www.oracle.com/database/technologies/", "note": "Official Oracle Database technology pages"}, {"label": "Oracle Cloud documentation", "url": "https://docs.oracle.com/en-us/iaas/Content/home.htm", "note": "Official Oracle Cloud docs"}, {"label": "Oracle Cloud home", "url": "https://www.oracle.com/cloud/", "note": "Official Oracle Cloud page"}], "checklist": ["Get 7–8 hours of sleep the night before — fatigue destroys recall faster than any topic gap.", "Bring valid government-issued photo ID and arrive at the test center 30 minutes early.", "Eat a real meal beforehand; bring water and a light snack if the center allows them.", "Read every question twice before scanning the answer choices.", "Flag uncertain questions and move on — return with fresh eyes at the end.", "Eliminate the obviously wrong answers first, then compare the survivors.", "Budget your time: answer steadily and keep a 10–15 minute review buffer.", "Re-run your weakest-domain drill until mastery is at least 80%.", "For Regions & ADs: restate the 'why' behind each scenario answer in your own words — if you can't explain it, you don't own it.", "Redo one Compute lab from scratch without looking at the steps.", "Recite the key Networking (VCN) terms from the glossary aloud from memory."]}}
+{
+ "slug": "oracle-oci",
+ "title": "Oracle Cloud Infrastructure",
+ "tagline": "Oracle Cloud Infrastructure fundamentals: regions, compartments and IAM, virtual networking, compute and storage, and managed Kubernetes with OKE. This course confers no certificate and is not affilia",
+ "vendor": {
+  "name": "Independent interview prep (not affiliated with ThreatLocker)",
+  "certs": "",
+  "docs": "https://www.threatlocker.com"
+ },
+ "disclaimer": "Independent interview-prep material by Interstitium Labs. Not affiliated with, endorsed by, or sponsored by ThreatLocker or any vendor mentioned. Confers no certificate. All scenarios are original practice content; no exam or vendor-training content is reproduced.",
+ "accent": "#e5484d",
+ "domains": [
+  {
+   "id": "oracle-oci",
+   "name": "Oracle Cloud Infrastructure",
+   "summary": "Oracle Cloud Infrastructure fundamentals: regions, compartments and IAM, virtual networking, compute and storage, and managed Kubernetes with OKE. This course confers no certificate and is not affiliated with or endorsed by Oracle.",
+   "scenarios": [
+    {
+     "id": "oracle-oci-sc1",
+     "title": "Draw the Boundaries",
+     "situation": "A startup is moving to OCI. The initial plan puts every resource - production, staging, and each team's experiments - in the root compartment 'for simplicity.' The cloud architect pushes back.",
+     "prompt": "How should resources be organized?",
+     "evidence": [
+      [
+       "IAM policy example",
+       "Allow group prod-admins to manage all-resources in compartment production"
+      ]
+     ],
+     "choices": [
+      "Create compartments per environment and team, and scope IAM policies to compartments",
+      "Keep everything in the root compartment - it is simpler and policies still work",
+      "Create one compartment per individual resource for maximum isolation",
+      "Create a separate tenancy for each developer"
+     ],
+     "answer": 0,
+     "why": "Compartments are OCI's unit of isolation for both access control and cost tracking. Policies attach at compartment scope, so per-environment compartments make least privilege expressible. Root-everything makes policies all-or-nothing; per-resource compartments are unmanageable; tenancies are billing/security roots, not team folders.",
+     "hint": "Where do IAM policies attach, and what does that imply about how you group resources?",
+     "objectives": [
+      "compartments",
+      "IAM policy scope"
+     ],
+     "mins": 5,
+     "difficulty": 1
+    },
+    {
+     "id": "oracle-oci-sc2",
+     "title": "Keep the Database Dark",
+     "situation": "A two-tier app is moving to OCI: web servers that need inbound 443 from the internet, and a database that must never be reachable from the internet but needs outbound access for patches.",
+     "prompt": "How should the database tier be networked?",
+     "evidence": [
+      [
+       "Planned topology",
+       "web subnet: 10.0.1.0/24 (public, internet gateway route)\ndb subnet: 10.0.2.0/24 (private, no internet gateway route)"
+      ]
+     ],
+     "choices": [
+      "Place the database in the private subnet with no public IP; give it outbound-only access via a NAT gateway",
+      "Place the database in the public subnet but add a security list rule denying all inbound traffic",
+      "Place the database in the public subnet and rely on the OS firewall being off",
+      "Put the database in the same subnet as the web tier and share its security rules"
+     ],
+     "answer": 0,
+     "why": "A private subnet has no route to an internet gateway, so inbound internet traffic cannot reach the database regardless of security rules - network architecture enforces the policy instead of a single rule. A NAT gateway still allows outbound patching. The other options leave the database one misconfigured rule away from exposure.",
+     "hint": "Which design makes internet reachability impossible by routing, rather than by a rule someone could delete?",
+     "objectives": [
+      "VCN subnets",
+      "public vs private routing"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "oracle-oci-sc3",
+     "title": "The Verb That Wasn't Enough",
+     "situation": "A developer in the 'developers' group tries to launch a compute instance in the dev compartment and gets an authorization error. The policy reads: Allow group developers to use instances in compartment dev. The admin insists the policy 'clearly covers instances.'",
+     "prompt": "Why is the launch denied, and what is the minimal fix?",
+     "evidence": [
+      [
+       "Policy",
+       "Allow group developers to use instances in compartment dev"
+      ],
+      [
+       "Console error",
+       "Not authorized: CreateInstance in compartment dev"
+      ]
+     ],
+     "choices": [
+      "The 'use' verb does not include create - change the verb to 'manage' (or add the create permission)",
+      "The developer needs to be added to the tenancy administrators group",
+      "The developer should create a second OCI user account",
+      "The console is caching stale permissions - wait an hour and retry"
+     ],
+     "answer": 0,
+     "why": "OCI verbs are hierarchical: inspect < use < manage, and 'use' covers operating existing resources, not creating them. CreateInstance requires the manage verb (or equivalent). Making the developer a tenancy admin would work but violates least privilege; a new account or waiting changes nothing about the policy.",
+     "hint": "Compare the verb in the policy with the verb in the error message. What does 'use' actually permit?",
+     "objectives": [
+      "IAM verbs",
+      "least privilege"
+     ],
+     "mins": 7,
+     "difficulty": 2
+    },
+    {
+     "id": "oracle-oci-sc4",
+     "title": "Nodes That Can't Phone Home",
+     "situation": "An OKE cluster's worker nodes live in a private subnet. Pods stay in Pending: the nodes cannot pull container images from OCIR and cannot reach the internet at all. The private subnet's route table has no 0.0.0.0/0 target.",
+     "prompt": "What is the correct fix?",
+     "evidence": [
+      [
+       "Route table (private subnet)",
+       "10.0.0.0/16 -> local\n0.0.0.0/0 -> (no target)"
+      ]
+     ],
+     "choices": [
+      "Add a NAT gateway and a route rule sending 0.0.0.0/0 from the private subnet to it",
+      "Move the worker nodes to the public subnet with public IPs",
+      "Open 0.0.0.0/0 inbound on the workers' security list",
+      "Upgrade the worker nodes to a larger shape"
+     ],
+     "answer": 0,
+     "why": "The nodes have no outbound path at all - the route table simply drops internet-bound traffic. A NAT gateway provides outbound-only connectivity, which is exactly what image pulls need, while keeping the nodes unreachable inbound. Public IPs would expose the workers; an inbound rule does nothing for outbound traffic; shape size is irrelevant to routing.",
+     "hint": "Image pulls are outbound connections. What outbound path does the route table currently offer?",
+     "objectives": [
+      "OKE networking",
+      "NAT gateway",
+      "route tables"
+     ],
+     "mins": 8,
+     "difficulty": 2
+    },
+    {
+     "id": "oracle-oci-sc5",
+     "title": "DR on a Budget",
+     "situation": "A workload needs disaster recovery against region loss: RPO 24 hours, RTO 4 hours, minimal steady-state cost. The team debates active-active, pilot light with a running standby database, and backup-based recovery.",
+     "prompt": "Which design meets the requirements at the lowest steady-state cost?",
+     "evidence": [
+      [
+       "Requirements",
+       "RPO: 24h | RTO: 4h | budget: minimal steady-state spend"
+      ]
+     ],
+     "choices": [
+      "Cross-region copies of Object Storage backups plus infrastructure-as-code to rebuild the stack in the DR region",
+      "Active-active deployment across two regions with global load balancing",
+      "Pilot light: a running standby database in the DR region with application servers stopped",
+      "Hourly backups kept in a single region"
+     ],
+     "answer": 0,
+     "why": "A 24-hour RPO is satisfied by daily cross-region backup copies, and a 4-hour RTO is achievable with automated IaC rebuilds - with near-zero steady-state cost since nothing runs in the DR region until needed. Active-active and pilot light pay for idle capacity around the clock; single-region backups do not survive region loss at all.",
+     "hint": "Match each option's steady-state cost against the RPO/RTO. Which is the cheapest design that still survives a region failure inside the targets?",
+     "objectives": [
+      "disaster recovery",
+      "RPO/RTO",
+      "cost trade-offs"
+     ],
+     "mins": 9,
+     "difficulty": 3
+    },
+    {
+     "id": "oracle-oci-sc6",
+     "title": "The Noisy Neighbor",
+     "situation": "A latency-sensitive trading service on a flexible VM shape shows periodic p99 latency spikes. Metrics show the spikes correlate with high steal time - the physical host is oversubscribed by other tenants at those moments. Adding OCPUs did not help.",
+     "prompt": "What is the right move for this workload?",
+     "evidence": [
+      [
+       "Metrics",
+       "p99 latency spikes correlate with CPU steal time on the host\nOCPU increase: no improvement"
+      ]
+     ],
+     "choices": [
+      "Move the workload to bare metal or a dedicated host so no other tenant shares the physical hardware",
+      "Keep adding OCPUs to the flexible shape until the spikes disappear",
+      "Migrate the workload to a different region",
+      "Rewrite the application to tolerate the spikes"
+     ],
+     "answer": 0,
+     "why": "Steal time means the hypervisor is giving cycles to other tenants - more virtual CPUs on the same shared host cannot fix contention for the physical machine. Bare metal or a dedicated host removes the noisy neighbor entirely. A new region has the same shared-tenancy model; rewriting the app treats a platform problem as an application problem.",
+     "hint": "Steal time is a symptom of sharing physical hardware. Which option stops sharing it?",
+     "objectives": [
+      "compute shapes",
+      "dedicated hosts",
+      "performance isolation"
+     ],
+     "mins": 8,
+     "difficulty": 3
+    }
+   ]
+  }
+ ],
+ "lessons": [
+  {
+   "domain_id": "oracle-oci",
+   "title": "Oracle Cloud Infrastructure - Core concepts",
+   "concepts": [
+    "A tenancy is the root of your OCI footprint; compartments are the isolation units inside it. Put environments and teams in their own compartments so IAM policies express least privilege and cost tracking stays clean.",
+    "IAM is users in groups, granted by policies written as 'Allow group X to <verb> <resource> in compartment Y'. Verbs ascend inspect < use < manage; dynamic groups let instances call OCI APIs without storing credentials.",
+    "A VCN is your private network: a CIDR block carved into subnets, with route tables and gateways. Public subnets route through an internet gateway; private subnets use a NAT gateway for outbound-only traffic or a service gateway for Oracle services.",
+    "Security lists apply at the subnet level and need explicit return rules; network security groups attach to individual VNICs for finer control. Layer them: broad subnet rules outside, precise NSG rules inside.",
+    "OKE is managed Kubernetes: Oracle runs the control plane while you run node pools. Keep workers in private subnets, pull images through a NAT or service gateway, and expose services through OCI load balancers.",
+    "Compute shapes (flexible E4/E5, bare metal, dedicated hosts) trade cost against isolation. Block volumes and Object Storage (Standard vs Archive tiers) separate performance from durability - match the tier to how often the data is read."
+   ],
+   "example": {
+    "lang": "shell",
+    "code": "oci iam compartment list \\\n  --compartment-id \"$OCI_TENANCY\" \\\n  --query 'data[].{Name:name, OCID:id}' \\\n  --output table",
+    "walkthrough": "List compartments to confirm your CLI authentication and tenancy OCID work before creating anything. The JMESPath query keeps output readable as the tenancy grows - build this verification habit for every new environment."
+   },
+   "pitfalls": [
+    "Common trap: building everything in the root compartment - policies become all-or-nothing and chargeback is impossible.",
+    "Common trap: a 0.0.0.0/0 SSH rule on a public subnet - restrict source CIDRs or use the bastion service instead.",
+    "Common trap: assuming security lists are stateful - write the return (egress/ingress) rules for every flow you allow.",
+    "Common trap: archiving data you read daily - the Archive tier restores take hours and cost per retrieval; keep hot data in Standard."
+   ],
+   "try_it": "Work through this in the Labs tab."
+  }
+ ],
+ "labs": [
+  {
+   "id": "oracle-oci-lab1",
+   "domain_id": "oracle-oci",
+   "title": "Map the Tenancy",
+   "objective": "Use the OCI CLI to inventory regions and compartments, verifying authentication before any resource work.",
+   "steps": [
+    "Confirm the CLI is authenticated and print your tenancy OCID: oci iam tenancy get --tenancy-id $OCI_TENANCY --query 'data.id'",
+    "List all subscribed regions: oci iam region list --query 'data[].name' --output table",
+    "Record your home region from the output for later labs.",
+    "List compartments in the tenancy: oci iam compartment list --compartment-id $OCI_TENANCY --query 'data[].{Name:name, State:lifecycle-state}' --output table",
+    "Describe one compartment in full: oci iam compartment get --compartment-id <ocid-from-above>"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^oci\\s+iam\\s+region",
+     "expect_contains": "us-ashburn-1",
+     "hint": "Region list output includes region names like us-ashburn-1 - pick your home region from it."
+    },
+    {
+     "command_pattern": "^oci\\s+iam\\s+compartment\\s+list",
+     "expect_contains": "Name",
+     "hint": "The JMESPath query projects each compartment's name; check the table header."
+    }
+   ]
+  },
+  {
+   "id": "oracle-oci-lab2",
+   "domain_id": "oracle-oci",
+   "title": "Design a Two-Tier VCN",
+   "objective": "Plan CIDR blocks, subnets, and gateways for a web-plus-database topology and validate the math before creating anything.",
+   "steps": [
+    "Choose a VCN CIDR that does not collide with on-premises ranges: 10.0.0.0/16.",
+    "Carve subnets: web 10.0.1.0/24 (public), app 10.0.2.0/24 (private), db 10.0.3.0/24 (private).",
+    "Assign gateways: internet gateway for the public subnet route table; NAT gateway for the private route table.",
+    "Write the route rules: public 0.0.0.0/0 -> internet gateway; private 0.0.0.0/0 -> NAT gateway.",
+    "Validate with Python that no subnet overlaps another: python3 -c \"import ipaddress; nets=[ipaddress.ip_network(c) for c in ['10.0.1.0/24','10.0.2.0/24','10.0.3.0/24']]; print('no overlap' if not any(a.overlaps(b) for i,a in enumerate(nets) for b in nets[i+1:]) else 'OVERLAP')\""
+   ],
+   "checks": [
+    {
+     "command_pattern": "^python3\\s",
+     "expect_contains": "no overlap",
+     "hint": "The ipaddress overlap check must print 'no overlap' before you commit to these CIDRs."
+    }
+   ]
+  }
+ ],
+ "simulations": [],
+ "consoleSims": [],
+ "terminalMissions": [],
+ "sections": [
+  {
+   "id": "sec-full-spectrum",
+   "title": "Full Spectrum Dominance \u2014 core path",
+   "kind": "core",
+   "lectures": [],
+   "lab_ids": [
+    "fsd-tl-lab-1",
+    "fsd-tl-lab-2",
+    "fsd-tl-lab-3",
+    "fsd-sg-lab-1",
+    "fsd-sg-lab-2",
+    "fsd-sg-lab-3",
+    "fsd-ai-lab-1",
+    "fsd-ai-lab-2",
+    "fsd-ai-lab-3"
+   ],
+   "drill_domain_ids": [
+    "tl-interview",
+    "tl-endpoint-ops",
+    "sec-graphs",
+    "graph-defense",
+    "ml-defense",
+    "ai-agent-sec"
+   ]
+  }
+ ],
+ "behavioral": [
+  {
+   "prompt": "Tell me about the most technically difficult problem you have run into \u2014 a homelab, a broken environment, anything \u2014 and how you solved it.",
+   "framework": "STAR",
+   "points": [
+    "Pick ONE problem with a real evidence trail: the symptom, what you measured, the hypothesis you tested",
+    "Show the loop: scope, observe, hypothesize, smallest safe change, validate \u2014 interviewers score the method, not just the fix",
+    "Name the tools (VM build, networking, logs) and the lesson it taught you",
+    "Close with the result in concrete terms: what works now that did not before"
+   ],
+   "pitfalls": [
+    "Choosing a story with no real obstacle (\u201cI Googled it\u201d is not a story)",
+    "Skipping validation \u2014 saying it worked without proving it",
+    "Rambling past two minutes without reaching the result"
+   ]
+  },
+  {
+   "prompt": "Tell me about a time you dealt with a frustrated customer or user while something was broken.",
+   "framework": "STAR",
+   "points": [
+    "Lead with empathy and ownership: acknowledge the impact before the technical detail",
+    "Show translation: what you told them, in their language, plus the timeline you committed to",
+    "Show judgment: the narrow fix you chose and what you refused to do (e.g., disabling the control to clear the symptom)",
+    "Close with the relationship outcome, not just the technical one"
+   ],
+   "pitfalls": [
+    "Badmouthing the customer to sound decisive",
+    "Promising a timeline you could not keep",
+    "Framing the user as the problem rather than the situation"
+   ]
+  },
+  {
+   "prompt": "Why ThreatLocker, and why cybersecurity?",
+   "framework": "STAR",
+   "points": [
+    "Connect prevention to something concrete: a moment you saw detection arrive too late, or a system you hardened",
+    "Tie their model to your instincts: deny-by-default matches how you already think about trust",
+    "Show service orientation: the Cyber Hero culture rewards the 2 a.m. helper \u2014 give an example of being one",
+    "Name one forward-looking reason: Zero Trust, the MSP mission, or the bootcamp community investment"
+   ],
+   "pitfalls": [
+    "Generic flattery with no specifics about the company",
+    "Leading with compensation, title, or location convenience",
+    "Claiming expertise in products you have only read about \u2014 frame it as studied, not mastered"
+   ]
+  },
+  {
+   "framework": "STAR",
+   "pitfalls": [
+    "Staying vague ('I analyzed the data') instead of naming what you connected.",
+    "Skipping your own role: what did YOU see that others missed?",
+    "No outcome: what changed because you joined the dots?"
+   ],
+   "points": [
+    "The scattered signals and why nobody had connected them yet",
+    "The specific links you drew between them (shared host, time, infrastructure)",
+    "What the bigger picture turned out to be and what action it drove",
+    "What the experience taught you about investigating"
+   ],
+   "prompt": "Tell me about a time you connected scattered clues into a bigger picture that others had missed."
+  },
+  {
+   "framework": "STAR",
+   "pitfalls": [
+    "Claiming you fixed everything: credibility comes from trade-offs, not heroics.",
+    "Hiding the constraint: the limitation is what makes the prioritization story real.",
+    "No metric: 'better' needs a before-and-after."
+   ],
+   "points": [
+    "The constraint (time, budget, staff) and the size of the backlog",
+    "How you decided what mattered most (what was reachable, what was critical)",
+    "What you did first and what you deliberately deferred",
+    "The measurable result of the prioritization"
+   ],
+   "prompt": "Describe a time you had to prioritize risks or fixes with limited time or resources. How did you decide what came first?"
+  },
+  {
+   "framework": "STAR",
+   "pitfalls": [
+    "Reciting jargon to a non-technical audience and calling it communication.",
+    "Skipping the audience's reaction: did they actually understand and act?",
+    "Making yourself the hero instead of the translator."
+   ],
+   "points": [
+    "The technical finding and why it mattered",
+    "Who the audience was and what they cared about",
+    "How you reframed it (a picture, an analogy, a story)",
+    "What decision or action the audience took because they understood"
+   ],
+   "prompt": "Tell me about a time you explained a complex technical finding to a non-technical audience and it changed a decision."
+  },
+  {
+   "prompt": "Tell me about a time you used automation or AI to solve a security problem.",
+   "framework": "STAR",
+   "points": [
+    "The repetitive security task and what it cost in analyst time",
+    "The automation or AI approach you built and how you validated it",
+    "Measured outcome: time saved, detection gained, false positives changed"
+   ],
+   "pitfalls": [
+    "Describing the tool but never the validation",
+    "No measurable outcome"
+   ]
+  },
+  {
+   "prompt": "Describe a time you had to decide whether to trust an automated security decision.",
+   "framework": "STAR",
+   "points": [
+    "The stakes of the automated action and its blast radius",
+    "How you verified before acting (or the gate you built)",
+    "What happened and what you would automate differently next time"
+   ],
+   "pitfalls": [
+    "Saying you always trust the tool",
+    "No mention of blast radius or reversibility"
+   ]
+  }
+ ],
+ "resources": {
+  "cheatsheet": {
+   "title": "Full Spectrum Dominance \u2014 field reference",
+   "sections": [
+    {
+     "heading": "Company facts (verified)",
+     "items": [
+      "Founded 2017 in Orlando, FL \u2014 Danny Jenkins (CEO), Sami Jenkins (COO), John Carolan (QA)",
+      "Philosophy: deny-by-default / default-deny \u2014 approve known-good, deny the rest",
+      "Customers: 70,000+ organizations, sold heavily through the MSP channel",
+      "Funding: $190M Series F, July 2026 (Elephant-led); ~730 employees",
+      "Interview address: 1901 Summit Tower Blvd, Orlando, FL 32810",
+      "Culture: in-office 5 days/week; free lunch; post-offer background + drug screening"
+     ]
+    },
+    {
+     "heading": "Product stack",
+     "items": [
+      "Allowlisting \u2014 default-deny execution control for apps, DLLs, scripts, installers",
+      "Ringfencing \u2014 constrains allowed apps: app-to-app, file, registry, network",
+      "Storage Control \u2014 USB/device policy by serial, user, file type, encryption",
+      "Elevation Control \u2014 just-in-time per-app admin, no standing rights",
+      "Network Control \u2014 host firewall; port/IP/dynamic-ACL rules; ZTNA foundation",
+      "Web Control \u2014 agent-based DNS/URL category filtering, works off-network",
+      "Cyber Hero MDR \u2014 24/7/365 US-based response, ~60-second average",
+      "Testing Environment \u2014 one-button VDI sandbox; checks AV flags, canary files, registry changes"
+     ]
+    },
+    {
+     "heading": "Rule strength (strongest to weakest)",
+     "items": [
+      "Certificate/publisher rules \u2014 survive version updates",
+      "Hash rules \u2014 precise but break on every new version",
+      "Path rules \u2014 weakest; never in user-writable locations",
+      "Learning Mode catalogs before enforcement; Installation Mode pauses blocking \u2014 scope and time-box both"
+     ]
+    },
+    {
+     "heading": "Terminal evidence commands",
+     "items": [
+      "nmap <host> \u2014 which ports answer (22/80/443 open)",
+      "dig <name> \u2014 ANSWER SECTION with the A record",
+      "ss \u2014 listening sockets",
+      "systemctl status <svc> \u2014 unit state",
+      "journalctl -u <svc> \u2014 service logs",
+      "sha256sum <file> \u2014 real SHA-256 identity",
+      "grep <pattern> <file> \u2014 search the record",
+      "ps \u2014 what is actually running"
+     ]
+    },
+    {
+     "heading": "Graph vocabulary",
+     "items": [
+      "node \u2014 any entity tracked in the model (user, host, IP, domain, file hash, vulnerability)",
+      "edge \u2014 a labeled relationship between two nodes (logged into, resolved to, downloaded)",
+      "degree \u2014 number of edges on a node; high-degree nodes are attacker highways",
+      "centrality \u2014 how much traffic or how many paths flow through a node",
+      "directed edge \u2014 a relationship with a direction (A downloaded FROM B)",
+      "security graph \u2014 the living model of your whole environment as nodes and edges",
+      "attack graph \u2014 the subgraph of exploitable paths to your targets",
+      "knowledge graph \u2014 threat-intel indicators linked to campaigns and actors"
+     ]
+    },
+    {
+     "heading": "Attack-graph playbook",
+     "items": [
+      "inventory first \u2014 you cannot graph what you have not discovered",
+      "model flaws AND misconfigs as exploit edges",
+      "compute shortest paths to the crown jewels",
+      "find the choke point (highest betweenness on those paths)",
+      "break the path: patch, segment, or remove the edge",
+      "re-scan and re-run the graph to prove the path is gone",
+      "never trust yesterday's graph \u2014 redeployments redraw the map"
+     ]
+    },
+    {
+     "heading": "Zero Trust + graphs",
+     "items": [
+      "never trust, always verify \u2014 re-evaluate every access decision",
+      "assume breach \u2014 treat unexpected edges as hostile until proven otherwise",
+      "microsegmentation \u2014 allow-list approved edges, alert on new ones",
+      "ReBAC \u2014 policies are path queries on the identity graph",
+      "continuous verification \u2014 device/location/behavior edges change, trust follows",
+      "anomalous edge \u2014 a first-seen connection between strangers is the classic signal"
+     ]
+    },
+    {
+     "heading": "ML detection vocabulary",
+     "items": [
+      "Supervised learning \u2014 learns from labeled examples; strong on known threats, blind to novel ones",
+      "Unsupervised learning \u2014 finds structure without labels; clustering and dimensionality reduction",
+      "Anomaly detection \u2014 models 'normal' and flags deviations; the workhorse for novel threats",
+      "UEBA \u2014 user and entity behavior analytics: per-user baselines plus peer-group comparison",
+      "Feature engineering \u2014 encoding raw logs into model inputs (login velocity, rare processes, domain entropy)",
+      "Concept drift \u2014 model decay as attacker behavior and legitimate traffic shift over time"
+     ]
+    },
+    {
+     "heading": "Detection metrics",
+     "items": [
+      "Precision \u2014 of all flagged alerts, how many were real",
+      "Recall \u2014 of all real attacks, how many were flagged",
+      "Threshold tuning \u2014 sliding the decision cutoff trades precision against recall",
+      "Alert fatigue \u2014 when false positives train analysts to ignore the queue",
+      "DGA \u2014 domain generation algorithm; detected via character entropy of domain names"
+     ]
+    },
+    {
+     "heading": "Agent and LLM security",
+     "items": [
+      "Direct prompt injection \u2014 attacker input overrides app instructions (OWASP LLM01:2025, the #1 LLM risk)",
+      "Indirect prompt injection \u2014 hidden instructions inside retrieved data (email, web, docs)",
+      "Jailbreak \u2014 defeating the model's own safety policy; distinct from hijacking app behavior",
+      "Tool poisoning \u2014 malicious tool descriptions or metadata steer an agent to misuse its tools (MCP ecosystem risk)",
+      "Insecure output handling \u2014 executing or trusting model output without validation",
+      "Least-privilege tools \u2014 grant each tool only the scope its task requires"
+     ]
+    },
+    {
+     "heading": "Adversarial ML and governance",
+     "items": [
+      "Evasion \u2014 perturbing inputs at inference time to dodge a classifier",
+      "Poisoning \u2014 corrupting training data to corrupt the model",
+      "Extraction \u2014 querying a model to steal its behavior or parameters",
+      "MITRE ATLAS \u2014 knowledge base of adversarial ML tactics and techniques",
+      "Red-teaming and evals \u2014 adversarial testing of AI systems before deployment",
+      "Human-in-the-loop \u2014 required approval for high-impact or irreversible agent actions",
+      "SOAR \u2014 security orchestration, automation and response; automate enrichment, gate containment"
+     ]
+    }
+   ]
+  },
+  "glossary": [
+   {
+    "term": "Allowlisting",
+    "def": "Default-deny execution control: only explicitly approved applications, scripts, and installers may run."
+   },
+   {
+    "term": "Blocklisting",
+    "def": "Default-allow model: everything runs except recognized-bad items \u2014 the window zero-days live in."
+   },
+   {
+    "term": "Default-deny",
+    "def": "Deny-by-default posture: unknown code, devices, or connections are refused unless explicitly approved."
+   },
+   {
+    "term": "Ringfencing",
+    "def": "Containment applied on top of allowlisting; restricts what a permitted app may do across app-to-app, file, registry, and network dimensions."
+   },
+   {
+    "term": "Learning Mode",
+    "def": "Agent mode that catalogs applications and dependencies and auto-builds policies before enforcement; temporarily disables file blocking."
+   },
+   {
+    "term": "Installation Mode",
+    "def": "Temporary mode that pauses file blocking for installs \u2014 must be tightly scoped and time-boxed."
+   },
+   {
+    "term": "Elevation Control",
+    "def": "Grants specific approved applications admin rights for standard users \u2014 just-in-time, per-app, time-boxed \u2014 without standing admin rights."
+   },
+   {
+    "term": "Application hopping",
+    "def": "An elevated or trusted process spawning another tool (e.g., PowerShell) to inherit its privileges \u2014 countered by ringfencing the elevated process."
+   },
+   {
+    "term": "Storage Control",
+    "def": "Device and path policy: USB approved by serial, user, file type, time, and encryption; unapproved devices do not connect."
+   },
+   {
+    "term": "Network Control",
+    "def": "Centrally managed host firewall; rules by port, source IP, and dynamic ACLs; egress allowlisting pins apps to approved destinations."
+   },
+   {
+    "term": "ZTNA",
+    "def": "Zero Trust Network Access: per-session, per-application brokered connections (commonly over port 443) with no open inbound ports \u2014 deny-by-default for network access."
+   },
+   {
+    "term": "Approval Center",
+    "def": "Portal queue where end-user software requests arrive for admin review and decision."
+   },
+   {
+    "term": "Unified Audit",
+    "def": "Real-time audit showing what was allowed or denied across endpoints \u2014 and why; the evidence layer for triage."
+   },
+   {
+    "term": "Testing Environment",
+    "def": "One-button cloud VDI sandbox launched from an approval request; logs AV flags, canary-file access, and registry/system changes."
+   },
+   {
+    "term": "Cyber Hero MDR",
+    "def": "24/7/365 US-based managed detection and response team; validates alerts, isolates hosts, acts on customer runbooks; ~60-second average response."
+   },
+   {
+    "term": "Assume breach",
+    "def": "Design and operate as if the attacker already has a foothold \u2014 least privilege, containment, and monitoring everywhere."
+   },
+   {
+    "term": "Living off the land",
+    "def": "Attacks that hijack trusted built-in tools (Word, PowerShell) instead of dropping malware \u2014 defeated by behavior containment, not signatures."
+   },
+   {
+    "term": "Change control",
+    "def": "Scoped, ticketed, tested changes with validation and rollback \u2014 emergency speed never cancels the process."
+   },
+   {
+    "def": "A node in an attack graph representing a system or weakness, connected by edges that represent steps an attacker could take between them.",
+    "term": "attack graph"
+   },
+   {
+    "def": "How central a node is to paths through the graph (for example, betweenness: how many shortest paths cross it).",
+    "term": "centrality"
+   },
+   {
+    "def": "The most valuable assets in the environment (customer data, finance systems, source code): what attack paths are measured against.",
+    "term": "crown jewels"
+   },
+   {
+    "def": "A labeled connection between two nodes, representing a relationship such as 'logged into' or 'resolved to'.",
+    "term": "edge"
+   },
+   {
+    "def": "A graph of threat indicators (IPs, domains, hashes) linked to campaigns, actors, and each other through shared infrastructure.",
+    "term": "knowledge graph"
+   },
+   {
+    "def": "The practice of mapping relationships in data to reveal hidden associations; rooted in Euler's 1736 graph theory, 1970s paper link charts, and post-2001 intelligence work.",
+    "term": "link analysis"
+   },
+   {
+    "def": "A segment of the network so small that its allowed communications can be enumerated as a graph of approved edges.",
+    "term": "microsegmentation"
+   },
+   {
+    "def": "An entity in the graph: a user, host, IP address, domain, file, or vulnerability.",
+    "term": "node"
+   },
+   {
+    "def": "Access control where policy is evaluated by traversing relationships on a graph (for example: user reports_to manager who owns the resource's project).",
+    "term": "ReBAC"
+   },
+   {
+    "def": "A machine-learning model that operates directly on graph structure to classify nodes or subgraphs, for example labeling attack vs normal behavior.",
+    "term": "graph neural network (GNN)"
+   },
+   {
+    "def": "Monitoring user and entity behavior by modeling their normal relationship patterns and flagging structural anomalies.",
+    "term": "UEBA"
+   },
+   {
+    "term": "Supervised learning",
+    "def": "ML trained on labeled examples; classifies new inputs into known categories."
+   },
+   {
+    "term": "Anomaly detection",
+    "def": "ML approach that models normal behavior and flags statistically rare deviations."
+   },
+   {
+    "term": "Feature engineering",
+    "def": "Turning raw telemetry into numeric model inputs, e.g. login velocity or domain entropy."
+   },
+   {
+    "term": "Precision",
+    "def": "Share of flagged alerts that were real; the false-positive economics of the queue."
+   },
+   {
+    "term": "Recall",
+    "def": "Share of real attacks the detector flagged; the miss rate's complement."
+   },
+   {
+    "term": "Concept drift",
+    "def": "Decay of model performance as the data distribution shifts over time."
+   },
+   {
+    "term": "Prompt injection",
+    "def": "Attacker-crafted instructions that override an LLM application's intended behavior; direct (user input) or indirect (retrieved data)."
+   },
+   {
+    "term": "Jailbreak",
+    "def": "Crafted input that defeats an LLM's own safety policy or refusal behavior."
+   },
+   {
+    "term": "Tool poisoning",
+    "def": "Malicious tool descriptions or metadata that manipulate an AI agent into misusing its tools."
+   },
+   {
+    "term": "Insecure output handling",
+    "def": "Failing to validate LLM output before acting on it, e.g. executing generated commands."
+   },
+   {
+    "term": "Evasion attack",
+    "def": "Adversarial ML technique: perturbing inputs to cross a classifier's decision boundary."
+   },
+   {
+    "term": "MITRE ATLAS",
+    "def": "Adversarial Threat Landscape for AI Systems; MITRE's knowledge base of AI attack tactics."
+   },
+   {
+    "term": "SOAR",
+    "def": "Security orchestration, automation and response; playbooks that enrich automatically and gate containment on humans."
+   },
+   {
+    "term": "Human-in-the-loop",
+    "def": "Required human approval before high-impact or irreversible automated actions."
+   }
+  ],
+  "links": [
+   {
+    "label": "ThreatLocker Zero Trust platform explainer (official)",
+    "url": "https://www.threatlocker.com/blog/edr-xdr-vs-zero-trust-prevention",
+    "note": "EDR/XDR vs Zero Trust prevention \u2014 the deny-by-default argument in their own words."
+   },
+   {
+    "label": "ThreatLocker Bootcamp page (official)",
+    "url": "https://www.threatlocker.com/bootcamp",
+    "note": "Free six-week program: phases, format, and what completion leads to."
+   },
+   {
+    "label": "ThreatLocker Careers (official)",
+    "url": "https://www.threatlocker.com/company/careers",
+    "note": "Open roles and the hiring-event listing; roles are in-office in Orlando."
+   },
+   {
+    "label": "Elevation Control (official)",
+    "url": "https://www.threatlocker.com/secure-privileges-without-sacrificing-agility",
+    "note": "Just-in-time privilege without standing admin."
+   },
+   {
+    "label": "Storage Control (official)",
+    "url": "https://www.threatlocker.com/capabilities/external-storage-device-control",
+    "note": "USB/device policy by serial, user, file type, encryption."
+   },
+   {
+    "label": "Web Control (official)",
+    "url": "https://www.threatlocker.com/capabilities/web-content-control",
+    "note": "Agent-based DNS/URL filtering, including off-network."
+   },
+   {
+    "label": "Cyber Hero MDR (official)",
+    "url": "https://www.threatlocker.com/get-threat-response-in-minutes",
+    "note": "24/7/365 managed response positioning."
+   },
+   {
+    "label": "MDR capabilities (official)",
+    "url": "https://www.threatlocker.com/capabilities/managed-detection-and-response",
+    "note": "Detection and response capability detail."
+   },
+   {
+    "label": "NIST SP 800-207 \u2014 Zero Trust Architecture",
+    "url": "https://csrc.nist.gov/pubs/sp/800/207/final",
+    "note": "The canonical Zero Trust reference: tenets, deployment models, policy engine trust algorithm."
+   },
+   {
+    "label": "CISA Zero Trust Maturity Model",
+    "url": "https://www.cisa.gov/zero-trust-maturity-model",
+    "note": "Federal maturity steps across identity, devices, networks, applications, and data."
+   },
+   {
+    "label": "MITRE ATT&CK",
+    "note": "The adversary-tactics framework; codify its tactic chains as subgraphs to hunt for in your security graph.",
+    "url": "https://attack.mitre.org/"
+   },
+   {
+    "label": "CISA \u2014 Cybersecurity and Infrastructure Security Agency",
+    "note": "US government advisories, alerts, and guidance frequently referenced in threat-intel work.",
+    "url": "https://www.cisa.gov/"
+   },
+   {
+    "label": "Neo4j getting started",
+    "note": "A widely used graph database; the book's call to action suggests piloting graph queries on exported security data with tools like this.",
+    "url": "https://neo4j.com/docs/getting-started/"
+   },
+   {
+    "label": "OWASP GenAI Security Project",
+    "url": "https://genai.owasp.org/",
+    "note": "Home of the LLM Top 10 and GenAI security guidance"
+   },
+   {
+    "label": "OWASP Top 10 for LLM Applications",
+    "url": "https://genai.owasp.org/llm-top-10/",
+    "note": "The ranked LLM risk list \u2014 prompt injection is #1"
+   },
+   {
+    "label": "NIST AI Risk Management Framework",
+    "url": "https://www.nist.gov/itl/ai-risk-management-framework",
+    "note": "The standard governance framework for managing AI risk"
+   },
+   {
+    "label": "MITRE ATLAS",
+    "url": "https://atlas.mitre.org/",
+    "note": "Adversarial Threat Landscape for AI Systems \u2014 tactics and techniques"
+   },
+   {
+    "label": "CISA AI guidance",
+    "url": "https://www.cisa.gov/ai",
+    "note": "CISA's AI security resources and guidance"
+   }
+  ],
+  "checklist": [
+   "Sixty-second company brief rehearsed out loud: year, city, philosophy, three products, one milestone",
+   "Two STAR stories ready: hardest technical problem; a frustrated customer or user",
+   "\u201cWhy ThreatLocker / why cybersecurity\u201d answer tied to prevention and service, not slogans",
+   "Ringfencing explained in one plain-English sentence (the Word-on-a-leash version)",
+   "Elevation Control answer ready: just-in-time, per-app, time-boxed, ringfenced, logged",
+   "Triage loop memorized: scope \u2192 observe \u2192 hypothesize \u2192 smallest safe change \u2192 validate \u2192 explain",
+   "Three questions to ask them: team on-call shape, approval SLA expectations, what \u201cmost helpful\u201d looks like on the team",
+   "Logistics: 1901 Summit Tower Blvd, Orlando FL; in-office role; ID and references ready",
+   "Define your crown jewels before you model anything.",
+   "Build the asset-and-access graph from live sources (scans, configs, identity), not from the CMDB alone.",
+   "Model vulnerabilities AND misconfigurations as exploit edges.",
+   "Compute shortest attack paths to each crown jewel; name the choke points.",
+   "Prioritize remediation by path risk, not by raw severity score.",
+   "Express at least one access policy as a relationship path (ReBAC pilot).",
+   "Baseline approved communication edges per segment; alert on first-seen edges.",
+   "Brief the next incident or risk review with the graph, not a spreadsheet.",
+   "Can you explain supervised vs unsupervised vs anomaly detection with a security example for each?",
+   "Can you name three log features you would engineer for a C2 detector and why?",
+   "Can you walk through a UEBA alert (baseline, deviation, verification) end to end?",
+   "Can you explain the precision/recall tradeoff and how you would set a threshold for a fatigued SOC?",
+   "Can you define concept drift and describe a retraining process?",
+   "Can you distinguish direct vs indirect prompt injection and jailbreaking?",
+   "Can you explain tool poisoning in the MCP ecosystem and three controls against it?",
+   "Can you describe insecure output handling and how you would validate agent output?",
+   "Can you name the three adversarial ML attack classes and one defense for evasion?",
+   "Can you design a SOAR playbook gate: what automates freely, what needs human approval?"
+  ]
+ },
+ "chat": {
+  "persona": "You are a rigorous but encouraging interviewer preparing a candidate for a Zero Trust endpoint security role. Probe with 'why' and 'how would you explain that' follow-ups. Stay on topic: ThreatLocker-style endpoint defense, security graphs, and AI-powered security. All practice is original; never reproduce vendor material.",
+  "topics": [
+   {
+    "id": "tl-interview",
+    "name": "ThreatLocker Interview Prep",
+    "key_points": [
+     "allowlisting",
+     "ringfencing",
+     "default-deny",
+     "cyber hero",
+     "zero trust tenets",
+     "STAR stories"
+    ],
+    "followups": [
+     "Can you give an example?",
+     "How would you explain that to a CFO?"
+    ]
+   },
+   {
+    "id": "tl-endpoint-ops",
+    "name": "Zero Trust Endpoint Operations",
+    "key_points": [
+     "default-deny",
+     "ringfencing dimensions",
+     "elevation control",
+     "storage control",
+     "network control",
+     "change control"
+    ],
+    "followups": [
+     "Walk me through the triage order.",
+     "When would you deny outright?"
+    ]
+   },
+   {
+    "followups": [
+     "Can you walk through an example?",
+     "How does this change patch prioritization?",
+     "What is the difference between a security graph and an attack graph?"
+    ],
+    "id": "sec-graphs",
+    "key_points": [
+     "nodes",
+     "edges",
+     "attack graphs",
+     "kill chain",
+     "link analysis",
+     "threat intel graphs"
+    ],
+    "name": "Security Graphs: Think Like an Attacker"
+   },
+   {
+    "followups": [
+     "How do graphs change patch prioritization?",
+     "What is ReBAC and how is it different from RBAC?",
+     "How would a small team start with graphs?"
+    ],
+    "id": "graph-defense",
+    "key_points": [
+     "attack-path analysis",
+     "insider threat",
+     "vulnerability graphs",
+     "Zero Trust",
+     "microsegmentation",
+     "blast radius"
+    ],
+    "name": "Graph-Powered Defense Operations"
+   },
+   {
+    "id": "ml-defense",
+    "name": "ML-Powered Threat Defense",
+    "key_points": [
+     "anomaly detection",
+     "UEBA",
+     "alert fatigue",
+     "concept drift",
+     "threat hunting",
+     "precision recall"
+    ],
+    "followups": [
+     "Walk me through an example.",
+     "How do you handle false positives?"
+    ]
+   },
+   {
+    "id": "ai-agent-sec",
+    "name": "Securing AI Systems & Agents",
+    "key_points": [
+     "prompt injection",
+     "tool poisoning",
+     "MCP risks",
+     "insecure output handling",
+     "SOAR gates",
+     "adversarial ML"
+    ],
+    "followups": [
+     "Walk me through an example.",
+     "How do you secure an AI agent end to end?"
+    ]
+   }
+  ]
+ },
+ "simulation": {
+  "items": 12,
+  "minutes": 180,
+  "evidence_cost_mins": 2
+ },
+ "media": [
+  {
+   "id": "tl-allowlist-vs-blocklist",
+   "kind": "diagram",
+   "title": "Allowlisting vs blocklisting: default-deny vs default-allow",
+   "svg": "assets/diagrams/tl-allowlist-vs-blocklist.svg",
+   "lesson_ref": "c-tl-endpoint-ops",
+   "caption": "Default-deny stops unknown code without a signature; default-allow runs it until one exists.",
+   "alt": "Side-by-side comparison: on the left, a default-deny gate runs known-good payroll software and denies unknown ransomware with no signature needed; on the right, a default-allow gate runs both until the ransomware is recognized as bad."
+  },
+  {
+   "id": "tl-ringfencing",
+   "kind": "diagram",
+   "title": "Ringfencing: four leashes on an allowed application",
+   "svg": "assets/diagrams/tl-ringfencing.svg",
+   "lesson_ref": "c-tl-endpoint-ops",
+   "caption": "Word stays approved, but it cannot spawn PowerShell, read the credential store, or reach the internet \u2014 while opening its document is allowed.",
+   "alt": "An approved Word application inside a dashed containment ring: arrows show PowerShell launch denied, credential-store registry access denied, external network denied, and document file access allowed."
+  },
+  {
+   "id": "tl-zero-trust-stack",
+   "kind": "diagram",
+   "title": "The Zero Trust endpoint stack",
+   "svg": "assets/diagrams/tl-zero-trust-stack.svg",
+   "lesson_ref": "c-tl-interview",
+   "caption": "Five deny-by-default layers \u2014 Allowlisting, Ringfencing, Elevation, Storage, Network \u2014 watched by Web Control, the Testing Environment, Unified Audit, and the Cyber Hero MDR team.",
+   "alt": "A vertical stack of five layers from Allowlisting at the foundation up through Ringfencing, Elevation Control, Storage Control, and Network Control, with side boxes for Web Control, Testing Environment, Unified Audit, and Cyber Hero MDR."
+  },
+  {
+   "id": "tl-triage-flow",
+   "kind": "diagram",
+   "title": "Application-request triage flow",
+   "svg": "assets/diagrams/tl-triage-flow.svg",
+   "lesson_ref": "c-tl-endpoint-ops",
+   "caption": "Gather evidence first, then branch: trusted gets a scoped rule, unknown goes to the sandbox, malicious gets a documented deny.",
+   "alt": "Flowchart from request arrival through evidence gathering to a decision diamond branching into three outcomes: approve with a scoped rule, detonate in the Testing Environment then ringfence, or deny with documented evidence."
+  },
+  {
+   "alt": "Diagram of four labeled nodes (user, host, file, domain, IP) joined by labeled directed edges such as logged into, downloaded, and resolved to, illustrating graph vocabulary.",
+   "caption": "Nodes are the things; edges are the relationships. Attackers move along the edges.",
+   "id": "sg-graph-vocabulary",
+   "kind": "diagram",
+   "lesson_ref": "c-sec-graphs",
+   "svg": "assets/diagrams/sg-graph-vocabulary.svg",
+   "title": "Graph vocabulary: nodes and edges"
+  },
+  {
+   "alt": "Attack graph with four nodes in a chain: external attacker to VPN gateway to file server to customer database, with a dead-end branch to a printer, showing the shortest path to the crown jewel.",
+   "caption": "The shortest path to the crown jewel is length 3. Break the choke point and the campaign dies.",
+   "id": "sg-attack-path",
+   "kind": "diagram",
+   "lesson_ref": "c-sec-graphs",
+   "svg": "assets/diagrams/sg-attack-path.svg",
+   "title": "Attack graph: shortest path to the crown jewels"
+  },
+  {
+   "alt": "Seven kill-chain stages as connected graph nodes: reconnaissance, weaponization, delivery, exploitation, installation, command and control, actions. Three alerts are annotated at delivery, installation, and command and control.",
+   "caption": "Three 'unrelated' alerts, one kill-chain subgraph. Correlate by shared entities, not by severity.",
+   "id": "sg-kill-chain",
+   "kind": "diagram",
+   "lesson_ref": "c-sec-graphs",
+   "svg": "assets/diagrams/sg-kill-chain.svg",
+   "title": "Kill chain as a graph"
+  },
+  {
+   "alt": "A policy engine at the center of a small graph evaluates an access request from a finance user on an untrusted laptop to an R and D code server. The request is denied because there is no prior relationship edge and the device is untrusted.",
+   "caption": "Valid credentials are not enough. The graph checks device trust, history, and relationships on every request.",
+   "id": "sg-zero-trust",
+   "kind": "diagram",
+   "lesson_ref": "c-graph-defense",
+   "svg": "assets/diagrams/sg-zero-trust.svg",
+   "title": "Zero Trust runs on relationships"
+  },
+  {
+   "id": "ai-ml-pipeline",
+   "kind": "diagram",
+   "title": "ML detection pipeline: telemetry to triage",
+   "svg": "assets/diagrams/ai-ml-pipeline.svg",
+   "lesson_ref": "c-ml-defense",
+   "caption": "How raw telemetry becomes scored alerts: features feed the model, the model scores, analysts triage top-down \u2014 and analyst verdicts feed retraining.",
+   "alt": "Flow diagram: telemetry sources feed feature extraction, which feeds an ML model, which outputs scored alerts into an analyst triage queue, with a feedback arrow for retraining."
+  },
+  {
+   "id": "ai-ueba-baseline-diagram",
+   "kind": "diagram",
+   "title": "UEBA: baseline vs deviation",
+   "svg": "assets/diagrams/ai-ueba-baseline.svg",
+   "lesson_ref": "c-ml-defense",
+   "caption": "UEBA learns each user's normal hours, locations, and volumes, then scores deviations from that baseline.",
+   "alt": "24-hour timeline showing a shaded normal login window from 8 AM to 6 PM with normal logins inside it, and a red anomaly marker at 2:47 AM for a foreign login scoring 97 out of 100."
+  },
+  {
+   "id": "ai-injection-flow",
+   "kind": "diagram",
+   "title": "Indirect prompt injection attack flow",
+   "svg": "assets/diagrams/ai-injection-flow.svg",
+   "lesson_ref": "c-ai-agent-sec",
+   "caption": "An attacker hides instructions in data the agent retrieves; the agent mistakes data for instructions and misuses its tools.",
+   "alt": "Attack flow diagram: hidden instruction in an email is read by an AI agent, which mistakes it for a command and calls a privileged tool, causing fraud; three defense boxes below: sanitize content, least-privilege tools, human approval."
+  }
+ ],
+ "foundations": [
+  {
+   "track": "linux-cli",
+   "why_needed": "Terminal labs and missions run in a simulated Linux shell; command-line fluency is required to complete them."
+  },
+  {
+   "track": "security-basics",
+   "why_needed": "Security-graph and ML-detection lessons assume baseline vocabulary (CIA triad, malware types, incident response phases)."
+  }
+ ],
+ "math": [
+  "stats",
+  "probability"
+ ]
+}

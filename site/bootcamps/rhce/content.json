@@ -1,1 +1,1252 @@
-{"slug": "rhce", "title": "RHCE Ansible (EX294)", "tagline": "Automation with Ansible", "vendor": {"name": "Red Hat", "certs": "EX294", "docs": "https://www.redhat.com"}, "disclaimer": "Independent practice material by Interstitium Labs. Not affiliated with, endorsed by, or sponsored by Red Hat. Confers no certificate. All scenarios are original; no exam content is reproduced.", "domains": [{"id": "inventory-config", "name": "Inventory & Config", "scenarios": [{"id": "rhce-inventory-groups", "title": "Web servers in two data centers", "situation": "You manage web servers in Boston and Austin plus database servers in Boston. You need to target 'all Boston web servers' and 'all web servers everywhere' from one inventory file.", "prompt": "Which INI inventory structure gives you both groupings?", "evidence": [["inventory", "[boston_web]\nweb1.example.com\nweb2.example.com\n[austin_web]\nweb3.example.com\n[boston_db]\ndb1.example.com"]], "choices": ["Add [web:children] with boston_web and austin_web, and [boston:children] with boston_web and boston_db", "List every host twice under literal [boston] and [web] groups with duplicate entries", "Create two separate inventory files — one per data center — and merge them at runtime", "Put all hosts in one [all] group and use --limit with regexes for every run"], "answer": 0, "why": "The :children suffix builds parent groups from child groups without duplicating host entries, so 'web' means every web server and 'boston' means every Boston host. Ansible merges group membership automatically; duplicate entries and split files just create maintenance debt.", "hint": "How do you compose groups out of other groups in INI inventory?", "objectives": ["Inventory structure", "Parent/child groups"], "mins": 6}, {"id": "rhce-config-precedence", "title": "The config that wouldn't apply", "situation": "You set 'forks = 50' in /etc/ansible.cfg, but runs still use 5 forks. A teammate mentions there's an ansible.cfg in your project directory and ANSIBLE_CONFIG is set in your shell.", "prompt": "Which config actually wins, and where should the project setting live?", "evidence": [], "choices": ["ANSIBLE_CONFIG env var wins; then ./ansible.cfg; then ~/.ansible.cfg; then /etc/ansible.cfg — put project settings in ./ansible.cfg", "/etc/ansible.cfg always wins as the system-wide config", "~/.ansible.cfg wins over everything except the project file", "Ansible merges all four files, so forks should have been 50 + 5"], "answer": 0, "why": "Ansible uses the FIRST config found in this order: ANSIBLE_CONFIG environment variable, ./ansible.cfg (project), ~/.ansible.cfg (user), /etc/ansible.cfg (system). It does not merge files. For a project, ./ansible.cfg is the right home; unset or fix ANSIBLE_CONFIG if it's pointing somewhere stale.", "hint": "Does Ansible merge config files, or pick one?", "objectives": ["ansible.cfg", "Configuration precedence"], "mins": 5}, {"id": "rhce-adhoc-shell", "title": "The pipe that did nothing remotely", "situation": "You run 'ansible web -m command -a \"ps aux | grep nginx\"' and get an error about '|' not found. The same pipeline works when you SSH in manually.", "prompt": "Why did the ad hoc command fail, and what's the fix?", "evidence": [], "choices": ["The command module runs without a shell, so pipes fail — use -m shell for pipes and redirection", "Ansible blocks grep on remote hosts for security — use the find module instead", "The pipe needs escaping: ps aux \\| grep nginx", "Ad hoc commands can't take arguments — write a playbook instead"], "answer": 0, "why": "The command module executes the binary directly with no shell, so shell metacharacters (|, >, &&) are passed literally as arguments. The shell module wraps the string in /bin/sh -c, enabling pipelines. Rule of thumb: need shell features → shell module; simple binary + args → command module (safer, no shell injection).", "hint": "Which layer interprets the pipe character — the module or a shell?", "objectives": ["Ad hoc commands", "command vs shell"], "mins": 5}, {"id": "rhce-pattern-limit", "title": "Patch Tuesday scoping", "situation": "Your inventory has groups web, db, and cache. Tonight you must patch only the web servers, but skip web3 which is serving a critical batch job.", "prompt": "Which pattern or flag combination targets exactly that set?", "evidence": [], "choices": ["ansible-playbook patch.yml --limit 'web:!web3'", "ansible-playbook patch.yml --limit web --skip web3", "ansible-playbook patch.yml -e target=web (then handle web3 inside the play)", "Edit the inventory to delete web3 temporarily"], "answer": 0, "why": "Patterns support exclusion with '!' — 'web:!web3' means all web hosts except web3. --limit accepts the same pattern language (also '&' for intersection). There is no --skip-hosts flag, and editing inventory for a one-off change is error-prone.", "hint": "What pattern operator removes hosts from a set?", "objectives": ["Patterns", "--limit exclusions"], "mins": 5}, {"id": "rhce-ansible-cfg-keys", "title": "First-day control node setup", "situation": "You're building a shared Ansible control node. Requirements: use the project's inventory by default, don't prompt on new host keys in this lab, run 20 forks, and escalate privileges with sudo asking for the become password.", "prompt": "Which ansible.cfg settings cover all four?", "evidence": [], "choices": ["inventory=./inventory, host_key_checking=False, forks=20, and become=True with become_ask_pass=True", "inventory=./inventory, strict_host_key_checking=no, parallel=20, sudo=True", "hosts=./inventory, no_host_key_check=1, workers=20, escalate=yes", "remote_inventory=./inventory, trust_all_hosts=yes, concurrency=20, root=True"], "answer": 0, "why": "The real [defaults] keys are inventory, host_key_checking, and forks; privilege escalation uses become=True, become_method=sudo, become_ask_pass=True. The other options invent setting names (strict_host_key_checking, parallel, workers, escalate) that Ansible ignores silently — a classic source of 'my config does nothing' bugs.", "hint": "Which of these key names have you seen in real ansible.cfg examples?", "objectives": ["ansible.cfg", "Common settings"], "mins": 6}, {"id": "rhce-inventory-vars", "title": "The odd web server", "situation": "All web hosts are RHEL at 10.0.0.x except web9, a legacy box at 192.168.5.9 reachable only on SSH port 2222 with a different user.", "prompt": "How do you express web9's connection details in inventory without affecting the others?", "evidence": [["inventory", "[web]\nweb[1:8].example.com\nweb9.example.com"]], "choices": ["web9.example.com ansible_host=192.168.5.9 ansible_port=2222 ansible_user=legacy", "Create a [web9] group with its own ansible.cfg file", "Set the variables globally and override them back for web1–web8", "SSH config can't help — Ansible ignores ~/.ssh/config"], "answer": 0, "why": "Host variables are set inline after the hostname in INI inventory: ansible_host overrides the DNS name, ansible_port the SSH port, ansible_user the login. They apply only to that host. (Ansible does honor ~/.ssh/config too, but inline host vars are the direct, visible approach.)", "hint": "Where can per-host connection variables live in an INI inventory?", "objectives": ["Host variables", "Connection settings"], "mins": 5}]}, {"id": "playbooks", "name": "Playbooks", "scenarios": [{"id": "rhce-play-anatomy", "title": "Anatomy of a first play", "situation": "You write your first playbook to install nginx on web servers, but Ansible complains about the YAML structure. You mixed tasks at the wrong level.", "prompt": "What is the correct skeleton of a play?", "evidence": [["site.yml (broken)", "- tasks:\n    - name: install nginx\n      hosts: web\n      dnf:\n        name: nginx"]], "choices": ["- name, hosts, become at the play level; tasks: as a list under them — hosts/tasks are siblings, not nested", "Everything nests under tasks: — hosts and become go inside each task", "Plays don't need hosts — Ansible guesses from the inventory filename", "YAML needs tabs for the play level and spaces for tasks"], "answer": 0, "why": "A play is a list item with keys like name, hosts, become, vars at the play level, and tasks: as a list beneath. In the broken example, hosts/dnf were nested under the task. YAML uses spaces (never tabs) with consistent indentation — 2 spaces per level is the convention. 'ansible-playbook --syntax-check' catches this fast.", "hint": "Are 'hosts' and 'tasks' siblings, or is one inside the other?", "objectives": ["Play structure", "YAML basics"], "mins": 5}, {"id": "rhce-module-choice", "title": "Don't shell out for this", "situation": "A playbook uses 'shell: yum install -y nginx' and 'shell: systemctl start nginx'. It reports 'changed' on every run and fails when yum is replaced by dnf.", "prompt": "What is the idiomatic rewrite, and why is it better?", "evidence": [], "choices": ["Use the dnf and service modules — they're idempotent (report ok when already correct) and abstract distro differences", "Keep shell but add 'creates: /usr/sbin/nginx' to fake idempotency", "Shell is fine — the changed status is just informational", "Use the command module instead — it's idempotent by default"], "answer": 0, "why": "Dedicated modules (dnf, service, copy, template, user, file) check current state and only act when needed — that's idempotency, the heart of Ansible. Raw shell/command can't know the desired state, so they always report changed and re-execute. Modules also handle cross-distro differences (yum vs dnf vs apt).", "hint": "How does the dnf module know whether it needs to do anything?", "objectives": ["Modules", "Idempotency"], "mins": 6}, {"id": "rhce-handlers", "title": "Restart only when needed", "situation": "Your play copies three config files and must restart nginx — but only if at least one file actually changed. Restarting unconditionally on every run causes brief outages.", "prompt": "How do handlers solve this?", "evidence": [], "choices": ["Each copy task 'notify: restart nginx'; the handler runs once at the end of the play, only if notified by a changed task", "Add a service task with state: restarted after the copies — handlers are deprecated", "Use 'notify' on the play — handlers trigger per task immediately", "Handlers run before tasks, so put the restart logic there"], "answer": 0, "why": "Handlers are tasks that run only when notified by a task reporting changed, and they run once at the end of the play (deduped even if notified multiple times). This gives you 'restart if config changed' semantics with zero outages on no-op runs. notify references the handler by name (or listen topic).", "hint": "When does a notified handler actually execute — immediately, or later?", "objectives": ["Handlers", "notify"], "mins": 5}, {"id": "rhce-loops", "title": "Ten users, one task", "situation": "You need to create 10 app users, each with a specific UID. Copy-pasting the user task 10 times works but is unmaintainable.", "prompt": "What is the modern loop syntax?", "evidence": [], "choices": ["loop: over a list of dicts, referencing item.name and item.uid in the task", "with_items: — the only loop construct Ansible supports", "Write a shell for loop — Ansible loops can't set per-item UIDs", "repeat: 10 with an index variable"], "answer": 0, "why": "'loop:' is the current standard (with_* are legacy). Looping over a list of dicts lets each iteration carry multiple attributes: user: name={{ item.name }} uid={{ item.uid }}. loop_control can rename the loop variable or add labels. One task, N items, full idempotency per item.", "hint": "How do you give each loop iteration more than one value?", "objectives": ["Loops", "loop syntax"], "mins": 5}, {"id": "rhce-when-register", "title": "Act on the previous result", "situation": "You check whether /etc/myapp exists with the stat module, and only want to run the installer when it's missing. You also want the installer to report 'changed' only when it prints 'INSTALL OK'.", "prompt": "Which task keywords combine to do this?", "evidence": [], "choices": ["register: the stat result, then when: not <var>.stat.exists on the installer, plus changed_when: \"'INSTALL OK' in <var>.stdout\"", "ignore_errors: true on the installer — it will skip itself if the directory exists", "failed_when: false — that converts failure into a skip", "Use two plays — conditionals can't reference earlier tasks"], "answer": 0, "why": "register: captures a task's result into a variable; when: gates execution on a Jinja2 condition (stat.exists is the standard existence check); changed_when:/failed_when: override how Ansible interprets the result. Together they give precise 'run only if needed, report honestly' behavior.", "hint": "How does a later task see what an earlier task found?", "objectives": ["Conditionals", "register", "changed_when"], "mins": 6}, {"id": "rhce-lineinfile", "title": "One line in sshd_config", "situation": "You must ensure 'PermitRootLogin no' exists in /etc/ssh/sshd_config — replacing any existing PermitRootLogin line (commented or not) — across 50 servers, idempotently.", "prompt": "Which module and arguments do this?", "evidence": [], "choices": ["lineinfile: path + regexp '^#?PermitRootLogin' + line 'PermitRootLogin no' — replaces the matched line or appends if absent", "copy: with the full sshd_config content — simplest", "shell: with sed — lineinfile can't handle commented lines", "template: — but you must template the entire file"], "answer": 0, "why": "lineinfile is built for single-line enforcement: regexp finds the target line (here optionally-commented PermitRootLogin), line: replaces it; if no match, the line is appended. It's idempotent — reruns report ok. copy/template of the whole file also works but couples you to the entire file's content.", "hint": "Which module's whole job is 'make sure this one line is present'?", "objectives": ["lineinfile", "Idempotent edits"], "mins": 5}]}, {"id": "variables-facts", "name": "Variables & Facts", "scenarios": [{"id": "rhce-var-precedence", "title": "Which value wins?", "situation": "The variable 'http_port' is defined as 80 in group_vars/web, 8080 in host_vars/web1, and you pass '-e http_port=9000' on the command line. The play uses the default 80 from the role.", "prompt": "Which value does web1 actually get, and what's the general rule?", "evidence": [], "choices": ["9000 — extra vars (-e) beat almost everything; host_vars beat group_vars; role defaults lose to nearly everything", "80 — role defaults are the most specific", "8080 — host_vars always win over the command line", "Ansible errors out on conflicting definitions"], "answer": 0, "why": "Precedence (high→low): extra vars > task/block vars > role vars > play vars > host_vars > group_vars > role defaults. -e is the ultimate override (useful for one-off runs); role defaults/ are the weakest (meant to be overridden). Ansible never errors on duplicates — last/highest precedence silently wins, so know the order.", "hint": "Which source is designed as the 'I really mean it' override?", "objectives": ["Precedence", "Variable sources"], "mins": 6}, {"id": "rhce-facts-osfamily", "title": "One play, two distros", "situation": "Your fleet mixes RHEL and Ubuntu. The web package is 'httpd' on RHEL, 'apache2' on Ubuntu. You refuse to maintain two playbooks.", "prompt": "How do you write one portable play?", "evidence": [], "choices": ["Use ansible_facts['os_family'] in a when: conditional (or a dict lookup) to pick the package name per host", "Facts can't differ per host — split the inventory instead", "Use the raw module — it auto-translates package names", "Hardcode both names — the package module tries each"], "answer": 0, "why": "Gathered facts (ansible_facts['os_family'] = 'RedHat' vs 'Debian', distribution, etc.) let plays adapt: 'dnf: name=httpd when: ansible_facts.os_family == \"RedHat\"'. Cleaner: a vars dict keyed by os_family. Facts are per-host truth — the portable-play mechanism. Disable with gather_facts: false only when you don't need them (it also speeds runs).", "hint": "What per-host data does Ansible already collect that names the OS family?", "objectives": ["Facts", "os_family"], "mins": 5}, {"id": "rhce-jinja-filter", "title": "Building the server list", "situation": "You need a comma-separated string of web hostnames for a config template, defaulting to 'localhost' when the group is empty, all uppercase.", "prompt": "Which Jinja2 expression does this?", "evidence": [], "choices": ["{{ (groups['web'] | default(['localhost'])) | join(',') | upper }}", "{{ groups.web.join(',').upper() }} — filters aren't needed", "{% groups['web'] %} — print tags handle lists automatically", "{{ groups['web'] | join }} — join defaults to commas and upper"], "answer": 0, "why": "Jinja2 filters chain with pipes: default() guards the empty/undefined case, join(',') concatenates, upper transforms. {{ }} prints an expression; {% %} is for statements (if/for). Filters are the template workhorse — map, selectattr, to_json, b64encode, etc. Test expressions with 'ansible localhost -m debug -a \"msg={{ ... }}\"' (quote carefully).", "hint": "How do you transform a value inside {{ }} without Python code?", "objectives": ["Jinja2", "Filters"], "mins": 6}, {"id": "rhce-magic-vars", "title": "The load balancer needs all backends", "situation": "Your haproxy config template must list every web server's IP. The template runs on the lb host, which doesn't know the web hosts' addresses.", "prompt": "How does the lb host reach other hosts' facts?", "evidence": [], "choices": ["hostvars['web1'].ansible_default_ipv4.address inside a loop over groups['web'] — magic variables expose the whole inventory", "Facts are host-private — copy them via files first", "Use delegate_to: web1 — that shares facts automatically", "Magic variables only work in group_vars"], "answer": 0, "why": "Magic variables are always available: inventory_hostname (current host), groups (dict of group→host lists), hostvars (dict of host→all its variables AND facts). So '{% for h in groups[\"web\"] %}{{ hostvars[h].ansible_default_ipv4.address }}{% endfor %}' builds the backend list. Requires facts gathered for those hosts (default behavior).", "hint": "What variable holds every host's variables and facts, indexed by hostname?", "objectives": ["Magic variables", "hostvars/groups"], "mins": 6}, {"id": "rhce-groupvars-layout", "title": "Organizing 200 variables", "situation": "All variables live in one giant vars/main.yml. Web vars, db vars, and secrets are tangled; a change for staging once leaked into prod.", "prompt": "What is the standard directory layout fix?", "evidence": [], "choices": ["Split into group_vars/web.yml, group_vars/db.yml, group_vars/prod.yml (+ host_vars/ for exceptions) — Ansible auto-loads them by group/host name", "Put everything in the playbook — one file is simplest", "Variables can't be split — Ansible reads only one file", "Use -e for all 200 variables on every run"], "answer": 0, "why": "group_vars/<group>.yml and host_vars/<host>.yml (next to the inventory or playbook) are auto-loaded per group/host — the conventional organization. Separate files per concern/environment prevent cross-env leaks, and vault-encrypted files (e.g., group_vars/prod/vault.yml) isolate secrets. Convention beats cleverness at scale.", "hint": "What directories does Ansible automatically load variables from, keyed by group and host names?", "objectives": ["group_vars", "host_vars", "Layout"], "mins": 5}, {"id": "rhce-undefined-var", "title": "'dict object has no attribute'", "situation": "A template references '{{ db.primary.host }}' but fails on hosts where db_primary was never defined: 'AnsibleUndefinedVariable: dict object has no attribute'.", "prompt": "What is the defensive fix?", "evidence": [], "choices": ["Use the default filter: {{ db_primary.host | default('localhost') }} — or ensure the variable is always defined", "Wrap in try/except — Jinja2 supports Python exceptions", "Ignore it — undefined variables render as empty strings", "Delete the template — conditionals can't be made safe"], "answer": 0, "why": "Ansible fails fast on undefined variables (a feature — silent empty strings hide bugs). The default() filter provides fallbacks: '{{ var | default(\"x\") }}', and 'default(omit)' skips module parameters entirely. For nested dicts, define the full structure in defaults or use 'var.nested | default()' carefully — default only guards the last lookup by default.", "hint": "Which filter supplies a fallback instead of failing?", "objectives": ["Undefined variables", "default filter"], "mins": 5}]}, {"id": "roles", "name": "Roles", "scenarios": [{"id": "rhce-role-layout", "title": "From playbook to role", "situation": "Your 300-line webserver.yml playbook is copy-pasted for three projects with small tweaks. You want to convert it into a reusable role.", "prompt": "What is the canonical role directory structure?", "evidence": [], "choices": ["webserver/{tasks/main.yml, handlers/main.yml, templates/, files/, vars/main.yml, defaults/main.yml, meta/main.yml, README.md}", "One big main.yml at the repo root — roles are just playbooks renamed", "roles/webserver.yml — a single file per role", "tasks/ only — the other directories are optional legacy"], "answer": 0, "why": "'ansible-galaxy init webserver' scaffolds the convention: tasks/main.yml (the work), handlers, templates/ (Jinja2), files/ (static), vars/ (high-precedence), defaults/ (low-precedence overridables), meta/ (dependencies, metadata). Convention lets anyone read your role instantly — and lets Galaxy/tools consume it.", "hint": "What does 'ansible-galaxy init' create for you?", "objectives": ["Role structure", "Conventions"], "mins": 5}, {"id": "rhce-role-invoke", "title": "Three ways to call a role", "situation": "You see 'roles:' at play level, 'include_role', and 'import_role' in different codebases. They behave differently with tags and conditionals.", "prompt": "What distinguishes them?", "evidence": [], "choices": ["roles: and import_role are static (parsed at playbook load — tags/conditionals apply oddly); include_role is dynamic (evaluated at runtime, respects loops/conditionals per call)", "They're identical — pick by style", "include_role is deprecated — always use roles:", "import_role runs remotely — the others run locally"], "answer": 0, "why": "Static imports (roles:, import_role) are pre-processed: the role's tasks merge into the play at parse time, so tags apply to all imported tasks and 'when' on the import applies per task. Dynamic include_role evaluates during execution — it honors loops, works with --start-at-task predictably, and is the choice for conditional/looped role application. Rule: dynamic behavior → include_role.", "hint": "Which one is resolved when the playbook is parsed vs when the task executes?", "objectives": ["include_role", "import_role", "Static vs dynamic"], "mins": 6}, {"id": "rhce-defaults-vars", "title": "Overridable defaults", "situation": "Your role hardcodes the nginx port in vars/main.yml. Users complain they can't override it without forking the role.", "prompt": "Where should the default live, and why?", "evidence": [], "choices": ["defaults/main.yml — the lowest-precedence variable source, designed to be overridden by inventory/group_vars/play vars", "vars/main.yml — it's already the right place; users should use -e", "tasks/main.yml — define it where it's used", "meta/main.yml — metadata is the override point"], "answer": 0, "why": "Role variable precedence: defaults/main.yml (weakest — meant as overridable defaults) < inventory/group_vars/host_vars/play vars < vars/main.yml (strong, hard to override). Put tunables in defaults/, internal constants in vars/. Users then override naturally via group_vars without -e hacks or forks.", "hint": "Which file exists specifically for 'sane default, please override me'?", "objectives": ["defaults vs vars", "Role design"], "mins": 5}, {"id": "rhce-galaxy-deps", "title": "Reusing community roles", "situation": "You need PostgreSQL and Redis roles. Galaxy has popular ones, but 'copy the tasks into my repo' feels wrong.", "prompt": "What is the maintainable way to consume Galaxy roles?", "evidence": [], "choices": ["Pin them in requirements.yml and install with 'ansible-galaxy install -r requirements.yml' — versioned, repeatable, updatable", "Copy-paste — vendoring is the only safe way", "git clone into roles/ — requirements.yml is deprecated", "Galaxy roles can't be trusted — write everything yourself"], "answer": 0, "why": "requirements.yml declares roles (and collections) with versions/sources; 'ansible-galaxy install -r' fetches them reproducibly — like a lockfile for automation. Pin versions (or commit SHAs for git sources) so runs are deterministic. Evaluate Galaxy roles (downloads, maintenance, open issues) like any dependency.", "hint": "What is the requirements file for Ansible roles?", "objectives": ["Ansible Galaxy", "requirements.yml"], "mins": 5}, {"id": "rhce-meta-deps", "title": "Role dependencies", "situation": "Your 'app' role needs the 'postgres' role applied first on db hosts, and 'common' everywhere. You currently list them manually in every playbook.", "prompt": "How do you encode this in the role itself?", "evidence": [], "choices": ["meta/main.yml dependencies: — lists roles to run before this one, with optional variable passing", "tasks/main.yml — import the other role's tasks directly", "Dependencies aren't supported — keep listing manually", "requirements.yml — it also orders execution"], "answer": 0, "why": "meta/main.yml 'dependencies:' declares prerequisite roles; Ansible runs them first (deduped across the play). You can pass vars to dependencies ('{ role: postgres, postgres_version: 16 }'). requirements.yml only installs roles — it doesn't order execution. Keep dependency chains shallow; deep chains become hard to reason about.", "hint": "Which file in a role declares 'run these roles before me'?", "objectives": ["Role dependencies", "meta/main.yml"], "mins": 5}, {"id": "rhce-collections", "title": "Collections vs roles", "situation": "You need the community.postgresql collection's modules. A teammate installs it with pip.", "prompt": "What is the correct installation and usage?", "evidence": [], "choices": ["ansible-galaxy collection install community.postgresql (or via requirements.yml); reference modules by FQCN: community.postgresql.postgresql_db", "pip install community.postgresql — collections are Python packages", "Collections install automatically when referenced", "Copy the collection into library/ — Galaxy is optional"], "answer": 0, "why": "Collections (modules, roles, plugins bundled with namespaces) install via 'ansible-galaxy collection install' into configured paths (ansible.cfg collections_path). Use Fully Qualified Collection Names (namespace.collection.module) to avoid ambiguity as builtin modules moved into collections. Pin in requirements.yml like roles.", "hint": "Which galaxy subcommand manages collections, and how do you reference their modules unambiguously?", "objectives": ["Collections", "FQCN"], "mins": 5}]}, {"id": "vault-security", "name": "Vault & Security", "scenarios": [{"id": "rhce-vault-create", "title": "Encrypting the DB password", "situation": "Your playbook has 'db_password: hunter2' in plaintext vars. You need it encrypted at rest but usable by the play.", "prompt": "What is the ansible-vault workflow?", "evidence": [], "choices": ["ansible-vault encrypt vars/secrets.yml (or encrypt_string for inline) — reference the variable normally; pass --ask-vault-pass or --vault-password-file at runtime", "Rename the file to secrets.yml.vault — the extension triggers encryption", "Base64 the value — that's what vault means", "ansible-vault only encrypts playbooks, not vars files"], "answer": 0, "why": "ansible-vault encrypt encrypts whole files (AES256); encrypt_string encrypts a single value inline ('db_password: !vault | $ANSIBLE_VAULT;...'). At runtime Ansible decrypts transparently with --ask-vault-pass (interactive) or --vault-password-file (automation — protect that file with 0600). 'ansible-vault view/edit/rekey' manage encrypted content.", "hint": "Which two commands encrypt a file vs a single value?", "objectives": ["ansible-vault", "Encryption"], "mins": 5}, {"id": "rhce-vault-id", "title": "Two teams, two vault passwords", "situation": "Team A and Team B share the automation repo but must not read each other's vault-encrypted files. One --vault-password-file can't serve both.", "prompt": "How do you handle multiple vault passwords?", "evidence": [], "choices": ["Vault IDs: encrypt with --vault-id teamA@prompt (or @file), and pass --vault-id teamA@... --vault-id teamB@... — Ansible tries each ID for each file", "One password for everyone — separation isn't possible", "Two separate Ansible installs — vault IDs don't exist", "Encrypt everything twice — Ansible decrypts both layers"], "answer": 0, "why": "Vault IDs label passwords: files encrypted with --vault-id teamA can only be decrypted when that ID's password is supplied. Pass multiple --vault-id flags (each @prompt, @file, or @script) and Ansible matches IDs to files. This gives per-team secret isolation in one repo — encrypt_string also supports --vault-id.", "hint": "How do you label which password decrypts which file?", "objectives": ["Vault IDs", "Multi-team secrets"], "mins": 6}, {"id": "rhce-become", "title": "Privilege escalation done right", "situation": "Tasks need root for package installs but should run as the deploy user for app config. Some hosts use sudo, one legacy host needs su.", "prompt": "How do you scope privilege escalation?", "evidence": [], "choices": ["become: true at play level (or per task), become_user: root default; override per task (become_user: deploy) and per host (ansible_become_method=su)", "Run everything as root — scoping is overkill", "become only works at play level — per-task isn't possible", "Use the root user for the SSH connection instead"], "answer": 0, "why": "become: enables escalation (default method sudo, user root); it works at play, task, or block level — set broadly, override narrowly (become_user: appuser for app tasks). Per-host: ansible_become_method=su in inventory. become_ask_pass / --ask-become-pass prompts for the escalate password. Least privilege: escalate only the tasks that need it.", "hint": "At which levels can become: be set, and what does that imply for scoping?", "objectives": ["become", "Privilege escalation"], "mins": 5}, {"id": "rhce-nolog", "title": "Secrets in the play output", "situation": "A debug task prints the database password to the console log, which ships to a shared log aggregator. The task is 'fine' functionally.", "prompt": "How do you suppress sensitive output?", "evidence": [], "choices": ["no_log: true on the task — censors its arguments and output from logs and callbacks", "Delete the debug task — the only option", "no_log only works on vault-encrypted variables", "Logs are local-only — no action needed"], "answer": 0, "why": "no_log: true prevents the task's args/results from being displayed or logged — essential for tasks handling secrets (even when values come from vault, the RESULT might echo them). Note it also hides output on failure (debugging trade-off — temporarily disable when troubleshooting). Apply at task or play level; it doesn't encrypt anything, just suppresses display.", "hint": "Which task keyword censors output from logs?", "objectives": ["no_log", "Secret hygiene"], "mins": 4}, {"id": "rhce-ssh-keys", "title": "Key-based auth for 200 hosts", "situation": "Password SSH to 200 hosts is slow and banned by policy. You need key auth with a passphrase-protected key, without typing the passphrase 200 times.", "prompt": "What is the standard setup?", "evidence": [], "choices": ["ssh-keygen a keypair, ssh-copy-id to hosts (or provision via playbook), then ssh-agent + ssh-add to cache the passphrase for the session", "Remove the passphrase — keys must be passwordless", "One shared private key emailed to the team", "Ansible can't use SSH keys — use passwords"], "answer": 0, "why": "Public-key auth: private key stays local (0600), public key appended to remote ~/.ssh/authorized_keys. ssh-agent holds decrypted keys in memory after one ssh-add passphrase entry. For fleets, provision authorized_keys via Ansible itself (authorized_key module) — bootstrapping via initial password or cloud-init. ansible_ssh_private_key_file points at non-default keys.", "hint": "What caches your decrypted key so you type the passphrase once?", "objectives": ["SSH keys", "ssh-agent"], "mins": 5}, {"id": "rhce-vault-file-perms", "title": "The vault password file", "situation": "CI uses --vault-password-file /etc/ansible/vault-pass. It's currently world-readable. An auditor flags it.", "prompt": "What are the hardening steps?", "evidence": [], "choices": ["chmod 0600 owned by the automation user, stored outside the repo; better: a --vault-id script fetching from a secret manager (Vault, cloud KMS)", "It's fine — vault passwords aren't sensitive", "Commit it to the repo for visibility", "Delete it — CI should use --ask-vault-pass"], "answer": 0, "why": "The vault password file is a master key: 0600, owned by the service account, never in git. The mature pattern is a vault-id script (--vault-id prod@/usr/local/bin/get-vault-pass) that fetches the password from a real secret manager at runtime — so the password exists nowhere on disk. --ask-vault-pass can't work non-interactively in CI.", "hint": "Where should the ultimate secret live instead of a flat file?", "objectives": ["Vault password", "Secret management"], "mins": 5}]}, {"id": "troubleshooting", "name": "Troubleshooting", "scenarios": [{"id": "rhce-syntax-check", "title": "The playbook that won't parse", "situation": "ansible-playbook fails immediately with a YAML error pointing at line 14, but line 14 looks fine to you.", "prompt": "What is your debug workflow?", "evidence": [], "choices": ["Run --syntax-check to confirm, then inspect indentation around the reported line — YAML errors usually originate ABOVE the reported line (unclosed quotes/brackets, tabs)", "Delete line 14 — the parser is always right about the location", "YAML errors are random — rewrite the whole file", "--syntax-check only works on inventories"], "answer": 0, "why": "YAML errors surface where the parser gives up, which is often after the real mistake: a missing closing quote, mixed tabs/spaces, or wrong indentation level above. --syntax-check validates without executing. Also use 'yamllint' in CI. Remember: spaces only, consistent 2-space levels, quote strings with special characters (: { } [ ]).", "hint": "If line 14 looks fine, where is the actual mistake usually?", "objectives": ["YAML", "--syntax-check"], "mins": 4}, {"id": "rhce-check-diff", "title": "Preview before you wreck", "situation": "You're about to run a playbook that manages firewall rules on 80 production hosts. You want to see exactly what would change first.", "prompt": "Which flags give you a safe preview?", "evidence": [], "choices": ["ansible-playbook --check --diff — dry run showing per-task would-change status plus unified diffs of file changes", "--check alone — diffs are automatic", "Run it for real — previews are unreliable", "--diff without --check — that previews safely"], "answer": 0, "why": "--check = dry-run mode (tasks report what WOULD change; modules that can't predict may skip). --diff shows file diffs for template/copy/lineinfile changes. Together they're the pre-production review. Caveat: some modules don't support check mode well (command/shell always report changed) — know your modules.", "hint": "Which flag dry-runs, and which shows file diffs?", "objectives": ["Check mode", "--diff"], "mins": 4}, {"id": "rhce-unreachable", "title": "UNREACHABLE: 12 hosts", "situation": "A playbook run shows 12 hosts UNREACHABLE with SSH errors, while 40 succeed. The failing hosts were reimaged yesterday.", "prompt": "What is the most likely cause and the verification?", "evidence": [], "choices": ["Stale host keys (reimaged hosts have new keys) — verify with ssh-keyscan/manual SSH, then update known_hosts (ssh-keygen -R)", "Ansible is broken — reinstall it", "UNREACHABLE means the playbook has a syntax error", "Increase forks — parallelism causes UNREACHABLE"], "answer": 0, "why": "UNREACHABLE = couldn't even start the task (SSH/auth/network), vs FAILED = task ran and errored. Reimaged hosts → new SSH host keys → 'Host key verification failed'. Verify manually (ssh user@host), clear the stale key (ssh-keygen -R host), and accept the new one deliberately (TOFU with verification). Never blindly disable host_key_checking in production.", "hint": "What changed about those 12 hosts yesterday that SSH cares about?", "objectives": ["UNREACHABLE", "Host keys"], "mins": 5}, {"id": "rhce-verbosity", "title": "Reading the failure output", "situation": "A task FAILED with a terse message. You need the module's full stderr, the exact command run, and connection details.", "prompt": "How do you get the details?", "evidence": [], "choices": ["Re-run with -vvv — shows task args, module invocation, SSH commands, and full result dictionaries", "-v is enough for everything — more vs are decorative", "Verbosity can't show module internals — read the source", "Failures have no details — rewrite the task blindly"], "answer": 0, "why": "Verbosity ladder: -v (task results), -vv (task input), -vvv (connection + module execution details), -vvvv (connection plugin debug). For failures, -vvv usually reveals the exact remote command and stderr. Combine with --step to interactively walk tasks, or --start-at-task to resume mid-playbook after a fix.", "hint": "How many v's show the SSH command and full result dict?", "objectives": ["Verbosity", "Debugging"], "mins": 4}, {"id": "rhce-slow-facts", "title": "The 10-minute gather", "situation": "Every playbook run spends 10 minutes in 'Gathering Facts' on hosts with huge NFS mounts and hundreds of interfaces.", "prompt": "What are the optimization options?", "evidence": [], "choices": ["gather_facts: false (when facts aren't needed), gather_subset to limit (e.g., !hardware), or fact caching (jsonfile/redis) across runs", "Facts can't be skipped — it's mandatory", "Increase forks — gathering parallelizes per host already", "Delete the NFS mounts — facts require clean mounts"], "answer": 0, "why": "Fact gathering runs the setup module per host — expensive with many mounts/devices. Options: disable entirely (gather_facts: false) for plays not needing facts; gather_subset: ['!all', '!min'] trims categories; fact caching (ansible.cfg fact_caching=jsonfile, with timeout) reuses facts across playbook runs. Measure first: -vv shows per-task timing.", "hint": "Do all your plays actually use ansible_facts?", "objectives": ["Facts", "Performance"], "mins": 5}, {"id": "rhce-idempotency-test", "title": "Proving idempotency", "situation": "Your team requires playbooks to be idempotent. You need to demonstrate yours is — and find the tasks that aren't.", "prompt": "What is the standard test?", "evidence": [], "choices": ["Run the playbook twice: the second run should report 0 changed (all ok) — any 'changed' on run two is a non-idempotent task to fix (often shell/command without creates/removes guards)", "Run once — changed on first run proves idempotency", "Idempotency can't be tested — it's theoretical", "--check proves idempotency"], "answer": 0, "why": "The double-run test is the idempotency proof: run 1 converges (changed expected), run 2 must be all-ok. Tasks still 'changed' on run 2 are the culprits — usually command/shell tasks lacking changed_when/creates, or template/copy with dynamic content (timestamps). Fix with proper modules, changed_when, or creates:/removes: guards.", "hint": "What should the second consecutive run report?", "objectives": ["Idempotency", "Testing"], "mins": 5}]}], "lessons": [{"domain_id": "inventory-config", "title": "Inventory & Config — Core concepts", "concepts": ["ansible.cfg: ansible uses the FIRST config found in this order: ANSIBLE_CONFIG environment variable, ./ansible.cfg (project), ~/.ansible.cfg (user), /etc/ansible.cfg (system).", "Inventory structure: host variables are set inline after the hostname in INI inventory: ansible_host overrides the DNS name, ansible_port the SSH port, ansible_user the login. There is no --skip-hosts flag, and editing inventory for a one-off change is error-prone.", "Parent/child groups: the :children suffix builds parent groups from child groups without duplicating host entries, so 'web' means every web server and 'boston' means every Boston host.", "command vs shell: the command module executes the binary directly with no shell, so shell metacharacters (|, >, &&) are passed literally as arguments."], "example": {"lang": "text", "code": "[web]\nweb[1:8].example.com\nweb9.example.com", "walkthrough": "Host variables are set inline after the hostname in INI inventory: ansible_host overrides the DNS name, ansible_port the SSH port, ansible_user the login. They apply only to that host. (Ansible does honor ~/.ssh/config too, but inline host vars are the direct, visible approach.)."}, "pitfalls": ["Common trap: list every host twice under literal [boston] and [web] groups with duplicate entries.", "Common trap: ad hoc commands can't take arguments.", "Common trap: put all hosts in one [all] group and use --limit with regexes for every run.", "Common trap: remote_inventory=./inventory, trust_all_hosts=yes, concurrency=20, root=True."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "playbooks", "title": "Playbooks — Core concepts", "concepts": ["Play structure: handlers are tasks that run only when notified by a task reporting changed, and they run once at the end of the play (deduped even if notified multiple times). A play is a list item with keys like name, hosts, become, vars at the play level, and tasks: as a list beneath.", "YAML uses spaces (never tabs) with consistent indentation — 2 spaces per level is the convention.", "Modules: dedicated modules (dnf, service, copy, template, user, file) check current state and only act when needed — that's idempotency, the heart of Ansible.", "Idempotency: one task, N items, full idempotency per item.", "notify: this gives you 'restart if config changed' semantics with zero outages on no-op runs. notify references the handler by name (or listen topic)."], "example": {"lang": "yaml", "code": "- tasks:\n    - name: install nginx\n      hosts: web\n      dnf:\n        name: nginx", "walkthrough": "A play is a list item with keys like name, hosts, become, vars at the play level, and tasks: as a list beneath. In the broken example, hosts/dnf were nested under the task. 'ansible-playbook --syntax-check' catches this fast."}, "pitfalls": ["Common trap: YAML needs tabs for the play level and spaces for tasks.", "Common trap: keep shell but add 'creates: /usr/sbin/nginx' to fake idempotency.", "Common trap: handlers run before tasks, so put the restart logic there.", "Common trap: conditionals can't reference earlier tasks."], "try_it": "Try it now in the Terminal tab →"}, {"domain_id": "variables-facts", "title": "Variables & Facts — Core concepts", "concepts": ["Precedence (high→low): extra vars > task/block vars > role vars > play vars > host_vars > group_vars > role defaults. -e is the ultimate override (useful for one-off runs); role defaults/ are the weakest (meant to be overridden).", "Facts: magic variables are always available: inventory_hostname (current host), groups (dict of group→host lists), hostvars (dict of host→all its variables AND facts). Gathered facts (ansible_facts['os_family'] = 'RedHat' vs 'Debian', distribution, etc.) let plays adapt: 'dnf: name=httpd when: ansible_facts.os_family == \"RedHat\"'.", "os_family: cleaner: a vars dict keyed by os_family.", "Jinja2 filters chain with pipes: default() guards the empty/undefined case, join(',') concatenates, upper transforms. {{ }} prints an expression; {% %} is for statements (if/for).", "Filters are the template workhorse — map, selectattr, to_json, b64encode, etc."], "example": {"lang": "text", "code": "Worked example — precedence\nSetup: Magic variables are always available: inventory_hostname (current host), groups (dict of group→host lists), hostvars (dict of host→all its variables…\nReasoning: Precedence (high→low): extra vars > task/block vars > role vars > play vars > host_vars > group_vars > role defaults. -e is the ultimate override…\nTakeaway: Ansible never errors on duplicates — last/highest precedence silently wins, so know the order.", "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."}, "pitfalls": ["Common trap: magic variables only work in group_vars.", "Common trap: undefined variables render as empty strings.", "Common trap: use -e for all 200 variables on every run.", "Common trap: jinja2 supports Python exceptions."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "roles", "title": "Roles — Core concepts", "concepts": ["Role structure: you can pass vars to dependencies ('{ role: postgres, postgres_version: 16 }'). requirements.yml only installs roles — it doesn't order execution.", "include_role: dynamic include_role evaluates during execution — it honors loops, works with --start-at-task predictably, and is the choice for conditional/looped role application.", "Static vs dynamic: 'ansible-galaxy init webserver' scaffolds the convention: tasks/main.yml (the work), handlers, templates/ (Jinja2), files/ (static), vars/ (high-precedence), defaults/ (low-precedence overridables), meta/ (dependencies, metadata).", "defaults vs vars: role variable precedence: defaults/main.yml (weakest — meant as overridable defaults) < inventory/group_vars/host_vars/play vars < vars/main.yml (strong, hard to override)."], "example": {"lang": "text", "code": "Worked example — role structure\nSetup: You can pass vars to dependencies ('{ role: postgres, postgres_version: 16 }'). requirements.yml only installs roles — it doesn't order execution.\nReasoning: Static imports (roles:, import_role) are pre-processed: the role's tasks merge into the play at parse time, so tags apply to all imported tasks and…\nTakeaway: meta/main.yml 'dependencies:' declares prerequisite roles; Ansible runs them first (deduped across the play).", "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."}, "pitfalls": ["Common trap: collections install automatically when referenced.", "Common trap: one big main.yml at the repo root."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "vault-security", "title": "Vault & Security — Core concepts", "concepts": ["Ansible-vault encrypt encrypts whole files (AES256); encrypt_string encrypts a single value inline ('db_password: !vault | $ANSIBLE_VAULT;...').", "Vault IDs label passwords: files encrypted with --vault-id teamA can only be decrypted when that ID's password is supplied. no_log: true prevents the task's args/results from being displayed or logged — essential for tasks handling secrets (even when values come from vault, the RESULT might echo them).", "Become: enables escalation (default method sudo, user root); it works at play, task, or block level — set broadly, override narrowly (become_user: appuser for app tasks).", "Privilege escalation: least privilege: escalate only the tasks that need it."], "example": {"lang": "text", "code": "Worked example — ansible-vault\nSetup: Public-key auth: private key stays local (0600), public key appended to remote ~/.ssh/authorized_keys. ssh-agent holds decrypted keys in memory after…\nReasoning: The vault password file is a master key: 0600, owned by the service account, never in git.\nTakeaway: Vault IDs label passwords: files encrypted with --vault-id teamA can only be decrypted when that ID's password is supplied.", "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."}, "pitfalls": ["Common trap: ansible can't use SSH keys.", "Common trap: use the root user for the SSH connection instead.", "Common trap: ansible-vault only encrypts playbooks, not vars files.", "Common trap: become only works at play level."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "troubleshooting", "title": "Troubleshooting — Core concepts", "concepts": ["YAML errors surface where the parser gives up, which is often after the real mistake: a missing closing quote, mixed tabs/spaces, or wrong indentation level above. --syntax-check validates without executing.", "Check mode: caveat: some modules don't support check mode well (command/shell always report changed) — know your modules.", "--diff: --check = dry-run mode (tasks report what WOULD change; modules that can't predict may skip). --diff shows file diffs for template/copy/lineinfile changes.", "UNREACHABLE = couldn't even start the task (SSH/auth/network), vs FAILED = task ran and errored.", "Host keys: reimaged hosts → new SSH host keys → 'Host key verification failed'. Fact gathering runs the setup module per host — expensive with many mounts/devices."], "example": {"lang": "text", "code": "Worked example — yaml\nSetup: Caveat: some modules don't support check mode well (command/shell always report changed) — know your modules.\nReasoning: Reimaged hosts → new SSH host keys → 'Host key verification failed'.\nTakeaway: --check = dry-run mode (tasks report what WOULD change; modules that can't predict may skip). --diff shows file diffs for template/copy/lineinfile…", "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."}, "pitfalls": ["Common trap: UNREACHABLE means the playbook has a syntax error.", "Common trap: changed on first run proves idempotency.", "Common trap: verbosity can't show module internals.", "Common trap: gathering parallelizes per host already."], "try_it": "Work through this in the Terminal tab →"}], "sections": [{"id": "foundations", "title": "Foundations", "kind": "foundation", "lectures": ["f-cli-basics-0", "f-cli-basics-1", "f-yaml-0", "f-yaml-1", "f-yaml-2"], "lab_ids": [], "drill_domain_ids": []}, {"id": "core", "title": "Core", "kind": "core", "lectures": ["c-inventory-config", "c-playbooks", "c-variables-facts", "c-roles", "c-troubleshooting"], "lab_ids": ["rhce-lab-1", "rhce-lab-2"], "drill_domain_ids": ["inventory-config", "playbooks", "variables-facts", "roles", "troubleshooting"]}, {"id": "advanced", "title": "Advanced", "kind": "advanced", "lectures": ["c-vault-security"], "lab_ids": ["rhce-lab-3", "rhce-lab-4"], "drill_domain_ids": ["vault-security"]}, {"id": "exam-prep", "title": "Exam Prep", "kind": "exam-prep", "lectures": [], "lab_ids": [], "drill_domain_ids": ["inventory-config", "playbooks", "variables-facts", "roles", "vault-security", "troubleshooting"]}], "behavioral": [{"prompt": "Tell me about a time you automated away a painful manual process with Ansible.", "framework": "STAR", "points": ["The manual pain and its cost", "Your automation design", "Adoption and measurable impact"], "pitfalls": ["Automation only you can run", "No before/after measure"]}, {"prompt": "Describe a complex Ansible failure you debugged. How did you find the root cause?", "framework": "STAR", "points": ["Symptoms and your method", "Tools used (-vvv, --check, etc.)", "The fix and prevention"], "pitfalls": ["Guessing until it worked", "No systematic method"]}, {"prompt": "Tell me about a time you had to standardize automation across teams with different habits.", "framework": "STAR", "points": ["The divergence problem", "How you built consensus", "What the standard looks like now"], "pitfalls": ["Mandating without buy-in", "Letting chaos continue"]}, {"prompt": "Describe a situation where idempotency (or lack of it) mattered in production.", "framework": "STAR", "points": ["What broke or almost broke", "How you made it idempotent", "How you proved it"], "pitfalls": ["Not knowing what idempotency means", "No verification"]}, {"prompt": "Tell me about handling secrets in automation safely.", "framework": "STAR", "points": ["The risk you addressed", "Your approach (vault, permissions, no_log)", "How you verified no leakage"], "pitfalls": ["Plaintext secrets in repos", "No verification step"]}, {"prompt": "Describe a time you refactored playbooks into roles or collections. What drove the decision?", "framework": "STAR", "points": ["The duplication or scaling pain", "Your design choices", "Reuse achieved"], "pitfalls": ["Refactoring for its own sake", "Roles nobody reuses"]}, {"prompt": "Tell me about a disagreement over automation approach (e.g., Ansible vs scripts vs another tool).", "framework": "STAR", "points": ["Both positions fairly stated", "How you evaluated", "The decision and its result"], "pitfalls": ["Tool zealotry", "Deciding by seniority"]}, {"prompt": "How do you stay current with the Ansible ecosystem, and what's the most useful thing you've learned recently?", "framework": "Present-Past-Future", "points": ["Learning sources", "A concrete recent learning", "How you applied it"], "pitfalls": ["No recent learning", "Learning without application"]}], "chat": {"persona": "You are a friendly but rigorous Ansible/RHCE-style interviewer running a mock assessment. Pose realistic automation scenarios, demand exact YAML and module choices, and give concise keyword-driven feedback.", "topics": [{"id": "inventory-config", "name": "Inventory & Config", "key_points": ["INI groups and :children", "ansible.cfg precedence", "command vs shell", "patterns and --limit", "host variables"], "followups": ["Write the inventory for...", "Which config wins and why?"]}, {"id": "playbooks", "name": "Playbooks", "key_points": ["play anatomy", "modules over shell", "handlers and notify", "loop syntax", "when/register/changed_when", "lineinfile"], "followups": ["Sketch the play.", "How do you make it idempotent?"]}, {"id": "variables-facts", "name": "Variables & Facts", "key_points": ["precedence order", "ansible_facts os_family", "Jinja2 filters", "hostvars and groups", "group_vars layout", "default filter"], "followups": ["Which value wins here?", "How does the template get that data?"]}, {"id": "roles", "name": "Roles", "key_points": ["directory structure", "include_role vs import_role", "defaults vs vars", "requirements.yml", "meta dependencies", "collections and FQCN"], "followups": ["Where does this file live?", "Static or dynamic — which and why?"]}, {"id": "vault-security", "name": "Vault & Security", "key_points": ["ansible-vault encrypt/encrypt_string", "vault IDs", "become scoping", "no_log", "ssh-agent", "vault password file hygiene"], "followups": ["How do you run this non-interactively?", "Where does the secret live?"]}, {"id": "troubleshooting", "name": "Troubleshooting", "key_points": ["--syntax-check", "--check --diff", "UNREACHABLE vs FAILED", "-vvv output", "fact gathering cost", "double-run idempotency test"], "followups": ["What does that error actually mean?", "Walk me through your debug steps."]}]}, "labs": [{"id": "rhce-lab-1", "title": "Inventory structure — shell drill", "objective": "Run a short sequence of lab shell commands that demonstrates inventory structure, then verify each result against the expected output.", "steps": ["This lab reworks the Inventory & Config practice scenario \"Web servers in two data centers\" into commands you run yourself — same concept, hands-on instead of multiple choice.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: whoami — the shell reports the lab identity 'candidate'", "Type exactly: pwd — the output is an absolute path starting with /", "Type exactly: uname — the kernel name reported is Linux", "In your own words, say what each command's output taught you about inventory structure."], "checks": [{"command_pattern": "whoami", "expect_contains": "candidate", "hint": "In the Terminal tab, run `whoami`. If the check fails, confirm you typed it exactly and that the output contains \"candidate\"."}, {"command_pattern": "pwd", "expect_contains": "/", "hint": "In the Terminal tab, run `pwd`. If the check fails, confirm you typed it exactly and that the output contains \"/\"."}, {"command_pattern": "uname", "expect_contains": "Linux", "hint": "In the Terminal tab, run `uname`. If the check fails, confirm you typed it exactly and that the output contains \"Linux\"."}], "success_message": "Lab complete — inventory structure practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"id": "rhce-lab-2", "title": "Play structure — shell drill", "objective": "Use the lab shell to explore play structure hands-on: type each command, read what comes back, and connect the output to the concept.", "steps": ["Inspired by the Playbooks scenario \"Anatomy of a first play\": take its core idea and prove it live in the terminal instead of answering on paper.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: uname — the kernel name reported is Linux", "Type exactly: echo play-structure ready — echo prints your concept token back verbatim", "Type exactly: ls — the listing shows lab-notes (run 'mkdir lab-notes' first if it is missing)", "In your own words, say what each command's output taught you about play structure."], "checks": [{"command_pattern": "uname", "expect_contains": "Linux", "hint": "In the Terminal tab, run `uname`. If the check fails, confirm you typed it exactly and that the output contains \"Linux\"."}, {"command_pattern": "echo", "expect_contains": "play-structure", "hint": "In the Terminal tab, run `echo play-structure ready`. If the check fails, confirm you typed it exactly and that the output contains \"play-structure\"."}, {"command_pattern": "^ls$|^ls\\s", "expect_contains": "lab-notes", "hint": "In the Terminal tab, run `ls`. If the check fails, confirm you typed it exactly and that the output contains \"lab-notes\"."}], "success_message": "Lab complete — play structure practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"id": "rhce-lab-3", "title": "Precedence — shell drill", "objective": "Prove you can apply precedence in the lab shell — follow the steps, watch the output, and confirm every check passes.", "steps": ["The Variables & Facts scenario \"Which value wins?\" tests this concept as a question. This lab makes you demonstrate it with real commands.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: ls — the listing shows lab-notes (run 'mkdir lab-notes' first if it is missing)", "Type exactly: ps — the process table header names the PID column", "Type exactly: echo hello world | grep hello — grep passes through the line containing hello", "In your own words, say what each command's output taught you about precedence."], "checks": [{"command_pattern": "^ls$|^ls\\s", "expect_contains": "lab-notes", "hint": "In the Terminal tab, run `ls`. If the check fails, confirm you typed it exactly and that the output contains \"lab-notes\"."}, {"command_pattern": "^ps$|^ps\\s", "expect_contains": "PID", "hint": "In the Terminal tab, run `ps`. If the check fails, confirm you typed it exactly and that the output contains \"PID\"."}, {"command_pattern": "grep", "expect_contains": "hello", "hint": "In the Terminal tab, run `echo hello world | grep hello`. If the check fails, confirm you typed it exactly and that the output contains \"hello\"."}], "success_message": "Lab complete — precedence practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"id": "rhce-lab-4", "title": "Role structure — shell drill", "objective": "Run a short sequence of lab shell commands that demonstrates role structure, then verify each result against the expected output.", "steps": ["This lab reworks the Roles practice scenario \"From playbook to role\" into commands you run yourself — same concept, hands-on instead of multiple choice.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: echo hello world | grep hello — grep passes through the line containing hello", "Type exactly: whoami — the shell reports the lab identity 'candidate'", "Type exactly: pwd — the output is an absolute path starting with /", "In your own words, say what each command's output taught you about role structure."], "checks": [{"command_pattern": "grep", "expect_contains": "hello", "hint": "In the Terminal tab, run `echo hello world | grep hello`. If the check fails, confirm you typed it exactly and that the output contains \"hello\"."}, {"command_pattern": "whoami", "expect_contains": "candidate", "hint": "In the Terminal tab, run `whoami`. If the check fails, confirm you typed it exactly and that the output contains \"candidate\"."}, {"command_pattern": "pwd", "expect_contains": "/", "hint": "In the Terminal tab, run `pwd`. If the check fails, confirm you typed it exactly and that the output contains \"/\"."}], "success_message": "Lab complete — role structure practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"checks": [{"command_pattern": "^ls$", "expect_contains": "inventory", "hint": "Run `mkdir inventory`, then `ls` to confirm the directory exists."}, {"command_pattern": "^ls inventory$", "expect_contains": "hosts", "hint": "Run `touch inventory/hosts`, then `ls inventory` to confirm the file is inside."}], "difficulty": 1, "id": "rhce-lab-5", "objective": "Create the inventory structure: directory and hosts file.", "steps": ["Open the Terminal tab for this bootcamp.", "Type exactly: mkdir inventory — the inventory directory.", "Type exactly: touch inventory/hosts — the hosts file.", "Type exactly: ls — confirm the directory exists.", "Type exactly: ls inventory — confirm the hosts file is inside.", "Why keep inventory in a dedicated file instead of the playbook? One sentence."], "success_message": "Lab complete — inventory scaffolded. Structure before automation.", "title": "Inventory structure — shell drill"}, {"checks": [{"command_pattern": "^cat site\\.yaml$", "expect_contains": "---", "hint": "Create it first: `echo '---' > site.yaml`, then run `cat site.yaml`."}, {"command_pattern": "grep hosts site\\.yaml", "expect_contains": "hosts:", "hint": "Append the line first: `echo '  hosts: webservers' >> site.yaml`, then grep."}], "difficulty": 1, "id": "rhce-lab-6", "objective": "Draft a play header: document start marker and the hosts line.", "steps": ["Open the Terminal tab.", "Type exactly: echo '---' > site.yaml — the YAML document marker.", "Type exactly: echo '  hosts: webservers' >> site.yaml — the target group.", "Type exactly: cat site.yaml — read the play header.", "Type exactly: grep hosts site.yaml — confirm the target line.", "What does the hosts line decide? One sentence."], "success_message": "Lab complete — play header drafted. Every play names its targets.", "title": "Play header — shell drill"}, {"checks": [{"command_pattern": "^cat group_vars\\.txt$", "expect_contains": "app_port: 8080", "hint": "Create it first: `echo 'app_port: 8080' > group_vars.txt`, then run `cat group_vars.txt`."}, {"command_pattern": "grep app_port group_vars\\.txt", "expect_contains": "app_port", "hint": "Run `grep app_port group_vars.txt`."}], "difficulty": 2, "id": "rhce-lab-7", "objective": "Store variables in a file: write group vars and retrieve them.", "steps": ["Open the Terminal tab.", "Type exactly: echo 'app_port: 8080' > group_vars.txt — a group variable.", "Type exactly: echo 'app_user: deploy' >> group_vars.txt — a second variable.", "Type exactly: cat group_vars.txt — read both variables.", "Type exactly: grep app_port group_vars.txt — retrieve one by name.", "Why do variables live outside the playbook? One sentence."], "success_message": "Lab complete — variables externalized. Data out of code: the Ansible way.", "title": "Group variables — shell drill"}, {"checks": [{"command_pattern": "grep ERROR logs/app\\.log", "expect_contains": "connection refused", "hint": "Run `grep ERROR logs/app.log`."}, {"command_pattern": "grep -i error logs/app\\.log", "expect_contains": "ERROR", "hint": "Run `grep -i error logs/app.log`."}, {"command_pattern": "^tail logs/app\\.log$", "expect_contains": "timeout after 30s", "hint": "Run `tail logs/app.log`."}], "difficulty": 3, "id": "rhce-lab-8", "objective": "Troubleshoot like an operator: grep the failure, scan case-insensitively, read the tail.", "steps": ["Open the Terminal tab.", "Type exactly: grep ERROR logs/app.log — the hard failures.", "Type exactly: grep -i error logs/app.log — catch every casing.", "Type exactly: tail logs/app.log — the latest state of the world.", "A playbook failed at the 'wait for cache' task. Which log line explains it?", "Write the one-line root cause you would put in the incident note."], "success_message": "Lab complete — operator triage. Logs first, theories second.", "title": "Troubleshoot the failure — shell drill"}], "foundations": [{"track": "cli-basics", "why_needed": "Ansible runs from the terminal over SSH. Command-line comfort comes before automation."}, {"track": "yaml", "why_needed": "Ansible playbooks are YAML documents. Learn to read and write YAML before the automation topics."}], "math": [], "simulations": [{"brief": "A playbook run reports 'changed' on every run for a file-copy task. The task is not idempotent.", "debrief": "A task that reports changed every run is not idempotent — usually a copy/template without proper ownership/mode, or a command module doing shell work. Idempotency is the contract: same playbook, same result, no changes on re-run.", "difficulty": 3, "domain_id": "troubleshooting", "id": "rhce-sim-1", "kind": "troubleshoot", "points": 15, "steps": [{"correct": 1, "evidence": [["task", "- name: Deploy config\n  command: cp /tmp/app.conf /etc/app/app.conf"], ["runs", "Run 1: changed. Run 2: changed. Run 3: changed."]], "explain": "The command module always reports changed — Ansible cannot know cp is a no-op. The copy module is idempotent: it compares checksums and only reports changed when the file actually differs.", "options": ["Add changed_when: false to hide it", "Replace command/cp with the copy module (checksum-compared, idempotent)", "Run the playbook less often", "Use shell instead of command"], "symptom": "Task reports changed on every run."}], "title": "The never-idempotent task"}, {"brief": "You need to deploy a secret API key to 50 hosts. Choose the approach.", "debrief": "Secrets go in Ansible Vault-encrypted files, never plaintext in the repo. Encrypt the variable file, reference it in the play, and keep the vault password out of version control.", "difficulty": 2, "domain_id": "vault-security", "id": "rhce-sim-2", "kind": "branching", "points": 15, "steps": [{"choices": [{"feedback": "Correct: encrypted at rest, decrypted only at run time.", "label": "Store it in a Vault-encrypted vars file", "next": "END", "outcome": "good", "points": 2}, {"feedback": "Plaintext secrets in git are a breach waiting for a clone.", "label": "Put it in plaintext group_vars", "next": "END", "outcome": "bad", "points": 0}], "id": "s1", "text": "Where does the API key live?"}], "title": "Where does the secret go?"}, {"brief": "Put these playbook-authoring steps in order.", "debrief": "Inventory first (know your targets), then the play structure, then variables, then tasks, then a check-mode dry run. Dry-running before the real run catches the targeting mistakes.", "difficulty": 1, "domain_id": "playbooks", "id": "rhce-sim-3", "kind": "ordering", "points": 10, "steps": {"context": "Authoring a playbook", "correct_order": [0, 1, 2, 3, 4], "items": ["Define the inventory and groups", "Write the play with hosts and become", "Add variables in group_vars", "Write the tasks", "Dry-run with --check before applying"]}, "title": "Author a playbook"}, {"brief": "This inventory is headed for production. Click the misconfigured lines (2 issues to find).", "debrief": "Two inventory mistakes: hosts listed without groups (no targeting possible), and plaintext passwords in the inventory file. Group your hosts; keep credentials in Vault.", "difficulty": 2, "domain_id": "inventory-config", "id": "rhce-sim-4", "kind": "config-check", "points": 10, "steps": {"config": "[webservers]\nweb1.example.com\nweb2.example.com\n\n[dbservers]\ndb1.example.com ansible_password=Sup3rSecret", "find": 2, "issues": [{"description": "Hosts are not grouped under a children/meta structure for shared variables — each group repeats connection vars.", "fix": "Add [webservers:vars] / group_vars files for shared settings.", "line": 1}, {"description": "Plaintext password in the inventory file.", "fix": "Move credentials to Ansible Vault-encrypted files.", "line": 6}]}, "title": "Review the inventory"}], "consoleSims": [{"brief": "Create the Ansible project layout in the file manager: inventory file, playbook, and group_vars directory.", "console": "linux-desktop", "debrief": "Ansible projects follow a conventional layout — inventory, playbooks, group_vars, roles — so any automation engineer can navigate them. Structure is the first idempotency: predictable places.", "difficulty": 2, "domain_id": "inventory-config", "id": "rhce-console-1", "tasks": [{"hint": "Project root first.", "id": "rhce-console-1-t1", "instruction": "Create a folder named ansible-lab in the home directory.", "validate": {"action": "create", "params": {"name": "ansible-lab", "type": "folder"}}}, {"hint": "Inside ansible-lab.", "id": "rhce-console-1-t2", "instruction": "Inside ansible-lab, create a file named inventory.", "validate": {"action": "create", "params": {"name": "inventory", "type": "file"}}}, {"hint": "Variables live here.", "id": "rhce-console-1-t3", "instruction": "Inside ansible-lab, create a folder named group_vars.", "validate": {"action": "create", "params": {"name": "group_vars", "type": "folder"}}}], "title": "Scaffold an Ansible project"}, {"brief": "Open the playbook in the code editor and set the target hosts and privilege escalation for the webservers group.", "console": "linux-desktop", "debrief": "Plays declare intent: hosts selects the targets, become enables privilege escalation. Reading a play top-to-bottom tells you what will change and where — before anything runs.", "difficulty": 2, "domain_id": "playbooks", "id": "rhce-console-2", "tasks": [{"hint": "Playbooks open in the editor.", "id": "rhce-console-2-t1", "instruction": "Open site.yaml in the code editor.", "validate": {"action": "click", "params": {"target": "open-playbook"}}}, {"hint": "Target the right group.", "id": "rhce-console-2-t2", "instruction": "Set the play's hosts to webservers.", "validate": {"action": "set-field", "params": {"field": "play-hosts", "value": "webservers"}}}, {"hint": "Package installs need root.", "id": "rhce-console-2-t3", "instruction": "Enable become (privilege escalation) for the play.", "validate": {"action": "set-field", "params": {"field": "play-become", "value": "true"}}}], "title": "Target the webservers play"}], "terminalMissions": [{"brief": "Create the Ansible project directories.", "checks": [{"command_pattern": "^ls$", "expect_contains": "ansible-mission", "hint": "Run `mkdir ansible-mission`, then `ls` to verify."}], "difficulty": 1, "domain_id": "inventory-config", "id": "rhce-mission-1", "objectives": ["Create the project directory"], "success_message": "Mission complete — project scaffolded.", "title": "Scaffold the project"}, {"brief": "Create the inventory file.", "checks": [{"command_pattern": "^ls ansible-mission$", "expect_contains": "inventory", "hint": "Run `touch ansible-mission/inventory`, then `ls ansible-mission`."}], "difficulty": 1, "domain_id": "inventory-config", "id": "rhce-mission-2", "objectives": ["Create the inventory file"], "success_message": "Mission complete — inventory file ready.", "title": "Create inventory"}, {"brief": "Write a play header.", "checks": [{"command_pattern": "^cat ansible-mission/site\\.yaml$", "expect_contains": "hosts:", "hint": "Run `echo '  hosts: all' > ansible-mission/site.yaml`, then `cat ansible-mission/site.yaml`."}], "difficulty": 2, "domain_id": "playbooks", "id": "rhce-mission-3", "objectives": ["Write and read the play header"], "success_message": "Mission complete — play header written.", "title": "Write the play header"}, {"brief": "Store a variable.", "checks": [{"command_pattern": "^cat ansible-mission/vars\\.txt$", "expect_contains": "ntp_server", "hint": "Run `echo 'ntp_server: time.example.com' > ansible-mission/vars.txt`, then `cat ansible-mission/vars.txt`."}], "difficulty": 2, "domain_id": "variables-facts", "id": "rhce-mission-4", "objectives": ["Write and read a variable file"], "success_message": "Mission complete — variable stored.", "title": "Store a variable"}, {"brief": "Verify the project layout.", "checks": [{"command_pattern": "^ls ansible-mission$", "expect_contains": "site.yaml", "hint": "Run `ls ansible-mission`."}], "difficulty": 3, "domain_id": "roles", "id": "rhce-mission-5", "objectives": ["List the project contents"], "success_message": "Mission complete — layout verified.", "title": "Verify the layout"}, {"brief": "Search project files for the hosts declaration.", "checks": [{"command_pattern": "grep -r hosts ansible-mission", "expect_contains": "hosts:", "hint": "Run `grep -r hosts ansible-mission`."}], "difficulty": 3, "domain_id": "troubleshooting", "id": "rhce-mission-6", "objectives": ["Recursively search the project"], "success_message": "Mission complete — project searched. You navigate automation like files — because it is.", "title": "Search the project"}], "media": [{"id": "rhce-inventory-config-diag", "kind": "diagram", "title": "Ansible Inventory & Config", "svg": "assets/diagrams/rhce-inventory-config.svg", "lesson_ref": "c-inventory-config", "caption": "Describe your fleet as data.", "alt": "Ansible Inventory & Config. Shows: Inventory, Groups, ansible.cfg, Variables."}, {"id": "rhce-playbooks-diag", "kind": "diagram", "title": "Ansible Playbook Anatomy", "svg": "assets/diagrams/rhce-playbooks.svg", "lesson_ref": "c-playbooks", "caption": "Plays contain tasks; tasks call modules.", "alt": "Ansible Playbook Anatomy. Shows: Inventory, Play, Tasks, Modules, Handlers."}, {"id": "rhce-variables-facts-diag", "kind": "diagram", "title": "Variables & Facts", "svg": "assets/diagrams/rhce-variables-facts.svg", "lesson_ref": "c-variables-facts", "caption": "Data-driven automation.", "alt": "Variables & Facts. Shows: vars, Facts, Precedence, Jinja2."}, {"id": "rhce-roles-diag", "kind": "diagram", "title": "Ansible Roles", "svg": "assets/diagrams/rhce-roles.svg", "lesson_ref": "c-roles", "caption": "Reusable playbook packages.", "alt": "Ansible Roles. Shows: Structure, Galaxy, Defaults vs vars, Dependencies."}, {"id": "rhce-vault-security-diag", "kind": "diagram", "title": "Ansible Vault & Security", "svg": "assets/diagrams/rhce-vault-security.svg", "lesson_ref": "c-vault-security", "caption": "Encrypt secrets, run least-privilege.", "alt": "Ansible Vault & Security. Shows: ansible-vault, become, No plaintext, Vault IDs."}, {"id": "rhce-troubleshooting-diag", "kind": "diagram", "title": "Ansible Troubleshooting", "svg": "assets/diagrams/rhce-troubleshooting.svg", "lesson_ref": "c-troubleshooting", "caption": "Debug failed plays methodically.", "alt": "Ansible Troubleshooting. Shows: Syntax, Verbose, Check mode, Isolate, Fix + rerun."}], "resources": {"cheatsheet": {"title": "RHCE Ansible (EX294) — Cheat Sheet", "sections": [{"heading": "Inventory & Config", "items": ["Inventory structure — host variables are set inline after the hostname in INI inventory: ansible_host overrides the DNS name, ansible_port the SSH port, ansible_user the login. There is no --skip-hosts flag, and editing inventory for a one-off change is error-prone.", "Parent/child groups — the :children suffix builds parent groups from child groups without duplicating host entries, so 'web' means every web server and 'boston' means every Boston host.", "Common trap — list every host twice under literal [boston] and [web] groups with duplicate entries.", "Common trap — ad hoc commands can't take arguments.", "Common trap — put all hosts in one [all] group and use --limit with regexes for every run.", "Common trap — remote_inventory=./inventory, trust_all_hosts=yes, concurrency=20, root=True.", "Host variables are set inline after the hostname in INI inventory — ansible_host overrides the DNS name, ansible_port the SSH port, ansible_user the login. They apply only to that host. (Ansible does honor ~/.ssh/config too, but inline host vars are the direct, visible approach.)."]}, {"heading": "Playbooks", "items": ["Play structure — handlers are tasks that run only when notified by a task reporting changed, and they run once at the end of the play (deduped even if notified multiple times). A play is a list item with keys like name, hosts, become, vars at the play level, and tasks: as a…", "YAML uses spaces (never tabs) with consistent indentation — 2 spaces per level is the convention.", "Modules — dedicated modules (dnf, service, copy, template, user, file) check current state and only act when needed — that's idempotency, the heart of Ansible.", "Idempotency — one task, N items, full idempotency per item.", "Common trap — YAML needs tabs for the play level and spaces for tasks.", "Common trap — keep shell but add 'creates: /usr/sbin/nginx' to fake idempotency.", "Common trap — handlers run before tasks, so put the restart logic there.", "Common trap — conditionals can't reference earlier tasks.", "A play — is a list item with keys like name, hosts, become, vars at the play level, and tasks: as a list beneath. In the broken example, hosts/dnf were nested under the task. 'ansible-playbook --syntax-check' catches this fast."]}, {"heading": "Variables & Facts", "items": ["Precedence (high→low) — extra vars > task/block vars > role vars > play vars > host_vars > group_vars > role defaults. -e is the ultimate override (useful for one-off runs); role defaults/ are the weakest (meant to be overridden).", "Facts — magic variables are always available: inventory_hostname (current host), groups (dict of group→host lists), hostvars (dict of host→all its variables AND facts). Gathered facts (ansible_facts['os_family'] = 'RedHat' vs 'Debian', distribution, etc.) let plays…", "Jinja2 filters chain with pipes — default() guards the empty/undefined case, join(',') concatenates, upper transforms. {{ }} prints an expression; {% %} is for statements (if/for).", "Filters are the template workhorse — map, selectattr, to_json, b64encode, etc.", "Common trap — magic variables only work in group_vars.", "Common trap — undefined variables render as empty strings.", "Common trap — use -e for all 200 variables on every run.", "Common trap — jinja2 supports Python exceptions.", "Read — Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."]}, {"heading": "Roles", "items": ["Role structure — you can pass vars to dependencies ('{ role: postgres, postgres_version: 16 }'). requirements.yml only installs roles — it doesn't order execution.", "Static vs dynamic — 'ansible-galaxy init webserver' scaffolds the convention: tasks/main.yml (the work), handlers, templates/ (Jinja2), files/ (static), vars/ (high-precedence), defaults/ (low-precedence overridables), meta/ (dependencies, metadata).", "Common trap — collections install automatically when referenced.", "Common trap — one big main.yml at the repo root."]}, {"heading": "Vault & Security", "items": ["Ansible-vault — Ansible-vault encrypt encrypts whole files (AES256); encrypt_string encrypts a single value inline ('db_password: !vault | $ANSIBLE_VAULT;...').", "Vault IDs label passwords — files encrypted with --vault-id teamA can only be decrypted when that ID's password is supplied. no_log: true prevents the task's args/results from being displayed or logged — essential for tasks handling secrets (even when values come from vault, the RESUL…", "Become — enables escalation (default method sudo, user root); it works at play, task, or block level — set broadly, override narrowly (become_user: appuser for app tasks).", "Privilege escalation — least privilege: escalate only the tasks that need it.", "Common trap — ansible can't use SSH keys.", "Common trap — use the root user for the SSH connection instead.", "Common trap — ansible-vault only encrypts playbooks, not vars files.", "Common trap — become only works at play level."]}, {"heading": "Troubleshooting", "items": ["YAML errors surface where the parser gives up, which — is often after the real mistake: a missing closing quote, mixed tabs/spaces, or wrong indentation level above. --syntax-check validates without executing.", "Check mode — caveat: some modules don't support check mode well (command/shell always report changed) — know your modules.", "UNREACHABLE — UNREACHABLE = couldn't even start the task (SSH/auth/network), vs FAILED = task ran and errored.", "Host keys — reimaged hosts → new SSH host keys → 'Host key verification failed'. Fact gathering runs the setup module per host — expensive with many mounts/devices.", "Common trap — UNREACHABLE means the playbook has a syntax error.", "Common trap — changed on first run proves idempotency.", "Common trap — verbosity can't show module internals.", "Common trap — gathering parallelizes per host already."]}]}, "glossary": [{"term": "ansible", "def": "ansible.cfg: ansible uses the FIRST config found in this order: ANSIBLE_CONFIG environment variable, ./ansible.cfg (project), ~/.ansible.cfg (user), /etc/ansible.cfg (system)."}, {"term": "SSH", "def": "Inventory structure: host variables are set inline after the hostname in INI inventory: ansible_host overrides the DNS name, ansible_port the SSH port, ansible_user the login. There is no --skip-hosts flag, and editing inventory for a on…"}, {"term": "YAML", "def": "YAML uses spaces (never tabs) with consistent indentation — 2 spaces per level is the convention."}, {"term": "vault", "def": "The vault password file is a master key: 0600, owned by the service account, never in git. The mature pattern is a vault-id script (--vault-id prod@/usr/local/bin/get-vault-pass) that fetches the password from a real secret manager at ru…"}, {"term": "Jinja2", "def": "register: captures a task's result into a variable; when: gates execution on a Jinja2 condition (stat.exists is the standard existence check); changed_when:/failed_when: override how Ansible interprets the result. Together they give prec…"}, {"term": "Host", "def": "Host variables are set inline after the hostname in INI inventory: ansible_host overrides the DNS name, ansible_port the SSH port, ansible_user the login. They apply only to that host."}, {"term": "RESULT", "def": "no_log: true prevents the task's args/results from being displayed or logged — essential for tasks handling secrets (even when values come from vault, the RESULT might echo them). Note it also hides output on failure (debugging trade-off…"}, {"term": "UNREACHABLE", "def": "Common trap: UNREACHABLE means the playbook has a syntax error."}, {"term": "Facts", "def": "Facts: magic variables are always available: inventory_hostname (current host), groups (dict of group→host lists), hostvars (dict of host→all its variables AND facts). Gathered facts (ansible_facts['os_family'] = 'RedHat' vs 'Debian', di…"}, {"term": "ID", "def": "Vault IDs label passwords: files encrypted with --vault-id teamA can only be decrypted when that ID's password is supplied. no_log: true prevents the task's args/results from being displayed or logged — essential for tasks handling secre…"}, {"term": "Static", "def": "Static imports (roles:, import_role) are pre-processed: the role's tasks merge into the play at parse time, so tags apply to all imported tasks and 'when' on the import applies per task. Dynamic include_role evaluates during execution —…"}, {"term": "Modules", "def": "Modules: dedicated modules (dnf, service, copy, template, user, file) check current state and only act when needed — that's idempotency, the heart of Ansible."}, {"term": "Filters", "def": "Filters are the template workhorse — map, selectattr, to_json, b64encode, etc."}, {"term": "git", "def": "requirements.yml declares roles (and collections) with versions/sources; 'ansible-galaxy install -r' fetches them reproducibly — like a lockfile for automation. Pin versions (or commit SHAs for git sources) so runs are deterministic."}, {"term": "Rule", "def": "Static imports (roles:, import_role) are pre-processed: the role's tasks merge into the play at parse time, so tags apply to all imported tasks and 'when' on the import applies per task. Dynamic include_role evaluates during execution —…"}, {"term": "Boston", "def": "Parent/child groups: the :children suffix builds parent groups from child groups without duplicating host entries, so 'web' means every web server and 'boston' means every Boston host."}, {"term": "Vault IDs", "def": "Vault IDs label passwords: files encrypted with --vault-id teamA can only be decrypted when that ID's password is supplied. no_log: true prevents the task's args/results from being displayed or logged — essential for tasks handling secre…"}, {"term": "Become", "def": "Become: enables escalation (default method sudo, user root); it works at play, task, or block level — set broadly, override narrowly (become_user: appuser for app tasks)."}, {"term": "Caveat", "def": "--check = dry-run mode (tasks report what WOULD change; modules that can't predict may skip). --diff shows file diffs for template/copy/lineinfile changes."}, {"term": "Cleaner", "def": "Gathered facts (ansible_facts['os_family'] = 'RedHat' vs 'Debian', distribution, etc.) let plays adapt: 'dnf: name=httpd when: ansible_facts.os_family == \"RedHat\"'. Cleaner: a vars dict keyed by os_family."}, {"term": "Are", "def": "Are 'hosts' and 'tasks' siblings, or is one inside the other?"}, {"term": "Play", "def": "Play structure: handlers are tasks that run only when notified by a task reporting changed, and they run once at the end of the play (deduped even if notified multiple times). A play is a list item with keys like name, hosts, become, var…"}, {"term": "Magic", "def": "Magic variables are always available: inventory_hostname (current host), groups (dict of group→host lists), hostvars (dict of host→all its variables AND facts). So '{% for h in groups[\"web\"] %}{{ hostvars[h].ansible_default_ipv4.address…"}, {"term": "Patterns", "def": "Patterns support exclusion with '!' — 'web:!web3' means all web hosts except web3. --limit accepts the same pattern language (also '&' for intersection)."}, {"term": "Handlers", "def": "Handlers are tasks that run only when notified by a task reporting changed, and they run once at the end of the play (deduped even if notified multiple times). This gives you 'restart if config changed' semantics with zero outages on no-…"}], "links": [{"label": "Red Hat — official site", "url": "https://www.redhat.com", "note": "Official vendor documentation and certification information"}, {"label": "Linux man pages", "url": "https://man7.org/linux/man-pages/", "note": "Authoritative Linux man pages"}, {"label": "kernel.org documentation", "url": "https://www.kernel.org/doc/html/latest/", "note": "Official kernel docs"}, {"label": "The Linux Documentation Project", "url": "https://tldp.org/", "note": "Community Linux guides and HOWTOs"}, {"label": "Red Hat training and certification", "url": "https://www.redhat.com/en/services/training-and-certification", "note": "Official Red Hat training"}], "checklist": ["Get 7–8 hours of sleep the night before — fatigue destroys recall faster than any topic gap.", "Bring valid government-issued photo ID and arrive at the test center 30 minutes early.", "Eat a real meal beforehand; bring water and a light snack if the center allows them.", "Read every question twice before scanning the answer choices.", "Flag uncertain questions and move on — return with fresh eyes at the end.", "Eliminate the obviously wrong answers first, then compare the survivors.", "Budget your time: answer steadily and keep a 10–15 minute review buffer.", "Re-run your weakest-domain drill until mastery is at least 80%.", "For Inventory & Config: restate the 'why' behind each scenario answer in your own words — if you can't explain it, you don't own it.", "Redo one Playbooks lab from scratch without looking at the steps.", "Recite the key Variables & Facts terms from the glossary aloud from memory."]}}
+{
+ "slug": "rhce",
+ "title": "RHCE: Ansible Automation",
+ "tagline": "Automating RHEL fleets with Ansible — playbooks, roles, vault, and Jinja2 templating. Practical automation skills taught independently; this course confers no certificate and is not affiliated with Re",
+ "vendor": {
+  "name": "Independent interview prep (not affiliated with ThreatLocker)",
+  "certs": "",
+  "docs": "https://www.threatlocker.com"
+ },
+ "disclaimer": "Independent interview-prep material by Interstitium Labs. Not affiliated with, endorsed by, or sponsored by ThreatLocker or any vendor mentioned. Confers no certificate. All scenarios are original practice content; no exam or vendor-training content is reproduced.",
+ "accent": "#e5484d",
+ "domains": [
+  {
+   "id": "rhce",
+   "name": "RHCE: Ansible Automation",
+   "summary": "Automating RHEL fleets with Ansible — playbooks, roles, vault, and Jinja2 templating. Practical automation skills taught independently; this course confers no certificate and is not affiliated with Red Hat.",
+   "scenarios": [
+    {
+     "id": "rhce-sc1",
+     "title": "The playbook that ran on the wrong hosts",
+     "situation": "Your Ansible playbook patched the database servers instead of the web servers. The playbook header says 'hosts: webservers', but the inventory file your teammate handed you has a [webservers] group containing db01 and db02.",
+     "prompt": "What is the most reliable first step before re-running the playbook?",
+     "evidence": [
+      [
+       "inventory",
+       "[webservers]\ndb01\ndb02\n\n[dbservers]\ndb01\ndb02"
+      ]
+     ],
+     "choices": [
+      "Fix the inventory so groups match reality, then dry-run with 'ansible-playbook site.yml --check --diff' and limit scope with '--limit webservers' until verified.",
+      "Change the play header to 'hosts: dbservers' so the play matches the inventory as-is.",
+      "Re-run immediately with '-v' — verbosity will prevent it from hitting the wrong hosts.",
+      "Delete the inventory and use '-i db01,' inline host lists for every future run."
+     ],
+     "answer": 0,
+     "why": "The inventory is the source of truth for group membership — the play did exactly what it was told. Fixing group membership and validating with --check/--diff plus --limit contains the blast radius. Renaming the play header just re-labels the mistake; verbosity changes nothing about targeting.",
+     "hint": "The play targeted the group it was told to. Where does Ansible learn which hosts are in that group?",
+     "objectives": [
+      "Ansible",
+      "inventory"
+     ],
+     "mins": 5,
+     "difficulty": 1
+    },
+    {
+     "id": "rhce-sc2",
+     "title": "Password committed to the repo",
+     "situation": "A junior admin committed a playbook containing a database password in plaintext. The repo is internal but broadly readable. You need the password out of history and protected going forward.",
+     "prompt": "What is the correct remediation?",
+     "evidence": [
+      [
+       "terminal",
+       "git log --oneline | head -3\na1b2c3d Add db password to playbook  <-- contains secret\ngrep -r \"db_pass\" group_vars/\ngroup_vars/all.yml:db_pass: SuperSecret123"
+      ]
+     ],
+     "choices": [
+      "Purge the secret from git history (filter-repo/BFG), rotate the exposed password, and store it in an ansible-vault encrypted file referenced by the playbook.",
+      "Encrypt the whole repository with ansible-vault so the committed password is now protected.",
+      "Delete the file in a new commit — the password is gone once the file is removed from HEAD.",
+      "Move the password to a README note saying 'do not share' and restrict repo access."
+     ],
+     "answer": 0,
+     "why": "A secret in git history stays in history until the history is rewritten, and anyone who cloned the repo already has it — so rotation is mandatory. ansible-vault encrypts variable files at rest; it cannot retroactively protect what was already pushed in plaintext. Deleting at HEAD leaves every prior commit intact.",
+     "hint": "Two problems: the past (history still holds it) and the future (it must be stored encrypted). One fix doesn't cover both.",
+     "objectives": [
+      "ansible-vault",
+      "secrets"
+     ],
+     "mins": 5,
+     "difficulty": 1
+    },
+    {
+     "id": "rhce-sc3",
+     "title": "The template that rendered nothing",
+     "situation": "A Jinja2 template deploys an app config. After a variable rename in group_vars, the rendered config silently contains empty values instead of failing. The service starts with defaults and misbehaves in production.",
+     "prompt": "How should the playbook be written to fail fast on missing variables?",
+     "evidence": [
+      [
+       "template",
+       "db_host: {{ database_host }}\ndb_port: {{ database_port }}"
+      ],
+      [
+       "terminal",
+       "ansible-playbook deploy.yml   # exits 0, config has empty values"
+      ]
+     ],
+     "choices": [
+      "Reference variables with the 'mandatory' filter or set 'DEFAULT_UNDEFINED_VAR_BEHAVIOR' semantics via 'error_on_undefined_vars' so undefined variables raise an error instead of rendering empty.",
+      "Add 'ignore_errors: yes' to the template task so the playbook continues past the problem.",
+      "Wrap every variable in a default() filter with empty-string defaults to keep rendering stable.",
+      "Run the playbook twice; the second run fills in values the first one missed."
+     ],
+     "answer": 0,
+     "why": "Jinja2's default is to render undefined variables as empty strings, which produces valid-looking but wrong configs. Failing fast (undefined-variable errors, e.g. via the mandatory filter or error-on-undefined behavior) turns a silent misconfiguration into a loud, pre-deployment failure. ignore_errors and empty defaults hide the problem.",
+     "hint": "The template succeeded and the service started — that silence is the bug. What would make the render step refuse to produce output?",
+     "objectives": [
+      "Jinja2",
+      "templates"
+     ],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "rhce-sc4",
+     "title": "Role vs playbook sprawl",
+     "situation": "Your team has 40 playbooks, each 300+ lines, with the same user-creation, hardening, and package tasks copy-pasted everywhere. A security baseline changed and you must update all 40 files by Friday.",
+     "prompt": "What is the best structural fix?",
+     "evidence": [
+      [
+       "terminal",
+       "grep -l \"Create deploy user\" site*.yml | wc -l\n40\nls roles/\n(empty)"
+      ]
+     ],
+     "choices": [
+      "Extract the repeated logic into Ansible roles (e.g. baseline, app_user) with defaults/main.yml, and have each playbook include the roles — one change then propagates everywhere.",
+      "Write a shell script that sed-replaces the baseline block across all 40 files.",
+      "Merge all 40 playbooks into one 12,000-line playbook so there is only one file to edit.",
+      "Copy the newest playbook's baseline block into the other 39 files manually for accuracy."
+     ],
+     "answer": 0,
+     "why": "Roles are Ansible's unit of reuse: tasks, handlers, templates, defaults, and vars packaged once and consumed by many plays. A sed sweep across 40 files is fragile and unverifiable; a mega-playbook trades duplication for unmaintainability. Roles with versioned defaults give a single source of truth.",
+     "hint": "The problem is duplication of logic across files. What Ansible construct exists specifically to package reusable logic?",
+     "objectives": [
+      "Ansible roles",
+      "design"
+     ],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "rhce-sc5",
+     "title": "Idempotence broken by a shell task",
+     "situation": "A role uses a 'shell' task to append a sysctl line to /etc/sysctl.d/99-custom.conf. Every playbook run reports 'changed', re-runs handlers, and your CI pipeline flags the job as mutating production on every run.",
+     "prompt": "What is the correct idempotent fix?",
+     "evidence": [
+      [
+       "task",
+       "- name: Set swappiness\n  shell: echo 'vm.swappiness=10' >> /etc/sysctl.d/99-custom.conf\n  # runs every time, appends duplicates"
+      ]
+     ],
+     "choices": [
+      "Replace the shell append with the 'sysctl' module (or 'lineinfile' with a regexp) so the task is declarative and reports changed only when the value actually differs.",
+      "Add 'changed_when: false' to the shell task so the run reports clean.",
+      "Add 'creates: /etc/sysctl.d/99-custom.conf' so the shell task runs only once ever.",
+      "Keep the shell task but run the playbook with '--check' in CI to suppress changed status."
+     ],
+     "answer": 0,
+     "why": "Appending unconditionally is inherently non-idempotent and duplicates the line each run. The sysctl module manages the key/value pair declaratively (file + runtime), and lineinfile with a regexp enforces one matching line — both report changed only on real drift. 'changed_when: false' lies about mutation; 'creates' prevents ever updating the value.",
+     "hint": "The task must converge: run it ten times and the system ends in the same state. Which modules are built to converge?",
+     "objectives": [
+      "idempotence",
+      "modules"
+     ],
+     "mins": 7,
+     "difficulty": 3
+    },
+    {
+     "id": "rhce-sc6",
+     "title": "Vault password in CI",
+     "situation": "Your CI pipeline runs ansible-playbook against vault-encrypted variables. The vault password currently sits in a plaintext file on the CI runner, readable by every job on that host. Auditors flagged it.",
+     "prompt": "What is the best practice for supplying the vault password in CI?",
+     "evidence": [
+      [
+       "terminal",
+       "ls -l /opt/ci/vault-pass.txt\n-rw-r--r-- 1 ci ci 24 /opt/ci/vault-pass.txt\ncat /opt/ci/vault-pass.txt\ncorrect-horse-..."
+      ]
+     ],
+     "choices": [
+      "Store the password in the CI system's native secret store and inject it at runtime via a vault password script ('--vault-password-file' pointing to an executable) or environment-backed script, with the secret scoped to the pipeline.",
+      "Commit the vault password file into the repo next to the encrypted vars so it's versioned with them.",
+      "Email the password to the team and have each engineer paste it into CI job definitions.",
+      "Remove vault encryption since the repo is private — encryption adds no value there."
+     ],
+     "answer": 0,
+     "why": "A vault password file that is an executable script lets Ansible obtain the secret from the CI secret store at runtime without persisting it on disk in plaintext. Committing it or emailing it defeats encryption entirely; dropping encryption removes the control the auditors asked for.",
+     "hint": "The password must reach Ansible but never rest on disk in plaintext. What mechanism lets Ansible ask for it at runtime?",
+     "objectives": [
+      "ansible-vault",
+      "CI/CD"
+     ],
+     "mins": 7,
+     "difficulty": 3
+    }
+   ]
+  },
+  {
+   "id": "rhce-d2",
+   "name": "Ansible Deep Dive (EX294)",
+   "summary": "The automation half of RHCE: ad-hoc commands, facts and variable precedence, blocks and handlers, Jinja2 logic, RHEL system roles, and collections. Independent training content; this course confers no certificate.",
+   "scenarios": [
+    {
+     "id": "rhce-d2-sc1",
+     "title": "One Command, Fifty Servers",
+     "situation": "You must check free disk space on all 50 web servers *right now*, without writing a playbook.",
+     "prompt": "What is the correct ad-hoc invocation?",
+     "evidence": [
+      [
+       "inventory",
+       "[web]\nweb01..web50"
+      ],
+      [
+       "need",
+       "df -h, one shot, no playbook"
+      ]
+     ],
+     "choices": [
+      "`ansible web -m ansible.builtin.command -a 'df -h /'` — ad-hoc mode runs a single module across the inventory group immediately",
+      "Write a playbook; ad-hoc commands can't target groups",
+      "`ansible-playbook --check`; check mode runs shell commands",
+      "SSH into each server; 50 servers take 10 minutes"
+     ],
+     "answer": 0,
+     "why": "Ad-hoc commands are Ansible's one-shot execution path: `ansible <pattern> -m <module> -a '<args>'`. The command/shell modules run the check across the whole group in parallel — no playbook file needed.",
+     "hint": "Which Ansible mode exists precisely for one-shot module runs?",
+     "objectives": [
+      "ad-hoc",
+      "inventory patterns",
+      "modules"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "rhce-d2-sc2",
+     "title": "Whose Variable Wins?",
+     "situation": "A playbook sets `ntp_server` in three places: group_vars, host_vars, and `-e` on the command line. The deployed config used the wrong value.",
+     "prompt": "What is the precedence rule?",
+     "evidence": [
+      [
+       "values",
+       "group_vars/all: ntp1 | host_vars/db01: ntp2 | -e ntp_server=ntp3"
+      ],
+      [
+       "result",
+       "db01 got ntp2, everything else got ntp1 — the -e value was ignored?!"
+      ]
+     ],
+     "choices": [
+      "Extra vars (`-e`) actually have the *highest* precedence — if the -e value was ignored, the variable is being redefined with `set_fact` or the play uses a different variable name; precedence order is: -e > play vars > host_vars > group_vars > defaults",
+      "group_vars always wins; that's the documented order",
+      "host_vars beats -e; extra vars are only defaults",
+      "Ansible picks randomly when a variable is defined twice"
+     ],
+     "answer": 0,
+     "why": "The documented precedence (highest wins): extra vars → task/set_fact → play vars → host_vars → group_vars → role defaults. The scenario's surprise means something else redefined the var (set_fact/register) — knowing the order is how you debug it.",
+     "hint": "Where does `-e` sit in the precedence chain?",
+     "objectives": [
+      "variables",
+      "precedence",
+      "facts"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "rhce-d2-sc3",
+     "title": "Restart Only When Changed",
+     "situation": "A playbook rewrites the app config on every run and restarts the service every time — even when nothing changed. Deploys flap the service needlessly.",
+     "prompt": "What is the correct handler pattern?",
+     "evidence": [
+      [
+       "tasks",
+       "- template: src=app.conf.j2 dest=/etc/app/app.conf\n  notify: restart app   # currently: command: systemctl restart app"
+      ],
+      [
+       "symptom",
+       "changed=true on every run; restart on every run"
+      ]
+     ],
+     "choices": [
+      "Use `notify` + a handler (`handlers: - name: restart app / service: name=app state=restarted`) — handlers run once at the end of the play and only when notified by a task that reported *changed*",
+      "Add `changed_when: false` to the template task; restarts stop",
+      "Run the restart with `ignore_errors: true`; failures won't flap",
+      "Handlers run on every play; use a shell `creates=` guard instead"
+     ],
+     "answer": 0,
+     "why": "Handlers are Ansible's change-driven reactor: notified only by tasks that actually changed something, deduplicated, run once at play end. `changed_when: false` would lie about changes and break idempotency reporting.",
+     "hint": "What runs once at the end, and only if something changed?",
+     "objectives": [
+      "handlers",
+      "notify",
+      "idempotency"
+     ],
+     "mins": 7,
+     "difficulty": 2
+    },
+    {
+     "id": "rhce-d2-sc4",
+     "title": "The Template With Logic",
+     "situation": "An Nginx config must list only app servers that are *not* in maintenance, from a group of 20 hosts with a `maintenance` host var.",
+     "prompt": "What is the correct Jinja2 construct?",
+     "evidence": [
+      [
+       "inventory",
+       "[app]\napp01 maintenance=true\napp02..app20 (no flag)"
+      ],
+      [
+       "need",
+       "upstream { server app02; ... } — skipping app01"
+      ]
+     ],
+     "choices": [
+      "`{% for host in groups['app'] %}{% if hostvars[host]['maintenance']|default(false) == false %}server {{ host }};{% endif %}{% endfor %}` — loop over the group, filter with a conditional, default the missing var",
+      "Write 20 static server lines; templates can't do conditionals",
+      "Use `{{ groups['app'] }}` directly; it auto-excludes maintenance hosts",
+      "Put the logic in a shell task; Jinja2 is for variables only"
+     ],
+     "answer": 0,
+     "why": "Jinja2 in templates supports full for/if logic over inventory data (`groups`, `hostvars`) — the standard dynamic-config pattern. `|default(false)` guards hosts lacking the var; without it, undefined vars abort the template.",
+     "hint": "How do you iterate inventory and skip hosts conditionally in a template?",
+     "objectives": [
+      "Jinja2",
+      "templates",
+      "hostvars"
+     ],
+     "mins": 7,
+     "difficulty": 2
+    },
+    {
+     "id": "rhce-d2-sc5",
+     "title": "Don't Hand-Roll Chrony",
+     "situation": "Twenty RHEL servers need identical NTP config (two corporate servers, iburst, stepped once at boot). Hand-written templates drifted twice this year.",
+     "prompt": "What is the correct RHEL-native automation?",
+     "evidence": [
+      [
+       "drift",
+       "3 servers still point at pool.ntp.org from the old template"
+      ],
+      [
+       "need",
+       "identical, enforced, reviewable"
+      ]
+     ],
+     "choices": [
+      "Use the RHEL system role `timesync` (`ansible-playbook` with the `redhat.rhel_system_roles.timesync` role and `timesync_ntp_servers` vars) — vendor-maintained, idempotent, and the EX294-blessed path instead of bespoke templates",
+      "Keep the hand template but run it more often; frequency fixes drift",
+      "Use the `command` module to run `chronyc` directly; roles are overhead",
+      "Configure NTP once per server by hand; 20 servers is manageable"
+     ],
+     "answer": 0,
+     "why": "RHEL system roles (timesync, selinux, firewall, storage...) are Red Hat-maintained roles encapsulating best practices — the exam and production both prefer them over bespoke config management. Hand templates reimplement (and re-break) what the role already handles.",
+     "hint": "What ships the vendor's own best practice as a reusable role?",
+     "objectives": [
+      "system roles",
+      "timesync",
+      "roles"
+     ],
+     "mins": 8,
+     "difficulty": 3
+    },
+    {
+     "id": "rhce-d2-sc6",
+     "title": "The Collection Maze",
+     "situation": "A playbook uses `community.general` modules but fails on a fresh controller with `couldn't resolve module/action`. It worked on the author's laptop.",
+     "prompt": "What is the correct dependency handling?",
+     "evidence": [
+      [
+       "error",
+       "ERROR! couldn't resolve module/action 'community.general.ufw'"
+      ],
+      [
+       "laptop",
+       "collection installed manually months ago, forgotten"
+      ]
+     ],
+     "choices": [
+      "Declare it in `requirements.yml` (`collections: [{name: community.general, version: '>=8.0.0'}]`) and install via `ansible-galaxy collection install -r requirements.yml` — in CI and docs — so every controller resolves the same content",
+      "Copy the collection directory from the laptop; vendoring by scp is fine",
+      "Rewrite the playbook to avoid community.general; only builtin modules are safe",
+      "Install with `pip`; collections are Python packages"
+     ],
+     "answer": 0,
+     "why": "Collections are Ansible's distribution unit — requirements.yml + ansible-galaxy is the reproducible install path (and `ansible-navigator` execution environments bake them in). Laptop-only installs are the classic 'works for me' failure; pip manages Python deps, not collections.",
+     "hint": "How do you make a controller's content reproducible?",
+     "objectives": [
+      "collections",
+      "ansible-galaxy",
+      "requirements.yml"
+     ],
+     "mins": 8,
+     "difficulty": 3
+    }
+   ]
+  }
+ ],
+ "lessons": [
+  {
+   "domain_id": "rhce",
+   "title": "RHCE — Core concepts",
+   "concepts": [
+    "Ansible is agentless and declarative: the inventory declares which hosts exist, plays declare desired state, and modules (not shell commands) are the idempotent building blocks.",
+    "Idempotence is the contract — a second run with no drift must report zero changes; 'changed' on every run signals a shell/command task that should be a module.",
+    "Roles package reusable automation (tasks, handlers, templates, defaults, vars); playbooks compose roles, keeping logic in one place instead of copy-pasted blocks.",
+    "Jinja2 templates render configuration from variables, but undefined variables silently render empty — fail fast with mandatory/error-on-undefined so bad input never becomes a bad config.",
+    "ansible-vault encrypts variable files and strings at rest; the password itself must come from a secure source (prompt, script, CI secret store), never from the repo.",
+    "Always validate before applying: '--check --diff' previews changes, '--limit' contains blast radius, and '--syntax-check' catches YAML errors early."
+   ],
+   "example": {
+    "lang": "yaml",
+    "code": "- name: Ensure nginx is installed and running\n  hosts: webservers\n  tasks:\n    - name: Install nginx\n      ansible.builtin.dnf:\n        name: nginx\n        state: present\n    - name: Start and enable nginx\n      ansible.builtin.service:\n        name: nginx\n        state: started\n        enabled: true",
+    "walkthrough": "The dnf module declares the package must be present and the service module declares it must be started and enabled. Re-running changes nothing when state already matches — that is idempotence, and no shell commands are needed."
+   },
+   "pitfalls": [
+    "Common trap: trusting the play header while the inventory groups are wrong — always verify targeting with --list-hosts or --check first.",
+    "Common trap: using shell/command for things a module does — you lose idempotence, check mode, and diff output.",
+    "Common trap: committing a vault password or plaintext secret 'temporarily' — git history never forgets; rotate and rewrite history.",
+    "Common trap: variable precedence surprises — group_vars, host_vars, role defaults, and extra vars layer; know which wins before debugging values."
+   ],
+   "try_it": "Work through this in the Labs tab."
+  }
+ ],
+ "labs": [
+  {
+   "id": "rhce-lab1",
+   "domain_id": "rhce",
+   "title": "Build an idempotent web role",
+   "objective": "Create an Ansible role that installs and configures nginx idempotently, driven by variables and a Jinja2 template.",
+   "steps": [
+    "Scaffold the role: 'ansible-galaxy init roles/webserver' and inspect the directory layout.",
+    "Write tasks/main.yml using the dnf, template, and service modules (no shell tasks).",
+    "Add a Jinja2 template for nginx.conf parameterized by a 'server_name' variable in defaults/main.yml.",
+    "Encrypt a secret with 'ansible-vault encrypt_string' and reference it in the play.",
+    "Run with '--check --diff' first, then apply, then re-run to confirm zero changes."
+   ],
+   "checks": [
+    {
+     "command_pattern": "^ansible-playbook\\s",
+     "expect_contains": "changed=0",
+     "hint": "The second run must report no changes."
+    }
+   ]
+  },
+  {
+   "id": "rhce-lab2",
+   "domain_id": "rhce",
+   "title": "Vault-protect a database credential",
+   "objective": "Move a plaintext database password into vault-encrypted storage and consume it safely.",
+   "steps": [
+    "Create group_vars/dbservers/vault.yml with 'ansible-vault create', storing db_password.",
+    "Reference '{{ db_password }}' in the playbook; keep a non-secret db_user in group_vars/all.yml.",
+    "Run the playbook with '--ask-vault-pass' and verify the task consumes the secret.",
+    "Create a vault password script that echoes the password from an environment variable and run with '--vault-password-file'.",
+    "Confirm no plaintext secret remains via 'grep -r' over the project."
+   ],
+   "checks": [
+    {
+     "command_pattern": "^grep\\s",
+     "expect_contains": "vault",
+     "hint": "Search for the secret; only vault-encrypted blobs should appear."
+    }
+   ]
+  }
+ ],
+ "simulations": [],
+ "consoleSims": [],
+ "terminalMissions": [],
+ "sections": [
+  {
+   "id": "sec-full-spectrum",
+   "title": "Full Spectrum Dominance — core path",
+   "kind": "core",
+   "lectures": [],
+   "lab_ids": [
+    "fsd-tl-lab-1",
+    "fsd-tl-lab-2",
+    "fsd-tl-lab-3",
+    "fsd-sg-lab-1",
+    "fsd-sg-lab-2",
+    "fsd-sg-lab-3",
+    "fsd-ai-lab-1",
+    "fsd-ai-lab-2",
+    "fsd-ai-lab-3"
+   ],
+   "drill_domain_ids": [
+    "tl-interview",
+    "tl-endpoint-ops",
+    "sec-graphs",
+    "graph-defense",
+    "ml-defense",
+    "ai-agent-sec"
+   ]
+  }
+ ],
+ "behavioral": [
+  {
+   "prompt": "Tell me about the most technically difficult problem you have run into — a homelab, a broken environment, anything — and how you solved it.",
+   "framework": "STAR",
+   "points": [
+    "Pick ONE problem with a real evidence trail: the symptom, what you measured, the hypothesis you tested",
+    "Show the loop: scope, observe, hypothesize, smallest safe change, validate — interviewers score the method, not just the fix",
+    "Name the tools (VM build, networking, logs) and the lesson it taught you",
+    "Close with the result in concrete terms: what works now that did not before"
+   ],
+   "pitfalls": [
+    "Choosing a story with no real obstacle (“I Googled it” is not a story)",
+    "Skipping validation — saying it worked without proving it",
+    "Rambling past two minutes without reaching the result"
+   ]
+  },
+  {
+   "prompt": "Tell me about a time you dealt with a frustrated customer or user while something was broken.",
+   "framework": "STAR",
+   "points": [
+    "Lead with empathy and ownership: acknowledge the impact before the technical detail",
+    "Show translation: what you told them, in their language, plus the timeline you committed to",
+    "Show judgment: the narrow fix you chose and what you refused to do (e.g., disabling the control to clear the symptom)",
+    "Close with the relationship outcome, not just the technical one"
+   ],
+   "pitfalls": [
+    "Badmouthing the customer to sound decisive",
+    "Promising a timeline you could not keep",
+    "Framing the user as the problem rather than the situation"
+   ]
+  },
+  {
+   "prompt": "Why ThreatLocker, and why cybersecurity?",
+   "framework": "STAR",
+   "points": [
+    "Connect prevention to something concrete: a moment you saw detection arrive too late, or a system you hardened",
+    "Tie their model to your instincts: deny-by-default matches how you already think about trust",
+    "Show service orientation: the Cyber Hero culture rewards the 2 a.m. helper — give an example of being one",
+    "Name one forward-looking reason: Zero Trust, the MSP mission, or the bootcamp community investment"
+   ],
+   "pitfalls": [
+    "Generic flattery with no specifics about the company",
+    "Leading with compensation, title, or location convenience",
+    "Claiming expertise in products you have only read about — frame it as studied, not mastered"
+   ]
+  },
+  {
+   "framework": "STAR",
+   "pitfalls": [
+    "Staying vague ('I analyzed the data') instead of naming what you connected.",
+    "Skipping your own role: what did YOU see that others missed?",
+    "No outcome: what changed because you joined the dots?"
+   ],
+   "points": [
+    "The scattered signals and why nobody had connected them yet",
+    "The specific links you drew between them (shared host, time, infrastructure)",
+    "What the bigger picture turned out to be and what action it drove",
+    "What the experience taught you about investigating"
+   ],
+   "prompt": "Tell me about a time you connected scattered clues into a bigger picture that others had missed."
+  },
+  {
+   "framework": "STAR",
+   "pitfalls": [
+    "Claiming you fixed everything: credibility comes from trade-offs, not heroics.",
+    "Hiding the constraint: the limitation is what makes the prioritization story real.",
+    "No metric: 'better' needs a before-and-after."
+   ],
+   "points": [
+    "The constraint (time, budget, staff) and the size of the backlog",
+    "How you decided what mattered most (what was reachable, what was critical)",
+    "What you did first and what you deliberately deferred",
+    "The measurable result of the prioritization"
+   ],
+   "prompt": "Describe a time you had to prioritize risks or fixes with limited time or resources. How did you decide what came first?"
+  },
+  {
+   "framework": "STAR",
+   "pitfalls": [
+    "Reciting jargon to a non-technical audience and calling it communication.",
+    "Skipping the audience's reaction: did they actually understand and act?",
+    "Making yourself the hero instead of the translator."
+   ],
+   "points": [
+    "The technical finding and why it mattered",
+    "Who the audience was and what they cared about",
+    "How you reframed it (a picture, an analogy, a story)",
+    "What decision or action the audience took because they understood"
+   ],
+   "prompt": "Tell me about a time you explained a complex technical finding to a non-technical audience and it changed a decision."
+  },
+  {
+   "prompt": "Tell me about a time you used automation or AI to solve a security problem.",
+   "framework": "STAR",
+   "points": [
+    "The repetitive security task and what it cost in analyst time",
+    "The automation or AI approach you built and how you validated it",
+    "Measured outcome: time saved, detection gained, false positives changed"
+   ],
+   "pitfalls": [
+    "Describing the tool but never the validation",
+    "No measurable outcome"
+   ]
+  },
+  {
+   "prompt": "Describe a time you had to decide whether to trust an automated security decision.",
+   "framework": "STAR",
+   "points": [
+    "The stakes of the automated action and its blast radius",
+    "How you verified before acting (or the gate you built)",
+    "What happened and what you would automate differently next time"
+   ],
+   "pitfalls": [
+    "Saying you always trust the tool",
+    "No mention of blast radius or reversibility"
+   ]
+  }
+ ],
+ "resources": {
+  "cheatsheet": {
+   "title": "Full Spectrum Dominance — field reference",
+   "sections": [
+    {
+     "heading": "Company facts (verified)",
+     "items": [
+      "Founded 2017 in Orlando, FL — Danny Jenkins (CEO), Sami Jenkins (COO), John Carolan (QA)",
+      "Philosophy: deny-by-default / default-deny — approve known-good, deny the rest",
+      "Customers: 70,000+ organizations, sold heavily through the MSP channel",
+      "Funding: $190M Series F, July 2026 (Elephant-led); ~730 employees",
+      "Interview address: 1901 Summit Tower Blvd, Orlando, FL 32810",
+      "Culture: in-office 5 days/week; free lunch; post-offer background + drug screening"
+     ]
+    },
+    {
+     "heading": "Product stack",
+     "items": [
+      "Allowlisting — default-deny execution control for apps, DLLs, scripts, installers",
+      "Ringfencing — constrains allowed apps: app-to-app, file, registry, network",
+      "Storage Control — USB/device policy by serial, user, file type, encryption",
+      "Elevation Control — just-in-time per-app admin, no standing rights",
+      "Network Control — host firewall; port/IP/dynamic-ACL rules; ZTNA foundation",
+      "Web Control — agent-based DNS/URL category filtering, works off-network",
+      "Cyber Hero MDR — 24/7/365 US-based response, ~60-second average",
+      "Testing Environment — one-button VDI sandbox; checks AV flags, canary files, registry changes"
+     ]
+    },
+    {
+     "heading": "Rule strength (strongest to weakest)",
+     "items": [
+      "Certificate/publisher rules — survive version updates",
+      "Hash rules — precise but break on every new version",
+      "Path rules — weakest; never in user-writable locations",
+      "Learning Mode catalogs before enforcement; Installation Mode pauses blocking — scope and time-box both"
+     ]
+    },
+    {
+     "heading": "Terminal evidence commands",
+     "items": [
+      "nmap <host> — which ports answer (22/80/443 open)",
+      "dig <name> — ANSWER SECTION with the A record",
+      "ss — listening sockets",
+      "systemctl status <svc> — unit state",
+      "journalctl -u <svc> — service logs",
+      "sha256sum <file> — real SHA-256 identity",
+      "grep <pattern> <file> — search the record",
+      "ps — what is actually running"
+     ]
+    },
+    {
+     "heading": "Graph vocabulary",
+     "items": [
+      "node — any entity tracked in the model (user, host, IP, domain, file hash, vulnerability)",
+      "edge — a labeled relationship between two nodes (logged into, resolved to, downloaded)",
+      "degree — number of edges on a node; high-degree nodes are attacker highways",
+      "centrality — how much traffic or how many paths flow through a node",
+      "directed edge — a relationship with a direction (A downloaded FROM B)",
+      "security graph — the living model of your whole environment as nodes and edges",
+      "attack graph — the subgraph of exploitable paths to your targets",
+      "knowledge graph — threat-intel indicators linked to campaigns and actors"
+     ]
+    },
+    {
+     "heading": "Attack-graph playbook",
+     "items": [
+      "inventory first — you cannot graph what you have not discovered",
+      "model flaws AND misconfigs as exploit edges",
+      "compute shortest paths to the crown jewels",
+      "find the choke point (highest betweenness on those paths)",
+      "break the path: patch, segment, or remove the edge",
+      "re-scan and re-run the graph to prove the path is gone",
+      "never trust yesterday's graph — redeployments redraw the map"
+     ]
+    },
+    {
+     "heading": "Zero Trust + graphs",
+     "items": [
+      "never trust, always verify — re-evaluate every access decision",
+      "assume breach — treat unexpected edges as hostile until proven otherwise",
+      "microsegmentation — allow-list approved edges, alert on new ones",
+      "ReBAC — policies are path queries on the identity graph",
+      "continuous verification — device/location/behavior edges change, trust follows",
+      "anomalous edge — a first-seen connection between strangers is the classic signal"
+     ]
+    },
+    {
+     "heading": "ML detection vocabulary",
+     "items": [
+      "Supervised learning — learns from labeled examples; strong on known threats, blind to novel ones",
+      "Unsupervised learning — finds structure without labels; clustering and dimensionality reduction",
+      "Anomaly detection — models 'normal' and flags deviations; the workhorse for novel threats",
+      "UEBA — user and entity behavior analytics: per-user baselines plus peer-group comparison",
+      "Feature engineering — encoding raw logs into model inputs (login velocity, rare processes, domain entropy)",
+      "Concept drift — model decay as attacker behavior and legitimate traffic shift over time"
+     ]
+    },
+    {
+     "heading": "Detection metrics",
+     "items": [
+      "Precision — of all flagged alerts, how many were real",
+      "Recall — of all real attacks, how many were flagged",
+      "Threshold tuning — sliding the decision cutoff trades precision against recall",
+      "Alert fatigue — when false positives train analysts to ignore the queue",
+      "DGA — domain generation algorithm; detected via character entropy of domain names"
+     ]
+    },
+    {
+     "heading": "Agent and LLM security",
+     "items": [
+      "Direct prompt injection — attacker input overrides app instructions (OWASP LLM01:2025, the #1 LLM risk)",
+      "Indirect prompt injection — hidden instructions inside retrieved data (email, web, docs)",
+      "Jailbreak — defeating the model's own safety policy; distinct from hijacking app behavior",
+      "Tool poisoning — malicious tool descriptions or metadata steer an agent to misuse its tools (MCP ecosystem risk)",
+      "Insecure output handling — executing or trusting model output without validation",
+      "Least-privilege tools — grant each tool only the scope its task requires"
+     ]
+    },
+    {
+     "heading": "Adversarial ML and governance",
+     "items": [
+      "Evasion — perturbing inputs at inference time to dodge a classifier",
+      "Poisoning — corrupting training data to corrupt the model",
+      "Extraction — querying a model to steal its behavior or parameters",
+      "MITRE ATLAS — knowledge base of adversarial ML tactics and techniques",
+      "Red-teaming and evals — adversarial testing of AI systems before deployment",
+      "Human-in-the-loop — required approval for high-impact or irreversible agent actions",
+      "SOAR — security orchestration, automation and response; automate enrichment, gate containment"
+     ]
+    }
+   ]
+  },
+  "glossary": [
+   {
+    "term": "Allowlisting",
+    "def": "Default-deny execution control: only explicitly approved applications, scripts, and installers may run."
+   },
+   {
+    "term": "Blocklisting",
+    "def": "Default-allow model: everything runs except recognized-bad items — the window zero-days live in."
+   },
+   {
+    "term": "Default-deny",
+    "def": "Deny-by-default posture: unknown code, devices, or connections are refused unless explicitly approved."
+   },
+   {
+    "term": "Ringfencing",
+    "def": "Containment applied on top of allowlisting; restricts what a permitted app may do across app-to-app, file, registry, and network dimensions."
+   },
+   {
+    "term": "Learning Mode",
+    "def": "Agent mode that catalogs applications and dependencies and auto-builds policies before enforcement; temporarily disables file blocking."
+   },
+   {
+    "term": "Installation Mode",
+    "def": "Temporary mode that pauses file blocking for installs — must be tightly scoped and time-boxed."
+   },
+   {
+    "term": "Elevation Control",
+    "def": "Grants specific approved applications admin rights for standard users — just-in-time, per-app, time-boxed — without standing admin rights."
+   },
+   {
+    "term": "Application hopping",
+    "def": "An elevated or trusted process spawning another tool (e.g., PowerShell) to inherit its privileges — countered by ringfencing the elevated process."
+   },
+   {
+    "term": "Storage Control",
+    "def": "Device and path policy: USB approved by serial, user, file type, time, and encryption; unapproved devices do not connect."
+   },
+   {
+    "term": "Network Control",
+    "def": "Centrally managed host firewall; rules by port, source IP, and dynamic ACLs; egress allowlisting pins apps to approved destinations."
+   },
+   {
+    "term": "ZTNA",
+    "def": "Zero Trust Network Access: per-session, per-application brokered connections (commonly over port 443) with no open inbound ports — deny-by-default for network access."
+   },
+   {
+    "term": "Approval Center",
+    "def": "Portal queue where end-user software requests arrive for admin review and decision."
+   },
+   {
+    "term": "Unified Audit",
+    "def": "Real-time audit showing what was allowed or denied across endpoints — and why; the evidence layer for triage."
+   },
+   {
+    "term": "Testing Environment",
+    "def": "One-button cloud VDI sandbox launched from an approval request; logs AV flags, canary-file access, and registry/system changes."
+   },
+   {
+    "term": "Cyber Hero MDR",
+    "def": "24/7/365 US-based managed detection and response team; validates alerts, isolates hosts, acts on customer runbooks; ~60-second average response."
+   },
+   {
+    "term": "Assume breach",
+    "def": "Design and operate as if the attacker already has a foothold — least privilege, containment, and monitoring everywhere."
+   },
+   {
+    "term": "Living off the land",
+    "def": "Attacks that hijack trusted built-in tools (Word, PowerShell) instead of dropping malware — defeated by behavior containment, not signatures."
+   },
+   {
+    "term": "Change control",
+    "def": "Scoped, ticketed, tested changes with validation and rollback — emergency speed never cancels the process."
+   },
+   {
+    "def": "A node in an attack graph representing a system or weakness, connected by edges that represent steps an attacker could take between them.",
+    "term": "attack graph"
+   },
+   {
+    "def": "How central a node is to paths through the graph (for example, betweenness: how many shortest paths cross it).",
+    "term": "centrality"
+   },
+   {
+    "def": "The most valuable assets in the environment (customer data, finance systems, source code): what attack paths are measured against.",
+    "term": "crown jewels"
+   },
+   {
+    "def": "A labeled connection between two nodes, representing a relationship such as 'logged into' or 'resolved to'.",
+    "term": "edge"
+   },
+   {
+    "def": "A graph of threat indicators (IPs, domains, hashes) linked to campaigns, actors, and each other through shared infrastructure.",
+    "term": "knowledge graph"
+   },
+   {
+    "def": "The practice of mapping relationships in data to reveal hidden associations; rooted in Euler's 1736 graph theory, 1970s paper link charts, and post-2001 intelligence work.",
+    "term": "link analysis"
+   },
+   {
+    "def": "A segment of the network so small that its allowed communications can be enumerated as a graph of approved edges.",
+    "term": "microsegmentation"
+   },
+   {
+    "def": "An entity in the graph: a user, host, IP address, domain, file, or vulnerability.",
+    "term": "node"
+   },
+   {
+    "def": "Access control where policy is evaluated by traversing relationships on a graph (for example: user reports_to manager who owns the resource's project).",
+    "term": "ReBAC"
+   },
+   {
+    "def": "A machine-learning model that operates directly on graph structure to classify nodes or subgraphs, for example labeling attack vs normal behavior.",
+    "term": "graph neural network (GNN)"
+   },
+   {
+    "def": "Monitoring user and entity behavior by modeling their normal relationship patterns and flagging structural anomalies.",
+    "term": "UEBA"
+   },
+   {
+    "term": "Supervised learning",
+    "def": "ML trained on labeled examples; classifies new inputs into known categories."
+   },
+   {
+    "term": "Anomaly detection",
+    "def": "ML approach that models normal behavior and flags statistically rare deviations."
+   },
+   {
+    "term": "Feature engineering",
+    "def": "Turning raw telemetry into numeric model inputs, e.g. login velocity or domain entropy."
+   },
+   {
+    "term": "Precision",
+    "def": "Share of flagged alerts that were real; the false-positive economics of the queue."
+   },
+   {
+    "term": "Recall",
+    "def": "Share of real attacks the detector flagged; the miss rate's complement."
+   },
+   {
+    "term": "Concept drift",
+    "def": "Decay of model performance as the data distribution shifts over time."
+   },
+   {
+    "term": "Prompt injection",
+    "def": "Attacker-crafted instructions that override an LLM application's intended behavior; direct (user input) or indirect (retrieved data)."
+   },
+   {
+    "term": "Jailbreak",
+    "def": "Crafted input that defeats an LLM's own safety policy or refusal behavior."
+   },
+   {
+    "term": "Tool poisoning",
+    "def": "Malicious tool descriptions or metadata that manipulate an AI agent into misusing its tools."
+   },
+   {
+    "term": "Insecure output handling",
+    "def": "Failing to validate LLM output before acting on it, e.g. executing generated commands."
+   },
+   {
+    "term": "Evasion attack",
+    "def": "Adversarial ML technique: perturbing inputs to cross a classifier's decision boundary."
+   },
+   {
+    "term": "MITRE ATLAS",
+    "def": "Adversarial Threat Landscape for AI Systems; MITRE's knowledge base of AI attack tactics."
+   },
+   {
+    "term": "SOAR",
+    "def": "Security orchestration, automation and response; playbooks that enrich automatically and gate containment on humans."
+   },
+   {
+    "term": "Human-in-the-loop",
+    "def": "Required human approval before high-impact or irreversible automated actions."
+   }
+  ],
+  "links": [
+   {
+    "label": "ThreatLocker Zero Trust platform explainer (official)",
+    "url": "https://www.threatlocker.com/blog/edr-xdr-vs-zero-trust-prevention",
+    "note": "EDR/XDR vs Zero Trust prevention — the deny-by-default argument in their own words."
+   },
+   {
+    "label": "ThreatLocker Bootcamp page (official)",
+    "url": "https://www.threatlocker.com/bootcamp",
+    "note": "Free six-week program: phases, format, and what completion leads to."
+   },
+   {
+    "label": "ThreatLocker Careers (official)",
+    "url": "https://www.threatlocker.com/company/careers",
+    "note": "Open roles and the hiring-event listing; roles are in-office in Orlando."
+   },
+   {
+    "label": "Elevation Control (official)",
+    "url": "https://www.threatlocker.com/secure-privileges-without-sacrificing-agility",
+    "note": "Just-in-time privilege without standing admin."
+   },
+   {
+    "label": "Storage Control (official)",
+    "url": "https://www.threatlocker.com/capabilities/external-storage-device-control",
+    "note": "USB/device policy by serial, user, file type, encryption."
+   },
+   {
+    "label": "Web Control (official)",
+    "url": "https://www.threatlocker.com/capabilities/web-content-control",
+    "note": "Agent-based DNS/URL filtering, including off-network."
+   },
+   {
+    "label": "Cyber Hero MDR (official)",
+    "url": "https://www.threatlocker.com/get-threat-response-in-minutes",
+    "note": "24/7/365 managed response positioning."
+   },
+   {
+    "label": "MDR capabilities (official)",
+    "url": "https://www.threatlocker.com/capabilities/managed-detection-and-response",
+    "note": "Detection and response capability detail."
+   },
+   {
+    "label": "NIST SP 800-207 — Zero Trust Architecture",
+    "url": "https://csrc.nist.gov/pubs/sp/800/207/final",
+    "note": "The canonical Zero Trust reference: tenets, deployment models, policy engine trust algorithm."
+   },
+   {
+    "label": "CISA Zero Trust Maturity Model",
+    "url": "https://www.cisa.gov/zero-trust-maturity-model",
+    "note": "Federal maturity steps across identity, devices, networks, applications, and data."
+   },
+   {
+    "label": "MITRE ATT&CK",
+    "note": "The adversary-tactics framework; codify its tactic chains as subgraphs to hunt for in your security graph.",
+    "url": "https://attack.mitre.org/"
+   },
+   {
+    "label": "CISA — Cybersecurity and Infrastructure Security Agency",
+    "note": "US government advisories, alerts, and guidance frequently referenced in threat-intel work.",
+    "url": "https://www.cisa.gov/"
+   },
+   {
+    "label": "Neo4j getting started",
+    "note": "A widely used graph database; the book's call to action suggests piloting graph queries on exported security data with tools like this.",
+    "url": "https://neo4j.com/docs/getting-started/"
+   },
+   {
+    "label": "OWASP GenAI Security Project",
+    "url": "https://genai.owasp.org/",
+    "note": "Home of the LLM Top 10 and GenAI security guidance"
+   },
+   {
+    "label": "OWASP Top 10 for LLM Applications",
+    "url": "https://genai.owasp.org/llm-top-10/",
+    "note": "The ranked LLM risk list — prompt injection is #1"
+   },
+   {
+    "label": "NIST AI Risk Management Framework",
+    "url": "https://www.nist.gov/itl/ai-risk-management-framework",
+    "note": "The standard governance framework for managing AI risk"
+   },
+   {
+    "label": "MITRE ATLAS",
+    "url": "https://atlas.mitre.org/",
+    "note": "Adversarial Threat Landscape for AI Systems — tactics and techniques"
+   },
+   {
+    "label": "CISA AI guidance",
+    "url": "https://www.cisa.gov/ai",
+    "note": "CISA's AI security resources and guidance"
+   }
+  ],
+  "checklist": [
+   "Sixty-second company brief rehearsed out loud: year, city, philosophy, three products, one milestone",
+   "Two STAR stories ready: hardest technical problem; a frustrated customer or user",
+   "“Why ThreatLocker / why cybersecurity” answer tied to prevention and service, not slogans",
+   "Ringfencing explained in one plain-English sentence (the Word-on-a-leash version)",
+   "Elevation Control answer ready: just-in-time, per-app, time-boxed, ringfenced, logged",
+   "Triage loop memorized: scope → observe → hypothesize → smallest safe change → validate → explain",
+   "Three questions to ask them: team on-call shape, approval SLA expectations, what “most helpful” looks like on the team",
+   "Logistics: 1901 Summit Tower Blvd, Orlando FL; in-office role; ID and references ready",
+   "Define your crown jewels before you model anything.",
+   "Build the asset-and-access graph from live sources (scans, configs, identity), not from the CMDB alone.",
+   "Model vulnerabilities AND misconfigurations as exploit edges.",
+   "Compute shortest attack paths to each crown jewel; name the choke points.",
+   "Prioritize remediation by path risk, not by raw severity score.",
+   "Express at least one access policy as a relationship path (ReBAC pilot).",
+   "Baseline approved communication edges per segment; alert on first-seen edges.",
+   "Brief the next incident or risk review with the graph, not a spreadsheet.",
+   "Can you explain supervised vs unsupervised vs anomaly detection with a security example for each?",
+   "Can you name three log features you would engineer for a C2 detector and why?",
+   "Can you walk through a UEBA alert (baseline, deviation, verification) end to end?",
+   "Can you explain the precision/recall tradeoff and how you would set a threshold for a fatigued SOC?",
+   "Can you define concept drift and describe a retraining process?",
+   "Can you distinguish direct vs indirect prompt injection and jailbreaking?",
+   "Can you explain tool poisoning in the MCP ecosystem and three controls against it?",
+   "Can you describe insecure output handling and how you would validate agent output?",
+   "Can you name the three adversarial ML attack classes and one defense for evasion?",
+   "Can you design a SOAR playbook gate: what automates freely, what needs human approval?"
+  ]
+ },
+ "chat": {
+  "persona": "You are a rigorous but encouraging interviewer preparing a candidate for a Zero Trust endpoint security role. Probe with 'why' and 'how would you explain that' follow-ups. Stay on topic: ThreatLocker-style endpoint defense, security graphs, and AI-powered security. All practice is original; never reproduce vendor material.",
+  "topics": [
+   {
+    "id": "tl-interview",
+    "name": "ThreatLocker Interview Prep",
+    "key_points": [
+     "allowlisting",
+     "ringfencing",
+     "default-deny",
+     "cyber hero",
+     "zero trust tenets",
+     "STAR stories"
+    ],
+    "followups": [
+     "Can you give an example?",
+     "How would you explain that to a CFO?"
+    ]
+   },
+   {
+    "id": "tl-endpoint-ops",
+    "name": "Zero Trust Endpoint Operations",
+    "key_points": [
+     "default-deny",
+     "ringfencing dimensions",
+     "elevation control",
+     "storage control",
+     "network control",
+     "change control"
+    ],
+    "followups": [
+     "Walk me through the triage order.",
+     "When would you deny outright?"
+    ]
+   },
+   {
+    "followups": [
+     "Can you walk through an example?",
+     "How does this change patch prioritization?",
+     "What is the difference between a security graph and an attack graph?"
+    ],
+    "id": "sec-graphs",
+    "key_points": [
+     "nodes",
+     "edges",
+     "attack graphs",
+     "kill chain",
+     "link analysis",
+     "threat intel graphs"
+    ],
+    "name": "Security Graphs: Think Like an Attacker"
+   },
+   {
+    "followups": [
+     "How do graphs change patch prioritization?",
+     "What is ReBAC and how is it different from RBAC?",
+     "How would a small team start with graphs?"
+    ],
+    "id": "graph-defense",
+    "key_points": [
+     "attack-path analysis",
+     "insider threat",
+     "vulnerability graphs",
+     "Zero Trust",
+     "microsegmentation",
+     "blast radius"
+    ],
+    "name": "Graph-Powered Defense Operations"
+   },
+   {
+    "id": "ml-defense",
+    "name": "ML-Powered Threat Defense",
+    "key_points": [
+     "anomaly detection",
+     "UEBA",
+     "alert fatigue",
+     "concept drift",
+     "threat hunting",
+     "precision recall"
+    ],
+    "followups": [
+     "Walk me through an example.",
+     "How do you handle false positives?"
+    ]
+   },
+   {
+    "id": "ai-agent-sec",
+    "name": "Securing AI Systems & Agents",
+    "key_points": [
+     "prompt injection",
+     "tool poisoning",
+     "MCP risks",
+     "insecure output handling",
+     "SOAR gates",
+     "adversarial ML"
+    ],
+    "followups": [
+     "Walk me through an example.",
+     "How do you secure an AI agent end to end?"
+    ]
+   }
+  ]
+ },
+ "simulation": {
+  "items": 12,
+  "minutes": 180,
+  "evidence_cost_mins": 2
+ },
+ "media": [
+  {
+   "id": "tl-allowlist-vs-blocklist",
+   "kind": "diagram",
+   "title": "Allowlisting vs blocklisting: default-deny vs default-allow",
+   "svg": "assets/diagrams/tl-allowlist-vs-blocklist.svg",
+   "lesson_ref": "c-tl-endpoint-ops",
+   "caption": "Default-deny stops unknown code without a signature; default-allow runs it until one exists.",
+   "alt": "Side-by-side comparison: on the left, a default-deny gate runs known-good payroll software and denies unknown ransomware with no signature needed; on the right, a default-allow gate runs both until the ransomware is recognized as bad."
+  },
+  {
+   "id": "tl-ringfencing",
+   "kind": "diagram",
+   "title": "Ringfencing: four leashes on an allowed application",
+   "svg": "assets/diagrams/tl-ringfencing.svg",
+   "lesson_ref": "c-tl-endpoint-ops",
+   "caption": "Word stays approved, but it cannot spawn PowerShell, read the credential store, or reach the internet — while opening its document is allowed.",
+   "alt": "An approved Word application inside a dashed containment ring: arrows show PowerShell launch denied, credential-store registry access denied, external network denied, and document file access allowed."
+  },
+  {
+   "id": "tl-zero-trust-stack",
+   "kind": "diagram",
+   "title": "The Zero Trust endpoint stack",
+   "svg": "assets/diagrams/tl-zero-trust-stack.svg",
+   "lesson_ref": "c-tl-interview",
+   "caption": "Five deny-by-default layers — Allowlisting, Ringfencing, Elevation, Storage, Network — watched by Web Control, the Testing Environment, Unified Audit, and the Cyber Hero MDR team.",
+   "alt": "A vertical stack of five layers from Allowlisting at the foundation up through Ringfencing, Elevation Control, Storage Control, and Network Control, with side boxes for Web Control, Testing Environment, Unified Audit, and Cyber Hero MDR."
+  },
+  {
+   "id": "tl-triage-flow",
+   "kind": "diagram",
+   "title": "Application-request triage flow",
+   "svg": "assets/diagrams/tl-triage-flow.svg",
+   "lesson_ref": "c-tl-endpoint-ops",
+   "caption": "Gather evidence first, then branch: trusted gets a scoped rule, unknown goes to the sandbox, malicious gets a documented deny.",
+   "alt": "Flowchart from request arrival through evidence gathering to a decision diamond branching into three outcomes: approve with a scoped rule, detonate in the Testing Environment then ringfence, or deny with documented evidence."
+  },
+  {
+   "alt": "Diagram of four labeled nodes (user, host, file, domain, IP) joined by labeled directed edges such as logged into, downloaded, and resolved to, illustrating graph vocabulary.",
+   "caption": "Nodes are the things; edges are the relationships. Attackers move along the edges.",
+   "id": "sg-graph-vocabulary",
+   "kind": "diagram",
+   "lesson_ref": "c-sec-graphs",
+   "svg": "assets/diagrams/sg-graph-vocabulary.svg",
+   "title": "Graph vocabulary: nodes and edges"
+  },
+  {
+   "alt": "Attack graph with four nodes in a chain: external attacker to VPN gateway to file server to customer database, with a dead-end branch to a printer, showing the shortest path to the crown jewel.",
+   "caption": "The shortest path to the crown jewel is length 3. Break the choke point and the campaign dies.",
+   "id": "sg-attack-path",
+   "kind": "diagram",
+   "lesson_ref": "c-sec-graphs",
+   "svg": "assets/diagrams/sg-attack-path.svg",
+   "title": "Attack graph: shortest path to the crown jewels"
+  },
+  {
+   "alt": "Seven kill-chain stages as connected graph nodes: reconnaissance, weaponization, delivery, exploitation, installation, command and control, actions. Three alerts are annotated at delivery, installation, and command and control.",
+   "caption": "Three 'unrelated' alerts, one kill-chain subgraph. Correlate by shared entities, not by severity.",
+   "id": "sg-kill-chain",
+   "kind": "diagram",
+   "lesson_ref": "c-sec-graphs",
+   "svg": "assets/diagrams/sg-kill-chain.svg",
+   "title": "Kill chain as a graph"
+  },
+  {
+   "alt": "A policy engine at the center of a small graph evaluates an access request from a finance user on an untrusted laptop to an R and D code server. The request is denied because there is no prior relationship edge and the device is untrusted.",
+   "caption": "Valid credentials are not enough. The graph checks device trust, history, and relationships on every request.",
+   "id": "sg-zero-trust",
+   "kind": "diagram",
+   "lesson_ref": "c-graph-defense",
+   "svg": "assets/diagrams/sg-zero-trust.svg",
+   "title": "Zero Trust runs on relationships"
+  },
+  {
+   "id": "ai-ml-pipeline",
+   "kind": "diagram",
+   "title": "ML detection pipeline: telemetry to triage",
+   "svg": "assets/diagrams/ai-ml-pipeline.svg",
+   "lesson_ref": "c-ml-defense",
+   "caption": "How raw telemetry becomes scored alerts: features feed the model, the model scores, analysts triage top-down — and analyst verdicts feed retraining.",
+   "alt": "Flow diagram: telemetry sources feed feature extraction, which feeds an ML model, which outputs scored alerts into an analyst triage queue, with a feedback arrow for retraining."
+  },
+  {
+   "id": "ai-ueba-baseline-diagram",
+   "kind": "diagram",
+   "title": "UEBA: baseline vs deviation",
+   "svg": "assets/diagrams/ai-ueba-baseline.svg",
+   "lesson_ref": "c-ml-defense",
+   "caption": "UEBA learns each user's normal hours, locations, and volumes, then scores deviations from that baseline.",
+   "alt": "24-hour timeline showing a shaded normal login window from 8 AM to 6 PM with normal logins inside it, and a red anomaly marker at 2:47 AM for a foreign login scoring 97 out of 100."
+  },
+  {
+   "id": "ai-injection-flow",
+   "kind": "diagram",
+   "title": "Indirect prompt injection attack flow",
+   "svg": "assets/diagrams/ai-injection-flow.svg",
+   "lesson_ref": "c-ai-agent-sec",
+   "caption": "An attacker hides instructions in data the agent retrieves; the agent mistakes data for instructions and misuses its tools.",
+   "alt": "Attack flow diagram: hidden instruction in an email is read by an AI agent, which mistakes it for a command and calls a privileged tool, causing fraud; three defense boxes below: sanitize content, least-privilege tools, human approval."
+  }
+ ],
+ "foundations": [
+  {
+   "track": "linux-cli",
+   "why_needed": "Terminal labs and missions run in a simulated Linux shell; command-line fluency is required to complete them."
+  },
+  {
+   "track": "security-basics",
+   "why_needed": "Security-graph and ML-detection lessons assume baseline vocabulary (CIA triad, malware types, incident response phases)."
+  }
+ ],
+ "math": [
+  "stats",
+  "probability"
+ ]
+}

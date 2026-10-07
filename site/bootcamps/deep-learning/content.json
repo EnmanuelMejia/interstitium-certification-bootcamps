@@ -1,0 +1,510 @@
+{
+ "slug": "deep-learning",
+ "title": "Deep Learning with PyTorch",
+ "tagline": "From perceptrons to production training loops: neural network foundations, backprop, CNNs, sequence models, regularization, and real PyTorch workflows — 90 hours of hands-on deep learning.",
+ "vendor": {
+  "name": "Independent",
+  "certs": [],
+  "docs": []
+ },
+ "disclaimer": "Independent study material by Interstitium Labs. Not affiliated with or endorsed by any vendor. Confers no certificate.",
+ "accent": "#f97316",
+ "domains": [
+  {
+   "id": "deep-learning",
+   "name": "Deep Learning with PyTorch",
+   "summary": "Neural network foundations through production PyTorch workflows: activations and loss functions, backpropagation and optimization, CNNs and transfer learning, sequence models, regularization, and the training loop written by hand. Independent study; confers no certificate.",
+   "scenarios": [
+    {
+     "id": "deep-learning-sc1",
+     "title": "The five-layer stall",
+     "situation": "A team trains a 5-hidden-layer MLP on tabular data. Hidden layers use sigmoid activations, the loss drops a little in the first epoch, then barely moves for 50 more. Gradients in the first layers are near zero while the last layer still learns.",
+     "prompt": "What is the most likely cause, and the first fix to try?",
+     "evidence": [],
+     "choices": [
+      "Saturating activations: sigmoid outputs squash into (0,1) and its derivative peaks at 0.25, so gradients shrink multiplicatively across layers. Replace hidden-layer sigmoids with ReLU (or leaky ReLU), which passes positive gradients through unchanged, and retrain.",
+      "The network needs more layers: depth is the only thing that matters, so add three more sigmoid layers.",
+      "Raise the learning rate to 0.5: a bigger step will push through the stall.",
+      "Switch the optimizer from SGD to Adam first: the optimizer is always the root cause of a stall."
+     ],
+     "answer": 0,
+     "why": "Sigmoid's maximum derivative of 0.25 compounds layer after layer (0.25^5 is roughly 1/1000), which is the textbook vanishing-gradient setup. ReLU's derivative is 1 for positive inputs, so the signal survives. Optimizer and learning-rate changes treat the symptom; the activation choice is the disease.",
+     "hint": "What is the largest value the sigmoid derivative can take, and what happens when you multiply it five times?",
+     "objectives": [],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "deep-learning-sc2",
+     "title": "MSE on a classifier",
+     "situation": "A 10-class image classifier ends in a softmax layer but is trained with MSELoss against one-hot targets. After 20 epochs accuracy sits near 10% — chance level — while the loss looks small and flat. The data pipeline checks out.",
+     "prompt": "What should change?",
+     "evidence": [],
+     "choices": [
+      "Replace MSELoss with CrossEntropyLoss applied to the raw logits (drop the final softmax layer — CrossEntropyLoss includes log-softmax). MSE on softmax outputs gives weak, flat gradients for confident-wrong predictions and is not the right probabilistic objective for classification.",
+      "Normalize the input images more aggressively: the pixel scale is the problem.",
+      "Train for 200 more epochs: MSE just needs more time on classification.",
+      "Add dropout 0.5: the model is overfitting, which is why accuracy is low."
+     ],
+     "answer": 0,
+     "why": "Cross-entropy penalizes confident-wrong predictions with steep gradients (the gradient is simply predicted probability minus one-hot target), while MSE on softmax saturates. Also note CrossEntropyLoss expects logits, so keeping an explicit softmax before it double-squashes the outputs — a classic shape bug.",
+     "hint": "For a confidently wrong prediction, which loss gives the stronger correction signal — squared error on a probability, or negative log-likelihood?",
+     "objectives": [],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "deep-learning-sc3",
+     "title": "The frozen early layers",
+     "situation": "A 30-layer MLP trains on a regression task. Loss plateaus early. Weight histograms show the last few layers changing every epoch while the first ten layers are nearly frozen. Initialization was the default uniform, activations are tanh.",
+     "prompt": "How do you diagnose and fix this?",
+     "evidence": [],
+     "choices": [
+      "Diagnose vanishing gradients: with tanh saturating and naive initialization, the signal decays before reaching early layers. Fix with He or Xavier initialization matched to the activation, ReLU-family activations, and batch normalization or residual skip connections so gradients have a short path.",
+      "Train ten times longer: deep networks just need more epochs for the signal to arrive.",
+      "Increase the batch size to 4096: bigger batches push gradients deeper.",
+      "Add strong L2 weight decay: regularization will unfreeze the early layers."
+     ],
+     "answer": 0,
+     "why": "This is the depth pathology: each layer multiplies the gradient by the activation derivative and the weights, and tanh saturates at derivative ~0. Skip connections give the gradient an express lane (the core ResNet insight), batch norm stabilizes layer input distributions, and matched initialization keeps the initial signal scale sane.",
+     "hint": "If the last layers learn and the first do not, where is the gradient dying — and what architectural shortcut could bypass the long chain?",
+     "objectives": [],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "deep-learning-sc4",
+     "title": "Two thousand images",
+     "situation": "A team has 2,000 labeled defect images and trains a ResNet-50 from scratch. Training accuracy hits 99% by epoch 3 while validation accuracy stalls at 61%. They propose labeling 50,000 more images before trying again.",
+     "prompt": "What is the better engineering call?",
+     "evidence": [],
+     "choices": [
+      "Use transfer learning: start from ImageNet-pretrained weights, freeze the backbone, train only the classifier head with augmentation, then optionally unfreeze later layers with a small learning rate. The pretrained filters already encode edges, textures, and shapes — 2,000 images cannot learn those from scratch.",
+      "Label the 50,000 images first: from-scratch training is the only honest approach.",
+      "Switch to a larger model: capacity is what a small dataset needs.",
+      "Early stopping alone will fix it: just stop at epoch 2."
+     ],
+     "answer": 0,
+     "why": "Early visual features are largely task-agnostic, so borrowing them is not cheating — it is the standard practice for small datasets. Freezing the backbone first prevents the small dataset from destroying good features; augmentation multiplies the effective data. Labeling 50k images burns months to relearn what the pretrained model already knows.",
+     "hint": "Which parts of a vision network are most reusable across tasks — the early filters or the final classifier — and what does that imply for a 2,000-image dataset?",
+     "objectives": [],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "deep-learning-sc5",
+     "title": "The haunted evaluation",
+     "situation": "At inference time the same input image gets a different predicted class on repeated runs. The team suspects data corruption, then a bad checkpoint, then a hardware fault. The model file loads fine and training metrics were stable.",
+     "prompt": "What is the most likely explanation?",
+     "evidence": [],
+     "choices": [
+      "The model was never switched out of training mode: dropout layers are still randomly zeroing activations and batch-norm layers are using batch statistics. Call model.eval() before inference (and wrap it in torch.no_grad()), which disables dropout and freezes batch-norm to its running statistics.",
+      "Set a manual seed before every prediction: nondeterminism is always a seeding problem.",
+      "Batch normalization is broken and must be removed from the architecture.",
+      "Reload the checkpoint before each prediction: the weights are decaying in memory."
+     ],
+     "answer": 0,
+     "why": "Dropout is only meant to be active during training — that is its entire design. model.train()/model.eval() is a global mode switch, not a per-layer setting, and forgetting it is one of the most common production bugs in PyTorch. torch.no_grad() additionally skips autograd bookkeeping, which speeds inference and cuts memory.",
+     "hint": "Which layers behave differently in training versus inference — and is there a single call that flips them all?",
+     "objectives": [],
+     "mins": 6,
+     "difficulty": 3
+    },
+    {
+     "id": "deep-learning-sc6",
+     "title": "The diverging curves",
+     "situation": "Training loss falls steadily for 40 epochs while validation loss bottoms out at epoch 12 and then climbs. The team debates: train longer with a lower learning rate, or add two more hidden layers to 'give the model room to generalize.'",
+     "prompt": "What is the correct read and response?",
+     "evidence": [],
+     "choices": [
+      "This is overfitting: the model is memorizing training noise after epoch 12. Stop there — use early stopping on validation loss — and regularize: dropout, weight decay, or augmentation. More capacity or more epochs will make the gap worse, not better.",
+      "Train longer with a lower learning rate: the validation curve just needs patience.",
+      "Add the two hidden layers: underfitting is the real problem.",
+      "Delete the validation set and train on all the data: the split is causing the gap."
+     ],
+     "answer": 0,
+     "why": "The validation curve is the honest reporter: once it rises while training loss falls, every extra epoch is memorization. Early stopping converts that observation into policy (save the best-validation checkpoint). Regularization attacks the cause — excess effective capacity — instead of feeding it.",
+     "hint": "If training loss keeps improving while validation loss worsens, is the model learning the task or the dataset — and which curve should decide when to stop?",
+     "objectives": [],
+     "mins": 6,
+     "difficulty": 3
+    }
+   ]
+  }
+ ],
+ "lessons": [
+  {
+   "domain_id": "deep-learning",
+   "title": "Deep Learning with PyTorch — Core concepts",
+   "concepts": [
+    "A perceptron is a weighted sum plus a bias; stacking them into a multilayer network only gains power because nonlinear activations sit between layers — without them the whole stack collapses to one linear map.",
+    "Match the loss to the task: cross-entropy on raw logits for classification, mean squared error for regression. The loss defines what 'wrong' costs, so a mismatched loss teaches the wrong lesson.",
+    "Backpropagation is the chain rule applied mechanically: every operation records how its output changes with its inputs, and gradients flow backward through that recorded graph. PyTorch's autograd builds the graph for you — your job is to design it honestly.",
+    "The optimizer and learning rate matter more than architecture tweaks: SGD with momentum and Adam are the workhorses, and the learning rate (plus a schedule that decays it) is the single highest-leverage knob. Too large diverges; too small stalls.",
+    "Convolutions share weights across space, which buys translation equivariance and far fewer parameters than dense layers; pooling and stride downsample. For small datasets, transfer learning from a pretrained backbone beats training from scratch.",
+    "Regularize as a triad, not a lottery ticket: dropout (disable at eval), weight decay (L2 on the optimizer), and early stopping on validation loss. Tune everything on validation — the test set is read once, at the end."
+   ],
+   "example": {
+    "lang": "python",
+    "code": "import torch\nimport torch.nn as nn\nfrom torch.utils.data import DataLoader, TensorDataset\n\ndevice = torch.device(\"cuda\" if torch.cuda.is_available() else \"cpu\")\n\nclass MLP(nn.Module):\n    def __init__(self, in_dim=20, hidden=64, n_classes=3):\n        super().__init__()\n        self.net = nn.Sequential(\n            nn.Linear(in_dim, hidden), nn.ReLU(), nn.Dropout(0.2),\n            nn.Linear(hidden, hidden), nn.ReLU(),\n            nn.Linear(hidden, n_classes),  # raw logits out\n        )\n\n    def forward(self, x):\n        return self.net(x)\n\nmodel = MLP().to(device)\ncriterion = nn.CrossEntropyLoss()          # expects logits\noptimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-4)\nloader = DataLoader(TensorDataset(X, y), batch_size=64, shuffle=True)\n\nbest_val, patience = float(\"inf\"), 0\nfor epoch in range(50):\n    model.train()\n    for xb, yb in loader:\n        xb, yb = xb.to(device), yb.to(device)\n        optimizer.zero_grad()              # clear stale gradients\n        loss = criterion(model(xb), yb)\n        loss.backward()                    # autograd fills .grad\n        optimizer.step()                   # SGD/Adam update\n    val_loss = evaluate(model, val_loader, device)  # uses model.eval() + no_grad()\n    if val_loss < best_val:\n        best_val, patience = val_loss, 0\n        torch.save(model.state_dict(), \"best.pt\")  # checkpoint the best, not the last\n    else:\n        patience += 1\n        if patience >= 5:\n            break  # early stopping\n",
+    "walkthrough": "This is the canonical PyTorch training loop, and every production trainer is a variation of it. Device discipline comes first: the model and every batch move to the same device, or you get a device-mismatch error. Each batch zeroes old gradients (PyTorch accumulates them by default), runs forward, computes the loss on logits, backpropagates, and steps the optimizer. The validation pass runs under model.eval() with torch.no_grad() so dropout is off and no graph is built. The checkpoint saves only the best-validation state_dict — early stopping as executable policy, not a slogan."
+   },
+   "pitfalls": [
+    "Common trap: calling CrossEntropyLoss on softmax outputs — it expects raw logits and applies log-softmax internally, so a manual softmax double-squashes them.",
+    "Common trap: forgetting optimizer.zero_grad() — gradients accumulate across batches by default, so the update silently uses stale gradient history.",
+    "Common trap: evaluating with the model still in train mode — dropout stays active and predictions go nondeterministic (see scenario 5).",
+    "Common trap: tuning on the test set — every peek leaks information; the test set is read exactly once, after all decisions are frozen."
+   ],
+   "try_it": "Work through this in the Labs tab."
+  }
+ ],
+ "labs": [
+  {
+   "id": "deep-learning-lab1",
+   "domain_id": "deep-learning",
+   "title": "Train an MLP from scratch on synthetic data",
+   "objective": "Build a two-hidden-layer MLP in PyTorch, train it on a synthetic binary classification set, and report train vs validation accuracy with a clean device-disciplined loop.",
+   "steps": [
+    "Create lab1.py: generate 2,000 samples with sklearn.datasets.make_moons(noise=0.2), split 80/20 with train_test_split, and wrap both splits in TensorDataset/DataLoader.",
+    "Define an nn.Module MLP: Linear(2,64) → ReLU → Dropout(0.2) → Linear(64,64) → ReLU → Linear(64,2) with raw-logit output.",
+    "Write the training loop with device discipline (.to(device) for model and batches), Adam(lr=1e-3), CrossEntropyLoss, and optimizer.zero_grad() each batch.",
+    "Add validation under model.eval() + torch.no_grad(), early stopping with patience 5, and checkpoint the best-validation state_dict to best.pt.",
+    "Run for up to 50 epochs, reload best.pt, and print final train and validation accuracy to four decimals.",
+    "In two sentences, note whether the curves show underfit, good fit, or overfit — and which regularizer you would reach for first."
+   ],
+   "checks": [
+    {
+     "command_pattern": "^python3\\s",
+     "expect_contains": "val acc",
+     "hint": "Print lines like 'train acc 0.XXXX / val acc 0.XXXX' so the check can see both metrics."
+    }
+   ]
+  },
+  {
+   "id": "deep-learning-lab2",
+   "domain_id": "deep-learning",
+   "title": "Transfer learning with a frozen backbone",
+   "objective": "Fine-tune a pretrained ResNet-18 on a small image classification task by freezing the backbone, training a new head, then unfreezing with a small learning rate — and measure what each stage buys.",
+   "steps": [
+    "Create lab2.py: load torchvision.models.resnet18 with pretrained weights and replace its fc layer with a new Linear head for your class count.",
+    "Stage 1: freeze all backbone parameters (requires_grad=False), train only the head for 5 epochs with Adam(lr=1e-3), and record validation accuracy.",
+    "Stage 2: unfreeze the last residual block, retrain the whole net for 5 more epochs with Adam(lr=1e-4), and record validation accuracy again.",
+    "Add transforms-based augmentation (random horizontal flip, random crop) to the training loader and re-run Stage 1 — compare the three numbers.",
+    "Print all three validation accuracies and, in three sentences, explain which stage helped most and why frozen features transfer."
+   ],
+   "checks": [
+    {
+     "command_pattern": "^python3\\s",
+     "expect_contains": "stage",
+     "hint": "Print one line per stage, e.g. 'stage1-frozen val acc 0.XXXX', so the check can compare them."
+    }
+   ]
+  },
+  {
+   "id": "deep-learning-lab3",
+   "domain_id": "deep-learning",
+   "title": "Debug the haunted evaluation loop",
+   "objective": "Find and fix the train/eval-mode bug in a provided broken inference script, proving with repeated runs that predictions become deterministic.",
+   "steps": [
+    "Open broken_eval.py (provided): it loads a trained MLP with dropout, runs inference on 20 held-out samples, and prints predictions — run it three times and record how many predictions change between runs.",
+    "Read the script and identify every place where training-mode behavior leaks into inference (mode switch, gradient tracking, batch handling).",
+    "Fix the script: switch the model to evaluation mode before the inference loop and disable autograd for the forward passes.",
+    "Re-run three times and confirm zero predictions change across runs; print a before/after count of changed predictions.",
+    "In two sentences, explain why dropout existing only in training mode is a feature, not a bug — and what model.eval() changes beyond dropout."
+   ],
+   "checks": [
+    {
+     "command_pattern": "^python3\\s",
+     "expect_contains": "changed: 0",
+     "hint": "Print a final line like 'predictions changed: 0' after the fix so the check can verify determinism."
+    }
+   ]
+  }
+ ],
+ "simulations": [],
+ "consoleSims": [],
+ "terminalMissions": [],
+ "sections": [
+  {
+   "id": "deep-learning-sec",
+   "title": "Deep Learning with PyTorch — core path",
+   "kind": "path",
+   "lectures": [],
+   "lab_ids": [
+    "deep-learning-lab1",
+    "deep-learning-lab2",
+    "deep-learning-lab3"
+   ],
+   "drill_domain_ids": [
+    "deep-learning"
+   ]
+  }
+ ],
+ "behavioral": [
+  {
+   "prompt": "Walk me through a model you trained that refused to converge. How did you debug it?",
+   "framework": "STAR",
+   "points": [
+    "Name the symptom with numbers (loss curve shape, gradient norms, which layers moved)",
+    "List the hypotheses you tested in order and what each ruled out",
+    "Name the actual fix and why it worked mechanistically",
+    "Close with what you now check first on any non-converging run"
+   ],
+   "pitfalls": [
+    "Saying 'I tuned hyperparameters' with no method",
+    "Blaming the data without evidence",
+    "No mention of gradients, initialization, or learning rate"
+   ]
+  },
+  {
+   "prompt": "Explain overfitting to a non-technical stakeholder who wants the model shipped today.",
+   "framework": "STAR",
+   "points": [
+    "Use one concrete analogy (memorizing answers vs learning the subject)",
+    "Show the two curves and what the gap means in business risk terms",
+    "Propose the concrete next step and its cost in time",
+    "Confirm the decision and its owner explicitly"
+   ],
+   "pitfalls": [
+    "Hiding behind jargon like 'generalization gap'",
+    "Agreeing to ship a memorized model to please the room",
+    "No quantified risk statement"
+   ]
+  },
+  {
+   "prompt": "Tell me about a time you had to choose between a simple model and a deep learning approach.",
+   "framework": "STAR",
+   "points": [
+    "State the decision criteria you used (data size, latency, interpretability, maintenance)",
+    "Show you prototyped the simple baseline first",
+    "Quantify the tradeoff that decided it",
+    "Note what would make you revisit the choice"
+   ],
+   "pitfalls": [
+    "Choosing deep learning because it is fashionable",
+    "No baseline comparison",
+    "Ignoring inference cost or latency"
+   ]
+  },
+  {
+   "prompt": "Describe a production incident caused by a model or training pipeline. What happened?",
+   "framework": "STAR",
+   "points": [
+    "Describe the detection: how you noticed before (or after) users did",
+    "Walk the root cause chain to the actual bug",
+    "Explain the fix and the guardrail added so it cannot recur",
+    "State the blast radius honestly"
+   ],
+   "pitfalls": [
+    "Blaming the framework",
+    "A fix with no regression guard",
+    "Minimizing user impact"
+   ]
+  },
+  {
+   "prompt": "How do you decide on an architecture for a problem you have not solved before?",
+   "framework": "STAR",
+   "points": [
+    "Start from the data modality and the task shape",
+    "Cite the standard starting points and why they are standard",
+    "Describe the smallest experiment that de-risks the choice",
+    "Explain how you scale complexity only after the baseline works"
+   ],
+   "pitfalls": [
+    "Starting from the fanciest recent paper",
+    "No baseline",
+    "Architecture chosen before data exploration"
+   ]
+  },
+  {
+   "prompt": "Tell me about a time you disagreed with a teammate about a modeling decision. How did you resolve it?",
+   "framework": "STAR",
+   "points": [
+    "State both positions fairly, with their best argument",
+    "Describe the experiment or metric that settled it",
+    "Show you committed to the outcome once decided",
+    "Note what the disagreement taught you about your own biases"
+   ],
+   "pitfalls": [
+    "Framing the teammate as unreasonable",
+    "Resolving by seniority instead of evidence",
+    "Holding a grudge after the decision"
+   ]
+  },
+  {
+   "prompt": "How do you keep up with a field that publishes a breakthrough every week?",
+   "framework": "STAR",
+   "points": [
+    "Name your actual filters: what you read, what you skip, and why",
+    "Give an example of a paper you reproduced or tested before trusting",
+    "Explain how you separate real advances from benchmark gaming",
+    "Show how learning feeds back into your work"
+   ],
+   "pitfalls": [
+    "Claiming to read everything",
+    "Trusting leaderboard numbers at face value",
+    "No example of skeptical verification"
+   ]
+  },
+  {
+   "prompt": "Describe a time you found a data quality problem that was silently corrupting model results.",
+   "framework": "STAR",
+   "points": [
+    "Explain how you detected it — what looked wrong in the metrics",
+    "Trace it to the pipeline or labeling step responsible",
+    "Quantify how much it was distorting results",
+    "Describe the validation you added to catch it next time"
+   ],
+   "pitfalls": [
+    "Assuming the data was clean",
+    "Fixing the model instead of the data",
+    "No ongoing data validation added"
+   ]
+  }
+ ],
+ "resources": {
+  "cheatsheet": [
+   "model.train() before training loops; model.eval() + torch.no_grad() before inference — every time.",
+   "optimizer.zero_grad() each batch: PyTorch accumulates gradients by default.",
+   "nn.CrossEntropyLoss takes raw logits; nn.BCEWithLogitsLoss for multi-label; nn.MSELoss for regression.",
+   "Device discipline: model.to(device) and every batch .to(device) — mismatched devices raise at runtime.",
+   "Checkpoint the best-validation state_dict with torch.save / torch.load, not the last epoch.",
+   "DataLoader: shuffle=True for train, False for val; num_workers>0 to stop the GPU starving.",
+   "Learning rate first, architecture second: try 1e-3 / 3e-4 / 1e-4 before redesigning the net.",
+   "ReLU (or leaky ReLU) in hidden layers by default; saturating activations only where the math demands them."
+  ],
+  "glossary": [
+   [
+    "tensor",
+    "PyTorch's n-dimensional array; the unit of data and parameters, tracked by autograd when requires_grad is set."
+   ],
+   [
+    "autograd",
+    "PyTorch's automatic differentiation engine: records operations into a graph and computes gradients via loss.backward()."
+   ],
+   [
+    "epoch",
+    "One full pass over the training dataset."
+   ],
+   [
+    "batch",
+    "The subset of data processed in one optimizer step; batch size trades gradient noise against memory and speed."
+   ],
+   [
+    "learning rate",
+    "Step-size multiplier on the gradient update — the highest-leverage hyperparameter."
+   ],
+   [
+    "overfitting",
+    "Memorizing training noise: training loss falls while validation loss rises."
+   ],
+   [
+    "underfitting",
+    "The model lacks capacity or training to capture even the training signal."
+   ],
+   [
+    "dropout",
+    "Regularizer that randomly zeroes activations during training; disabled in eval mode."
+   ],
+   [
+    "weight decay",
+    "L2 penalty on weights, usually set on the optimizer; shrinks weights toward zero."
+   ],
+   [
+    "batch normalization",
+    "Layer that normalizes its inputs per mini-batch; has distinct train/eval behavior."
+   ],
+   [
+    "convolution",
+    "Weight-sharing operation over local neighborhoods; gives translation equivariance with few parameters."
+   ],
+   [
+    "stride / pooling",
+    "Downsampling mechanisms that shrink spatial dimensions and grow receptive fields."
+   ],
+   [
+    "transfer learning",
+    "Reusing a pretrained backbone's features for a new task, usually by training a new head first."
+   ],
+   [
+    "fine-tuning",
+    "Continuing training of some or all pretrained weights on the target task, typically with a small learning rate."
+   ],
+   [
+    "RNN",
+    "Recurrent network that carries a hidden state across sequence steps; suffers vanishing gradients over long spans."
+   ],
+   [
+    "LSTM / GRU",
+    "Gated recurrent units whose input/forget/output gates let information persist across long sequences."
+   ],
+   [
+    "vanishing gradient",
+    "Gradients shrinking toward zero as they propagate through many layers or time steps, freezing early parameters."
+   ],
+   [
+    "gradient clipping",
+    "Capping gradient norms before the optimizer step; standard stabilizer for recurrent training."
+   ],
+   [
+    "checkpoint",
+    "Saved model state (usually state_dict) allowing training to resume or the best model to be restored."
+   ],
+   [
+    "early stopping",
+    "Halting training when validation loss stops improving; the simplest effective regularizer."
+   ]
+  ],
+  "links": [
+   {
+    "name": "PyTorch documentation",
+    "url": "https://pytorch.org/docs/stable/index.html"
+   },
+   {
+    "name": "PyTorch tutorials",
+    "url": "https://pytorch.org/tutorials/"
+   },
+   {
+    "name": "Hugging Face documentation",
+    "url": "https://huggingface.co/docs"
+   }
+  ],
+  "checklist": [
+   "Loss matches the task (cross-entropy/logits for classification, MSE for regression).",
+   "Train/val/test splits fixed before any tuning; test read once at the end.",
+   "Device discipline verified: model and batches on the same device.",
+   "model.eval() + torch.no_grad() in every inference path.",
+   "Best-validation checkpoint saved, with early stopping configured.",
+   "Learning rate tried at multiple scales before architecture changes.",
+   "Regularization triad considered: dropout, weight decay, augmentation.",
+   "Training is reproducible: seeds set, data pipeline versioned."
+  ]
+ },
+ "chat": {
+  "persona": "You are a rigorous but encouraging PyTorch tutor. Teach concepts from first principles, show short real code when it clarifies, and always ask what the learner observed before giving the answer. Stay on topic: neural networks, backprop, CNNs, sequence models, regularization, and PyTorch workflows. Independent study material; no vendor affiliation, no certificates.",
+  "topics": [
+   {
+    "id": "deep-learning",
+    "name": "Deep Learning with PyTorch",
+    "key_points": [
+     "perceptrons and activations",
+     "loss functions",
+     "backprop and autograd",
+     "SGD, Adam, learning rates",
+     "CNNs and transfer learning",
+     "RNNs, LSTMs, seq2seq",
+     "dropout, early stopping, weight decay",
+     "Dataset, DataLoader, training loop, CUDA, checkpointing"
+    ]
+   }
+  ]
+ },
+ "simulation": {
+  "items": 10,
+  "minutes": 30,
+  "evidence_cost_mins": 2
+ },
+ "media": [],
+ "foundations": [],
+ "math": []
+}

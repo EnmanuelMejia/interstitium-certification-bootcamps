@@ -1,0 +1,1258 @@
+{
+ "slug": "ios-interview",
+ "title": "iOS Engineering Interview Prep",
+ "tagline": "Swift, UIKit/SwiftUI, and the iOS interview loop.",
+ "vendor": {
+  "name": "Independent",
+  "certs": [],
+  "docs": []
+ },
+ "disclaimer": "Independent study material by Interstitium Labs. Not affiliated with or endorsed by any vendor. Confers no certificate.",
+ "accent": "#0a84ff",
+ "domains": [
+  {
+   "id": "ios-swift-core",
+   "name": "Swift Language Core",
+   "summary": "Optionals, value vs reference semantics, protocols, generics, closures, and error handling — the language questions iOS loops open with.",
+   "scenarios": [
+    {
+     "id": "ios-interview-sc1",
+     "title": "Unwrap without the bang",
+     "situation": "Whiteboard round. The interviewer points at `let name: String? = fetchName()` and asks you to print it uppercased, but says force-unwrapping is an instant fail.",
+     "prompt": "Which is the safest idiomatic way to use this optional?",
+     "evidence": [],
+     "choices": [
+      "Use `guard let name = fetchName() else { return }`, then use `name` non-optionally in the rest of the scope.",
+      "Write `print(fetchName()!.uppercased())` — it is concise and the value is probably there.",
+      "Write `if fetchName() != nil { print(fetchName()!.uppercased()) }` — the nil check makes the force unwrap safe.",
+      "Declare it as `String!` instead so the compiler stops complaining about optionals."
+     ],
+     "answer": 0,
+     "why": "guard let binds the wrapped value once and exits early on nil, so everything after it works with a non-optional. Force unwrap crashes on nil; checking != nil then force-unwrapping re-fetches and still risks races. Implicitly unwrapped optionals just hide the same crash.",
+     "hint": "What construct gives you a non-optional name for the rest of the function while handling nil in one place?",
+     "objectives": [
+      "Bind optionals safely with if let / guard let"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "ios-interview-sc2",
+     "title": "Struct or class for a model?",
+     "situation": "System-design discussion. You are modeling a `Playlist` with a name and a list of songs that gets passed between view controllers.",
+     "prompt": "The interviewer asks: struct or class, and why?",
+     "evidence": [],
+     "choices": [
+      "Start with a struct: value semantics give each owner an independent copy, so mutations in one screen cannot surprise another; reach for a class only when you need shared identity or inheritance.",
+      "Always use a class: structs copy on every assignment, which is too slow for models with arrays.",
+      "Always use a struct: classes are legacy Objective-C and banned in modern Swift.",
+      "It does not matter: Swift optimizes both to identical machine code, so pick by naming style."
+     ],
+     "answer": 0,
+     "why": "Swift convention is value types first. A struct copy is independent, which kills whole categories of aliasing bugs. Copy-on-write means Array/Dictionary/String copies are cheap until mutated. Classes are for shared mutable identity (a player, a session), reference semantics, and deinit.",
+     "hint": "Think about what breaks if two screens hold the same playlist and one edits it — do you want that edit shared or independent?",
+     "objectives": [
+      "Choose value vs reference semantics deliberately"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "ios-interview-sc3",
+     "title": "The closure that never dies",
+     "situation": "Debugging round. A `ProfileViewController` never deallocates after dismissal. Its `viewDidLoad` contains: `api.fetchProfile { user in self.nameLabel.text = user.name }`.",
+     "prompt": "What is the root cause and the fix?",
+     "evidence": [],
+     "choices": [
+      "A retain cycle: the closure captures `self` strongly, and the API client (owned by the VC, directly or not) holds the closure — use `[weak self]` in the capture list and `guard let self` inside.",
+      "The label holds a strong reference to the view controller; set `nameLabel = nil` in `viewDidDisappear`.",
+      "URLSession caches the closure forever; call `URLSession.shared.invalidateAndCancel()` on dismiss.",
+      "viewDidLoad runs twice in iOS 17; move the fetch to `viewDidAppear` to avoid double registration."
+     ],
+     "answer": 0,
+     "why": "Closures capture referenced objects strongly by default. If the closure's lifetime is tied (even transitively) to the object it captures, neither deallocates. The capture list `[weak self]` breaks the cycle; `guard let self = self else { return }` then gives a strong temporary for the body. Delegates avoid this by being declared `weak`.",
+     "hint": "Draw the ownership arrows: VC -> api client -> stored closure -> VC. Which arrow do you cut, and how?",
+     "objectives": [
+      "Break retain cycles with capture lists"
+     ],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "ios-interview-sc4",
+     "title": "Protocol with associated type",
+     "situation": "Architecture round. You propose `protocol DataSource { associatedtype Item; func item(at: Int) -> Item }` and then try to write `var source: DataSource` as a property.",
+     "prompt": "Why does the compiler reject the property, and what are your options?",
+     "evidence": [],
+     "choices": [
+      "A protocol with an associated type (or Self requirement) cannot be used as an existential type directly — `any DataSource` still erases the associated type, so the property cannot be typed that way; use generics (`class Store<S: DataSource>`), type erasure, or redesign around a concrete requirement.",
+      "The compiler rejects it because protocols cannot have associated types at all; associatedtype is only for classes.",
+      "It compiles fine; `var source: DataSource` works in Swift 5 exactly like an interface in Java.",
+      "Add `@objc` to the protocol and the property will compile, since Objective-C protocols have no associated types."
+     ],
+     "answer": 0,
+     "why": "Associated types make the protocol generic over conforming types, so there is no single runtime layout for 'a DataSource'. Options: make the holder generic over `S: DataSource`, build a type-erased wrapper (AnyDataSource), or — often best in interviews — simplify the protocol so it needs no associated type.",
+     "hint": "If the protocol is generic over its conformers, what single concrete type could the property hold?",
+     "objectives": [
+      "Know PAT limits and workarounds"
+     ],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "ios-interview-sc5",
+     "title": "Escaping closure across threads",
+     "situation": "Concurrency round. `func load(_ completion: @escaping (Result<Data, Error>) -> Void)` runs work on a background queue and calls completion there. The interviewer asks what can go wrong for the caller.",
+     "prompt": "What is the complete, correct answer?",
+     "evidence": [],
+     "choices": [
+      "Three things: the closure is escaping so the caller must consider its lifetime (capture lists for self); it fires on a background queue so UI updates inside it must hop to the main queue; and Result must be handled for both cases — plus the API should document its callback queue.",
+      "Nothing — @escaping closures are always called on the main queue by the system.",
+      "Only that Result is awkward; the modern fix is to return an optional and document nil as failure.",
+      "The caller must wrap the call in a Task, because escaping closures cannot be called from non-async contexts."
+     ],
+     "answer": 0,
+     "why": "Escaping means the closure outlives the call: lifetime discipline (weak/strong dance) matters. Queue discipline matters equally: URLSession and GCD callbacks arrive off-main, so touching UI there is a bug that often manifests as flaky layout, not a crash. Senior answers also mention documenting the callback queue as API contract.",
+     "hint": "Trace the closure's two journeys: how long does it live, and which thread is it standing on when it runs?",
+     "objectives": [
+      "Reason about escaping closures: lifetime + queue"
+     ],
+     "mins": 6,
+     "difficulty": 3
+    },
+    {
+     "id": "ios-interview-sc6",
+     "title": "Design a generic cache",
+     "situation": "Whiteboard system design. 'Design an in-memory cache usable for any value type, keyed by String, with a max entry count.' You have 15 minutes.",
+     "prompt": "Which design earns full marks?",
+     "evidence": [],
+     "choices": [
+      "A generic `final class Cache<Value>` with a dictionary plus an access-ordered doubly linked list (or ordered keys) for LRU eviction, `NSLock`/actor for thread safety, a `Value` unconstrained or constrained as needed, and a clear eviction policy stated up front — with the tradeoff discussion (simplicity vs O(1) ops).",
+      "A `[String: Any]` dictionary with a Timer that calls `removeAll()` every minute — simple and generic enough.",
+      "Subclass NSCache and override `object(forKey:)` with generics — NSCache is generic-ready and thread-safe.",
+      "Use UserDefaults with one key per entry — it persists for free and handles eviction via the OS."
+     ],
+     "answer": 0,
+     "why": "Interviewers grade the tradeoff narration, not just the code: why a class (shared identity) vs struct, why a lock or actor around the dictionary (dictionaries are not thread-safe), how eviction stays O(1), and what happens under memory pressure (hook `didReceiveMemoryWarning` / NSCache's auto-eviction as the discussed alternative).",
+     "hint": "Start by stating eviction policy and thread-safety plan before writing a line — the narration is half the grade.",
+     "objectives": [
+      "Design generic components with stated tradeoffs"
+     ],
+     "mins": 6,
+     "difficulty": 3
+    }
+   ]
+  },
+  {
+   "id": "ios-ui-frameworks",
+   "name": "UIKit & SwiftUI",
+   "summary": "View controller lifecycle, Auto Layout, SwiftUI state and layout algorithm, and UIKit-SwiftUI interop with judgment for either.",
+   "scenarios": [
+    {
+     "id": "ios-interview-sc7",
+     "title": "viewDidLoad vs viewWillAppear",
+     "situation": "UIKit round. The interviewer asks where to start a network fetch that should refresh every time the screen appears, and where one-time view setup goes.",
+     "prompt": "What is the correct split?",
+     "evidence": [],
+     "choices": [
+      "One-time setup (add subviews, constraints, static styling) in `viewDidLoad`; repeating work (refresh fetches, re-applying dynamic state, starting animations) in `viewWillAppear` — because viewDidLoad runs once per controller lifetime while viewWillAppear runs on every appearance including back-navigation.",
+      "Do everything in `viewDidLoad` — it runs every time the view appears, so it covers refreshes too.",
+      "Do everything in `viewDidAppear` — earlier methods run before the view exists.",
+      "Put setup in `init` and fetches in `deinit` to balance the lifecycle symmetrically."
+     ],
+     "answer": 0,
+     "why": "The lifecycle order is loadView -> viewDidLoad -> viewWillAppear -> viewDidLayoutSubviews -> viewDidAppear, then disappear in reverse. Code placed in the wrong hook either runs too often (duplicate observers, double fetches) or too rarely (stale data after popping back). Name the order cold — interviewers check it.",
+     "hint": "Which of these methods fires once per controller, and which fires every time the user navigates back to the screen?",
+     "objectives": [
+      "Place work in the correct lifecycle hook"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "ios-interview-sc8",
+     "title": "State vs Binding",
+     "situation": "SwiftUI round. A parent view owns a `Bool` for showing a sheet; the sheet's content needs to toggle it off.",
+     "prompt": "How do you wire the state correctly?",
+     "evidence": [],
+     "choices": [
+      "Parent declares `@State private var isPresented`, passes `$isPresented` into the child, and the child declares `@Binding var isPresented` — single source of truth lives in the parent; the child only borrows write access.",
+      "Both declare `@State var isPresented` — SwiftUI syncs same-named state automatically.",
+      "@Binding in the parent and @State in the child — bindings own the storage.",
+      "Use a global `static var` — it is visible to both views with no plumbing."
+     ],
+     "answer": 0,
+     "why": "@State owns storage private to a view; @Binding is a reference to someone else's state. Lifting state up (parent owns, child binds) is the core SwiftUI data-flow pattern, alongside @ObservedObject/@StateObject for reference-type models and @Environment for cross-cutting values.",
+     "hint": "Who should OWN the boolean, and what does the child need — ownership or a reference to it?",
+     "objectives": [
+      "Apply single-source-of-truth state flow"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "ios-interview-sc9",
+     "title": "Ambiguous layout in the console",
+     "situation": "Auto Layout round. The console spams 'Unable to simultaneously satisfy constraints' and a label is the wrong width at runtime.",
+     "prompt": "What is your systematic debugging approach?",
+     "evidence": [],
+     "choices": [
+      "Read the conflicting constraint list in the log, identify the two constraints fighting over the same attribute, decide which one expresses intent, then lower a priority or remove the redundant one; use `exerciseAmbiguityInLayout` / view debugger and check intrinsic content size vs explicit width plus hugging/compression priorities.",
+      "Delete all constraints and rebuild with frames — Auto Layout logs are noise and frames never conflict.",
+      "Set every constraint priority to 1000 so the engine takes them all seriously.",
+      "Add `translatesAutoresizingMaskIntoConstraints = false` to every view twice to be safe."
+     ],
+     "answer": 0,
+     "why": "Conflicts mean over-constraining: two rules demand different values for one attribute. The fix is editorial, not additive — remove or demote, never pile on. Compression resistance and content hugging priorities resolve 'label vs fixed width' fights declaratively. Interviewers want the systematic read-the-log habit, not guessing.",
+     "hint": "The log names the fighters. What does it mean when two constraints claim the same attribute, and which one represents your real intent?",
+     "objectives": [
+      "Debug Auto Layout conflicts systematically"
+     ],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "ios-interview-sc10",
+     "title": "The SwiftUI layout algorithm",
+     "situation": "SwiftUI deep-dive. 'Explain how SwiftUI decides a view's size' — the interviewer wants the three-step negotiation.",
+     "prompt": "What is the correct explanation?",
+     "evidence": [],
+     "choices": [
+      "Parent proposes a size to the child; the child chooses its own size within the proposal; the parent places the child in its coordinate space — and a child can only choose sizes the proposal allows, which is why fixed frames beat flexible stacks in fights.",
+      "Each view measures itself first, then tells the parent how big it is, then the parent shrinks to fit — bottom-up like UIKit's sizeToFit.",
+      "SwiftUI uses Auto Layout constraints under the hood, so the Cassowary solver decides sizes identically to UIKit.",
+      "Views have no say: the parent assigns frames directly, like UIKit's layoutSubviews."
+     ],
+     "answer": 0,
+     "why": "This three-step dance explains otherwise-mysterious behavior: why a `Text` in an `HStack` truncates (proposal too small), why `GeometryReader` is greedy (it takes all proposed space), and why `.fixedSize()` exists (lets the child ignore the proposal and use its ideal size). Teach the algorithm, then derive the behaviors.",
+     "hint": "Who moves first in the negotiation — parent or child — and what power does each side actually have?",
+     "objectives": [
+      "Explain SwiftUI's propose-choose-place layout"
+     ],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "ios-interview-sc11",
+     "title": "Wrapping a UIKit map",
+     "situation": "Interop round. The app is SwiftUI but the team needs `MKMapView` with custom annotations — 'wrap it properly.'",
+     "prompt": "What is the correct interop design?",
+     "evidence": [],
+     "choices": [
+      "Conform to `UIViewRepresentable`: `makeUIView` creates the map once, `updateUIView` applies state-driven changes idempotently, and a `Coordinator` (via `makeCoordinator`) acts as the map's delegate, forwarding events back through bindings/closures.",
+      "Put the MKMapView in a UIHostingController and present it — hosting controllers bridge both directions automatically.",
+      "Subclass MKMapView as an ObservableObject so SwiftUI observes it directly.",
+      "Rewrite the map in pure SwiftUI with Canvas — interop is deprecated."
+     ],
+     "answer": 0,
+     "why": "UIViewRepresentable is the sanctioned bridge: create once, update declaratively. The Coordinator is the key insight — UIKit's delegate/target-action world needs an object to receive callbacks, and the coordinator (owned by SwiftUI) translates them into state changes. updateUIView must be idempotent since SwiftUI calls it on every state change.",
+     "hint": "UIKit speaks delegate; SwiftUI speaks state. What object stands between them translating both directions?",
+     "objectives": [
+      "Bridge UIKit into SwiftUI with Coordinator"
+     ],
+     "mins": 6,
+     "difficulty": 3
+    },
+    {
+     "id": "ios-interview-sc12",
+     "title": "Feed screen: pick your framework",
+     "situation": "Design discussion. 'Build the main feed of a social app — infinite scroll, images, like buttons, pull-to-refresh. UIKit or SwiftUI? Defend it.'",
+     "prompt": "Which answer shows senior judgment?",
+     "evidence": [],
+     "choices": [
+      "Either can work — argue it: SwiftUI for speed of development and declarative state (List/LazyVStack, async image phases), UIKit for battle-tested cell reuse at massive scale and fine-grained prefetch control; then name the real risks (SwiftUI List performance quirks, UIKit boilerplate) and how you would mitigate and measure with Instruments.",
+      "SwiftUI always — UIKit is legacy and no serious team starts new screens in it.",
+      "UIKit always — SwiftUI cannot handle infinite scroll or images.",
+      "Whichever the interviewer prefers — agree with them to avoid conflict."
+     ],
+     "answer": 0,
+     "why": "There is no mandated winner; the grade is in the tradeoff analysis. Strong answers quantify: cell reuse and prefetch APIs in UIKit, declarative diffing and less code in SwiftUI, and a measurement plan (scroll FPS, memory during fast flings, Time Profiler). Mentioning a hybrid (SwiftUI screen, UIKit cells via interop) shows real-world pragmatism.",
+     "hint": "What breaks at 10k rows and fast flings, and how would you prove your choice handles it?",
+     "objectives": [
+      "Defend framework choices with tradeoffs + measurement"
+     ],
+     "mins": 6,
+     "difficulty": 3
+    }
+   ]
+  },
+  {
+   "id": "ios-concurrency",
+   "name": "Concurrency on iOS",
+   "summary": "GCD, Operation queues, async/await, actors, and main-thread discipline — from dispatch basics to cancellation design.",
+   "scenarios": [
+    {
+     "id": "ios-interview-sc13",
+     "title": "Why the main thread?",
+     "situation": "Fundamentals round. 'Why must UI updates happen on the main thread?'",
+     "prompt": "What is the accurate explanation?",
+     "evidence": [],
+     "choices": [
+      "UIKit is not thread-safe: its classes assume serialized access from the main thread, so mutating views from a background queue causes race conditions — corrupted layout, missed draws, intermittent crashes. The main thread also runs the run loop that processes touch events and screen refreshes.",
+      "The main thread is simply faster — background queues are throttled by the OS.",
+      "It is a convention from Objective-C with no technical basis in Swift.",
+      "Background threads cannot allocate memory, and views need allocation."
+     ],
+     "answer": 0,
+     "why": "UIKit (and AppKit before it) was designed single-threaded; thread-safety was traded for performance. The rule is absolute: read or write any UIView/UIViewController off-main and you have a latent bug. URLSession completions, GCD callbacks, and async continuations all arrive off-main unless you hop back.",
+     "hint": "What breaks when two threads mutate the same view tree with no locks — and why did Apple choose not to add those locks?",
+     "objectives": [
+      "State the main-thread rule and its reason"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "ios-interview-sc14",
+     "title": "async vs sync dispatch",
+     "situation": "GCD round. You need to run image decoding off the main thread, then update the UI.",
+     "prompt": "Which dispatch pattern is correct?",
+     "evidence": [],
+     "choices": [
+      "`DispatchQueue.global(qos: .userInitiated).async { let img = decode(); DispatchQueue.main.async { self.imageView.image = img } }` — work off-main, hop back for UI; never `sync` from the main thread onto a serial queue you might already be on.",
+      "`DispatchQueue.main.sync { decode image; update UI }` — sync guarantees ordering.",
+      "`DispatchQueue.global().sync { ... }` from the main thread — sync is safer than async.",
+      "Run decoding on the main queue with `.userInteractive` QoS — the highest QoS prevents jank."
+     ],
+     "answer": 0,
+     "why": "async returns immediately (no blocking); sync blocks the caller until the block finishes — syncing from main to main deadlocks instantly, and syncing to a serial queue from its own block does too. QoS (.userInitiated for user-waiting work, .utility/.background for prefetch) tells the system how to prioritize, not which thread.",
+     "hint": "What happens to the calling thread under sync, and what does that imply if the caller is the main thread?",
+     "objectives": [
+      "Dispatch async correctly across queues"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "ios-interview-sc15",
+     "title": "Three fetches, one screen",
+     "situation": "GCD round. The profile screen needs user, posts, and followers from three endpoints before rendering.",
+     "prompt": "How do you coordinate them?",
+     "evidence": [],
+     "choices": [
+      "Enter a `DispatchGroup` before each request, `leave` in each completion, and `notify(queue: .main)` to render — or modernize with `async let` / TaskGroup; either way, handle partial failure explicitly instead of hanging on a missing leave.",
+      "Chain them: fetch user, in its completion fetch posts, in its completion fetch followers — simple and ordered.",
+      "Fire all three and update the UI in whichever completion lands first.",
+      "Use a `DispatchSemaphore` with value 0 and wait on the main thread until all three signal."
+     ],
+     "answer": 0,
+     "why": "DispatchGroup is the classic 'many asyncs, one continuation' primitive — but every enter needs exactly one leave or notify never fires (a hang, not a crash, which is why it is insidious). Modern Swift prefers structured concurrency (`async let`), which the compiler helps keep balanced. Never semaphore-wait on main.",
+     "hint": "What breaks if one completion path forgets its matching call — and how does the failure manifest?",
+     "objectives": [
+      "Coordinate parallel work safely"
+     ],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "ios-interview-sc16",
+     "title": "Shared mutable cache",
+     "situation": "Modern concurrency round. Multiple tasks read/write a `[String: Data]` cache concurrently and it occasionally corrupts.",
+     "prompt": "What is the right fix in modern Swift?",
+     "evidence": [],
+     "choices": [
+      "Isolate the dictionary in an `actor`: all access serializes through the actor, the compiler enforces isolation (no direct access from outside), and call sites use `await` — replacing the old serial-queue/barrier pattern with a compile-time guarantee.",
+      "Mark the dictionary `nonisolated` so all tasks can reach it quickly.",
+      "Wrap every access in `Task { }` — unstructured tasks serialize automatically.",
+      "Make it a global `var` — globals are implicitly thread-safe in Swift 6."
+     ],
+     "answer": 0,
+     "why": "Actors turn 'remember to use the queue' (a runtime discipline) into a compile-time rule: the type system rejects unsynchronized access. Mention the old GCD answer too (serial queue or barrier on a concurrent queue) — interviewers like hearing you know both eras. Also note actors are reentrant: awaits inside can interleave.",
+     "hint": "What did the serial-dispatch-queue pattern guarantee, and what does the actor add on top of it?",
+     "objectives": [
+      "Isolate shared state with actors"
+     ],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "ios-interview-sc17",
+     "title": "The deadlock on main",
+     "situation": "Debugging round. The app freezes. The main thread's stack shows `DispatchQueue.main.sync` called from a block already running on the main queue.",
+     "prompt": "Explain the deadlock and the general rule.",
+     "evidence": [],
+     "choices": [
+      "`sync` blocks the caller until the block executes; the block is queued on main, but main is blocked waiting — circular wait, permanent freeze. Rule: never `sync` onto the current queue (especially main); use `async`, or check `Thread.isMainThread` and branch.",
+      "The main queue is concurrent, so the block should have run — this must be an OS bug; file a radar.",
+      "sync always runs the block inline on the calling thread, so this cannot deadlock; the freeze is elsewhere.",
+      "The fix is `DispatchQueue.main.asyncAfter(deadline: .now())` — the delay breaks the cycle."
+     ],
+     "answer": 0,
+     "why": "This is the canonical GCD interview trap: sync means 'wait'. Waiting on yourself is a textbook circular wait. The asyncAfter 'fix' only masks it. Senior follow-up: the same deadlock happens syncing onto any serial queue from a block already executing on it.",
+     "hint": "If sync means 'block until done' and the work is queued behind the blocked caller, who runs it?",
+     "objectives": [
+      "Diagnose sync-dispatch deadlocks"
+     ],
+     "mins": 6,
+     "difficulty": 3
+    },
+    {
+     "id": "ios-interview-sc18",
+     "title": "Images in a scrolling list",
+     "situation": "Architecture round. A feed loads thumbnails per row; fast scrolling shows wrong images flashing before the right ones.",
+     "prompt": "What is the complete fix?",
+     "evidence": [],
+     "choices": [
+      "Cancel stale work: key each load to the cell's current item (or use `async` Tasks stored per index path and cancel on reuse / `prepareForReuse`), check cancellation before applying the image, and always set the image on the main thread — stale completions must never write to a reused cell.",
+      "Cache images in a global dictionary — once loaded, flashing stops.",
+      "Disable cell reuse so each row keeps its own image view forever.",
+      "Load images synchronously in `cellForRowAt` — ordering is then guaranteed."
+     ],
+     "answer": 0,
+     "why": "The bug is a race between reuse and completion: row 5's image arrives after the cell now shows row 42. Cancellation (Task.cancel, Operation.cancel, or invalidating a load token in prepareForReuse) plus a 'still the right item?' check before assignment is the full answer. This is also where SwiftUI's `.task` modifier shines — it auto-cancels when the view disappears.",
+     "hint": "Whose image is the cell showing when the slow request finally completes — and how does the cell know it is stale?",
+     "objectives": [
+      "Design cancellation into async UI work"
+     ],
+     "mins": 6,
+     "difficulty": 3
+    }
+   ]
+  },
+  {
+   "id": "ios-persistence",
+   "name": "Persistence on iOS",
+   "summary": "UserDefaults, Codable, Core Data, SwiftData, and Keychain — climbing the persistence ladder and defending each choice.",
+   "scenarios": [
+    {
+     "id": "ios-interview-sc19",
+     "title": "Where does the auth token go?",
+     "situation": "Security round. The app gets a JWT after login and needs it across launches.",
+     "prompt": "Where should it be stored?",
+     "evidence": [],
+     "choices": [
+      "In the Keychain (via the Security framework / a thin wrapper): it is encrypted, access-controlled by biometry/passcode policy, and not exposed in backups the way files are — UserDefaults is a plaintext plist and the wrong home for secrets.",
+      "UserDefaults — it persists across launches and takes one line of code.",
+      "A global `static var` — simple and fast, and it survives backgrounding.",
+      "Hardcode it in the binary — attackers cannot read compiled code."
+     ],
+     "answer": 0,
+     "why": "UserDefaults is an unencrypted plist — fine for settings, flags, and small preferences; never for tokens, passwords, or PII. Keychain items carry access groups, accessibility levels (e.g. unlocked-only), and survive app reinstall semantics differently. Say the tradeoff out loud: Keychain API is clunkier, so teams wrap it once.",
+     "hint": "What does the storage look like to someone who copies the app's sandbox off a jailbroken device?",
+     "objectives": [
+      "Store secrets in Keychain, settings in UserDefaults"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "ios-interview-sc20",
+     "title": "Decode this JSON",
+     "situation": "Codable round. An endpoint returns snake_case keys and ISO8601 dates; your model uses camelCase and `Date`.",
+     "prompt": "How do you decode it cleanly?",
+     "evidence": [],
+     "choices": [
+      "Configure `JSONDecoder` with `keyDecodingStrategy = .convertFromSnakeCase` and `dateDecodingStrategy = .iso8601`, and only write custom `CodingKeys`/`init(from:)` for the odd keys the strategy cannot handle.",
+      "Name every property snake_case to match the JSON exactly — the server owns your model.",
+      "Decode into `[String: Any]` and cast each field manually — full control, no magic.",
+      "Write a regex that rewrites the JSON string to camelCase before decoding."
+     ],
+     "answer": 0,
+     "why": "Decoder strategies handle the 90% case declaratively; CodingKeys handle renames; a custom init(from:) is the escape hatch for truly irregular payloads. Mention the failure mode too: decoding errors name the key path, which makes them debuggable — unlike manual casting chains.",
+     "hint": "Which layer should own the snake_case knowledge — your model types, or the decoder configuration?",
+     "objectives": [
+      "Configure Codable instead of hand-parsing"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "ios-interview-sc21",
+     "title": "Core Data background import",
+     "situation": "Core Data round. A sync imports 50k records; doing it on the view context freezes the UI.",
+     "prompt": "What is the correct Core Data concurrency design?",
+     "evidence": [],
+     "choices": [
+      "Do the import on a private-queue background context (`newBackgroundContext` or `performBackgroundTask`), save there, and let the view context merge via `automaticallyMergesChangesFromParent` — never touch a context or its managed objects off its own queue.",
+      "Do the import on the view context but wrap it in `DispatchQueue.global().async` — the queue hop is what matters.",
+      "Pass NSManagedObjects from the background context directly to the view controller — objects are thread-safe.",
+      "Disable the persistent store coordinator during import to avoid locking."
+     ],
+     "answer": 0,
+     "why": "Core Data's concurrency rule is queue confinement: each context belongs to its queue, and objects belong to their context — pass `objectID`s across queues, never objects. `perform`/`performAndWait` is the API. Merge policies (`NSMergeByPropertyObjectTrumpMergePolicy`) decide conflict winners. This is a favorite senior filter.",
+     "hint": "What may cross a queue boundary — the managed object, or something else?",
+     "objectives": [
+      "Respect Core Data queue confinement"
+     ],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "ios-interview-sc22",
+     "title": "Offline article cache",
+     "situation": "Design round. A news app must show cached articles offline, refresh in background, and stay under 50MB.",
+     "prompt": "Which persistence stack do you choose and why?",
+     "evidence": [],
+     "choices": [
+      "Core Data (or SwiftData on iOS 17+): a real object graph with fetch requests, predicates, batch deletes for the 50MB cap, and background contexts for sync — UserDefaults/FileManager JSON blobs cannot query or evict efficiently at that scale.",
+      "One big JSON file in Documents, rewritten on every sync — simplest possible persistence.",
+      "UserDefaults with one key per article — key-value is all you need.",
+      "Keep everything in memory and refetch on launch — offline mode is an edge case."
+     ],
+     "answer": 0,
+     "why": "The ladder: UserDefaults (settings) < Codable files (small documents) < SQLite/Core Data/SwiftData (queryable, relational-ish, large) < Keychain (secrets). Justify each rung by query needs, size, and relationships. The 50MB cap is the tell: you need eviction, which needs queries (LRU by date), which JSON blobs cannot do cheaply.",
+     "hint": "What operation does the 50MB cap force you to do regularly, and which store makes that operation cheap?",
+     "objectives": [
+      "Climb the persistence ladder deliberately"
+     ],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "ios-interview-sc23",
+     "title": "Core Data model migration",
+     "situation": "Senior round. V2 of the app renames an entity attribute and makes it non-optional. Users have V1 data.",
+     "prompt": "How do you ship the migration?",
+     "evidence": [],
+     "choices": [
+      "Ship a mapping model with a custom `NSEntityMigrationPolicy` if needed; lightweight migration handles the rename via the renaming identifier, but the new non-optional attribute needs a default value or custom policy — and you test the migration against real V1 stores, with a fallback (rebuild from server) if it fails.",
+      "Delete the old store on launch and re-download everything — migrations are not worth the code.",
+      "Just change the model; Core Data infers all migrations automatically including renames.",
+      "Version the app so V1 users cannot update — no migration needed."
+     ],
+     "answer": 0,
+     "why": "Lightweight migration covers additive changes; renames need renaming identifiers; anything structural (splits, non-optional without default) needs a mapping model, possibly custom policy code. The senior points: test with production-shaped V1 databases, migrate on a background queue with progress UI, and never ship a migration you cannot roll back from (keep the old store until success).",
+     "hint": "Which of your two changes is 'lightweight' and which one forces custom migration work?",
+     "objectives": [
+      "Plan Core Data migrations with fallbacks"
+     ],
+     "mins": 6,
+     "difficulty": 3
+    },
+    {
+     "id": "ios-interview-sc24",
+     "title": "Token refresh design",
+     "situation": "Security design round. 'Design token storage and refresh for our banking app.'",
+     "prompt": "What does a strong answer cover?",
+     "evidence": [],
+     "choices": [
+      "Keychain with `kSecAttrAccessibleWhenUnlockedThisDeviceOnly`, short-lived access tokens + rotating refresh tokens, refresh serialized through a single actor/queue to avoid stampedes, biometric-gated access for sensitive actions, certificate pinning discussion, and a logout path that wipes Keychain items and in-memory copies.",
+      "Store the token in UserDefaults and append it to every request header — refresh yearly.",
+      "One permanent token in the Keychain, never refreshed — rotation is server paranoia.",
+      "Keep the token only in memory — if the app restarts the user logs in again; simplest secure design."
+     ],
+     "answer": 0,
+     "why": "Interviewers score the threat model: where secrets rest, how they move, what happens on device loss (ThisDeviceOnly vs synced), and the refresh race (ten 401s triggering ten refreshes). Pinning and jailbreak detection are bonus discussion, framed as tradeoffs (pinning breaks corporate proxies; detection is advisory, not security).",
+     "hint": "What happens when ten requests get 401 at the same moment — and who coordinates the single refresh?",
+     "objectives": [
+      "Design token lifecycle, not just token storage"
+     ],
+     "mins": 6,
+     "difficulty": 3
+    }
+   ]
+  },
+  {
+   "id": "ios-architecture",
+   "name": "App Architecture & Testing",
+   "summary": "MVC/MVVM, coordinators, dependency injection, and making view models unit-testable.",
+   "scenarios": [
+    {
+     "id": "ios-interview-sc25",
+     "title": "Massive view controller",
+     "situation": "Architecture round. A `CheckoutViewController` is 2,400 lines: networking, validation, analytics, navigation.",
+     "prompt": "What is your refactoring plan?",
+     "evidence": [],
+     "choices": [
+      "Extract along responsibility lines: a view model (or presenter) owns state/validation, a service layer owns networking, a coordinator owns navigation, analytics moves to a thin wrapper — the VC keeps only view binding; each extraction gets a protocol seam so it is testable.",
+      "Split the file into four files of 600 lines each with the same code — smaller files are cleaner.",
+      "Rewrite it in SwiftUI — declarative UI has no massive view controllers.",
+      "Add `// MARK:` sections — organization is a navigation problem, not an architecture problem."
+     ],
+     "answer": 0,
+     "why": "MVC on iOS decays into 'Massive View Controller' because the controller absorbs model, networking, and flow logic. MVVM moves state/logic to a testable view model; coordinators remove navigation; DI removes singletons. The interview grade is the extraction order: start with the most testable seam (validation logic), not a big-bang rewrite.",
+     "hint": "Which responsibility in that file can you test today without launching the app — and what is blocking the rest?",
+     "objectives": [
+      "Decompose massive view controllers by responsibility"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "ios-interview-sc26",
+     "title": "What is dependency injection?",
+     "situation": "Fundamentals round. 'Explain dependency injection and why iOS teams care.'",
+     "prompt": "What is the crisp answer?",
+     "evidence": [],
+     "choices": [
+      "DI means a type receives its collaborators (usually via initializer) instead of constructing them: it makes dependencies explicit, lets tests substitute fakes/mocks, and removes hidden singletons — on iOS it is how view models become unit-testable without networking or databases.",
+      "DI is Apple's framework for injecting views into view controllers — like @IBOutlet.",
+      "DI means using singletons everywhere so dependencies are always available.",
+      "DI is a design pattern only relevant to server-side Java."
+     ],
+     "answer": 0,
+     "why": "Initializer injection is the default; property injection and containers (Swinject-style or hand-rolled factories) scale it. The testability argument is the one that lands: a view model taking `protocol APIClient` can be tested with a stub in milliseconds, while one that constructs `URLSession.shared` internally cannot.",
+     "hint": "Take one concrete class in the app — where are its dependencies born, and who could swap them in a test?",
+     "objectives": [
+      "Inject dependencies for testability"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "ios-interview-sc27",
+     "title": "MVVM without Combine",
+     "situation": "Architecture round. The team bans Combine/Rx — 'show me MVVM binding without reactive frameworks.'",
+     "prompt": "What is a credible binding mechanism?",
+     "evidence": [],
+     "choices": [
+      "A tiny `Observable<T>` box class (value + listener closure, firing on set) that the view model exposes and the VC observes with `[weak self]` — or delegate callbacks / closures per event; the point is the mechanism is 20 lines, explicit, and has no framework magic to debug.",
+      "Poll the view model on a Timer every 100ms and re-render — simple and framework-free.",
+      "Use NotificationCenter for every property change — it is built in.",
+      "MVVM requires a reactive framework; without one you must use MVC."
+     ],
+     "answer": 0,
+     "why": "The binding mechanism is an implementation detail; MVVM is the separation (view: dumb rendering, view model: state + logic, model: data). A hand-rolled observable demonstrates you understand what the frameworks do for you (subscription management, thread hopping) — which is exactly what the 'no frameworks' constraint is testing.",
+     "hint": "Strip Combine away: what three jobs was it doing for your binding, and what is the simplest code that does each?",
+     "objectives": [
+      "Build minimal bindings when frameworks are banned"
+     ],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "ios-interview-sc28",
+     "title": "Coordinators",
+     "situation": "Navigation round. Deep links, A/B-tested onboarding, and modal chains have navigation logic scattered across VCs.",
+     "prompt": "Why do coordinators help, and what do they own?",
+     "evidence": [],
+     "choices": [
+      "A coordinator owns a flow: it creates VCs, pushes/presents them, handles deep-link routing into the middle of flows, and is the single place where 'what screen comes next' lives — VCs stop knowing about each other and become reusable; child coordinators compose for sub-flows with clean teardown.",
+      "Coordinators are Apple's replacement for segues in storyboards.",
+      "They own the network layer so VCs stay thin.",
+      "They are just a naming convention for view controllers with many segues."
+     ],
+     "answer": 0,
+     "why": "The tell is reusability: a `ProductViewController` that pushes `CheckoutViewController` itself cannot be reused in search results. With coordinators, VCs emit events ('user tapped buy') and the coordinator decides the flow. Memory discipline matters: coordinators must release child coordinators or flows leak.",
+     "hint": "Which object in your current design knows that 'buy' leads to checkout — and could that screen be reused somewhere else today?",
+     "objectives": [
+      "Extract navigation into coordinators"
+     ],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "ios-interview-sc29",
+     "title": "Test the view model",
+     "situation": "Testing round. `LoginViewModel` calls a real API inside `URLSession.shared.dataTask`. 'Make it unit-testable.'",
+     "prompt": "What is the full recipe?",
+     "evidence": [],
+     "choices": [
+      "Inject the networking behind a protocol (`APIClient`), give the test a stub implementation returning canned JSON/errors, assert state transitions (loading -> success/error) — and for URLSession specifics, stub at `URLProtocol` level so no real network runs; tests stay deterministic and fast.",
+      "Run the tests against the staging server — real responses are the only honest test.",
+      "Mark the test `async` and hope the network is fast in CI.",
+      "Testing view models is not practical; test only pure functions."
+     ],
+     "answer": 0,
+     "why": "The seam is the point: protocol-inject the client, and URLProtocol subclassing intercepts at the foundation level for integration-ish tests without sockets. Also assert the unhappy paths (401, malformed JSON, timeout) — interviewers check that your 'testable' claim covers failure, not just the golden path.",
+     "hint": "Where exactly does the real network enter this object, and what is the narrowest seam you can cut there?",
+     "objectives": [
+      "Create seams for deterministic tests"
+     ],
+     "mins": 6,
+     "difficulty": 3
+    },
+    {
+     "id": "ios-interview-sc30",
+     "title": "Offline-first notes app",
+     "situation": "System design. 'Design an offline-first notes app with sync.' 20 minutes.",
+     "prompt": "What architecture do you present?",
+     "evidence": [],
+     "choices": [
+      "Local-first: SwiftData/Core Data as source of truth, repository mediating local vs remote, a sync engine with operation queue (create/update/delete tombstones), conflict resolution strategy stated (last-write-wins with vector clocks discussed, or server-wins for simplicity), background URLSession sync, and UI reflecting sync state per note.",
+      "Just call the API and cache responses in memory — offline is a nice-to-have.",
+      "Store notes as files and rsync them on launch — files are the simplest sync.",
+      "Use iCloud only — Apple handles all sync, no architecture needed."
+     ],
+     "answer": 0,
+     "why": "The graded pieces: single source of truth (UI never reads the network directly), the outbox pattern for offline writes, conflict strategy with a named tradeoff, and idempotency. Draw the layers: UI -> ViewModel -> Repository -> (Local store + Sync engine -> API). Mention what you would NOT build first (real-time collaboration).",
+     "hint": "A user edits the same note offline on two devices. Walk me through exactly what happens at sync time in your design.",
+     "objectives": [
+      "Design offline-first with sync semantics"
+     ],
+     "mins": 6,
+     "difficulty": 3
+    }
+   ]
+  },
+  {
+   "id": "ios-guided-build",
+   "name": "Guided App Build",
+   "summary": "Scope a take-home, structure the project, build the networking layer, and self-review like the grader.",
+   "scenarios": [
+    {
+     "id": "ios-interview-sc31",
+     "title": "Scoping the take-home",
+     "situation": "Take-home round. You get a 4-hour take-home: 'Build a GitHub repo browser.'",
+     "prompt": "How do you scope it to win?",
+     "evidence": [],
+     "choices": [
+      "Read the rubric first: ship a small vertical slice done well — list, detail, search, loading/error/empty states, one clean architecture layer, tests on the view model — and write a README covering decisions and what you would add with more time; polish beats feature count.",
+      "Implement every GitHub feature you can think of — breadth impresses reviewers.",
+      "Spend 3 hours on custom animations and 1 hour on everything else — delight wins.",
+      "Skip the README and tests — reviewers only run the app."
+     ],
+     "answer": 0,
+     "why": "Reviewers grade decision quality under constraint: a tight slice with error states and a README that names tradeoffs beats a sprawling half-working app. Timebox explicitly (e.g., 1h architecture, 2h features, 1h polish/tests) and say what you cut and why.",
+     "hint": "If you only get credit for what is finished and documented, what do you deliberately leave out?",
+     "objectives": [
+      "Scope take-homes to a polished vertical slice"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "ios-interview-sc32",
+     "title": "Project structure",
+     "situation": "Build round. Greenfield app, two engineers, expected to grow for years.",
+     "prompt": "How do you structure the project?",
+     "evidence": [],
+     "choices": [
+      "Feature-based groups (Features/Search, Features/Detail) with shared Core (Networking, Persistence, UI components), protocols at module boundaries, and a flat dependency direction (features depend on Core, never each other) — navigable on day one, splittable into modules later.",
+      "One group per layer: all view controllers together, all models together — layers are the natural split.",
+      "A single group with everything — Xcode search is fast enough.",
+      "Mirror the storyboard scenes as groups — the UI is the architecture."
+     ],
+     "answer": 0,
+     "why": "Feature grouping scales because a new hire opens one folder and sees a whole vertical slice; layer grouping scatters one feature across five folders. Keep dependency arrows pointing one way so extracting a Swift package later is mechanical. Name the rule: 'a feature folder should build in your head without opening another.'",
+     "hint": "A new hire joins to fix a bug in search. How many folders must they open to understand the whole flow?",
+     "objectives": [
+      "Structure by feature, depend one way"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "ios-interview-sc33",
+     "title": "Networking layer",
+     "situation": "Build round. Design the app's networking layer before writing screens.",
+     "prompt": "What does a strong networking layer look like?",
+     "evidence": [],
+     "choices": [
+      "A protocol-based client (`APIClient` with `func request<T: Decodable>(_ route: Route) async throws -> T`), routes as an enum building URLRequests, one place for auth headers/retry/token refresh, errors as a typed enum (not NSError passthrough), and injectable session for tests.",
+      "Call `URLSession.shared.dataTask` directly in each view model — fewer abstractions, fewer bugs.",
+      "A singleton `NetworkManager` with a method per endpoint — discoverable and simple.",
+      "Embed URLs as string literals at each call site — the endpoint list lives in the API docs anyway."
+     ],
+     "answer": 0,
+     "why": "The enum-of-routes pattern centralizes URL construction (one place to change the host), the generic request method centralizes decoding and error mapping, and protocol injection makes every view model testable. Token refresh belongs here too — serialized, so concurrent 401s trigger one refresh.",
+     "hint": "When the API host changes or auth headers rotate, how many files do you touch?",
+     "objectives": [
+      "Centralize networking behind typed routes"
+     ],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "ios-interview-sc34",
+     "title": "Error states are UI",
+     "situation": "Build round. Your list screen handles loading and content. The reviewer asks about the rest.",
+     "prompt": "What completes the state matrix?",
+     "evidence": [],
+     "choices": [
+      "Every async screen models loading / content / empty / error / offline explicitly — each with its own view state, copy, and retry action — because users spend most of their time in edge states on real networks, and reviewers check them first.",
+      "A single alert on failure — errors are exceptional, one handler covers all.",
+      "Crash-free is enough: if the request fails, show the last good data silently.",
+      "Log errors to the console — users do not read error screens anyway."
+     ],
+     "answer": 0,
+     "why": "The state matrix is a senior shibboleth: juniors demo the happy path, seniors demo airplane mode. Design it as a single enum (`ViewState`) driving the UI so no state is unreachable, and give error states a retry that actually re-fires the request.",
+     "hint": "Turn on airplane mode and open your screen. What exactly does the user see — and can they recover without restarting?",
+     "objectives": [
+      "Design every async screen's full state matrix"
+     ],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "ios-interview-sc35",
+     "title": "The Instruments pass",
+     "situation": "Build round. The feed scrolls but stutters on old devices. You have one hour.",
+     "prompt": "What is your systematic performance pass?",
+     "evidence": [],
+     "choices": [
+      "Profile first with Time Profiler (find the hot function — often image decoding or date formatting on main), fix the measured bottleneck (decode off-main, cache formatters, flatten view hierarchy), re-measure, then check Allocations/Leaks for growth during scrolling — never optimize without a before/after trace.",
+      "Rewrite the feed in UIKit — SwiftUI is the obvious cause.",
+      "Lower image quality globally — fewer pixels, less work.",
+      "Add `DispatchQueue.global().async` around the whole cell configuration — background everything."
+     ],
+     "answer": 0,
+     "why": "Performance work is measurement work: Time Profiler finds CPU, Allocations finds growth, Leaks finds cycles. Classic iOS wins: move decoding/formatting off main, reuse formatters (they are expensive to create), prefetch, and keep `body`/cell configuration cheap. Quote numbers in the interview — 'dropped p95 frame time from 28ms to 11ms' beats 'it feels faster.'",
+     "hint": "Before changing code, what single artifact tells you where the time actually goes?",
+     "objectives": [
+      "Profile before optimizing; quote numbers"
+     ],
+     "mins": 6,
+     "difficulty": 3
+    },
+    {
+     "id": "ios-interview-sc36",
+     "title": "Self code review",
+     "situation": "Build round. The app works. You have 30 minutes before submitting the take-home.",
+     "prompt": "What is your self-review checklist?",
+     "evidence": [],
+     "choices": [
+      "Read the diff like a reviewer: remove dead code and print statements, check every force unwrap/try!, verify error and empty states, run on a small device + airplane mode, confirm the README explains setup/decisions/cut scope — then submit.",
+      "Add three more features — a bigger diff looks more impressive.",
+      "Reformat everything with a new style — fresh formatting signals care.",
+      "Submit immediately — reviewing your own code adds no value."
+     ],
+     "answer": 0,
+     "why": "Reviewers form opinions in the first five minutes: a clean diff, no force unwraps, handled edge states, and a README that preempts their questions ('why MVVM?', 'what would you add?'). The last 30 minutes buys more signal than the previous two hours of feature work.",
+     "hint": "What will the reviewer see in the first five minutes, and what in your diff right now would make them frown?",
+     "objectives": [
+      "Review your own diff like the grader"
+     ],
+     "mins": 6,
+     "difficulty": 3
+    }
+   ]
+  },
+  {
+   "id": "ios-mock-circuit",
+   "name": "Mock Interview Circuit",
+   "summary": "Full-loop rehearsal: rapid-fire fundamentals, whiteboard coding, debugging under time, and behavioral STAR.",
+   "scenarios": [
+    {
+     "id": "ios-interview-sc37",
+     "title": "Explain ARC in 60 seconds",
+     "situation": "Phone screen. 'Explain Automatic Reference Counting like I'm a smart backend engineer.'",
+     "prompt": "What is the 60-second version that passes?",
+     "evidence": [],
+     "choices": [
+      "Swift tracks how many strong owners each class instance has; when the count hits zero it deallocates immediately and deterministically — no garbage collector pauses. The interview-relevant part: strong/weak/unowned annotations control the count, and cycles (A owns B owns A, or a closure capturing self) leak because the count never reaches zero.",
+      "ARC is Swift's garbage collector — it pauses your app periodically to free memory.",
+      "ARC means you never think about memory — the compiler handles everything including cycles.",
+      "ARC only applies to structs; classes use manual retain/release."
+     ],
+     "answer": 0,
+     "why": "The backend-engineer framing wants the contrast: deterministic refcounting vs tracing GC (no pause-the-world, but cycles leak instead of being collected). Then land the iOS specifics: weak for delegates, capture lists for closures, unowned only when lifetime is provably longer.",
+     "hint": "If there is no garbage collector, what frees the object — and what single pattern defeats that mechanism?",
+     "objectives": [
+      "Explain ARC crisply with the cycle caveat"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "ios-interview-sc38",
+     "title": "Whiteboard: debounce",
+     "situation": "Coding round. 'Implement debounce for a search field: wait 300ms after the last keystroke before firing.'",
+     "prompt": "What is the clean approach?",
+     "evidence": [],
+     "choices": [
+      "Keep a `Timer`/`Task` handle; on each keystroke invalidate/cancel the previous one and schedule a new one for +300ms; fire the search in the handler — and in modern Swift, a cancellable `Task` with `try? await Task.sleep` checked for cancellation is the idiomatic version.",
+      "Sleep 300ms on the main thread after each keystroke, then fire — the delay accumulates naturally.",
+      "Fire the search on every keystroke and let the server deduplicate.",
+      "Use a while loop checking the clock — precise and dependency-free."
+     ],
+     "answer": 0,
+     "why": "Debounce = cancel previous, schedule new. The interview checks two things: cancellation discipline (invalidating the timer/task) and thread awareness (UI work back on main). Mention throttle vs debounce unprompted — it signals you know the family, not just the one function.",
+     "hint": "What must happen to the previous scheduled firing when a new keystroke arrives?",
+     "objectives": [
+      "Implement debounce with cancellation"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "ios-interview-sc39",
+     "title": "Crash under time pressure",
+     "situation": "Onsite debugging. The app crashes on launch for one tester: `EXC_BAD_ACCESS` in a view controller's `viewDidLoad`. You have 10 minutes and the device.",
+     "prompt": "What is your triage order?",
+     "evidence": [],
+     "choices": [
+      "Reproduce, then read the crashed thread's stack: EXC_BAD_ACCESS in viewDidLoad usually means messaging a deallocated object (zombie) or a force unwrap — enable Zombie Objects / check the line, verify outlets are connected, look for use of an object before its owner exists; narrate each hypothesis as you rule it out.",
+      "Delete derived data and clean the build folder — most launch crashes are stale caches.",
+      "Comment out viewDidLoad entirely — if it stops crashing, the bug is in there somewhere.",
+      "Ship a try/catch around viewDidLoad — crashes in production are worse than silent failures."
+     ],
+     "answer": 0,
+     "why": "Interviewers watch the method, not just the fix: reproduce first, read the stack before guessing, form hypotheses from the crash type (EXC_BAD_ACCESS = bad memory access; SIGABRT = assertion/exception), and verify the fix by re-running the repro. Narrating hypotheses out loud is half the score.",
+     "hint": "What does the crash type itself tell you before you read a single line of code?",
+     "objectives": [
+      "Triage crashes by type, then stack, then hypothesis"
+     ],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "ios-interview-sc40",
+     "title": "Your hardest bug",
+     "situation": "Behavioral. 'Tell me about the hardest bug you ever fixed.'",
+     "prompt": "What structure makes this answer land?",
+     "evidence": [],
+     "choices": [
+      "STAR compressed: the symptom and why it was hard (intermittent, production-only), your systematic narrowing (what you ruled out and how), the root cause, the fix plus the guard you added (test, assertion, monitoring) — ending with what you changed in your process afterward.",
+      "Describe the bug in deep technical detail for five minutes — depth proves skill.",
+      "Pick a trivial bug so you look fast and competent.",
+      "Say you have never had a truly hard bug — honesty is refreshing."
+     ],
+     "answer": 0,
+     "why": "Behavioral answers are graded on structure and self-awareness, not bug impressiveness. The process-change ending ('now I always add a regression test for race conditions') turns a war story into evidence of growth. Quantify where you can: 'crashed for 2% of sessions, took three days, fixed with a 5-line change.'",
+     "hint": "What did this bug change about how you work — that is the real question being asked.",
+     "objectives": [
+      "Answer behaviorals with STAR + lesson"
+     ],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "ios-interview-sc41",
+     "title": "Design a chat app",
+     "situation": "System design onsite. 'Design the iOS client for a 1:1 chat app.' 30 minutes, whiteboard.",
+     "prompt": "What do you draw first, and what do you cover?",
+     "evidence": [],
+     "choices": [
+      "Data flow first: message list driven by a local store (Core Data) as source of truth, a sync/socket layer appending inbound messages, an outbox for unsent messages with retry, UI as a function of store state — then cover pagination, optimistic send, push notification handling, media upload progress, and what you would defer (E2E encryption protocol details).",
+      "Start with the color scheme and bubble shapes — chat is a UI problem.",
+      "Draw the server architecture — the interviewer said iOS client but servers matter more.",
+      "List every feature (reactions, threads, search) — completeness first, depth later."
+     ],
+     "answer": 0,
+     "why": "Client system design is scored on: source of truth, data flow direction, offline/optimistic behavior, and scope control ('I am deferring X'). Draw the boxes (UI, ViewModel, Store, Sync, Socket, Push), draw the arrows for one send and one receive, then take questions. Timebox: 5 min clarify, 15 min core, 10 min deep-dives.",
+     "hint": "Trace one message from send-tap to the other person's screen through YOUR boxes — where can it get stuck, and what does the user see?",
+     "objectives": [
+      "Lead client system design from data flow"
+     ],
+     "mins": 6,
+     "difficulty": 3
+    },
+    {
+     "id": "ios-interview-sc42",
+     "title": "The full loop simulation",
+     "situation": "Final prep. Your onsite is in 3 days: 1 coding, 1 architecture, 1 debugging, 1 behavioral.",
+     "prompt": "What is the highest-leverage 3-day plan?",
+     "evidence": [],
+     "choices": [
+      "Day 1: timed coding reps (debounce, LRU cache, two-sum variants) out loud with a timer; Day 2: architecture narrations (your own app's architecture, offline-first design) recorded and self-critiqued; Day 3: light review + behavioral stories written in STAR + sleep — no new topics the night before.",
+      "Grind 200 LeetCode hards — volume is what separates candidates.",
+      "Memorize API signatures — recall speed is the bottleneck.",
+      "Rest entirely — cramming hurts more than it helps at this point."
+     ],
+     "answer": 0,
+     "why": "Interview performance is a skill distinct from engineering skill: thinking out loud, timeboxing, and narrating tradeoffs. The plan targets the actual test format with reps under realistic constraints, and protects the highest-ROI asset (a rested brain) at the end. One full mock with a peer beats ten solo hours.",
+     "hint": "Which part of the loop are you weakest at — and does your plan spend the most time there?",
+     "objectives": [
+      "Train the test format, not just the material"
+     ],
+     "mins": 6,
+     "difficulty": 3
+    }
+   ]
+  }
+ ],
+ "lessons": [
+  {
+   "domain_id": "ios-interview",
+   "title": "iOS Engineering Interview Prep — Core concepts",
+   "concepts": [
+    "Interview loops test four things: Swift language precision (optionals, value/reference, closures), framework depth (lifecycle, layout, state), concurrency discipline (queues, actors, main thread), and judgment (tradeoffs, scoping, debugging method). Every answer should touch the 'why', not just the 'what'.",
+    "Optionals are the language's null-safety contract: bind with guard/if let, chain with ?., default with ??, and treat every force unwrap as a crash you scheduled. Implicitly unwrapped optionals are for outlets and migration, not convenience.",
+    "Memory is deterministic: ARC frees at zero strong references, so your job is managing the graph — weak delegates, capture lists in escaping closures, and the discipline to draw ownership arrows when something leaks.",
+    "Concurrency has two eras and you must speak both: GCD (queues, QoS, groups, barriers) and structured Swift concurrency (async/await, Task, actors, MainActor). The invariant across both: UI on main, shared mutable state isolated, cancellation designed in.",
+    "Persistence is a ladder, not a favorite: UserDefaults for settings, Codable files for documents, Core Data/SwiftData for queryable graphs, Keychain for secrets. Choose by query needs and threat model, and say so out loud.",
+    "The meta-skill is narration: state assumptions, name tradeoffs, timebox, and verify. Interviewers hire the engineer who reasons visibly — the code is evidence, the thinking is the product."
+   ],
+   "example": {
+    "lang": "swift",
+    "code": "final class FeedLoader {\n    private var task: Task<Void, Never>?\n    func load(for query: String) {\n        task?.cancel()                       // cancel stale work\n        task = Task { [weak self] in\n            try? await Task.sleep(nanoseconds: 300_000_000)  // debounce\n            guard !Task.isCancelled else { return }\n            let items = await self?.fetch(query) ?? []\n            await MainActor.run { self?.render(items) }      // UI on main\n        }\n    }\n}",
+    "walkthrough": "One snippet, four interview themes: cancellation before new work (no stale writes to reused rows), debounce via cancellable sleep, weak self in the escaping task, and the MainActor hop for UI. If you can narrate each line's 'why', you are ready for the concurrency round."
+   },
+   "pitfalls": [
+    "Common trap: force-unwrapping 'because it is never nil' — interviewers treat every ! as a scheduled crash.",
+    "Common trap: touching UIKit from a URLSession completion handler without hopping to main — flaky layout, not a clean crash.",
+    "Common trap: answering 'which is better, UIKit or SwiftUI?' with a winner instead of tradeoffs plus a measurement plan.",
+    "Common trap: storing tokens in UserDefaults because the Keychain API is verbose — say the threat model out loud."
+   ],
+   "try_it": "Work through this in the Labs tab."
+  }
+ ],
+ "labs": [
+  {
+   "id": "ios-interview-lab1",
+   "domain_id": "ios-interview",
+   "title": "Retain-cycle hunt",
+   "objective": "Find and fix a retain cycle in a view controller's networking closure using a capture list.",
+   "steps": [
+    "Open the lab fixture: `cat LeakyProfile.swift` and read the fetch closure in viewDidLoad.",
+    "Draw the ownership arrows: who owns the API client, who holds the closure, who does the closure capture?",
+    "Write the fixed file: `echo` or your editor to create LeakyProfile-fixed.swift with a `[weak self]` capture list and `guard let self` inside.",
+    "Verify the fix is present: `grep -n \"weak self\" LeakyProfile-fixed.swift`.",
+    "Explain in one sentence (say it out loud): why does the original never deallocate?"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^cat\\s+LeakyProfile\\.swift",
+     "expect_contains": "self.nameLabel",
+     "hint": "Read the fixture first — find the closure that captures self."
+    },
+    {
+     "command_pattern": "^grep\\s+.*weak\\s+self",
+     "expect_contains": "weak self",
+     "hint": "Your fixed file must contain a [weak self] capture list."
+    }
+   ]
+  },
+  {
+   "id": "ios-interview-lab2",
+   "domain_id": "ios-interview",
+   "title": "Main-thread triage",
+   "objective": "Spot a background-thread UI update and reroute it through the main queue.",
+   "steps": [
+    "Open the fixture: `cat JankyFeed.swift` and find the image decode completion.",
+    "Identify the line that sets `cell.thumb.image` — which queue is it running on?",
+    "Create JankyFeed-fixed.swift wrapping the UI assignment in `DispatchQueue.main.async`.",
+    "Verify: `grep -n \"DispatchQueue.main.async\" JankyFeed-fixed.swift`.",
+    "Bonus: rewrite the completion with async/await and a MainActor hop, and compare the two versions."
+   ],
+   "checks": [
+    {
+     "command_pattern": "^cat\\s+JankyFeed\\.swift",
+     "expect_contains": "thumb.image",
+     "hint": "Find where the cell's image view is assigned in the fixture."
+    },
+    {
+     "command_pattern": "^grep\\s+.*DispatchQueue\\.main\\.async",
+     "expect_contains": "DispatchQueue.main.async",
+     "hint": "The fixed file must hop UI work back to the main queue."
+    }
+   ]
+  }
+ ],
+ "simulations": [],
+ "consoleSims": [],
+ "terminalMissions": [],
+ "sections": [
+  {
+   "id": "ios-interview-sec",
+   "title": "iOS Engineering Interview Prep",
+   "kind": "path",
+   "lectures": [],
+   "lab_ids": [
+    "ios-interview-lab1",
+    "ios-interview-lab2"
+   ],
+   "drill_domain_ids": [
+    "ios-swift-core",
+    "ios-ui-frameworks",
+    "ios-concurrency",
+    "ios-persistence",
+    "ios-architecture",
+    "ios-guided-build",
+    "ios-mock-circuit"
+   ]
+  }
+ ],
+ "behavioral": [
+  {
+   "prompt": "Tell me about yourself — as an iOS engineer.",
+   "framework": "Present -> past -> future in 90 seconds, anchored on shipped apps and platform depth.",
+   "points": [
+    "Start with your current focus (e.g. SwiftUI + structured concurrency).",
+    "Name 1-2 shipped apps and your concrete contribution.",
+    "End with what you want next and why this team."
+   ],
+   "pitfalls": [
+    "Reciting your resume chronologically.",
+    "No mention of the App Store / real users."
+   ]
+  },
+  {
+   "prompt": "Tell me about the hardest production bug you fixed on iOS.",
+   "framework": "STAR: symptom, systematic narrowing, root cause, fix + guard.",
+   "points": [
+    "Why it was hard (intermittent, device-specific, memory).",
+    "How you narrowed it (Instruments, logs, hypothesis list).",
+    "The process change you made afterward."
+   ],
+   "pitfalls": [
+    "Only describing the fix, not the investigation.",
+    "Blaming the OS or a teammate."
+   ]
+  },
+  {
+   "prompt": "Describe a disagreement with a designer or PM about a feature.",
+   "framework": "STAR with emphasis on the tradeoff conversation.",
+   "points": [
+    "The technical constraint (performance, HIG, scope).",
+    "How you proposed alternatives instead of just saying no.",
+    "The outcome and what you learned about collaboration."
+   ],
+   "pitfalls": [
+    "Painting the other person as unreasonable.",
+    "No concrete technical detail."
+   ]
+  },
+  {
+   "prompt": "Tell me about a time you missed a deadline or cut scope.",
+   "framework": "STAR: early signal, re-scoping conversation, what shipped.",
+   "points": [
+    "How you detected the slip early.",
+    "How you renegotiated scope with data.",
+    "What you changed in estimation afterward."
+   ],
+   "pitfalls": [
+    "Claiming you never miss deadlines.",
+    "Blaming others without owning your part."
+   ]
+  },
+  {
+   "prompt": "How did you learn SwiftUI (or structured concurrency) when it was new?",
+   "framework": "Learning story: gap -> method -> applied result.",
+   "points": [
+    "The specific gap and why it mattered.",
+    "Your method (docs, sample app, migrating a screen).",
+    "Where you applied it in production."
+   ],
+   "pitfalls": [
+    "'I just read the docs' with no application.",
+    "No acknowledgment of what was confusing."
+   ]
+  },
+  {
+   "prompt": "Tell me about a time you improved app performance or stability.",
+   "framework": "STAR with numbers: before/after metrics.",
+   "points": [
+    "The metric (launch time, crash rate, scroll FPS) and how you measured it.",
+    "The change and why that bottleneck.",
+    "The quantified result."
+   ],
+   "pitfalls": [
+    "'It felt faster' with no numbers.",
+    "Optimizing without profiling first."
+   ]
+  },
+  {
+   "prompt": "Describe dealing with an App Store rejection or a critical 1-star review wave.",
+   "framework": "STAR: triage, communication, fix, prevention.",
+   "points": [
+    "How you triaged (guideline section, repro).",
+    "How you communicated with Apple/users.",
+    "The guardrail added (checklist, review step)."
+   ],
+   "pitfalls": [
+    "Complaining about App Review.",
+    "No prevention step."
+   ]
+  },
+  {
+   "prompt": "Why iOS — and why this team?",
+   "framework": "Genuine motivation + specific team knowledge.",
+   "points": [
+    "What draws you to the platform (craft, constraints, user impact).",
+    "Something specific about this team's app or tech.",
+    "How the role fits your trajectory."
+   ],
+   "pitfalls": [
+    "Generic praise any candidate could give.",
+    "Focusing only on compensation or prestige."
+   ]
+  }
+ ],
+ "resources": {
+  "cheatsheet": [
+   "Optionals: `if let` / `guard let` bind; `?.` chains; `??` defaults; `!` is a scheduled crash.",
+   "Value vs ref: struct = independent copy (CoW arrays/dicts); class = shared identity + ARC.",
+   "Closures: non-escaping by default; `@escaping` outlives the call — capture lists `[weak self]`.",
+   "Lifecycle: loadView -> viewDidLoad (once) -> viewWillAppear (every) -> viewDidLayoutSubviews -> viewDidAppear.",
+   "SwiftUI layout: parent proposes -> child chooses -> parent places. @State owns, @Binding borrows.",
+   "GCD: async never blocks; sync waits (never sync onto current/main queue). QoS: userInteractive > userInitiated > utility > background.",
+   "Modern: async/await + Task; actors isolate state; @MainActor = UI. Cancel tasks; check Task.isCancelled.",
+   "Persistence ladder: UserDefaults (settings) < Codable files (docs) < Core Data/SwiftData (queryable) < Keychain (secrets).",
+   "Core Data rule: contexts are queue-confined; pass objectIDs across queues, never objects.",
+   "Architecture: VC binds views; view model holds state; coordinator owns flow; inject dependencies for tests."
+  ],
+  "glossary": [
+   [
+    "ARC",
+    "Automatic Reference Counting: deterministic deallocation at zero strong references; cycles leak."
+   ],
+   [
+    "Copy-on-write",
+    "Value-type optimization: Array/String/Dictionary share storage until mutated."
+   ],
+   [
+    "Existential",
+    "`any Protocol`: a boxed protocol value; unavailable for protocols with associated types."
+   ],
+   [
+    "PAT",
+    "Protocol with Associated Type: cannot be used directly as a property type."
+   ],
+   [
+    "MainActor",
+    "Global actor isolating code to the main thread; the modern main-thread guarantee."
+   ],
+   [
+    "QoS",
+    "Quality of Service: priority hint for GCD queues (userInteractive down to background)."
+   ],
+   [
+    "Retain cycle",
+    "Ownership loop keeping reference counts above zero; broken with weak/unowned."
+   ],
+   [
+    "Coordinator",
+    "Object owning navigation flow so view controllers stay reusable."
+   ],
+   [
+    "Merge policy",
+    "Core Data rule deciding which change wins on save conflicts."
+   ],
+   [
+    "Debounce",
+    "Delay action until input pauses; implemented by cancelling the previous scheduled work."
+   ]
+  ],
+  "links": [
+   [
+    "Swift Language Guide",
+    "https://www.swift.org/documentation/"
+   ],
+   [
+    "SwiftUI Documentation",
+    "https://developer.apple.com/documentation/swiftui"
+   ],
+   [
+    "UIKit Documentation",
+    "https://developer.apple.com/documentation/uikit"
+   ],
+   [
+    "Swift Concurrency",
+    "https://docs.swift.org/swift-book/documentation/the-swift-programming-language/concurrency/"
+   ],
+   [
+    "Human Interface Guidelines",
+    "https://developer.apple.com/design/human-interface-guidelines"
+   ]
+  ],
+  "checklist": [
+   "Can you narrate the SwiftUI layout algorithm and the UIViewController lifecycle from memory?",
+   "Can you draw a retain cycle and fix it with a capture list without hesitating?",
+   "Can you explain GCD vs async/await and when you would still reach for GCD?",
+   "Do you have two STAR stories (hardest bug, disagreement) rehearsed under 3 minutes?",
+   "Have you done one timed mock of each loop type (coding, architecture, debugging, behavioral)?",
+   "Is your take-home portfolio piece reviewed against the self-review checklist?"
+  ]
+ },
+ "chat": {
+  "persona": "Noa — a direct, encouraging iOS interview coach. Socratic first: asks what you would do before revealing answers. Drills Swift, UIKit/SwiftUI, concurrency, and system design; runs timed mock rounds on request.",
+  "topics": [
+   "Swift language deep-dives",
+   "UIKit vs SwiftUI tradeoff discussions",
+   "Concurrency design reviews",
+   "Mock whiteboard rounds",
+   "Take-home scoping and review",
+   "Behavioral STAR rehearsal"
+  ]
+ },
+ "simulation": {
+  "items": 10,
+  "minutes": 30,
+  "evidence_cost_mins": 2
+ },
+ "media": [],
+ "foundations": [],
+ "math": []
+}

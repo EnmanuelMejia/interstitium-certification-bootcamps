@@ -1,0 +1,469 @@
+{
+ "slug": "active-directory-defense",
+ "title": "Active Directory & Identity Defense",
+ "tagline": "Defend the identity plane: AD structure and trust, the attack techniques that target it, and the tiered hardening model that stops them.",
+ "vendor": {
+  "name": "Independent",
+  "certs": [],
+  "docs": []
+ },
+ "disclaimer": "Independent study material by Interstitium Labs. Not affiliated with or endorsed by any vendor. Confers no certificate.",
+ "accent": "#a855f7",
+ "domains": [
+  {
+   "id": "active-directory-defense",
+   "name": "Active Directory & Identity Defense",
+   "summary": "How Active Directory works, how attackers abuse it, and how defenders harden it — from trust design to tiered administration and phishing-resistant authentication.",
+   "scenarios": [
+    {
+     "id": "active-directory-defense-sc1",
+     "title": "Trust Falls Downhill",
+     "situation": "Your company acquires a smaller firm and creates a two-way forest trust between the two AD forests so users can access resources in both. A colleague says 'it's just like a VPN tunnel between the forests.'",
+     "prompt": "What is the most important thing to understand about that trust before relying on it?",
+     "evidence": [],
+     "choices": [
+      "A forest trust is an authentication path, not a network tunnel — and in a two-way trust, compromise can flow either direction, so both forests' security postures matter.",
+      "The trust encrypts all traffic between the forests automatically.",
+      "The trust merges both forests into one domain.",
+      "Trusts are one-way by definition and cannot be reversed."
+     ],
+     "answer": 0,
+     "why": "A trust says 'I will honor your authentication decisions.' A two-way trust means both sides say it, so the security of each forest now depends on the other — a compromised admin in the acquired forest can authenticate into your resources. That is why trust design is a security decision first and a convenience decision second.",
+     "hint": "Who is really being trusted here — the network, or the other forest's administrators?",
+     "objectives": [
+      "AD structure and trust: trust relationships"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "active-directory-defense-sc2",
+     "title": "The Schema Master Is Down",
+     "situation": "During a maintenance window the domain controller holding the Schema Master FSMO role is powered off for hardware replacement. Help desk asks whether anyone can install applications or change passwords until it returns.",
+     "prompt": "What is the correct answer?",
+     "evidence": [],
+     "choices": [
+      "Normal operations continue — password changes and logons are handled by other DCs. Only schema modifications (like extending the schema for a new application) are blocked until the role holder returns.",
+      "Nothing works until the Schema Master is back; all authentication stops.",
+      "All five FSMO roles move automatically to another DC within minutes.",
+      "Users must be told to stop logging in until the DC is restored."
+     ],
+     "answer": 0,
+     "why": "FSMO roles are single-master operations for tasks that cannot safely happen on two DCs at once. The Schema Master only gates schema changes — a rare operation. Day-to-day work (logons, password changes, group membership) is multi-master and unaffected. Knowing which role gates which operation is the core FSMO skill; the five roles are Schema Master, Domain Naming Master, PDC Emulator, RID Master, and Infrastructure Master.",
+     "hint": "Ask what the Schema Master actually does day-to-day — and what it only does once in a blue moon.",
+     "objectives": [
+      "AD structure and trust: FSMO roles"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "active-directory-defense-sc3",
+     "title": "Service Account With an SPN and a Weak Password",
+     "situation": "A vulnerability scan flags a service account that has a Service Principal Name registered and a password that has not changed in six years. The account runs a legacy reporting tool nobody wants to touch.",
+     "prompt": "Why is this combination specifically dangerous?",
+     "evidence": [],
+     "choices": [
+      "Any domain user can request a Kerberos service ticket (TGS) for that SPN and then crack it offline — Kerberoasting. The old password is the weak link, and the attack needs no privileges and leaves little noise.",
+      "Service accounts cannot be attacked because they are not interactive logons.",
+      "The danger is only theoretical; Kerberos tickets cannot be cracked offline.",
+      "The fix is to delete the SPN so the service stops working entirely."
+     ],
+     "answer": 0,
+     "why": "Kerberoasting works because TGS tickets are encrypted with the service account's password hash, and any authenticated user may request them. The attacker takes the ticket home and guesses the password offline — no lockouts, no alerts. Long-lived, weak service-account passwords plus SPNs are the classic setup. Defenses: long random passwords (managed service accounts rotate them automatically) and monitoring for unusual TGS requests.",
+     "hint": "What does the attacker walk away with, and what do they need it to decrypt?",
+     "objectives": [
+      "AD attacks: Kerberoasting"
+     ],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "active-directory-defense-sc4",
+     "title": "Pre-Auth Disabled 'For Compatibility'",
+     "situation": "An audit finds three user accounts with Kerberos pre-authentication disabled — set years ago 'for compatibility' with an old application that is long gone. The accounts have normal user privileges.",
+     "prompt": "What attack does this enable, and what is the fix?",
+     "evidence": [],
+     "choices": [
+      "AS-REP roasting: without pre-authentication, anyone can request the account's AS-REP response and crack it offline, no credentials required. Re-enable pre-authentication (the default) and rotate the passwords.",
+      "Nothing — pre-authentication is optional and disabling it is harmless.",
+      "It enables pass-the-hash, which is fixed by changing the domain functional level.",
+      "The accounts must be deleted; they can never be secured."
+     ],
+     "answer": 0,
+     "why": "Kerberos pre-authentication proves the requester knows the password before the KDC answers. With it disabled, the KDC hands out an encrypted AS-REP to literally anyone who asks for that username — and that blob is crackable offline. It is one of the cheapest account takeovers in AD: no privileges needed, just a username list. The fix is a checkbox (re-enable pre-auth) plus a password rotation.",
+     "hint": "What is the KDC giving away for free here, and to whom?",
+     "objectives": [
+      "AD attacks: AS-REP roasting"
+     ],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "active-directory-defense-sc5",
+     "title": "The Help Desk Admin Problem",
+     "situation": "Your organization has 40 help desk staff who all hold Domain Admin 'because they sometimes need to reset things.' A tiered-administration proposal suggests Tier 0 (domain controllers, identity systems), Tier 1 (servers), and Tier 2 (workstations), with separate privileged accounts per tier.",
+     "prompt": "Why does the tiered model matter, and what is the first concrete change?",
+     "evidence": [],
+     "choices": [
+      "It stops credential theft from spreading: an admin's credentials are only ever exposed on systems at their tier, so a compromised workstation cannot yield Domain Admin hashes. First change: remove standing Domain Admin from help desk and issue tier-appropriate accounts.",
+      "It is just paperwork; 40 Domain Admins is fine if they are trustworthy.",
+      "The first change should be renaming the Administrator account.",
+      "Tiering only matters for compliance audits, not real security."
+     ],
+     "answer": 0,
+     "why": "Pass-the-hash and token theft mean that wherever an admin logs on, their credentials become stealable on that machine. Forty Domain Admins logging into workstations means Domain Admin material sits on forty attack surfaces. Tiering enforces a simple rule: Tier 0 credentials never touch Tier 1 or Tier 2 systems. LAPS (unique local admin passwords per machine) and Credential Guard then shrink what is stealable at each tier.",
+     "hint": "If an attacker owns one help desk workstation today, what do they walk away with under the current model?",
+     "objectives": [
+      "Hardening: tiered admin model, LAPS, Credential Guard"
+     ],
+     "mins": 6,
+     "difficulty": 3
+    },
+    {
+     "id": "active-directory-defense-sc6",
+     "title": "DCSync From a 'Backup' Account",
+     "situation": "A routine review finds a service account with the 'Replicating Directory Changes All' permission on the domain — granted years ago to a backup product that was replaced. The account is still active.",
+     "prompt": "What is the risk, and what is the correct remediation?",
+     "evidence": [],
+     "choices": [
+      "That permission lets the account impersonate a domain controller and pull password hashes via replication — the DCSync technique. Remove the permission (and the stale account), then audit who else holds replication rights.",
+      "It is harmless; replication permissions are read-only and cannot expose credentials.",
+      "The risk is only that backups fail; re-grant the permission to be safe.",
+      "DCSync requires Domain Admin, so a service account cannot perform it."
+     ],
+     "answer": 0,
+     "why": "DCSync abuses a legitimate replication right: ask the DC for changes 'as if' you were another DC, and it hands over hashes — including the krbtgt account's, which enables golden-ticket forgery. The permission is powerful by design and should exist on almost nothing. Stale grants to dead products are how attackers inherit domain-replication rights without ever touching an admin account. Audit replication rights regularly and treat any unexpected holder as an incident.",
+     "hint": "What is the account allowed to pretend to be, and what does a domain controller hand to its peers?",
+     "objectives": [
+      "AD attacks: DCSync and DCShadow"
+     ],
+     "mins": 6,
+     "difficulty": 3
+    }
+   ]
+  }
+ ],
+ "lessons": [
+  {
+   "domain_id": "active-directory-defense",
+   "title": "Active Directory & Identity Defense — Core concepts",
+   "concepts": [
+    "AD structure: domains group into trees, trees into forests; trusts are authentication paths between them — two-way trusts mean compromise can flow either direction.",
+    "FSMO roles (Schema Master, Domain Naming Master, PDC Emulator, RID Master, Infrastructure Master) serialize operations that cannot safely run multi-master; know which role gates which task.",
+    "Group Policy is the control plane: whoever can edit GPOs can push configuration — and malware — to every machine in scope.",
+    "Kerberoasting: any user can request crackable TGS tickets for SPN accounts — defend with long random service passwords and managed service accounts.",
+    "AS-REP roasting: accounts with pre-authentication disabled hand crackable responses to anonymous requesters — re-enable pre-auth (the default).",
+    "Pass-the-hash/ticket reuses stolen credential material without knowing the password; DCSync/DCShadow abuse replication rights to pull hashes — audit who holds 'Replicating Directory Changes All'.",
+    "Hardening: the tiered admin model keeps Tier 0 credentials off lower-tier systems; LAPS gives every machine a unique local admin password; Credential Guard isolates secrets; phishing-resistant MFA (FIDO2) stops credential replay."
+   ],
+   "example": {
+    "lang": "shell",
+    "code": "# Hunt for the classic misconfigurations: SPN accounts with old passwords,\n# and any account with Kerberos pre-authentication disabled.\n# (Run from a domain-joined host with the RSAT AD PowerShell module.)\nImport-Module ActiveDirectory\n# 1. Accounts with pre-auth disabled (AS-REP roastable):\nGet-ADUser -Filter { DoesNotRequirePreAuth -eq $true } -Properties PasswordLastSet |\n    Select-Object Name, Enabled, PasswordLastSet\n# 2. User accounts with SPNs set (Kerberoastable candidates):\nGet-ADUser -Filter { ServicePrincipalName -ne '$null' } -Properties PasswordLastSet |\n    Select-Object Name, PasswordLastSet",
+    "walkthrough": "Defense starts with inventory: you cannot protect what you have not enumerated. The first query surfaces accounts with pre-authentication disabled — each one is an anonymous offline-cracking opportunity. The second lists accounts holding SPNs — the Kerberoasting surface. Both are one-line checks that belong in every AD security review, run before any hardening project begins."
+   },
+   "pitfalls": [
+    "Common trap: treating a trust as a network tunnel — it is an authentication relationship, and two-way means risk flows both ways.",
+    "Common trap: assuming only Domain Admins can DCSync — any account with replication rights can; audit the permission, not just the group.",
+    "Common trap: thinking Kerberos attacks need privileges — Kerberoasting needs only a valid domain user; AS-REP roasting needs no credentials at all.",
+    "Common trap: hardening servers while leaving 40 standing Domain Admins on workstations — tiering and LAPS address the credential-exposure path that attackers actually use."
+   ],
+   "try_it": "Work through this in the Labs tab."
+  }
+ ],
+ "labs": [
+  {
+   "id": "active-directory-defense-lab1",
+   "domain_id": "active-directory-defense",
+   "title": "AD Attack-Surface Audit",
+   "objective": "Enumerate the classic AD misconfigurations — pre-auth-disabled accounts, SPN-holding accounts with stale passwords, and holders of replication rights.",
+   "steps": [
+    "List all accounts with Kerberos pre-authentication disabled and note their last password change.",
+    "List all user accounts with SPNs registered and flag any with passwords older than one year.",
+    "Enumerate which security principals hold 'Replicating Directory Changes All' on the domain naming context.",
+    "For each finding, write a one-line risk note naming the attack it enables (AS-REP roasting, Kerberoasting, DCSync).",
+    "Prioritize the findings: anonymous-exploitable first, then user-exploitable, then privileged.",
+    "Draft the remediation order: re-enable pre-auth, rotate service passwords, remove stale replication grants."
+   ],
+   "checks": [
+    {
+     "command_pattern": "^Get-ADUser\\s",
+     "expect_contains": "DoesNotRequirePreAuth",
+     "hint": "Filter Get-ADUser on DoesNotRequirePreAuth -eq $true to find AS-REP-roastable accounts."
+    },
+    {
+     "command_pattern": "^audit-repl\\s",
+     "expect_contains": "Replicating Directory Changes",
+     "hint": "Run audit-repl to list holders of replication rights on the domain."
+    }
+   ]
+  },
+  {
+   "id": "active-directory-defense-lab2",
+   "domain_id": "active-directory-defense",
+   "title": "Tiered Admin Design and GPO Lockdown",
+   "objective": "Design a tiered administration model for a fictional org and lock down Group Policy editing rights.",
+   "steps": [
+    "Inventory the current privileged accounts and map each to Tier 0, 1, or 2 based on what systems they touch.",
+    "Identify every account with standing Domain Admin that only performs Tier 1 or Tier 2 work.",
+    "Design replacement accounts: one Tier 0 account per domain admin, separate Tier 1/Tier 2 admin accounts, no overlap.",
+    "Restrict GPO edit rights to Tier 0 and document which GPOs are security-critical (the control plane).",
+    "Specify LAPS deployment for workstation local admins and Credential Guard enablement via GPO.",
+    "Define the phishing-resistant MFA rollout order: Tier 0 first, then Tier 1, then all privileged users."
+   ],
+   "checks": [
+    {
+     "command_pattern": "^tiermap\\s",
+     "expect_contains": "Tier 0",
+     "hint": "Run tiermap with your account list; it validates the tier assignments."
+    },
+    {
+     "command_pattern": "^gpolock\\s",
+     "expect_contains": "restricted",
+     "hint": "Run gpolock to verify GPO edit rights are restricted to Tier 0."
+    }
+   ]
+  }
+ ],
+ "sections": [
+  {
+   "id": "active-directory-defense-sec",
+   "title": "Active Directory & Identity Defense — defender path",
+   "kind": "path",
+   "lectures": [],
+   "lab_ids": [
+    "active-directory-defense-lab1",
+    "active-directory-defense-lab2"
+   ],
+   "drill_domain_ids": [
+    "active-directory-defense"
+   ]
+  }
+ ],
+ "behavioral": [
+  {
+   "prompt": "Explain Active Directory to a non-technical executive in two minutes.",
+   "framework": "Analogy first (the company's identity phone book plus its rulebook), then why it matters (everything authenticates through it), then the risk (compromise the directory, compromise everything).",
+   "points": [
+    "Plain language, no jargon pile-up",
+    "Why AD security is business security",
+    "One concrete risk the executive should fund fixing"
+   ],
+   "pitfalls": [
+    "Reciting FSMO roles to a CFO",
+    "No business-impact framing"
+   ]
+  },
+  {
+   "prompt": "Walk me through how you would respond to a suspected DCSync attack.",
+   "framework": "Contain → investigate → eradicate → recover: isolate the suspect account, audit replication-right holders, check for golden tickets (krbtgt password changes), rotate krbtgt twice, review logs.",
+   "points": [
+    "krbtgt double-rotation as the golden-ticket killer",
+    "Audit of who held replication rights",
+    "Timeline built from DC event logs"
+   ],
+   "pitfalls": [
+    "Only disabling the suspect account and calling it done",
+    "Forgetting that forged tickets survive a password change until krbtgt rotates twice"
+   ]
+  },
+  {
+   "prompt": "A legacy application requires a service account with a weak, unchangeable password. How do you handle it?",
+   "framework": "Risk acceptance with compensating controls: isolate the account, monitor its SPN, restrict logon rights, document the exception with an expiry.",
+   "points": [
+    "Never accept silently — document and time-box",
+    "Compensating controls (isolation, monitoring)",
+    "A migration plan, even a slow one"
+   ],
+   "pitfalls": [
+    "Just saying no with no alternative",
+    "Accepting the risk permanently with no review date"
+   ]
+  },
+  {
+   "prompt": "How do you convince reluctant admins to give up standing Domain Admin?",
+   "framework": "Empathy + evidence: show the credential-theft path, offer a better workflow (just-in-time elevation, tiered accounts), pilot with volunteers.",
+   "points": [
+    "Demonstrate the attack path, not just the policy",
+    "Make the secure path the easy path",
+    "Measure and report reduced exposure"
+   ],
+   "pitfalls": [
+    "Leading with compliance mandates",
+    "Removing access with no replacement workflow"
+   ]
+  },
+  {
+   "prompt": "Tell me about a time you found a misconfiguration before an attacker did.",
+   "framework": "STAR: how you found it (audit, alert, curiosity), the risk it posed, how you fixed it, and what you changed so it stays fixed.",
+   "points": [
+    "Proactive discovery, not incident-driven",
+    "Clear risk explanation",
+    "A systemic fix, not a one-off"
+   ],
+   "pitfalls": [
+    "A story where someone else found it",
+    "Fixing it with no preventive follow-up"
+   ]
+  },
+  {
+   "prompt": "How do you prioritize: patching domain controllers, rotating service passwords, or deploying MFA?",
+   "framework": "Risk-based ordering: what is remotely exploitable now, what enables lateral movement, what has the broadest blast radius — then sequence and explain trade-offs.",
+   "points": [
+    "Explicit risk model, not gut feel",
+    "Quick wins sequenced with structural fixes",
+    "Communication of the plan to stakeholders"
+   ],
+   "pitfalls": [
+    "Patching everything in no particular order",
+    "Ignoring the human/organizational constraints"
+   ]
+  },
+  {
+   "prompt": "Describe a disagreement about identity architecture — for example, whether to add a forest trust.",
+   "framework": "STAR: the proposal, your security analysis, how you presented the trade-off, and the decision that resulted.",
+   "points": [
+    "Security analysis in business terms",
+    "Alternatives proposed (selective authentication, one-way trust)",
+    "Respect for the final decision"
+   ],
+   "pitfalls": [
+    "Blocking without alternatives",
+    "Security absolutism that ignores business needs"
+   ]
+  },
+  {
+   "prompt": "Where is identity security heading, and how are you keeping up?",
+   "framework": "Trends (phishing-resistant MFA, tiered privilege, cloud-hybrid identity) plus a concrete learning habit.",
+   "points": [
+    "Awareness of phishing-resistant authentication",
+    "Understanding of hybrid identity challenges",
+    "Active learning: labs, reading, community"
+   ],
+   "pitfalls": [
+    "No opinion on where the field is going",
+    "Learning only when forced by an incident"
+   ]
+  }
+ ],
+ "resources": {
+  "cheatsheet": [
+   "Forest → trees → domains. Trust = authentication path; two-way = risk flows both ways.",
+   "FSMO: Schema Master, Domain Naming Master, PDC Emulator, RID Master, Infrastructure Master. Single-master only for operations that cannot be multi-master.",
+   "GPO = control plane: who can edit GPOs can own every machine in scope.",
+   "Kerberoasting: any user requests TGS for SPN accounts → crack offline. Defense: long random passwords, managed service accounts, monitor TGS requests.",
+   "AS-REP roasting: pre-auth disabled → anonymous crackable response. Fix: re-enable pre-auth (default), rotate password.",
+   "Pass-the-hash/ticket: reuse stolen credential material without the password. Defense: Credential Guard, tiering, no credential reuse across tiers.",
+   "DCSync: replication rights abused to pull hashes. Audit 'Replicating Directory Changes All' holders; treat surprises as incidents.",
+   "Tiered model: Tier 0 creds never touch Tier 1/2 systems. LAPS: unique local admin password per machine. MFA: phishing-resistant (FIDO2) for privileged accounts."
+  ],
+  "glossary": [
+   {
+    "term": "Forest",
+    "def": "The AD security boundary: one or more domain trees sharing schema and configuration. Compromise of the forest root compromises everything inside."
+   },
+   {
+    "term": "Trust",
+    "def": "An authentication relationship between domains or forests; defines whose authentication decisions are honored."
+   },
+   {
+    "term": "FSMO",
+    "def": "Flexible Single Master Operations: five AD roles held by single DCs for operations that cannot run multi-master."
+   },
+   {
+    "term": "SPN",
+    "def": "Service Principal Name: the Kerberos identifier for a service; accounts holding SPNs are Kerberoasting targets."
+   },
+   {
+    "term": "Kerberoasting",
+    "def": "Requesting crackable Kerberos service tickets (TGS) for SPN accounts as any user, then cracking them offline."
+   },
+   {
+    "term": "AS-REP roasting",
+    "def": "Exploiting accounts with Kerberos pre-authentication disabled to obtain crackable responses without credentials."
+   },
+   {
+    "term": "Pass-the-hash",
+    "def": "Authenticating with a stolen password hash instead of the plaintext password."
+   },
+   {
+    "term": "Pass-the-ticket",
+    "def": "Authenticating with a stolen Kerberos ticket, bypassing password authentication entirely."
+   },
+   {
+    "term": "DCSync",
+    "def": "Abusing domain replication rights to pull password hashes from a DC while impersonating another DC."
+   },
+   {
+    "term": "DCShadow",
+    "def": "Registering a rogue DC to inject malicious replication changes into AD."
+   },
+   {
+    "term": "Tiered admin model",
+    "def": "Separating privileged accounts into tiers (0: identity systems, 1: servers, 2: workstations) so credentials never cross tiers."
+   },
+   {
+    "term": "LAPS",
+    "def": "Local Administrator Password Solution: unique, rotating local admin passwords per machine."
+   },
+   {
+    "term": "Credential Guard",
+    "def": "Windows virtualization-based isolation of credential material so stolen hashes/tickets are harder to extract."
+   },
+   {
+    "term": "Golden ticket",
+    "def": "A forged Kerberos ticket-granting ticket using the krbtgt hash; killed by rotating krbtgt twice."
+   }
+  ],
+  "links": [
+   {
+    "label": "Microsoft Learn — Active Directory Domain Services",
+    "url": "https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/active-directory-domain-services",
+    "note": "Official AD DS documentation: structure, trusts, FSMO, and operations."
+   },
+   {
+    "label": "Microsoft — Securing privileged access",
+    "url": "https://learn.microsoft.com/en-us/security/privileged-access-workstations/privileged-access-deployment",
+    "note": "Microsoft's privileged-access model: tiers, clean-source principle, and deployment guidance."
+   },
+   {
+    "label": "MITRE ATT&CK — Credential Access",
+    "url": "https://attack.mitre.org/tactics/TA0006/",
+    "note": "The adversary-tactics reference for credential attacks including Kerberoasting and DCSync-class techniques."
+   },
+   {
+    "label": "CISA — guidance on identity security",
+    "url": "https://www.cisa.gov/topics/cybersecurity-best-practices",
+    "note": "Federal best-practice guidance frequently covering identity and credential hygiene."
+   }
+  ],
+  "checklist": [
+   "I can diagram domains, trees, forests, and trusts, and explain two-way trust risk.",
+   "I can name the five FSMO roles and what each one gates.",
+   "I can explain Kerberoasting, AS-REP roasting, pass-the-hash/ticket, and DCSync in plain language.",
+   "I can audit pre-auth-disabled accounts, SPN accounts, and replication-right holders.",
+   "I can design a tiered admin model and justify LAPS, Credential Guard, and phishing-resistant MFA.",
+   "I know the DCSync response: isolate, audit rights, rotate krbtgt twice, review logs."
+  ]
+ },
+ "chat": {
+  "persona": "You are a sharp identity-security defender mentoring a learner on Active Directory defense. Explain attacks mechanistically, drill hardening decisions, and rehearse incident response. Teach reasoning, never reproduce vendor or exam content. All practice is original. Never provide instructions that facilitate wrongdoing — frame everything as defense, detection, and authorized auditing.",
+  "topics": [
+   "AD structure, trusts, FSMO roles, and Group Policy as control plane",
+   "Kerberoasting, AS-REP roasting, pass-the-hash/ticket",
+   "DCSync and DCShadow: replication abuse",
+   "Tiered admin model and privileged-access design",
+   "LAPS, Credential Guard, phishing-resistant MFA",
+   "Auditing AD: finding misconfigurations before attackers do",
+   "Incident response for identity compromise"
+  ]
+ },
+ "simulation": {
+  "items": 10,
+  "minutes": 30,
+  "evidence_cost_mins": 2
+ },
+ "media": [],
+ "foundations": [],
+ "math": []
+}

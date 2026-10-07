@@ -1,0 +1,1255 @@
+{
+  "slug": "zero-trust",
+  "title": "IL-11 Zero Trust & Endpoint Defense",
+  "tagline": "Zero-trust architecture and endpoint defense: never trust, always verify — identity-centric access, microsegmentation, continuous verification, and endpoint detection and response, following the princ",
+  "vendor": {
+    "name": "Independent interview prep (not affiliated with ThreatLocker)",
+    "certs": "",
+    "docs": "https://www.threatlocker.com"
+  },
+  "disclaimer": "Independent interview-prep material by Interstitium Labs. Not affiliated with, endorsed by, or sponsored by ThreatLocker or any vendor mentioned. Confers no certificate. All scenarios are original practice content; no exam or vendor-training content is reproduced.",
+  "accent": "#e5484d",
+  "domains": [
+    {
+      "id": "zero-trust",
+      "name": "IL-11 Zero Trust & Endpoint Defense",
+      "summary": "Zero-trust architecture and endpoint defense: never trust, always verify — identity-centric access, microsegmentation, continuous verification, and endpoint detection and response, following the principles of NIST SP 800-207. This is an independent study course; it confers no certificate and claims no affiliation with any institution.",
+      "scenarios": [
+        {
+          "id": "zero-trust-sc1",
+          "title": "The VPN is not a moat",
+          "situation": "A company routes all remote access through a VPN and treats everything inside the corporate network as trusted. An attacker phishes one employee's VPN credentials and moves laterally for six weeks undetected.",
+          "prompt": "Which zero-trust principle was violated, and what replaces the VPN-centric model?",
+          "evidence": [
+            [
+              "NIST SP 800-207",
+              "NIST's Zero Trust Architecture publication defines the core tenet: never trust, always verify. Access decisions are made per-session based on identity, device posture, and context — not on network location. 'Inside the network' is not a security property."
+            ]
+          ],
+          "choices": [
+            "Implicit trust by network location: the fix is identity- and context-based per-request authorization (a policy decision point evaluating user, device health, and resource sensitivity every session) instead of a one-time VPN gate with a trusted interior.",
+            "The principle of least privilege was violated; the fix is a bigger VPN with more bandwidth.",
+            "No principle was violated; VPNs are zero-trust by definition.",
+            "The violated principle is defense in depth; the fix is a second VPN inside the first."
+          ],
+          "answer": 0,
+          "why": "A VPN moves the perimeter; zero trust removes it. Every request is authenticated, authorized, and encrypted based on who and what is asking right now — location contributes context, never trust.",
+          "hint": "If the attacker is already 'inside,' what should still stop them?",
+          "objectives": [
+            "zero trust tenets",
+            "NIST SP 800-207"
+          ],
+          "mins": 6,
+          "difficulty": 1
+        },
+        {
+          "id": "zero-trust-sc2",
+          "title": "The alert that cried wolf",
+          "situation": "An EDR console fires 400 'suspicious PowerShell' alerts per day. Analysts have started bulk-closing them without review. Last week a real ransomware precursor hid in the noise for three days.",
+          "prompt": "What is the correct remediation?",
+          "evidence": [],
+          "choices": [
+            "Tune detection to the environment: baseline normal PowerShell use, write allowlisted rules for admin tooling, escalate only anomalous command lines (encoded commands, obfuscated scripts, unusual parents) — alert fidelity beats alert volume, and bulk-closing is the failure to fix.",
+            "Disable the PowerShell rule entirely; PowerShell alerts are always false positives.",
+            "Hire more analysts to close the 400 alerts by hand each day.",
+            "Uninstall PowerShell from all endpoints to eliminate the alert source."
+          ],
+          "answer": 0,
+          "why": "Alert fatigue is a detection-engineering failure: every unactionable alert trains analysts to ignore the actionable ones. Zero trust assumes breach — which only works if the sensors that detect breach are trustworthy.",
+          "hint": "Is the problem too many attacks, or too little tuning?",
+          "objectives": [
+            "EDR",
+            "alert fatigue"
+          ],
+          "mins": 6,
+          "difficulty": 1
+        },
+        {
+          "id": "zero-trust-sc3",
+          "title": "Flatland",
+          "situation": "A network scan shows 2,000 hosts on a single flat /16 with no internal segmentation. Server, workstation, printer, and IoT camera traffic all mix freely; any compromised host can reach any other on any port.",
+          "prompt": "What is the misconfiguration, and what is the fix?",
+          "evidence": [
+            [
+              "Microsegmentation",
+              "Zero-trust architectures shrink implicit trust zones to the smallest practical scope — ideally per-workload — so a compromised host cannot move laterally. Flat networks grant every foothold the whole estate."
+            ]
+          ],
+          "choices": [
+            "Missing microsegmentation: the flat /16 gives every compromised host unrestricted lateral reach — segment by workload sensitivity (servers, workstations, IoT/printers isolated with default-deny between zones) so a foothold stays a foothold.",
+            "The subnet is too large; renumbering to a /24 will fix lateral movement.",
+            "Printers need static IPs; DHCP is the vulnerability.",
+            "There is no misconfiguration; flat networks are recommended for performance."
+          ],
+          "answer": 0,
+          "why": "Segmentation is blast-radius engineering: assume breach, then make sure the breach cannot walk. Default-deny between zones turns one compromised camera into an incident instead of an enterprise-wide event.",
+          "hint": "What does the attacker's second step require that you can deny?",
+          "objectives": [
+            "microsegmentation",
+            "lateral movement"
+          ],
+          "mins": 8,
+          "difficulty": 2
+        },
+        {
+          "id": "zero-trust-sc4",
+          "title": "Whose laptop is that?",
+          "situation": "A contractor's personal laptop — no disk encryption, OS two years out of date — authenticates with valid credentials and receives full access to the customer database because the access policy checks only username and password.",
+          "prompt": "What is missing from the access decision?",
+          "evidence": [
+            [
+              "Device posture",
+              "Zero trust evaluates the subject AND the device: managed status, encryption, patch level, EDR health. Credentials prove who claims to be asking; posture proves what is asking — an untrusted device with valid credentials is still untrusted."
+            ]
+          ],
+          "choices": [
+            "Device trust evaluation: the policy must check device posture (managed, encrypted, patched, EDR-healthy) alongside identity — valid credentials on an unmanaged, unpatched device should get limited or no access to sensitive data.",
+            "Nothing is missing; valid credentials are sufficient for full access.",
+            "The contractor needs a stronger password; device state is irrelevant.",
+            "The database should be moved to the contractor's laptop for convenience."
+          ],
+          "answer": 0,
+          "why": "Identity answers 'who'; posture answers 'on what.' A policy that asks only the first question grants the keys to whoever holds the password, on whatever device they happen to own.",
+          "hint": "The credentials are valid — so what else must be true before access is granted?",
+          "objectives": [
+            "device posture",
+            "conditional access"
+          ],
+          "mins": 8,
+          "difficulty": 2
+        },
+        {
+          "id": "zero-trust-sc5",
+          "title": "The service account that never sleeps",
+          "situation": "An audit finds a CI/CD service account with standing Domain Admin rights, a password unchanged in four years, used by twelve pipelines — three of which were decommissioned. The team says 'it works, don't touch it.'",
+          "prompt": "Apply least privilege and assume breach: what is the remediation plan?",
+          "evidence": [],
+          "choices": [
+            "Eliminate standing privilege: inventory which pipelines actually need the account, scope each to just-in-time, time-bound, least-privilege credentials (short-lived tokens per pipeline), rotate or vault the secret, and remove the dead pipelines' access — 'it works' is not a security posture.",
+            "Change the password once and leave everything else as-is; rotation alone satisfies least privilege.",
+            "Grant the account Enterprise Admin so pipelines never hit permission errors.",
+            "Delete the CI/CD system; pipelines are inherently insecure."
+          ],
+          "answer": 0,
+          "why": "Standing privilege is pre-authorized breach: every always-on admin credential is an attacker asset waiting to be stolen. Just-in-time, scoped, expiring access gives pipelines what they need for minutes, not forever.",
+          "hint": "What does each pipeline need, for how long, and why does it still have it?",
+          "objectives": [
+            "least privilege",
+            "service accounts"
+          ],
+          "mins": 10,
+          "difficulty": 3
+        },
+        {
+          "id": "zero-trust-sc6",
+          "title": "Build or buy the policy engine?",
+          "situation": "A mid-size firm must choose: build a custom policy decision point (PDP) in-house, or buy a zero-trust network access (ZTNA) platform. Build costs 2 engineer-years and full maintenance liability; buy costs $180k/year with vendor lock-in and a 6-month migration.",
+          "prompt": "How should they decide?",
+          "evidence": [],
+          "choices": [
+            "Decide on differentiation and risk: access policy enforcement is undifferentiated heavy lifting with high breach cost if wrong — buy the platform (faster, maintained, audited) unless access control is genuinely a core competency; then run a pilot measuring policy-change latency, incident response integration, and exit cost before committing.",
+            "Always build; vendor products are never trustworthy.",
+            "Always buy the cheapest option; price is the only criterion.",
+            "Defer the decision for two years; the VPN is fine until then."
+          ],
+          "answer": 0,
+          "why": "The trade is build-risk (you own every bug in your PDP, and auth bugs are breach bugs) versus buy-risk (lock-in, price, fit). For security infrastructure, 'boring and maintained' usually beats 'clever and yours' — measure the pilot, price the exit.",
+          "hint": "Which risk is cheaper to be wrong about: your own auth code, or a vendor contract?",
+          "objectives": [
+            "build vs buy",
+            "risk trade-off"
+          ],
+          "mins": 10,
+          "difficulty": 3
+        }
+      ]
+    },
+    {
+      "id": "zerotrust",
+      "name": "Zero Trust Architecture",
+      "summary": "Designing networks that never grant implicit trust: the NIST SP 800-207 tenets, identity-centric access, microsegmentation, software-defined perimeters, and continuous verification. Architecture-level thinking for containing breaches that perimeter defenses miss. This material confers no certificate and implies no vendor endorsement.",
+      "scenarios": [
+        {
+          "id": "zerotrust-sc1",
+          "title": "The Core Idea",
+          "difficulty": 1,
+          "mins": 4,
+          "situation": "Leadership asks for a one-sentence definition of zero trust to anchor a new security program. Four candidate statements are on the table.",
+          "prompt": "Which statement captures zero trust correctly?",
+          "evidence": [],
+          "choices": [
+            "Never trust, always verify — every access request is authenticated, authorized, and continuously validated regardless of network location",
+            "A strong firewall perimeter keeps everything inside it safe",
+            "All devices on the corporate LAN are trusted by default",
+            "Connecting through the VPN makes a device trusted"
+          ],
+          "answer": 0,
+          "why": "Zero trust eliminates the idea of a trusted network: location on the LAN or VPN no longer implies trustworthiness. Every request — user, device, workload — must prove itself each time, because breaches routinely start inside the perimeter. The other options all restate the perimeter model that zero trust replaces.",
+          "hint": "What happened to the idea of a 'trusted' internal network?",
+          "objectives": [
+            "zero trust principles",
+            "NIST 800-207"
+          ]
+        },
+        {
+          "id": "zerotrust-sc2",
+          "title": "Identity Is the Perimeter",
+          "difficulty": 1,
+          "mins": 5,
+          "situation": "The company is now mostly remote. The old model — VPN into the office network, then broad internal access — has produced two incidents from compromised home machines this year.",
+          "prompt": "What is the right first control to deploy?",
+          "evidence": [
+            [
+              "Incident notes",
+              "Incident 1: compromised home PC -> VPN -> lateral movement to file shares.",
+              "Incident 2: stolen VPN credentials used from unknown device."
+            ]
+          ],
+          "choices": [
+            "Phishing-resistant MFA plus device posture checks, enforced per application session before any resource access",
+            "Longer, more complex VPN passwords",
+            "A larger, faster perimeter firewall",
+            "A policy trusting employee home Wi-Fi networks"
+          ],
+          "answer": 0,
+          "why": "When the network cannot be trusted, identity and device health become the boundary. MFA (preferably phishing-resistant) proves who is asking; posture checks prove the device is healthy; per-session enforcement means trust is re-evaluated continuously. Longer VPN passwords do nothing against a compromised endpoint or stolen session.",
+          "hint": "If the network can't be trusted, what becomes the boundary?",
+          "objectives": [
+            "identity-centric security",
+            "device posture"
+          ]
+        },
+        {
+          "id": "zerotrust-sc3",
+          "title": "After the Breach",
+          "difficulty": 2,
+          "mins": 7,
+          "situation": "Ransomware entered through one phishing workstation and reached 400 hosts in hours. The post-incident review finds a flat /16 network: any host can talk to any host on any port.",
+          "prompt": "Which architectural change best contains the next incident?",
+          "evidence": [
+            [
+              "Network diagram",
+              "Single flat VLAN: 10.0.0.0/16 — workstations, servers, printers, OT adjacent. No east-west filtering."
+            ]
+          ],
+          "choices": [
+            "Microsegmentation — enforce least-privilege east-west policy between workloads so a compromise cannot move laterally",
+            "Buy more antivirus licenses for the endpoints",
+            "Segment only the guest Wi-Fi — the servers are the priority",
+            "Air-gap everything and end remote work"
+          ],
+          "answer": 0,
+          "why": "Flat networks let attackers move laterally at will — the blast radius becomes the whole enterprise. Microsegmentation carves the network into small trust zones with explicit allow-rules between them, so one compromised workstation cannot reach the server tier. It directly addresses the observed failure mode: uncontrolled east-west movement.",
+          "hint": "The attacker moved sideways — what controls sideways movement?",
+          "objectives": [
+            "microsegmentation",
+            "lateral movement containment"
+          ]
+        },
+        {
+          "id": "zerotrust-sc4",
+          "title": "Beyond the VPN",
+          "difficulty": 2,
+          "mins": 6,
+          "situation": "A third-party vendor needs access to exactly one internal application for a two-week project. The traditional answer is a full VPN tunnel into the corporate network.",
+          "prompt": "Which access model fits zero trust best?",
+          "evidence": [],
+          "choices": [
+            "Software-defined perimeter / zero-trust network access: brokered, per-application, per-session access with no network-level trust granted",
+            "A full VPN tunnel — it is how vendor access has always been done",
+            "Publish the application's port directly to the internet",
+            "Email the vendor the data they need instead"
+          ],
+          "answer": 0,
+          "why": "A VPN grants network-level access — far more than 'one application' — and makes the vendor's potentially unmanaged device an insider. SDP/ZTNA brokers access to the specific resource only, after verifying identity and device, with no implicit trust in the underlying network. Least privilege applied to connectivity itself.",
+          "hint": "What's the least access that still gets the job done — a network, or an application?",
+          "objectives": [
+            "SDP",
+            "ZTNA",
+            "least privilege"
+          ]
+        },
+        {
+          "id": "zerotrust-sc5",
+          "title": "Trust, but Continuously Verify",
+          "difficulty": 3,
+          "mins": 8,
+          "situation": "A user authenticated normally from headquarters at 9:00 AM. At 9:20, a login for the same account arrives from another continent on an unknown device, and immediately attempts the admin panel.",
+          "prompt": "How should the architecture respond?",
+          "evidence": [
+            [
+              "Auth events",
+              "09:00 MFA success — known device, HQ office",
+              "09:20 password-only success — unknown device, foreign ASN",
+              "09:21 admin panel access attempt"
+            ]
+          ],
+          "choices": [
+            "Step-up authentication and session re-evaluation — continuous verification challenges or revokes the session when risk signals appear mid-session",
+            "Do nothing — the session is valid for 8 hours once authenticated",
+            "Permanently block the user — no investigation needed",
+            "Only authenticate at login — that is the industry standard"
+          ],
+          "answer": 0,
+          "why": "Zero trust treats authentication as a moment and authorization as continuous: the policy engine re-evaluates trust as context changes. Impossible travel plus a new device plus privilege escalation is exactly the signal set that should trigger step-up auth or session termination. Login-time-only checks leave an eight-hour window for the attacker.",
+          "hint": "Authentication is a moment — what should authorization be?",
+          "objectives": [
+            "continuous verification",
+            "adaptive access"
+          ]
+        },
+        {
+          "id": "zerotrust-sc6",
+          "title": "The Policy Engine Decision",
+          "difficulty": 3,
+          "mins": 9,
+          "situation": "You are designing access policy for the finance application. Options range from a static IP allowlist to a fully dynamic model, and the team worries about complexity.",
+          "prompt": "Which model aligns with zero trust, and why is the complexity worth it?",
+          "evidence": [],
+          "choices": [
+            "Attribute-based dynamic policy — user identity, device posture, location, and risk score evaluated per session by the policy engine; it adapts to real-time risk instead of freezing yesterday's assumptions",
+            "A static IP allowlist — simple to understand and audit",
+            "Identical access for everyone — fairness and simplicity",
+            "Annual access reviews only — least administrative overhead"
+          ],
+          "answer": 0,
+          "why": "NIST SP 800-207's tenets require access determined by dynamic policy: the observable state of the identity, the device, and behavioral attributes, evaluated per session. Static rules cannot react to compromised credentials or devices — they encode trust decisions that go stale. The complexity is the point: it is what makes access decisions reflect current reality.",
+          "hint": "NIST says access is determined by dynamic policy — what does 'dynamic' have to buy you?",
+          "objectives": [
+            "policy engine",
+            "attribute-based access"
+          ]
+        }
+      ]
+    }
+  ],
+  "lessons": [
+    {
+      "domain_id": "il11-zero-trust",
+      "title": "IL-11 Zero Trust & Endpoint Defense — Core concepts",
+      "concepts": [
+        "Never trust, always verify (NIST SP 800-207): every access request is authenticated, authorized, and encrypted based on identity, device posture, and context — per session, per resource. Network location ('inside the VPN') is context, never a grant of trust.",
+        "Identity is the perimeter: users, workloads, and devices each get strong, phishing-resistant identity, and access policies evaluate all three. Credentials answer 'who claims to be asking'; the policy must also ask 'on what device, in what state.'",
+        "Microsegmentation shrinks implicit trust zones to the smallest practical scope — ideally per workload — with default-deny between zones. It is blast-radius engineering: assume breach, then make sure the breach cannot walk laterally.",
+        "Endpoints are the battlefield: EDR/EPP provides the detection and response sensors that 'assume breach' depends on. Alert fidelity beats alert volume — untuned detections train analysts to bulk-close, which is how real precursors hide in noise.",
+        "Least privilege is temporal as well as scoped: standing admin rights (especially service accounts) are pre-authorized breach material. Prefer just-in-time, short-lived, narrowly-scoped credentials issued per task and revoked after.",
+        "Continuous verification replaces point-in-time checks: posture, behavior, and risk are re-evaluated through the session, and access adapts or revokes as signals change. Zero trust is a control loop, not a gate — which is why it is cybernetics applied to security."
+      ],
+      "example": {
+        "lang": "shell",
+        "code": "grep -Ei 'allow.*any.*any|permit.*0\\.0\\.0\\.0' firewall.rules | head -20\n# Any hit is a candidate over-broad rule: document it,\n# then check whether a narrower source/destination/port tuple suffices.",
+        "walkthrough": "Hunting 'allow any-any' rules is the fastest zero-trust audit: each hit is implicit trust granted to the whole network. The fix pattern is always the same — replace the broad rule with the narrowest tuple the workload actually needs."
+      },
+      "pitfalls": [
+        "Common trap: treating the VPN as zero trust — a VPN moves the perimeter to the user's device; it does not verify per-request, per-resource, or continuously.",
+        "Common trap: buying EDR and skipping tuning — default detections in your environment are noise generators; fidelity comes from baselining and allowlisting your own admin tooling.",
+        "Common trap: segmenting by VLAN tag alone without policy — network separation without default-deny enforcement between zones is decoration, not microsegmentation.",
+        "Common trap: granting service accounts standing privilege 'because CI/CD needs it' — pipelines need scoped, short-lived credentials per job, not eternal Domain Admin."
+      ],
+      "try_it": "Work through this in the Labs tab."
+    },
+    {
+      "domain_id": "zerotrust",
+      "title": "Zero Trust Architecture — Core concepts",
+      "concepts": [
+        "Zero trust removes implicit trust from the network: no user, device, or workload is trusted based on location — every access request is authenticated, authorized, and encrypted, per session.",
+        "NIST SP 800-207 frames this in tenets: all data sources are resources, all communication is secured regardless of location, access is granted per session by dynamic policy, and the enterprise continuously monitors asset integrity and posture.",
+        "The logical architecture has three parts: the policy engine (decides), the policy administrator (configures the decision into action), and the policy enforcement point (gates each resource) — identity and device signals feed the decision.",
+        "Microsegmentation contains lateral movement by enforcing least-privilege rules between workloads; software-defined perimeters hide resources entirely until access is brokered.",
+        "Zero trust is a program, not a product: any vendor selling 'zero trust in a box' is selling marketing. It is an ongoing architecture of identity, segmentation, and continuous verification."
+      ],
+      "example": {
+        "lang": "yaml",
+        "code": "policy:\n  resource: finance-app\n  allow:\n    - user.group: finance\n      device.posture: compliant\n      auth: phishing-resistant-mfa\n  deny: default",
+        "walkthrough": "A zero-trust policy states who (finance group), from what (compliant device), with how strong an authentication, may reach a resource — evaluated every session, default deny. Compare this to a firewall rule that only checks source IP: the policy engine sees identity and posture, not just packets."
+      },
+      "pitfalls": [
+        "Common trap: buying a 'zero trust' product and declaring victory — it is an architecture and operating model, not a SKU.",
+        "Common trap: equating VPN with zero trust — a VPN extends the trusted network; zero trust eliminates the concept.",
+        "Common trap: segmenting only north-south (perimeter) while leaving east-west flat — attackers live in east-west.",
+        "Common trap: authenticating once at login and never re-evaluating — sessions must reflect changing risk."
+      ],
+      "try_it": "Work through this in the Labs tab."
+    }
+  ],
+  "labs": [
+    {
+      "id": "zero-trust-lab1",
+      "domain_id": "il11-zero-trust",
+      "title": "Audit for implicit trust",
+      "objective": "Hunt over-broad access rules in a sample firewall/policy export and rewrite the worst offenders as least-privilege tuples.",
+      "steps": [
+        "Create a sample firewall.rules file with 15 rules, including 3 deliberately over-broad ones (any-any allows, wide source ranges on sensitive ports).",
+        "Run the lesson's grep to surface candidate over-broad rules.",
+        "For each hit, document the workload it supposedly serves and write the narrowest replacement rule (specific source, destination, port).",
+        "Verify no any-any rule remains and that every replacement still permits the documented workload.",
+        "Write a one-paragraph 'implicit trust inventory' summarizing what the flat rules had granted an attacker."
+      ],
+      "checks": [
+        {
+          "command_pattern": "^grep\\s",
+          "expect_contains": "allow",
+          "hint": "Run grep against your firewall.rules file and confirm the over-broad rules are surfaced."
+        }
+      ]
+    },
+    {
+      "id": "zero-trust-lab2",
+      "domain_id": "il11-zero-trust",
+      "title": "Write a conditional-access policy",
+      "objective": "Draft a conditional-access policy that grants database access only to healthy managed devices with phishing-resistant auth.",
+      "steps": [
+        "Define three signals: user identity (MFA method strength), device posture (managed, encrypted, patched, EDR healthy), and resource sensitivity.",
+        "Write the policy as structured YAML: allow/deny/step-up rules combining the signals (e.g., unmanaged device + sensitive resource = deny).",
+        "Add a break-glass exception path with mandatory alerting and time-bounded approval.",
+        "Walk through four scenarios (managed+healthy, unmanaged, unpatched, break-glass) and record each decision.",
+        "Validate the YAML parses with python3 -c 'import yaml,json' or a JSON equivalent, and print the decision table."
+      ],
+      "checks": [
+        {
+          "command_pattern": "^python3\\s",
+          "expect_contains": "deny",
+          "hint": "Print your policy decision table so the word 'deny' appears in the output."
+        }
+      ]
+    },
+    {
+      "id": "zerotrust-lab1",
+      "domain_id": "zerotrust",
+      "title": "Find the Implicit Trust",
+      "objective": "Audit a sample network diagram and catalog every place implicit trust is granted.",
+      "steps": [
+        "Review the provided flat-network diagram and list each trust boundary (or absence of one).",
+        "Mark every spot where access is granted by network location alone.",
+        "Identify which resources would be reachable after one workstation compromise.",
+        "Propose three microsegmentation boundaries with business justification.",
+        "Rank your proposals by risk reduction per implementation effort."
+      ],
+      "checks": [
+        {
+          "command_pattern": "^cat\\s",
+          "expect_contains": "trust",
+          "hint": "Review your audit notes file and confirm each implicit-trust finding is documented."
+        }
+      ]
+    },
+    {
+      "id": "zerotrust-lab2",
+      "domain_id": "zerotrust",
+      "title": "Segment a Three-Tier App",
+      "objective": "Draft a microsegmentation policy for a web / app / database three-tier application.",
+      "steps": [
+        "Define the three tiers and the only traffic each tier legitimately needs.",
+        "Write explicit allow rules: web tier may talk to app tier on the app port only.",
+        "Set the default posture to deny, with logging on denied flows for tuning.",
+        "Add identity-aware exceptions for administrators (MFA + jump host).",
+        "Describe how you would validate the policy before enforcing it (monitor mode)."
+      ],
+      "checks": [
+        {
+          "command_pattern": "^cat\\s",
+          "expect_contains": "deny",
+          "hint": "Check your policy draft includes an explicit default-deny rule."
+        }
+      ]
+    }
+  ],
+  "simulations": [],
+  "consoleSims": [],
+  "terminalMissions": [],
+  "sections": [
+    {
+      "id": "sec-full-spectrum",
+      "title": "Full Spectrum Dominance — core path",
+      "kind": "core",
+      "lectures": [],
+      "lab_ids": [
+        "fsd-tl-lab-1",
+        "fsd-tl-lab-2",
+        "fsd-tl-lab-3",
+        "fsd-sg-lab-1",
+        "fsd-sg-lab-2",
+        "fsd-sg-lab-3",
+        "fsd-ai-lab-1",
+        "fsd-ai-lab-2",
+        "fsd-ai-lab-3"
+      ],
+      "drill_domain_ids": [
+        "tl-interview",
+        "tl-endpoint-ops",
+        "sec-graphs",
+        "graph-defense",
+        "ml-defense",
+        "ai-agent-sec"
+      ]
+    }
+  ],
+  "behavioral": [
+    {
+      "prompt": "Tell me about the most technically difficult problem you have run into — a homelab, a broken environment, anything — and how you solved it.",
+      "framework": "STAR",
+      "points": [
+        "Pick ONE problem with a real evidence trail: the symptom, what you measured, the hypothesis you tested",
+        "Show the loop: scope, observe, hypothesize, smallest safe change, validate — interviewers score the method, not just the fix",
+        "Name the tools (VM build, networking, logs) and the lesson it taught you",
+        "Close with the result in concrete terms: what works now that did not before"
+      ],
+      "pitfalls": [
+        "Choosing a story with no real obstacle (“I Googled it” is not a story)",
+        "Skipping validation — saying it worked without proving it",
+        "Rambling past two minutes without reaching the result"
+      ]
+    },
+    {
+      "prompt": "Tell me about a time you dealt with a frustrated customer or user while something was broken.",
+      "framework": "STAR",
+      "points": [
+        "Lead with empathy and ownership: acknowledge the impact before the technical detail",
+        "Show translation: what you told them, in their language, plus the timeline you committed to",
+        "Show judgment: the narrow fix you chose and what you refused to do (e.g., disabling the control to clear the symptom)",
+        "Close with the relationship outcome, not just the technical one"
+      ],
+      "pitfalls": [
+        "Badmouthing the customer to sound decisive",
+        "Promising a timeline you could not keep",
+        "Framing the user as the problem rather than the situation"
+      ]
+    },
+    {
+      "prompt": "Why ThreatLocker, and why cybersecurity?",
+      "framework": "STAR",
+      "points": [
+        "Connect prevention to something concrete: a moment you saw detection arrive too late, or a system you hardened",
+        "Tie their model to your instincts: deny-by-default matches how you already think about trust",
+        "Show service orientation: the Cyber Hero culture rewards the 2 a.m. helper — give an example of being one",
+        "Name one forward-looking reason: Zero Trust, the MSP mission, or the bootcamp community investment"
+      ],
+      "pitfalls": [
+        "Generic flattery with no specifics about the company",
+        "Leading with compensation, title, or location convenience",
+        "Claiming expertise in products you have only read about — frame it as studied, not mastered"
+      ]
+    },
+    {
+      "framework": "STAR",
+      "pitfalls": [
+        "Staying vague ('I analyzed the data') instead of naming what you connected.",
+        "Skipping your own role: what did YOU see that others missed?",
+        "No outcome: what changed because you joined the dots?"
+      ],
+      "points": [
+        "The scattered signals and why nobody had connected them yet",
+        "The specific links you drew between them (shared host, time, infrastructure)",
+        "What the bigger picture turned out to be and what action it drove",
+        "What the experience taught you about investigating"
+      ],
+      "prompt": "Tell me about a time you connected scattered clues into a bigger picture that others had missed."
+    },
+    {
+      "framework": "STAR",
+      "pitfalls": [
+        "Claiming you fixed everything: credibility comes from trade-offs, not heroics.",
+        "Hiding the constraint: the limitation is what makes the prioritization story real.",
+        "No metric: 'better' needs a before-and-after."
+      ],
+      "points": [
+        "The constraint (time, budget, staff) and the size of the backlog",
+        "How you decided what mattered most (what was reachable, what was critical)",
+        "What you did first and what you deliberately deferred",
+        "The measurable result of the prioritization"
+      ],
+      "prompt": "Describe a time you had to prioritize risks or fixes with limited time or resources. How did you decide what came first?"
+    },
+    {
+      "framework": "STAR",
+      "pitfalls": [
+        "Reciting jargon to a non-technical audience and calling it communication.",
+        "Skipping the audience's reaction: did they actually understand and act?",
+        "Making yourself the hero instead of the translator."
+      ],
+      "points": [
+        "The technical finding and why it mattered",
+        "Who the audience was and what they cared about",
+        "How you reframed it (a picture, an analogy, a story)",
+        "What decision or action the audience took because they understood"
+      ],
+      "prompt": "Tell me about a time you explained a complex technical finding to a non-technical audience and it changed a decision."
+    },
+    {
+      "prompt": "Tell me about a time you used automation or AI to solve a security problem.",
+      "framework": "STAR",
+      "points": [
+        "The repetitive security task and what it cost in analyst time",
+        "The automation or AI approach you built and how you validated it",
+        "Measured outcome: time saved, detection gained, false positives changed"
+      ],
+      "pitfalls": [
+        "Describing the tool but never the validation",
+        "No measurable outcome"
+      ]
+    },
+    {
+      "prompt": "Describe a time you had to decide whether to trust an automated security decision.",
+      "framework": "STAR",
+      "points": [
+        "The stakes of the automated action and its blast radius",
+        "How you verified before acting (or the gate you built)",
+        "What happened and what you would automate differently next time"
+      ],
+      "pitfalls": [
+        "Saying you always trust the tool",
+        "No mention of blast radius or reversibility"
+      ]
+    }
+  ],
+  "resources": {
+    "cheatsheet": {
+      "title": "Full Spectrum Dominance — field reference",
+      "sections": [
+        {
+          "heading": "Company facts (verified)",
+          "items": [
+            "Founded 2017 in Orlando, FL — Danny Jenkins (CEO), Sami Jenkins (COO), John Carolan (QA)",
+            "Philosophy: deny-by-default / default-deny — approve known-good, deny the rest",
+            "Customers: 70,000+ organizations, sold heavily through the MSP channel",
+            "Funding: $190M Series F, July 2026 (Elephant-led); ~730 employees",
+            "Interview address: 1901 Summit Tower Blvd, Orlando, FL 32810",
+            "Culture: in-office 5 days/week; free lunch; post-offer background + drug screening"
+          ]
+        },
+        {
+          "heading": "Product stack",
+          "items": [
+            "Allowlisting — default-deny execution control for apps, DLLs, scripts, installers",
+            "Ringfencing — constrains allowed apps: app-to-app, file, registry, network",
+            "Storage Control — USB/device policy by serial, user, file type, encryption",
+            "Elevation Control — just-in-time per-app admin, no standing rights",
+            "Network Control — host firewall; port/IP/dynamic-ACL rules; ZTNA foundation",
+            "Web Control — agent-based DNS/URL category filtering, works off-network",
+            "Cyber Hero MDR — 24/7/365 US-based response, ~60-second average",
+            "Testing Environment — one-button VDI sandbox; checks AV flags, canary files, registry changes"
+          ]
+        },
+        {
+          "heading": "Rule strength (strongest to weakest)",
+          "items": [
+            "Certificate/publisher rules — survive version updates",
+            "Hash rules — precise but break on every new version",
+            "Path rules — weakest; never in user-writable locations",
+            "Learning Mode catalogs before enforcement; Installation Mode pauses blocking — scope and time-box both"
+          ]
+        },
+        {
+          "heading": "Terminal evidence commands",
+          "items": [
+            "nmap <host> — which ports answer (22/80/443 open)",
+            "dig <name> — ANSWER SECTION with the A record",
+            "ss — listening sockets",
+            "systemctl status <svc> — unit state",
+            "journalctl -u <svc> — service logs",
+            "sha256sum <file> — real SHA-256 identity",
+            "grep <pattern> <file> — search the record",
+            "ps — what is actually running"
+          ]
+        },
+        {
+          "heading": "Graph vocabulary",
+          "items": [
+            "node — any entity tracked in the model (user, host, IP, domain, file hash, vulnerability)",
+            "edge — a labeled relationship between two nodes (logged into, resolved to, downloaded)",
+            "degree — number of edges on a node; high-degree nodes are attacker highways",
+            "centrality — how much traffic or how many paths flow through a node",
+            "directed edge — a relationship with a direction (A downloaded FROM B)",
+            "security graph — the living model of your whole environment as nodes and edges",
+            "attack graph — the subgraph of exploitable paths to your targets",
+            "knowledge graph — threat-intel indicators linked to campaigns and actors"
+          ]
+        },
+        {
+          "heading": "Attack-graph playbook",
+          "items": [
+            "inventory first — you cannot graph what you have not discovered",
+            "model flaws AND misconfigs as exploit edges",
+            "compute shortest paths to the crown jewels",
+            "find the choke point (highest betweenness on those paths)",
+            "break the path: patch, segment, or remove the edge",
+            "re-scan and re-run the graph to prove the path is gone",
+            "never trust yesterday's graph — redeployments redraw the map"
+          ]
+        },
+        {
+          "heading": "Zero Trust + graphs",
+          "items": [
+            "never trust, always verify — re-evaluate every access decision",
+            "assume breach — treat unexpected edges as hostile until proven otherwise",
+            "microsegmentation — allow-list approved edges, alert on new ones",
+            "ReBAC — policies are path queries on the identity graph",
+            "continuous verification — device/location/behavior edges change, trust follows",
+            "anomalous edge — a first-seen connection between strangers is the classic signal"
+          ]
+        },
+        {
+          "heading": "ML detection vocabulary",
+          "items": [
+            "Supervised learning — learns from labeled examples; strong on known threats, blind to novel ones",
+            "Unsupervised learning — finds structure without labels; clustering and dimensionality reduction",
+            "Anomaly detection — models 'normal' and flags deviations; the workhorse for novel threats",
+            "UEBA — user and entity behavior analytics: per-user baselines plus peer-group comparison",
+            "Feature engineering — encoding raw logs into model inputs (login velocity, rare processes, domain entropy)",
+            "Concept drift — model decay as attacker behavior and legitimate traffic shift over time"
+          ]
+        },
+        {
+          "heading": "Detection metrics",
+          "items": [
+            "Precision — of all flagged alerts, how many were real",
+            "Recall — of all real attacks, how many were flagged",
+            "Threshold tuning — sliding the decision cutoff trades precision against recall",
+            "Alert fatigue — when false positives train analysts to ignore the queue",
+            "DGA — domain generation algorithm; detected via character entropy of domain names"
+          ]
+        },
+        {
+          "heading": "Agent and LLM security",
+          "items": [
+            "Direct prompt injection — attacker input overrides app instructions (OWASP LLM01:2025, the #1 LLM risk)",
+            "Indirect prompt injection — hidden instructions inside retrieved data (email, web, docs)",
+            "Jailbreak — defeating the model's own safety policy; distinct from hijacking app behavior",
+            "Tool poisoning — malicious tool descriptions or metadata steer an agent to misuse its tools (MCP ecosystem risk)",
+            "Insecure output handling — executing or trusting model output without validation",
+            "Least-privilege tools — grant each tool only the scope its task requires"
+          ]
+        },
+        {
+          "heading": "Adversarial ML and governance",
+          "items": [
+            "Evasion — perturbing inputs at inference time to dodge a classifier",
+            "Poisoning — corrupting training data to corrupt the model",
+            "Extraction — querying a model to steal its behavior or parameters",
+            "MITRE ATLAS — knowledge base of adversarial ML tactics and techniques",
+            "Red-teaming and evals — adversarial testing of AI systems before deployment",
+            "Human-in-the-loop — required approval for high-impact or irreversible agent actions",
+            "SOAR — security orchestration, automation and response; automate enrichment, gate containment"
+          ]
+        }
+      ]
+    },
+    "glossary": [
+      {
+        "term": "Allowlisting",
+        "def": "Default-deny execution control: only explicitly approved applications, scripts, and installers may run."
+      },
+      {
+        "term": "Blocklisting",
+        "def": "Default-allow model: everything runs except recognized-bad items — the window zero-days live in."
+      },
+      {
+        "term": "Default-deny",
+        "def": "Deny-by-default posture: unknown code, devices, or connections are refused unless explicitly approved."
+      },
+      {
+        "term": "Ringfencing",
+        "def": "Containment applied on top of allowlisting; restricts what a permitted app may do across app-to-app, file, registry, and network dimensions."
+      },
+      {
+        "term": "Learning Mode",
+        "def": "Agent mode that catalogs applications and dependencies and auto-builds policies before enforcement; temporarily disables file blocking."
+      },
+      {
+        "term": "Installation Mode",
+        "def": "Temporary mode that pauses file blocking for installs — must be tightly scoped and time-boxed."
+      },
+      {
+        "term": "Elevation Control",
+        "def": "Grants specific approved applications admin rights for standard users — just-in-time, per-app, time-boxed — without standing admin rights."
+      },
+      {
+        "term": "Application hopping",
+        "def": "An elevated or trusted process spawning another tool (e.g., PowerShell) to inherit its privileges — countered by ringfencing the elevated process."
+      },
+      {
+        "term": "Storage Control",
+        "def": "Device and path policy: USB approved by serial, user, file type, time, and encryption; unapproved devices do not connect."
+      },
+      {
+        "term": "Network Control",
+        "def": "Centrally managed host firewall; rules by port, source IP, and dynamic ACLs; egress allowlisting pins apps to approved destinations."
+      },
+      {
+        "term": "ZTNA",
+        "def": "Zero Trust Network Access: per-session, per-application brokered connections (commonly over port 443) with no open inbound ports — deny-by-default for network access."
+      },
+      {
+        "term": "Approval Center",
+        "def": "Portal queue where end-user software requests arrive for admin review and decision."
+      },
+      {
+        "term": "Unified Audit",
+        "def": "Real-time audit showing what was allowed or denied across endpoints — and why; the evidence layer for triage."
+      },
+      {
+        "term": "Testing Environment",
+        "def": "One-button cloud VDI sandbox launched from an approval request; logs AV flags, canary-file access, and registry/system changes."
+      },
+      {
+        "term": "Cyber Hero MDR",
+        "def": "24/7/365 US-based managed detection and response team; validates alerts, isolates hosts, acts on customer runbooks; ~60-second average response."
+      },
+      {
+        "term": "Assume breach",
+        "def": "Design and operate as if the attacker already has a foothold — least privilege, containment, and monitoring everywhere."
+      },
+      {
+        "term": "Living off the land",
+        "def": "Attacks that hijack trusted built-in tools (Word, PowerShell) instead of dropping malware — defeated by behavior containment, not signatures."
+      },
+      {
+        "term": "Change control",
+        "def": "Scoped, ticketed, tested changes with validation and rollback — emergency speed never cancels the process."
+      },
+      {
+        "def": "A node in an attack graph representing a system or weakness, connected by edges that represent steps an attacker could take between them.",
+        "term": "attack graph"
+      },
+      {
+        "def": "How central a node is to paths through the graph (for example, betweenness: how many shortest paths cross it).",
+        "term": "centrality"
+      },
+      {
+        "def": "The most valuable assets in the environment (customer data, finance systems, source code): what attack paths are measured against.",
+        "term": "crown jewels"
+      },
+      {
+        "def": "A labeled connection between two nodes, representing a relationship such as 'logged into' or 'resolved to'.",
+        "term": "edge"
+      },
+      {
+        "def": "A graph of threat indicators (IPs, domains, hashes) linked to campaigns, actors, and each other through shared infrastructure.",
+        "term": "knowledge graph"
+      },
+      {
+        "def": "The practice of mapping relationships in data to reveal hidden associations; rooted in Euler's 1736 graph theory, 1970s paper link charts, and post-2001 intelligence work.",
+        "term": "link analysis"
+      },
+      {
+        "def": "A segment of the network so small that its allowed communications can be enumerated as a graph of approved edges.",
+        "term": "microsegmentation"
+      },
+      {
+        "def": "An entity in the graph: a user, host, IP address, domain, file, or vulnerability.",
+        "term": "node"
+      },
+      {
+        "def": "Access control where policy is evaluated by traversing relationships on a graph (for example: user reports_to manager who owns the resource's project).",
+        "term": "ReBAC"
+      },
+      {
+        "def": "A machine-learning model that operates directly on graph structure to classify nodes or subgraphs, for example labeling attack vs normal behavior.",
+        "term": "graph neural network (GNN)"
+      },
+      {
+        "def": "Monitoring user and entity behavior by modeling their normal relationship patterns and flagging structural anomalies.",
+        "term": "UEBA"
+      },
+      {
+        "term": "Supervised learning",
+        "def": "ML trained on labeled examples; classifies new inputs into known categories."
+      },
+      {
+        "term": "Anomaly detection",
+        "def": "ML approach that models normal behavior and flags statistically rare deviations."
+      },
+      {
+        "term": "Feature engineering",
+        "def": "Turning raw telemetry into numeric model inputs, e.g. login velocity or domain entropy."
+      },
+      {
+        "term": "Precision",
+        "def": "Share of flagged alerts that were real; the false-positive economics of the queue."
+      },
+      {
+        "term": "Recall",
+        "def": "Share of real attacks the detector flagged; the miss rate's complement."
+      },
+      {
+        "term": "Concept drift",
+        "def": "Decay of model performance as the data distribution shifts over time."
+      },
+      {
+        "term": "Prompt injection",
+        "def": "Attacker-crafted instructions that override an LLM application's intended behavior; direct (user input) or indirect (retrieved data)."
+      },
+      {
+        "term": "Jailbreak",
+        "def": "Crafted input that defeats an LLM's own safety policy or refusal behavior."
+      },
+      {
+        "term": "Tool poisoning",
+        "def": "Malicious tool descriptions or metadata that manipulate an AI agent into misusing its tools."
+      },
+      {
+        "term": "Insecure output handling",
+        "def": "Failing to validate LLM output before acting on it, e.g. executing generated commands."
+      },
+      {
+        "term": "Evasion attack",
+        "def": "Adversarial ML technique: perturbing inputs to cross a classifier's decision boundary."
+      },
+      {
+        "term": "MITRE ATLAS",
+        "def": "Adversarial Threat Landscape for AI Systems; MITRE's knowledge base of AI attack tactics."
+      },
+      {
+        "term": "SOAR",
+        "def": "Security orchestration, automation and response; playbooks that enrich automatically and gate containment on humans."
+      },
+      {
+        "term": "Human-in-the-loop",
+        "def": "Required human approval before high-impact or irreversible automated actions."
+      }
+    ],
+    "links": [
+      {
+        "label": "ThreatLocker Zero Trust platform explainer (official)",
+        "url": "https://www.threatlocker.com/blog/edr-xdr-vs-zero-trust-prevention",
+        "note": "EDR/XDR vs Zero Trust prevention — the deny-by-default argument in their own words."
+      },
+      {
+        "label": "ThreatLocker Bootcamp page (official)",
+        "url": "https://www.threatlocker.com/bootcamp",
+        "note": "Free six-week program: phases, format, and what completion leads to."
+      },
+      {
+        "label": "ThreatLocker Careers (official)",
+        "url": "https://www.threatlocker.com/company/careers",
+        "note": "Open roles and the hiring-event listing; roles are in-office in Orlando."
+      },
+      {
+        "label": "Elevation Control (official)",
+        "url": "https://www.threatlocker.com/secure-privileges-without-sacrificing-agility",
+        "note": "Just-in-time privilege without standing admin."
+      },
+      {
+        "label": "Storage Control (official)",
+        "url": "https://www.threatlocker.com/capabilities/external-storage-device-control",
+        "note": "USB/device policy by serial, user, file type, encryption."
+      },
+      {
+        "label": "Web Control (official)",
+        "url": "https://www.threatlocker.com/capabilities/web-content-control",
+        "note": "Agent-based DNS/URL filtering, including off-network."
+      },
+      {
+        "label": "Cyber Hero MDR (official)",
+        "url": "https://www.threatlocker.com/get-threat-response-in-minutes",
+        "note": "24/7/365 managed response positioning."
+      },
+      {
+        "label": "MDR capabilities (official)",
+        "url": "https://www.threatlocker.com/capabilities/managed-detection-and-response",
+        "note": "Detection and response capability detail."
+      },
+      {
+        "label": "NIST SP 800-207 — Zero Trust Architecture",
+        "url": "https://csrc.nist.gov/pubs/sp/800/207/final",
+        "note": "The canonical Zero Trust reference: tenets, deployment models, policy engine trust algorithm."
+      },
+      {
+        "label": "CISA Zero Trust Maturity Model",
+        "url": "https://www.cisa.gov/zero-trust-maturity-model",
+        "note": "Federal maturity steps across identity, devices, networks, applications, and data."
+      },
+      {
+        "label": "MITRE ATT&CK",
+        "note": "The adversary-tactics framework; codify its tactic chains as subgraphs to hunt for in your security graph.",
+        "url": "https://attack.mitre.org/"
+      },
+      {
+        "label": "CISA — Cybersecurity and Infrastructure Security Agency",
+        "note": "US government advisories, alerts, and guidance frequently referenced in threat-intel work.",
+        "url": "https://www.cisa.gov/"
+      },
+      {
+        "label": "Neo4j getting started",
+        "note": "A widely used graph database; the book's call to action suggests piloting graph queries on exported security data with tools like this.",
+        "url": "https://neo4j.com/docs/getting-started/"
+      },
+      {
+        "label": "OWASP GenAI Security Project",
+        "url": "https://genai.owasp.org/",
+        "note": "Home of the LLM Top 10 and GenAI security guidance"
+      },
+      {
+        "label": "OWASP Top 10 for LLM Applications",
+        "url": "https://genai.owasp.org/llm-top-10/",
+        "note": "The ranked LLM risk list — prompt injection is #1"
+      },
+      {
+        "label": "NIST AI Risk Management Framework",
+        "url": "https://www.nist.gov/itl/ai-risk-management-framework",
+        "note": "The standard governance framework for managing AI risk"
+      },
+      {
+        "label": "MITRE ATLAS",
+        "url": "https://atlas.mitre.org/",
+        "note": "Adversarial Threat Landscape for AI Systems — tactics and techniques"
+      },
+      {
+        "label": "CISA AI guidance",
+        "url": "https://www.cisa.gov/ai",
+        "note": "CISA's AI security resources and guidance"
+      }
+    ],
+    "checklist": [
+      "Sixty-second company brief rehearsed out loud: year, city, philosophy, three products, one milestone",
+      "Two STAR stories ready: hardest technical problem; a frustrated customer or user",
+      "“Why ThreatLocker / why cybersecurity” answer tied to prevention and service, not slogans",
+      "Ringfencing explained in one plain-English sentence (the Word-on-a-leash version)",
+      "Elevation Control answer ready: just-in-time, per-app, time-boxed, ringfenced, logged",
+      "Triage loop memorized: scope → observe → hypothesize → smallest safe change → validate → explain",
+      "Three questions to ask them: team on-call shape, approval SLA expectations, what “most helpful” looks like on the team",
+      "Logistics: 1901 Summit Tower Blvd, Orlando FL; in-office role; ID and references ready",
+      "Define your crown jewels before you model anything.",
+      "Build the asset-and-access graph from live sources (scans, configs, identity), not from the CMDB alone.",
+      "Model vulnerabilities AND misconfigurations as exploit edges.",
+      "Compute shortest attack paths to each crown jewel; name the choke points.",
+      "Prioritize remediation by path risk, not by raw severity score.",
+      "Express at least one access policy as a relationship path (ReBAC pilot).",
+      "Baseline approved communication edges per segment; alert on first-seen edges.",
+      "Brief the next incident or risk review with the graph, not a spreadsheet.",
+      "Can you explain supervised vs unsupervised vs anomaly detection with a security example for each?",
+      "Can you name three log features you would engineer for a C2 detector and why?",
+      "Can you walk through a UEBA alert (baseline, deviation, verification) end to end?",
+      "Can you explain the precision/recall tradeoff and how you would set a threshold for a fatigued SOC?",
+      "Can you define concept drift and describe a retraining process?",
+      "Can you distinguish direct vs indirect prompt injection and jailbreaking?",
+      "Can you explain tool poisoning in the MCP ecosystem and three controls against it?",
+      "Can you describe insecure output handling and how you would validate agent output?",
+      "Can you name the three adversarial ML attack classes and one defense for evasion?",
+      "Can you design a SOAR playbook gate: what automates freely, what needs human approval?"
+    ]
+  },
+  "chat": {
+    "persona": "You are a rigorous but encouraging interviewer preparing a candidate for a Zero Trust endpoint security role. Probe with 'why' and 'how would you explain that' follow-ups. Stay on topic: ThreatLocker-style endpoint defense, security graphs, and AI-powered security. All practice is original; never reproduce vendor material.",
+    "topics": [
+      {
+        "id": "tl-interview",
+        "name": "ThreatLocker Interview Prep",
+        "key_points": [
+          "allowlisting",
+          "ringfencing",
+          "default-deny",
+          "cyber hero",
+          "zero trust tenets",
+          "STAR stories"
+        ],
+        "followups": [
+          "Can you give an example?",
+          "How would you explain that to a CFO?"
+        ]
+      },
+      {
+        "id": "tl-endpoint-ops",
+        "name": "Zero Trust Endpoint Operations",
+        "key_points": [
+          "default-deny",
+          "ringfencing dimensions",
+          "elevation control",
+          "storage control",
+          "network control",
+          "change control"
+        ],
+        "followups": [
+          "Walk me through the triage order.",
+          "When would you deny outright?"
+        ]
+      },
+      {
+        "followups": [
+          "Can you walk through an example?",
+          "How does this change patch prioritization?",
+          "What is the difference between a security graph and an attack graph?"
+        ],
+        "id": "sec-graphs",
+        "key_points": [
+          "nodes",
+          "edges",
+          "attack graphs",
+          "kill chain",
+          "link analysis",
+          "threat intel graphs"
+        ],
+        "name": "Security Graphs: Think Like an Attacker"
+      },
+      {
+        "followups": [
+          "How do graphs change patch prioritization?",
+          "What is ReBAC and how is it different from RBAC?",
+          "How would a small team start with graphs?"
+        ],
+        "id": "graph-defense",
+        "key_points": [
+          "attack-path analysis",
+          "insider threat",
+          "vulnerability graphs",
+          "Zero Trust",
+          "microsegmentation",
+          "blast radius"
+        ],
+        "name": "Graph-Powered Defense Operations"
+      },
+      {
+        "id": "ml-defense",
+        "name": "ML-Powered Threat Defense",
+        "key_points": [
+          "anomaly detection",
+          "UEBA",
+          "alert fatigue",
+          "concept drift",
+          "threat hunting",
+          "precision recall"
+        ],
+        "followups": [
+          "Walk me through an example.",
+          "How do you handle false positives?"
+        ]
+      },
+      {
+        "id": "ai-agent-sec",
+        "name": "Securing AI Systems & Agents",
+        "key_points": [
+          "prompt injection",
+          "tool poisoning",
+          "MCP risks",
+          "insecure output handling",
+          "SOAR gates",
+          "adversarial ML"
+        ],
+        "followups": [
+          "Walk me through an example.",
+          "How do you secure an AI agent end to end?"
+        ]
+      }
+    ]
+  },
+  "simulation": {
+    "items": 12,
+    "minutes": 180,
+    "evidence_cost_mins": 2
+  },
+  "media": [
+    {
+      "id": "tl-allowlist-vs-blocklist",
+      "kind": "diagram",
+      "title": "Allowlisting vs blocklisting: default-deny vs default-allow",
+      "svg": "assets/diagrams/tl-allowlist-vs-blocklist.svg",
+      "lesson_ref": "c-tl-endpoint-ops",
+      "caption": "Default-deny stops unknown code without a signature; default-allow runs it until one exists.",
+      "alt": "Side-by-side comparison: on the left, a default-deny gate runs known-good payroll software and denies unknown ransomware with no signature needed; on the right, a default-allow gate runs both until the ransomware is recognized as bad."
+    },
+    {
+      "id": "tl-ringfencing",
+      "kind": "diagram",
+      "title": "Ringfencing: four leashes on an allowed application",
+      "svg": "assets/diagrams/tl-ringfencing.svg",
+      "lesson_ref": "c-tl-endpoint-ops",
+      "caption": "Word stays approved, but it cannot spawn PowerShell, read the credential store, or reach the internet — while opening its document is allowed.",
+      "alt": "An approved Word application inside a dashed containment ring: arrows show PowerShell launch denied, credential-store registry access denied, external network denied, and document file access allowed."
+    },
+    {
+      "id": "tl-zero-trust-stack",
+      "kind": "diagram",
+      "title": "The Zero Trust endpoint stack",
+      "svg": "assets/diagrams/tl-zero-trust-stack.svg",
+      "lesson_ref": "c-tl-interview",
+      "caption": "Five deny-by-default layers — Allowlisting, Ringfencing, Elevation, Storage, Network — watched by Web Control, the Testing Environment, Unified Audit, and the Cyber Hero MDR team.",
+      "alt": "A vertical stack of five layers from Allowlisting at the foundation up through Ringfencing, Elevation Control, Storage Control, and Network Control, with side boxes for Web Control, Testing Environment, Unified Audit, and Cyber Hero MDR."
+    },
+    {
+      "id": "tl-triage-flow",
+      "kind": "diagram",
+      "title": "Application-request triage flow",
+      "svg": "assets/diagrams/tl-triage-flow.svg",
+      "lesson_ref": "c-tl-endpoint-ops",
+      "caption": "Gather evidence first, then branch: trusted gets a scoped rule, unknown goes to the sandbox, malicious gets a documented deny.",
+      "alt": "Flowchart from request arrival through evidence gathering to a decision diamond branching into three outcomes: approve with a scoped rule, detonate in the Testing Environment then ringfence, or deny with documented evidence."
+    },
+    {
+      "alt": "Diagram of four labeled nodes (user, host, file, domain, IP) joined by labeled directed edges such as logged into, downloaded, and resolved to, illustrating graph vocabulary.",
+      "caption": "Nodes are the things; edges are the relationships. Attackers move along the edges.",
+      "id": "sg-graph-vocabulary",
+      "kind": "diagram",
+      "lesson_ref": "c-sec-graphs",
+      "svg": "assets/diagrams/sg-graph-vocabulary.svg",
+      "title": "Graph vocabulary: nodes and edges"
+    },
+    {
+      "alt": "Attack graph with four nodes in a chain: external attacker to VPN gateway to file server to customer database, with a dead-end branch to a printer, showing the shortest path to the crown jewel.",
+      "caption": "The shortest path to the crown jewel is length 3. Break the choke point and the campaign dies.",
+      "id": "sg-attack-path",
+      "kind": "diagram",
+      "lesson_ref": "c-sec-graphs",
+      "svg": "assets/diagrams/sg-attack-path.svg",
+      "title": "Attack graph: shortest path to the crown jewels"
+    },
+    {
+      "alt": "Seven kill-chain stages as connected graph nodes: reconnaissance, weaponization, delivery, exploitation, installation, command and control, actions. Three alerts are annotated at delivery, installation, and command and control.",
+      "caption": "Three 'unrelated' alerts, one kill-chain subgraph. Correlate by shared entities, not by severity.",
+      "id": "sg-kill-chain",
+      "kind": "diagram",
+      "lesson_ref": "c-sec-graphs",
+      "svg": "assets/diagrams/sg-kill-chain.svg",
+      "title": "Kill chain as a graph"
+    },
+    {
+      "alt": "A policy engine at the center of a small graph evaluates an access request from a finance user on an untrusted laptop to an R and D code server. The request is denied because there is no prior relationship edge and the device is untrusted.",
+      "caption": "Valid credentials are not enough. The graph checks device trust, history, and relationships on every request.",
+      "id": "sg-zero-trust",
+      "kind": "diagram",
+      "lesson_ref": "c-graph-defense",
+      "svg": "assets/diagrams/sg-zero-trust.svg",
+      "title": "Zero Trust runs on relationships"
+    },
+    {
+      "id": "ai-ml-pipeline",
+      "kind": "diagram",
+      "title": "ML detection pipeline: telemetry to triage",
+      "svg": "assets/diagrams/ai-ml-pipeline.svg",
+      "lesson_ref": "c-ml-defense",
+      "caption": "How raw telemetry becomes scored alerts: features feed the model, the model scores, analysts triage top-down — and analyst verdicts feed retraining.",
+      "alt": "Flow diagram: telemetry sources feed feature extraction, which feeds an ML model, which outputs scored alerts into an analyst triage queue, with a feedback arrow for retraining."
+    },
+    {
+      "id": "ai-ueba-baseline-diagram",
+      "kind": "diagram",
+      "title": "UEBA: baseline vs deviation",
+      "svg": "assets/diagrams/ai-ueba-baseline.svg",
+      "lesson_ref": "c-ml-defense",
+      "caption": "UEBA learns each user's normal hours, locations, and volumes, then scores deviations from that baseline.",
+      "alt": "24-hour timeline showing a shaded normal login window from 8 AM to 6 PM with normal logins inside it, and a red anomaly marker at 2:47 AM for a foreign login scoring 97 out of 100."
+    },
+    {
+      "id": "ai-injection-flow",
+      "kind": "diagram",
+      "title": "Indirect prompt injection attack flow",
+      "svg": "assets/diagrams/ai-injection-flow.svg",
+      "lesson_ref": "c-ai-agent-sec",
+      "caption": "An attacker hides instructions in data the agent retrieves; the agent mistakes data for instructions and misuses its tools.",
+      "alt": "Attack flow diagram: hidden instruction in an email is read by an AI agent, which mistakes it for a command and calls a privileged tool, causing fraud; three defense boxes below: sanitize content, least-privilege tools, human approval."
+    }
+  ],
+  "foundations": [
+    {
+      "track": "linux-cli",
+      "why_needed": "Terminal labs and missions run in a simulated Linux shell; command-line fluency is required to complete them."
+    },
+    {
+      "track": "security-basics",
+      "why_needed": "Security-graph and ML-detection lessons assume baseline vocabulary (CIA triad, malware types, incident response phases)."
+    }
+  ],
+  "math": [
+    "stats",
+    "probability"
+  ]
+}

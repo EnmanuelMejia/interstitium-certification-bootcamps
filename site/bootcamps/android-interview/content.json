@@ -1,0 +1,1258 @@
+{
+ "slug": "android-interview",
+ "title": "Android Engineering Interview Prep",
+ "tagline": "Kotlin, the Android framework, and the Android interview loop.",
+ "vendor": {
+  "name": "Independent",
+  "certs": [],
+  "docs": []
+ },
+ "disclaimer": "Independent study material by Interstitium Labs. Not affiliated with or endorsed by any vendor. Confers no certificate.",
+ "accent": "#3ddc84",
+ "domains": [
+  {
+   "id": "android-kotlin-core",
+   "name": "Kotlin Core",
+   "summary": "Null safety, data/sealed classes, the coroutines mental model, extension functions, and delegation — the language half of every Android loop.",
+   "scenarios": [
+    {
+     "id": "android-interview-sc1",
+     "title": "The billion-dollar mistake",
+     "situation": "Kotlin round. The interviewer shows `val name: String? = intent.getStringExtra(\"name\")` and asks you to greet the user.",
+     "prompt": "Which is the idiomatic null-safe approach?",
+     "evidence": [],
+     "choices": [
+      "`val greeting = name?.let { \"Hello, $it\" } ?: \"Hello, guest\"` — safe call plus Elvis covers null without ever asserting non-null.",
+      "`\"Hello, ${name!!}\"` — the extra is always present, so assert it.",
+      "`if (name != null) \"Hello, $name\" else \"Hello, guest\"` then cast name with `as String` — explicit is better.",
+      "Declare the parameter as `String!` (platform type) and ignore nullability — Java interop handles it."
+     ],
+     "answer": 0,
+     "why": "Kotlin's type system tracks nullability: `String?` vs `String`. Safe call `?.`, Elvis `?:`, and `let` handle nulls explicitly; `!!` throws NPE on null and is the thing interviewers want you to avoid. Platform types from Java (`String!`) are the interop hazard — the compiler cannot help you there.",
+     "hint": "Which operator lets you act on the value only when it is non-null, and what provides the fallback?",
+     "objectives": [
+      "Use Kotlin null-safety operators idiomatically"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "android-interview-sc2",
+     "title": "Data class or plain class?",
+     "situation": "Kotlin round. You model API responses: `User(id, name, email)` compared, copied, and logged.",
+     "prompt": "Why is a data class the right call, and what does it give you?",
+     "evidence": [],
+     "choices": [
+      "`data class` generates equals/hashCode, toString, copy(), and componentN destructuring — value-like semantics for models; a plain class gives you identity equality and boilerplate you would hand-write.",
+      "Data classes are faster at runtime — the compiler optimizes their allocation.",
+      "Plain classes are required for JSON parsing; data classes cannot be deserialized.",
+      "They are identical; `data` is just documentation."
+     ],
+     "answer": 0,
+     "why": "Data classes are Kotlin's answer to model boilerplate: structural equality means two Users with the same fields are equal (what you want for DiffUtil and tests), copy() gives cheap immutable updates, and destructuring works in when-branches. Caveats worth naming: data classes should stay simple (no heavy logic), and inheritance from them is restricted.",
+     "hint": "What breaks in a RecyclerView diff if equality is identity-based instead of structural?",
+     "objectives": [
+      "Choose data classes for model types"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "android-interview-sc3",
+     "title": "Sealed class for UI state",
+     "situation": "Architecture round. A screen can be Loading, Content(items), or Error(message). The interviewer bans booleans like `isLoading`.",
+     "prompt": "How do you model it?",
+     "evidence": [],
+     "choices": [
+      "`sealed interface UiState { data object Loading : UiState; data class Content(val items: List<Item>) : UiState; data class Error(val msg: String) : UiState }` — the compiler enforces exhaustive `when`, so adding a state breaks the build until every branch handles it.",
+      "Three booleans: isLoading, hasError, isEmpty — simple and readable.",
+      "An enum with three constants — states never carry data anyway.",
+      "A String field holding \"loading\"/\"content\"/\"error\" — flexible for future states."
+     ],
+     "answer": 0,
+     "why": "Sealed hierarchies make illegal states unrepresentable: you cannot be Loading and Error at once, unlike three booleans (8 combinations, most invalid). Exhaustive when is the payoff — the compiler becomes your reviewer when states evolve. This is the standard UDF UiState pattern on Android.",
+     "hint": "How many invalid combinations do three booleans allow, and who catches them?",
+     "objectives": [
+      "Model UI state as sealed hierarchies"
+     ],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "android-interview-sc4",
+     "title": "Extension function vs member",
+     "situation": "Kotlin round. You need `String.isValidEmail()` used across the app. The interviewer asks where it should live.",
+     "prompt": "What is the right design, and what is the key limitation to name?",
+     "evidence": [],
+     "choices": [
+      "An extension function in a shared util file: it reads like a member, needs no subclassing — but extensions are resolved statically, so they cannot be overridden and cannot access private members; if polymorphism is needed, use a real member or interface.",
+      "A member function on String — subclass String and add it.",
+      "A static utility class with `StringUtils.isValidEmail(s)` — extensions are syntactic sugar with hidden costs.",
+      "An extension property with a backing field — extensions can hold state."
+     ],
+     "answer": 0,
+     "why": "Extensions are static dispatch: the function called depends on the compile-time type, not the runtime type — the classic interview trap is expecting virtual dispatch. They also cannot see privates or add state. The power: extending final classes and platform types without wrappers.",
+     "hint": "If you 'override' an extension in a subclass, which one runs — and why does that surprise people?",
+     "objectives": [
+      "Use extensions with static-dispatch awareness"
+     ],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "android-interview-sc5",
+     "title": "Delegation in one keyword",
+     "situation": "Whiteboard round. 'Implement an observable property: log every assignment, without repeating code in each setter.'",
+     "prompt": "What is the idiomatic Kotlin solution?",
+     "evidence": [],
+     "choices": [
+      "Property delegation: `var name: String by Delegates.observable(\"<none>\") { _, old, new -> log(\"$old -> $new\") }` — or a custom `ReadWriteProperty` for reusable logic; delegation composes where inheritance would tangle.",
+      "A base class with a custom setter that subclasses override — inheritance is the OOP answer.",
+      "A global map from property name to listener, updated manually in each setter.",
+      "Reflection: scan fields at runtime and intercept writes — fully generic."
+     ],
+     "answer": 0,
+     "why": "`by` delegates getter/setter to an object implementing getValue/setValue — `lazy`, `observable`, `vetoable` are stdlib examples, and custom delegates encapsulate cross-cutting logic (validation, persistence, logging) once. Class delegation (`class Repo(...) : Api by apiImpl`) does the same for interfaces. Name the mechanism: the compiler generates the forwarding.",
+     "hint": "What code would you otherwise copy into every setter — and what language feature generates it for you?",
+     "objectives": [
+      "Apply property and class delegation"
+     ],
+     "mins": 6,
+     "difficulty": 3
+    },
+    {
+     "id": "android-interview-sc6",
+     "title": "Variance: in and out",
+     "situation": "Generics round. You have `Producer<out T>` and `Consumer<in T>`. The interviewer asks why a `Producer<Dog>` is assignable to `Producer<Animal>`.",
+     "prompt": "What is the correct explanation?",
+     "evidence": [],
+     "choices": [
+      "`out T` declares covariance: T only appears in output positions, so a producer of Dogs is usable wherever a producer of Animals is expected — type-safe because you can only get Animals out. `in T` is contravariance for consumers; invariant `T` allows neither.",
+      "Kotlin generics are covariant by default, like Java arrays.",
+      "It is assignable because Dog and Animal are both classes — any generic of related types is assignable.",
+      "Variance is a runtime check the JVM performs on each call."
+     ],
+     "answer": 0,
+     "why": "Use-site vs declaration-site variance is a senior filter: `out` (producer) = covariant, `in` (consumer) = contravariant, plain `T` = invariant. The mnemonic is PECS (producer-extends, consumer-super). Star projections (`*`) come up with unknown type arguments. Java's `? extends` is the use-site cousin.",
+     "hint": "If you can only take Ts OUT of it, what harm is there in treating it as a producer of a supertype?",
+     "objectives": [
+      "Explain declaration-site variance"
+     ],
+     "mins": 6,
+     "difficulty": 3
+    }
+   ]
+  },
+  {
+   "id": "android-framework",
+   "name": "Android Framework",
+   "summary": "Activities, fragments, lifecycles, intents, views, services, and permissions — the platform mechanics interviewers probe.",
+   "scenarios": [
+    {
+     "id": "android-interview-sc7",
+     "title": "Activity lifecycle order",
+     "situation": "Framework round. 'Walk me through the activity lifecycle when the user gets a phone call mid-form.'",
+     "prompt": "What is the correct sequence?",
+     "evidence": [],
+     "choices": [
+      "onPause (call UI takes over; save light state) -> onStop (fully obscured) — and on return onRestart -> onStart -> onResume; the form's unsaved input belongs in onSaveInstanceState or a ViewModel, not in onPause file writes.",
+      "onDestroy -> onCreate — the system kills and recreates the activity on every interruption.",
+      "onStop -> onPause — stop fires before pause when obscured quickly.",
+      "Nothing happens — phone calls are handled by the system without touching the activity."
+     ],
+     "answer": 0,
+     "why": "The order is onCreate -> onStart -> onResume (visible + interactive), then onPause -> onStop (-> onDestroy). onPause must be fast (it blocks the incoming activity); heavy saves go to onStop or background. Configuration changes (rotation) destroy and recreate — which is why ViewModel exists.",
+     "hint": "Which callback must return instantly because it gates the incoming screen — and where does the form data survive rotation?",
+     "objectives": [
+      "Narrate the activity lifecycle cold"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "android-interview-sc8",
+     "title": "Explicit vs implicit intent",
+     "situation": "Framework round. You need to open your own `DetailActivity` with an item id, and separately let the user share text to any app.",
+     "prompt": "Which intent type for each, and why?",
+     "evidence": [],
+     "choices": [
+      "Explicit intent (targeting DetailActivity::class.java with the id extra) for in-app navigation — precise and safe; implicit intent (ACTION_SEND with type text/plain and a chooser) for sharing — resolved by the system against installed apps' intent filters.",
+      "Implicit for both — the system resolves your own activities too.",
+      "Explicit for both — hardcode the share target package for reliability.",
+      "Broadcasts for both — intents are legacy; broadcasts are the modern API."
+     ],
+     "answer": 0,
+     "why": "Explicit = named component (in-app, secure); implicit = action + data resolved via intent filters (cross-app). Extras carry data — Parcelable for custom types. Security note: exported activities receiving implicit intents must validate input; deep links are implicit intents with data URIs.",
+     "hint": "Who resolves each one — your code naming a class, or the system matching filters?",
+     "objectives": [
+      "Choose intent types by trust boundary"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "android-interview-sc9",
+     "title": "Fragment state loss",
+     "situation": "Framework round. Crash report: `IllegalStateException: Can not perform this action after onSaveInstanceState` from a commit in a network callback.",
+     "prompt": "What is the root cause and the fix?",
+     "evidence": [],
+     "choices": [
+      "The transaction commits after the fragment's state was saved (activity backgrounded); the FragmentManager refuses because the state would be lost on restore — fix by committing before state save, using commitAllowingStateLoss only when loss is acceptable, or better, driving navigation from lifecycle-aware state (ViewModel + observer) instead of raw callbacks.",
+      "Fragments are deprecated; rewrite with activities to avoid the exception.",
+      "Wrap every commit in try/catch — the exception is harmless.",
+      "Call `executePendingTransactions()` in the callback — forcing execution bypasses the check."
+     ],
+     "answer": 0,
+     "why": "The rule: after onSaveInstanceState, the manager has snapshotted state; a commit would diverge from the snapshot. commitAllowingStateLoss silences it but can drop UI state — acceptable for fire-and-forget dialogs, not for navigation. The architectural fix is making commits a function of observed state, which is lifecycle-safe by construction.",
+     "hint": "What promise did onSaveInstanceState make, and what would your late commit do to that promise?",
+     "objectives": [
+      "Respect the fragment transaction window"
+     ],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "android-interview-sc10",
+     "title": "The recycled-view bug",
+     "situation": "Framework round. A RecyclerView shows the wrong avatar flashing on fast scroll before the right one loads — same symptom family as image lists everywhere.",
+     "prompt": "What is the complete fix?",
+     "evidence": [],
+     "choices": [
+      "Bind defensively: in onBindViewHolder set a placeholder/clear the image immediately, tag the load with the item id, and on completion verify the holder still represents that item before setting — with ListAdapter + DiffUtil so updates are minimal and payload-aware.",
+      "Disable view recycling with `setIsRecyclable(false)` — correctness first.",
+      "Load images synchronously in onBindViewHolder — ordering guaranteed.",
+      "Increase the view cache size so rows are never recycled during scroll."
+     ],
+     "answer": 0,
+     "why": "Recycling means the ViewHolder outlives its data: an async load started for position 5 completes when the holder shows position 42. The fix is identity-checking the completion (or cancelling in onViewRecycled) plus clearing stale state at bind time. DiffUtil/ListAdapter is the modern baseline — mention it unprompted.",
+     "hint": "When the slow image arrives, how does the holder know whether it still represents the same item?",
+     "objectives": [
+      "Bind RecyclerView rows defensively"
+     ],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "android-interview-sc11",
+     "title": "Surviving rotation",
+     "situation": "Architecture round. A form loses input on rotation; a download restarts too. The interviewer asks for the full strategy.",
+     "prompt": "What survives what, and where does each piece live?",
+     "evidence": [],
+     "choices": [
+      "UI state that must survive config changes lives in a ViewModel (scoped to the activity/fragment lifecycle, survives rotation, cleared on real finish); transient view state uses onSaveInstanceState (survives process death too); the download runs in a lifecycle-aware scope (viewModelScope, or WorkManager if it must survive process death).",
+      "Everything in onSaveInstanceState — it is the only sanctioned mechanism.",
+      "Set `android:configChanges` and handle rotation manually — ViewModels are overkill.",
+      "Static fields — they survive everything including process death."
+     ],
+     "answer": 0,
+     "why": "The three buckets: config change (ViewModel), process death (saved state / persistent store), permanent (database/files). viewModelScope cancels when the VM clears — perfect for UI-bound work. WorkManager is for 'must complete' work. configChanges is a trap: you inherit every config you did not handle.",
+     "hint": "Rotation destroys the activity but not the process. Process death destroys both. Which mechanism covers each?",
+     "objectives": [
+      "Place state in the right survival bucket"
+     ],
+     "mins": 6,
+     "difficulty": 3
+    },
+    {
+     "id": "android-interview-sc12",
+     "title": "Deep link into checkout",
+     "situation": "Design round. Marketing wants `shop.app/checkout?promo=SUMMER` to land on checkout with the promo applied, even from a cold start.",
+     "prompt": "What is your design?",
+     "evidence": [],
+     "choices": [
+      "An intent filter on the checkout activity (or Navigation deep link) matching the URI pattern, parse and validate the promo in one entry point, route through the normal checkout flow state (never a special-case screen), and handle cold start (build the back stack) vs warm start uniformly.",
+      "A special DeepLinkActivity per campaign — each link gets its own screen.",
+      "Parse the URI in Application.onCreate and store it in a static — available everywhere.",
+      "Deep links cannot carry parameters securely; tell marketing it is impossible."
+     ],
+     "answer": 0,
+     "why": "The senior points: single entry point with validation (never trust URI params — they are user input), back-stack synthesis on cold start (so Back behaves), and reusing the real flow (the promo is just initial state). App Links verification (assetlinks.json) earns a mention for claiming the domain.",
+     "hint": "Cold start vs warm start: what does Back do in each case, and where does the promo get validated?",
+     "objectives": [
+      "Design deep links as validated entry points"
+     ],
+     "mins": 6,
+     "difficulty": 3
+    }
+   ]
+  },
+  {
+   "id": "android-coroutines",
+   "name": "Coroutines & Concurrency",
+   "summary": "Suspend functions, dispatchers, structured concurrency, Flows, StateFlow/SharedFlow, and cooperative cancellation.",
+   "scenarios": [
+    {
+     "id": "android-interview-sc13",
+     "title": "What is a suspend function?",
+     "situation": "Coroutines round. 'Explain suspend functions to someone who only knows threads.'",
+     "prompt": "What is the accurate mental model?",
+     "evidence": [],
+     "choices": [
+      "A suspend function can pause without blocking its thread: at a suspension point the thread is freed for other work and the coroutine resumes later (possibly on another thread) — sequential-looking code that is non-blocking underneath, unlike Thread.sleep which holds the thread hostage.",
+      "A suspend function runs on a dedicated background thread automatically.",
+      "It is syntax sugar for callbacks — identical performance and semantics.",
+      "Suspend functions cannot call each other; each one needs its own thread."
+     ],
+     "answer": 0,
+     "why": "The thread analogy: blocking = thread sits idle holding resources; suspending = thread goes back to the pool. Suspension points are only at suspend calls — no preemption mid-computation, which is why shared state reasoning is easier than with threads. Callers must be coroutines (or builders like launch).",
+     "hint": "When your code hits a suspend call, what happens to the thread — and what happens to your local variables?",
+     "objectives": [
+      "Explain suspension vs blocking"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "android-interview-sc14",
+     "title": "Pick the dispatcher",
+     "situation": "Coroutines round. Three jobs: parse a 5MB JSON, write to Room, update a TextView.",
+     "prompt": "Which dispatcher for each?",
+     "evidence": [],
+     "choices": [
+      "JSON parsing -> Dispatchers.Default (CPU-bound work), Room write -> Dispatchers.IO (blocking I/O; Room's suspend DAOs handle this themselves), TextView -> Dispatchers.Main — and never hardcode: inject dispatchers so tests can swap in a TestDispatcher.",
+      "Everything on Dispatchers.IO — IO handles all background work.",
+      "Everything on Dispatchers.Main — coroutines are light, threads do not matter.",
+      "Dispatchers.Unconfined for all — it resumes wherever, which is fastest."
+     ],
+     "answer": 0,
+     "why": "Default = CPU-bound (sized to cores), IO = blocking I/O (large pool), Main = UI. Unconfined is a testing footgun (resumes on whatever thread). The testability point lands: hardcoded Dispatchers.IO in a repository makes tests flaky; inject and use StandardTestDispatcher.",
+     "hint": "What resource is each job actually waiting on — CPU, disk/network, or the UI toolkit?",
+     "objectives": [
+      "Match dispatchers to the waiting resource"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "android-interview-sc15",
+     "title": "One failure should not kill the screen",
+     "situation": "Coroutines round. A screen launches three child coroutines; one throws and cancels the other two. The interviewer wants the others to survive.",
+     "prompt": "What is the fix, and what principle is at play?",
+     "evidence": [],
+     "choices": [
+      "Use `supervisorScope` (or a SupervisorJob in the scope): a child's failure does not propagate to siblings — versus regular structured concurrency where one failure cancels the whole scope; still handle each child's exception explicitly.",
+      "Wrap each child in try/catch — structured concurrency respects caught exceptions.",
+      "Launch each child in GlobalScope — independent scopes never cancel each other.",
+      "Set `CoroutineExceptionHandler` on the parent — handlers convert failures to successes."
+     ],
+     "answer": 0,
+     "why": "Structured concurrency's default (fail-fast, cancel siblings) is right for 'all or nothing' work; supervisorScope is for independent work items. GlobalScope is the banned answer (no lifecycle, leaks). The handler note: CoroutineExceptionHandler only works on root coroutines — a favorite follow-up trap.",
+     "hint": "Are these three jobs one unit of work, or three independent ones — and which scope construct matches that?",
+     "objectives": [
+      "Choose supervisor vs structured failure semantics"
+     ],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "android-interview-sc16",
+     "title": "StateFlow vs SharedFlow",
+     "situation": "Flow round. The interviewer asks when you would use each for UI events vs UI state.",
+     "prompt": "What is the correct split?",
+     "evidence": [],
+     "choices": [
+      "StateFlow for state (always has a value, conflates to latest, new collectors get current state immediately — perfect for UiState); SharedFlow for events (no initial value, configurable replay/buffer, one-shot navigation/toast events) — with the caveat that events-via-SharedFlow can be lost on rotation, which is why many teams model events as state.",
+      "They are interchangeable — pick whichever name you like.",
+      "SharedFlow for state (it replays everything) and StateFlow for events (it conflates duplicates).",
+      "LiveData for both — Flows are experimental."
+     ],
+     "answer": 0,
+     "why": "StateFlow = state holder (value semantics, conflation); SharedFlow = event bus (hot, multicast, replay cache configurable). The rotation-loss caveat on one-shot events is senior-level: a SharedFlow event emitted while no collector is active is gone unless replay > 0 — hence the 'events as state' pattern or Channel-based alternatives.",
+     "hint": "A screen rotates mid-navigation-event. Which flow type still has something to deliver to the new collector, and why might that be a problem?",
+     "objectives": [
+      "Separate state holders from event buses"
+     ],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "android-interview-sc17",
+     "title": "The leak that survives the screen",
+     "situation": "Debugging round. A repository launches a coroutine in GlobalScope to poll the server; users report battery drain after leaving the screen.",
+     "prompt": "What is wrong and what is the structured fix?",
+     "evidence": [],
+     "choices": [
+      "GlobalScope lives for the app's lifetime — the polling coroutine is never cancelled when the screen dies. Fix: launch in a structured scope tied to the UI lifecycle (viewModelScope, lifecycleScope), make the loop cooperative (check isActive / use cancellable suspend calls), and cancel on clear.",
+      "Polling is inherently leaky; replace it with a foreground service that never stops.",
+      "The drain is from the network, not the coroutine — batching fixes it without touching scopes.",
+      "GlobalScope is fine; the bug must be a missing `delay()` making it a busy loop."
+     ],
+     "answer": 0,
+     "why": "Cancellation in coroutines is cooperative: cancel() only takes effect at suspension points or explicit checks — a `while(true)` with no suspend call ignores cancellation forever. Structured scopes (viewModelScope auto-cancels onCleared) turn 'remember to cancel' into a lifecycle guarantee. This mirrors the iOS Task-cancellation lesson.",
+     "hint": "What owns the coroutine's lifetime right now — and what should?",
+     "objectives": [
+      "Scope coroutines to lifecycles; cancel cooperatively"
+     ],
+     "mins": 6,
+     "difficulty": 3
+    },
+    {
+     "id": "android-interview-sc18",
+     "title": "Search as you type",
+     "situation": "Architecture round. Design search-as-you-type over a Flow of query strings hitting a repository.",
+     "prompt": "What is the idiomatic Flow design?",
+     "evidence": [],
+     "choices": [
+      "`queryFlow.debounce(300).distinctUntilChanged().flatMapLatest { repo.search(it) }.catch { emit(emptyList()) }.flowOn(Dispatchers.IO).stateIn(viewModelScope, ...)` — debounce input, drop repeats, cancel stale searches on new input (flatMapLatest), contain errors without killing the flow, and expose as StateFlow for the UI.",
+      "`queryFlow.collect { repo.search(it) }` launching a new coroutine per keystroke — simple and correct.",
+      "Throttle the EditText with a Timer and call the API on the main thread — fewer moving parts.",
+      "Cache every keystroke's results in a map — memory is cheap, recomputation is not."
+     ],
+     "answer": 0,
+     "why": "Each operator earns its place: debounce (wait for pause), distinctUntilChanged (skip repeats), flatMapLatest (cancel stale — the same cancellation theme as the iOS list), catch (flows die on uncaught exceptions), flowOn (context for upstream). stateIn with SharingStarted.WhileSubscribed is the standard ViewModel exposure.",
+     "hint": "When the user types 'a', 'ab', 'abc' quickly, how many network calls fire — and what happens to the first two?",
+     "objectives": [
+      "Compose Flow operators into a search pipeline"
+     ],
+     "mins": 6,
+     "difficulty": 3
+    }
+   ]
+  },
+  {
+   "id": "android-persistence",
+   "name": "Persistence on Android",
+   "summary": "DataStore, Room, migrations, and scoped storage — matching each data kind to its store.",
+   "scenarios": [
+    {
+     "id": "android-interview-sc19",
+     "title": "Goodbye SharedPreferences",
+     "situation": "Persistence round. The app stores settings and a session token in SharedPreferences. The interviewer asks what you would change.",
+     "prompt": "What is the modern answer?",
+     "evidence": [],
+     "choices": [
+      "Migrate to DataStore (Preferences DataStore for settings — async, transactional, no blocking reads); move the token out of prefs entirely into EncryptedSharedPreferences or the Keystore-backed store — plain prefs are unencrypted XML.",
+      "Keep SharedPreferences — it is stable and DataStore is beta.",
+      "Store everything in a SQLite table with one row — unified and queryable.",
+      "Use static fields — fastest access, no disk I/O."
+     ],
+     "answer": 0,
+     "why": "SharedPreferences' sins: synchronous disk I/O on the UI thread (ANRs), no error signaling, no transactions, unencrypted XML. DataStore fixes the mechanics (protobuf or preferences, Flow-based, transactional); EncryptedSharedPreferences/Keystore fixes the secrecy. The token-in-plaintext-prefs is the security finding to name first.",
+     "hint": "What does a SharedPreferences read do to the calling thread — and what does the file look like to anyone with a backup?",
+     "objectives": [
+      "Modernize prefs: DataStore + encrypted secrets"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "android-interview-sc20",
+     "title": "Room basics",
+     "situation": "Persistence round. 'Design the local cache for a product catalog with categories.'",
+     "prompt": "What are the Room building blocks?",
+     "evidence": [],
+     "choices": [
+      "`@Entity` data classes (tables), `@Dao` interfaces (queries as functions, suspend or Flow-returning), `@Database` abstract class tying them together — with `@Relation`/embedded for category joins, and the DAO as the single access point the repository talks to.",
+      "One `@Entity` per screen — tables should mirror UI.",
+      "Raw SQLiteOpenHelper — Room is abstraction overhead.",
+      "Store the catalog as JSON in DataStore — Room is only for huge datasets."
+     ],
+     "answer": 0,
+     "why": "Room is SQLite with compile-time query verification — bad SQL fails the build, not the user. DAOs returning Flow give reactive queries for free; @Transaction guards multi-statement consistency; TypeConverters handle non-primitive columns. The interview check: entities model data, not screens.",
+     "hint": "Where does a SQL typo surface — at compile time or on a user's device?",
+     "objectives": [
+      "Structure Room: entities, DAOs, database"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "android-interview-sc21",
+     "title": "Room migration",
+     "situation": "Persistence round. V2 adds a non-null column to the products table. Users have V1 databases.",
+     "prompt": "How do you ship it?",
+     "evidence": [],
+     "choices": [
+      "Write an explicit `Migration(1, 2)` with `ALTER TABLE ... ADD COLUMN ... NOT NULL DEFAULT ...` (SQLite requires a default for non-null adds on existing rows), bump the version, and test with a real V1 database — destructive fallback only as a last resort, never silent data loss.",
+      "Bump the version and let Room infer it — migrations are automatic.",
+      "Use `fallbackToDestructiveMigration()` — users can re-download.",
+      "Delete the database file on upgrade — clean slate, no migration code."
+     ],
+     "answer": 0,
+     "why": "Room validates migrations: a missing or wrong Migration crashes at runtime, and auto-migration covers only simple cases. Test migrations with the room-testing artifact against exported schemas. The product question to raise: is wiping user data acceptable? Usually no — hence explicit migrations.",
+     "hint": "Existing rows need a value for the new non-null column. Where does it come from?",
+     "objectives": [
+      "Write explicit, tested Room migrations"
+     ],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "android-interview-sc22",
+     "title": "Saving a photo on Android 14",
+     "situation": "Framework round. The app saves edited photos. The interviewer asks how, given scoped storage.",
+     "prompt": "What is the correct modern approach?",
+     "evidence": [],
+     "choices": [
+      "Write via MediaStore into the shared collection (no storage permission needed for your own files on 10+; request READ_MEDIA_IMAGES only to read others'), or keep app-private files in app-specific storage — never request broad storage permissions or use legacy external paths.",
+      "Request WRITE_EXTERNAL_STORAGE and write to /sdcard/Photos — it has always worked.",
+      "Ask for MANAGE_EXTERNAL_STORAGE — simplest, covers everything.",
+      "Save to the app's private dir and tell users to find it with a file manager."
+     ],
+     "answer": 0,
+     "why": "Scoped storage (10+) ended shared-filesystem free-for-all: MediaStore for media collections, Storage Access Framework for user-picked documents, app-specific dirs for private files. Permission minimalism is graded — requesting broad access you do not need is a review and interview red flag.",
+     "hint": "Whose files are you writing — yours alone, or the user's shared collection? The answer picks the API.",
+     "objectives": [
+      "Respect scoped storage boundaries"
+     ],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "android-interview-sc23",
+     "title": "Offline-first sync conflicts",
+     "situation": "System design. Two devices edit the same product offline; both sync later.",
+     "prompt": "What conflict strategy do you present?",
+     "evidence": [],
+     "choices": [
+      "State the options with tradeoffs: last-write-wins (simple, loses data), field-level merge (better UX, more code), tombstones for deletes (so a delete syncs instead of resurrecting), version vectors/CRDTs (correct, heavy) — recommend one for the product's data (e.g. LWW for catalog, merge for user content) and show the sync protocol (delta sync with server timestamps, idempotent upserts).",
+      "Server always wins — clients are untrusted anyway.",
+      "Whichever syncs last wins — conflicts are rare, do not over-engineer.",
+      "Lock the record server-side during offline edits — prevents conflicts entirely."
+     ],
+     "answer": 0,
+     "why": "The graded move is refusing a single global answer: different data wants different strategies. Tombstones deserve emphasis — without them, deletes vanish on sync and rows resurrect. Idempotency (retry-safe upserts) and delta sync (not full re-download) round out the senior answer.",
+     "hint": "Device A deletes a product while device B edits it offline. What does each device's sync payload need to contain for this to resolve sanely?",
+     "objectives": [
+      "Present conflict strategies per data type"
+     ],
+     "mins": 6,
+     "difficulty": 3
+    },
+    {
+     "id": "android-interview-sc24",
+     "title": "Choosing the store",
+     "situation": "Design round. The app needs: user settings, an auth token, a 20k-row offline catalog, and cached images.",
+     "prompt": "Assign each to its store and defend it.",
+     "evidence": [],
+     "choices": [
+      "Settings -> DataStore Preferences (typed, async, transactional); token -> EncryptedSharedPreferences/Keystore (encrypted, access-controlled); catalog -> Room (queryable, indexed, migrations); images -> disk cache via Coil's disk cache or app storage with an LRU policy (never the database).",
+      "Room for everything — one store, one API.",
+      "DataStore for everything — modern and simple.",
+      "Files for everything — databases are overkill on mobile."
+     ],
+     "answer": 0,
+     "why": "The ladder again, Android edition: each store's superpower (DataStore: async prefs; Keystore: secrecy; Room: queries; disk: blobs) matched to the data's need. The classic trap is BLOBs in SQLite — it bloats the DB, slows queries, and complicates migrations; images belong on disk with paths in the DB.",
+     "hint": "Which of these four needs to answer 'give me all X where Y' — and which just needs 'give me the value for this key'?",
+     "objectives": [
+      "Match each data kind to its store"
+     ],
+     "mins": 6,
+     "difficulty": 3
+    }
+   ]
+  },
+  {
+   "id": "android-architecture",
+   "name": "App Architecture & Testing",
+   "summary": "MVVM, repository, Hilt, offline-first, UDF, and testing ViewModels with virtual time.",
+   "scenarios": [
+    {
+     "id": "android-interview-sc25",
+     "title": "Why MVVM on Android?",
+     "situation": "Architecture round. 'Why does the Android community default to MVVM?'",
+     "prompt": "What is the real reason, not the slogan?",
+     "evidence": [],
+     "choices": [
+      "The ViewModel survives configuration changes while activities/fragments do not — so UI state and in-flight work live somewhere rotation-safe; the View exposes state (UiState) and events flow up, which also makes the logic unit-testable without Robolectric or devices.",
+      "Google mandates it — Play Store rejects MVC apps.",
+      "MVVM is faster at runtime than MVC — data binding skips the main thread.",
+      "It is just naming: MVVM, MVC, and MVP are identical on Android."
+     ],
+     "answer": 0,
+     "why": "The lifecycle argument is the honest one: activities die on rotation, ViewModels do not — that single fact drives the whole pattern. UDF (unidirectional data flow: events up, state down) is the discipline that keeps it sane. Testability without Android framework classes is the second pillar.",
+     "hint": "What dies on rotation, what survives — and where would you rather your loaded data live?",
+     "objectives": [
+      "Justify MVVM from the lifecycle"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "android-interview-sc26",
+     "title": "The repository pattern",
+     "situation": "Architecture round. Screens currently call the API and the database directly.",
+     "prompt": "What does introducing a repository buy you?",
+     "evidence": [],
+     "choices": [
+      "A single source-of-truth boundary: the UI asks the repository for data and the repository decides (cache-first, network-first, refresh policies) — screens stop knowing where data lives, offline behavior becomes one policy instead of N ad-hoc ones, and tests fake one interface.",
+      "It is a required Room annotation — databases need repositories to compile.",
+      "It makes network calls faster by pooling connections.",
+      "Nothing measurable; it is ceremony for large teams."
+     ],
+     "answer": 0,
+     "why": "Repository = 'the app's data API'. The decision logic inside (when to hit network, when to serve cache, how to merge) is the product's offline policy in one place. Expose Flows so the UI reacts to cache updates that arrive after a network refresh — the reactive single-source-of-truth payoff.",
+     "hint": "When product says 'show cached data instantly, refresh in background,' how many screens implement that logic today — and after a repository?",
+     "objectives": [
+      "Centralize data decisions in a repository"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "android-interview-sc27",
+     "title": "Unidirectional data flow",
+     "situation": "Architecture round. A screen has state scattered across five mutable fields updated from callbacks.",
+     "prompt": "How does UDF fix it, and what is the event/state split?",
+     "evidence": [],
+     "choices": [
+      "Single `UiState` data class held in a StateFlow; UI renders it; user actions arrive as events (sealed interface) to one `onEvent` entry point that reduces to a new state — one render function of one state object, no partial updates, state changes replayable and testable.",
+      "Make all five fields `var` in the fragment — fewer abstractions, direct updates.",
+      "Two-way data binding on every field — the framework syncs everything.",
+      "Store state in the Application object — globally visible, always consistent."
+     ],
+     "answer": 0,
+     "why": "UDF's power is the single reduction point: every state change flows through one function you can log, test, and time-travel. Events (one-shot: navigation, toasts) stay separate from state (persistent: list contents) — conflating them is the classic bug (toast re-firing on rotation).",
+     "hint": "If you logged every state transition for a bug report, how many places would you instrument — before and after UDF?",
+     "objectives": [
+      "Funnel UI through events-up, state-down"
+     ],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "android-interview-sc28",
+     "title": "Hilt scoping",
+     "situation": "DI round. Two ViewModels need the same repository instance; a per-screen analytics tracker must not leak across screens.",
+     "prompt": "How do you scope these with Hilt?",
+     "evidence": [],
+     "choices": [
+      "Repository: `@Singleton` (or an activity-retained scope if it holds UI-bound caches) so both ViewModels share one instance and one cache; tracker: unscoped or `@ActivityScoped`/`@ViewModelScoped` so it dies with the screen — and you can articulate why singletons of stateful things are a testability and memory smell.",
+      "Everything `@Singleton` — one instance is always simplest.",
+      "New instance per injection — sharing state is a bug source.",
+      "Static fields instead of Hilt — DI frameworks are overhead."
+     ],
+     "answer": 0,
+     "why": "Scoping = lifetime control. The interview check: does the candidate connect scope to lifecycle (who creates, who destroys) and to testability (singletons make tests order-dependent)? Constructor injection as the default, Hilt modules for interfaces/third-party types.",
+     "hint": "Who should destroy the analytics tracker, and when — and what breaks if the repository is recreated per ViewModel?",
+     "objectives": [
+      "Scope dependencies to their lifetimes"
+     ],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "android-interview-sc29",
+     "title": "Test the ViewModel",
+     "situation": "Testing round. `SearchViewModel` debounces queries and calls a repository. 'Make it unit-testable.'",
+     "prompt": "What is the full recipe?",
+     "evidence": [],
+     "choices": [
+      "Inject the repository (interface) and a CoroutineDispatcher; in tests use a fake repository plus `StandardTestDispatcher` with `runTest` — advance virtual time past the debounce (`advanceTimeBy(300)`), assert the emitted UiState sequence with Turbine; no real delays, no network, deterministic.",
+      "Test against the real repository and staging API — fakes lie.",
+      "Use `Thread.sleep(500)` in tests to wait out the debounce — simple and honest.",
+      "ViewModels cannot be unit tested; use Espresso for everything."
+     ],
+     "answer": 0,
+     "why": "The trio: inject dispatchers (virtual time), fake the repository (deterministic data), Turbine (assert flow emissions in order). runTest skips delays automatically — tests run in milliseconds. Also test the sad paths: repository throws -> Error state; rapid queries -> only latest searched.",
+     "hint": "How do you test a 300ms debounce without waiting 300ms — and what breaks if the dispatcher is hardcoded?",
+     "objectives": [
+      "Test ViewModels with virtual time + Turbine"
+     ],
+     "mins": 6,
+     "difficulty": 3
+    },
+    {
+     "id": "android-interview-sc30",
+     "title": "Offline-first messaging app",
+     "situation": "System design. 'Design the Android client for an offline-first messaging app.' 20 minutes.",
+     "prompt": "What architecture do you present?",
+     "evidence": [],
+     "choices": [
+      "Room as source of truth; repository merging local + network; WorkManager outbox for sends (survives process death, retries with backoff); socket/FCM for inbound with delta sync on reconnect; UI as StateFlow of UiState with optimistic message states (sending/sent/failed); conflict story for edits/deletes.",
+      "Poll the server every 5 seconds and render responses — simple and robust.",
+      "Keep messages in memory and refetch on launch — offline is an edge case.",
+      "One giant activity holding a socket — fewer layers, fewer bugs."
+     ],
+     "answer": 0,
+     "why": "Same graded pieces as any offline-first design: source of truth, outbox pattern, sync semantics, optimistic UI. Android-specific: WorkManager for guaranteed sends, FCM for wakeup, Doze mode implications for sockets (hence FCM + delta sync, not a persistent socket). Draw the layers and trace one send.",
+     "hint": "The user hits send in a tunnel. Walk me through every component that touches that message before it shows 'sent'.",
+     "objectives": [
+      "Design offline-first with Android primitives"
+     ],
+     "mins": 6,
+     "difficulty": 3
+    }
+   ]
+  },
+  {
+   "id": "android-guided-build",
+   "name": "Guided App Build",
+   "summary": "Scope a take-home, structure modules, build the networking layer, and self-review like the grader.",
+   "scenarios": [
+    {
+     "id": "android-interview-sc31",
+     "title": "Scoping the take-home",
+     "situation": "Take-home round. 4 hours: 'Build a GitHub repo browser for Android.'",
+     "prompt": "How do you scope it?",
+     "evidence": [],
+     "choices": [
+      "One polished vertical slice: repo list (paging), detail, search with debounce, full state matrix (loading/empty/error/offline), one architecture (MVVM + repository), ViewModel tests, and a README with decisions and cut scope — depth and judgment over feature count.",
+      "Every GitHub feature: repos, gists, notifications, settings — breadth wins.",
+      "Pixel-perfect custom animations first — delight is memorable.",
+      "Skip tests and README — reviewers only run the APK."
+     ],
+     "answer": 0,
+     "why": "Same rubric logic as any take-home: reviewers grade decision quality under constraint. Android-specific signals: proper lifecycle handling (rotation keeps state), no leaked coroutines, and Material basics right. Timebox and name what you cut.",
+     "hint": "What does the reviewer learn from your README that the APK cannot show them?",
+     "objectives": [
+      "Scope take-homes to a polished slice"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "android-interview-sc32",
+     "title": "Module structure",
+     "situation": "Build round. Greenfield app, growing team. How do you structure it?",
+     "prompt": "How do you structure the project?",
+     "evidence": [],
+     "choices": [
+      "Feature modules (feature-search, feature-detail) over shared core (core-network, core-data, core-ui), dependencies pointing one way (features -> core), public API surfaces minimal — navigable now, extractable to dynamic features later.",
+      "One module, packages by layer — modules are premature optimization.",
+      "One package per screen class — maximum locality.",
+      "Mirror the navigation graph as modules — navigation is the architecture."
+     ],
+     "answer": 0,
+     "why": "Feature-first grouping: a new hire opens one module and sees a vertical slice. The one-way dependency rule keeps extraction mechanical. Mention build-time wins (parallel compilation, cacheability) as the scaling argument — interviewers like the engineering-economics angle.",
+     "hint": "A new hire fixes a search bug. How much of the codebase must they understand first?",
+     "objectives": [
+      "Structure by feature, depend one way"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "android-interview-sc33",
+     "title": "Networking with Retrofit",
+     "situation": "Build round. Design the networking layer.",
+     "prompt": "What does a strong Retrofit setup look like?",
+     "evidence": [],
+     "choices": [
+      "Retrofit interface per API area with suspend functions returning typed models (Moshi/kotlinx.serialization converter), OkHttp with auth interceptor + logging interceptor (debug only), a typed error mapping layer, and the repository — not screens — owning call/caching policy; inject for tests with MockWebServer.",
+      "HttpURLConnection in each ViewModel — no dependencies, full control.",
+      "One giant Retrofit interface with 200 methods — discoverable.",
+      "String URLs at call sites — the backend docs are the source of truth."
+     ],
+     "answer": 0,
+     "why": "Suspend functions make Retrofit calls main-safe and cancellable; interceptors centralize auth/logging; converters centralize parsing. MockWebServer gives true HTTP-level tests. The error-mapping layer (HTTP codes -> domain errors) is the senior detail — screens should never see a 401.",
+     "hint": "When auth headers rotate, how many files change — and what does a screen see when the token expires?",
+     "objectives": [
+      "Centralize networking behind typed clients"
+     ],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "android-interview-sc34",
+     "title": "Compose state hoisting",
+     "situation": "Build round. A search screen's composables each hold their own query state and they disagree.",
+     "prompt": "What is the fix, and the rule behind it?",
+     "evidence": [],
+     "choices": [
+      "Hoist state up: state lives in the ViewModel (or the lowest common parent), composables receive state + event lambdas and stay stateless — 'state down, events up'; `remember` only for truly local UI state (scroll position, text field draft).",
+      "Give every composable its own `remember` state — locality is clean.",
+      "Use a global mutable state object — everything stays in sync trivially.",
+      "Pass the ViewModel into every composable — direct access, no plumbing."
+     ],
+     "answer": 0,
+     "why": "Hoisting makes composables predictable and previewable: same inputs, same UI. rememberSaveable survives rotation for UI state; ViewModel survives for business state. The test: can you @Preview this composable with fake data? If not, it is not hoisted enough.",
+     "hint": "Two composables show different queries. Who owns the truth — and how would you preview the screen?",
+     "objectives": [
+      "Hoist state; keep composables stateless"
+     ],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "android-interview-sc35",
+     "title": "Finding jank",
+     "situation": "Build round. The list stutters on low-end devices. One hour.",
+     "prompt": "What is your systematic pass?",
+     "evidence": [],
+     "choices": [
+      "Profile with the Android Profiler / Perfetto: find the hot frame work (overdraw, heavy composition, image decode on main, allocations in bind), fix the measured cause (remember expensive computations, lazy layouts, Coil image pipeline, baseline profiles), re-measure — numbers before and after.",
+      "Rewrite in Views — Compose is the obvious cause.",
+      "Reduce image resolution globally — fewer pixels, less work.",
+      "Wrap bind code in `withContext(Dispatchers.IO)` — background everything."
+     ],
+     "answer": 0,
+     "why": "Same measurement discipline: profile, fix the measured bottleneck, re-measure. Compose specifics: unstable parameters causing excess recomposition (Layout Inspector / composition counts), remember for derived state, LazyColumn keys, Baseline Profiles for startup. Quote frame-time numbers.",
+     "hint": "What tells you whether the stutter is CPU, GPU overdraw, or GC churn — before you change code?",
+     "objectives": [
+      "Profile jank; fix the measured cause"
+     ],
+     "mins": 6,
+     "difficulty": 3
+    },
+    {
+     "id": "android-interview-sc36",
+     "title": "Self code review",
+     "situation": "Build round. 30 minutes before submitting the take-home.",
+     "prompt": "What is your checklist?",
+     "evidence": [],
+     "choices": [
+      "Read the diff: no `!!`, no hardcoded dispatchers, no leaked scopes (GlobalScope), rotation preserves state, airplane mode shows the error state with retry, no API keys committed, README covers setup/decisions/cut scope — then submit.",
+      "Add more features — bigger diffs impress.",
+      "Reformat everything — fresh style signals care.",
+      "Submit now — self-review adds nothing."
+     ],
+     "answer": 0,
+     "why": "The first-five-minutes rule applies: clean diff, handled edge states, no secrets, README preempting questions. Android-specific checks (rotation, process death via 'Don't keep activities', no committed google-services.json secrets) show platform maturity.",
+     "hint": "Turn on 'Don't keep activities' and rotate with airplane mode on. What breaks?",
+     "objectives": [
+      "Review your diff like the grader"
+     ],
+     "mins": 6,
+     "difficulty": 3
+    }
+   ]
+  },
+  {
+   "id": "android-mock-circuit",
+   "name": "Mock Interview Circuit",
+   "summary": "Full-loop rehearsal: rapid-fire fundamentals, whiteboard coding, ANR triage under time, behavioral STAR.",
+   "scenarios": [
+    {
+     "id": "android-interview-sc37",
+     "title": "Explain coroutines in 60 seconds",
+     "situation": "Phone screen. 'Explain Kotlin coroutines to a backend engineer who knows threads.'",
+     "prompt": "What is the 60-second version?",
+     "evidence": [],
+     "choices": [
+      "Lightweight concurrency: suspend functions pause without blocking threads, so thousands of coroutines share a small pool; structured scopes tie lifetimes to UI lifecycles (viewModelScope), dispatchers pick the thread pool, and cancellation is cooperative — sequential-looking code, non-blocking underneath.",
+      "Coroutines are Kotlin's threads — one coroutine equals one thread.",
+      "Coroutines are a UI framework for animations.",
+      "They are identical to RxJava, just renamed."
+     ],
+     "answer": 0,
+     "why": "The backend framing wants the contrast with threads (cheap, non-blocking suspension) plus the Android payoff (lifecycle-bound scopes kill leaks). Land dispatchers and cooperative cancellation in one breath each — that is the whole 60 seconds.",
+     "hint": "What happens to the thread at a suspension point — and who guarantees the coroutine dies with the screen?",
+     "objectives": [
+      "Explain coroutines crisply"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "android-interview-sc38",
+     "title": "Whiteboard: debounce in Kotlin",
+     "situation": "Coding round. 'Debounce search input: 300ms after the last keystroke.'",
+     "prompt": "What is the idiomatic solution?",
+     "evidence": [],
+     "choices": [
+      "`queryFlow.debounce(300).flatMapLatest { repo.search(it) }` collected in viewModelScope — or manually: keep a `Job?`, cancel it per keystroke, launch a new one with `delay(300)`; both cancel stale work, which is the actual requirement.",
+      "`Thread.sleep(300)` on the main thread per keystroke — delays accumulate naturally.",
+      "Fire on every keystroke; the server deduplicates.",
+      "A while loop checking `System.currentTimeMillis()` — precise, no dependencies."
+     ],
+     "answer": 0,
+     "why": "Debounce = cancel previous, schedule new — same theme as iOS. The Flow one-liner shows fluency; the manual Job version shows understanding. flatMapLatest adds stale-search cancellation for free. Mention distinctUntilChanged unprompted for the extra point.",
+     "hint": "What must happen to the previous pending search when a new keystroke arrives?",
+     "objectives": [
+      "Implement debounce with cancellation"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "android-interview-sc39",
+     "title": "ANR under time pressure",
+     "situation": "Onsite debugging. Users report ANRs on a form screen; you have the Play Console stack traces and 10 minutes.",
+     "prompt": "What is your triage order?",
+     "evidence": [],
+     "choices": [
+      "Read the main-thread stack in the ANR trace: find what blocks it (disk I/O, lock, heavy parse, Binder call) — ANR = main thread unresponsive ~5s on input; form the hypothesis from the trace, reproduce with StrictMode on, move the work off-main (or cache it), verify with a stress repro.",
+      "Increase the ANR timeout in the manifest — fewer reports, same app.",
+      "Show a loading spinner during the block — users tolerate waits they can see.",
+      "The traces are sampled and unreliable; ignore them and rewrite the screen."
+     ],
+     "answer": 0,
+     "why": "Method over fix, same as any debugging round: the trace names the blocker, StrictMode catches it in dev, and the fix is moving work (or removing it — cache, lazy-load). Narrate hypotheses as you rule them out. Bonus: mention ApplicationExitInfo / vitals for production signal.",
+     "hint": "The trace shows the main thread parked inside a `read()` call. What does that tell you in one sentence?",
+     "objectives": [
+      "Triage ANRs from the main-thread trace"
+     ],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "android-interview-sc40",
+     "title": "Your hardest bug",
+     "situation": "Behavioral. 'Tell me about the hardest bug you fixed on Android.'",
+     "prompt": "What structure lands it?",
+     "evidence": [],
+     "choices": [
+      "STAR compressed: the symptom and why it was hard (device-specific, race, production-only), systematic narrowing (what you ruled out), root cause, fix plus guard (test, StrictMode, monitoring) — ending with the process change it caused.",
+      "Five minutes of deep technical detail — depth proves skill.",
+      "Pick a trivial bug to look fast.",
+      "Say you have never had a hard bug — refreshing honesty."
+     ],
+     "answer": 0,
+     "why": "Same grading as any behavioral: structure and growth, not impressiveness. Quantify: crash rate, devices affected, days to root cause, lines changed. The process-change ending is what interviewers remember.",
+     "hint": "What did this bug change about how you work?",
+     "objectives": [
+      "Answer behaviorals with STAR + lesson"
+     ],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "android-interview-sc41",
+     "title": "Design a feed",
+     "situation": "System design onsite. 'Design the Android client for a social feed.' 30 minutes.",
+     "prompt": "What do you draw first?",
+     "evidence": [],
+     "choices": [
+      "Data flow: Room as source of truth, repository with paging (Paging 3) over network+db, ViewModel exposing UiState via StateFlow, RecyclerView/Compose lazy list with DiffUtil, image pipeline (Coil) with cancellation on recycle, pull-to-refresh and retry states — then deep-dives (offline, prefetch, memory).",
+      "Start with the visual design — feeds are UI problems.",
+      "Draw the server architecture — backend matters more.",
+      "List every feature first — completeness over depth."
+     ],
+     "answer": 0,
+     "why": "Paging 3 is the expected answer for infinite lists (it handles the DB+network boundary); the rest mirrors the iOS feed: source of truth, cancellation, state matrix. Timebox: clarify, core flow, deep-dives. Name what you defer.",
+     "hint": "Trace one page of data from network to pixel — where is it cached, and what happens on rotation mid-load?",
+     "objectives": [
+      "Lead client system design from data flow"
+     ],
+     "mins": 6,
+     "difficulty": 3
+    },
+    {
+     "id": "android-interview-sc42",
+     "title": "The full loop simulation",
+     "situation": "Final prep. Onsite in 3 days: coding, architecture, debugging, behavioral.",
+     "prompt": "What is the highest-leverage plan?",
+     "evidence": [],
+     "choices": [
+      "Day 1: timed Kotlin reps (debounce, LRU, Flow pipelines) out loud; Day 2: architecture narrations (your app's architecture, offline-first) recorded and critiqued; Day 3: light review + STAR stories + sleep — no new topics the night before; one peer mock beats ten solo hours.",
+      "200 LeetCode hards — volume separates candidates.",
+      "Memorize API signatures — recall speed is the bottleneck.",
+      "Rest entirely — cramming hurts."
+     ],
+     "answer": 0,
+     "why": "Same principle: train the test format. Android loops add system-design and 'explain the framework' rounds — rehearse those narrations specifically, not just algorithms.",
+     "hint": "Which loop section is your weakest — does the plan spend the most time there?",
+     "objectives": [
+      "Train the test format, not just the material"
+     ],
+     "mins": 6,
+     "difficulty": 3
+    }
+   ]
+  }
+ ],
+ "lessons": [
+  {
+   "domain_id": "android-interview",
+   "title": "Android Engineering Interview Prep — Core concepts",
+   "concepts": [
+    "Android loops test five things: Kotlin precision (null safety, coroutines mental model), framework depth (lifecycles, intents, views), concurrency discipline (dispatchers, Flows, cancellation), architecture judgment (MVVM, repository, offline-first), and visible reasoning under time.",
+    "Kotlin's type system is your first line of defense: nullable types, data/sealed classes, and delegation remove whole bug classes — use them, and say why when you do.",
+    "The activity/fragment lifecycle is the platform's central fact: things die (rotation, process death) on schedules you do not control. Every state decision is really a survival-bucket decision: ViewModel, saved state, or persistent store.",
+    "Coroutines are structured concurrency: scopes own lifetimes, dispatchers match the waiting resource, cancellation is cooperative, and Flows model streams — StateFlow for state, SharedFlow for events.",
+    "Architecture is about the arrows: UI renders state, events flow up, the repository owns data decisions, and dependencies point one way. If you can draw the boxes and trace one user action through them, you can answer any architecture question.",
+    "The meta-skill is narration: state assumptions, name tradeoffs, timebox whiteboard work, and verify with tests or traces. The thinking is the product; the code is evidence."
+   ],
+   "example": {
+    "lang": "kotlin",
+    "code": "class SearchViewModel @Inject constructor(\n    private val repo: SearchRepository,\n    @IoDispatcher private val io: CoroutineDispatcher\n) : ViewModel() {\n    private val queries = MutableStateFlow(\"\")\n    val uiState: StateFlow<UiState> = queries\n        .debounce(300).distinctUntilChanged()\n        .flatMapLatest { q -> flow { emit(UiState.Content(repo.search(q))) } }\n        .catch { emit(UiState.Error(\"Search failed\")) }\n        .flowOn(io)\n        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), UiState.Loading)\n    fun onQuery(q: String) { queries.value = q }\n}",
+    "walkthrough": "One ViewModel, five interview themes: injected dispatcher and repository (testability), debounce + distinctUntilChanged + flatMapLatest (stale-search cancellation), catch (flows must not die), and StateFlow exposure for the UI. Narrate each operator's job and you own the coroutines round."
+   },
+   "pitfalls": [
+    "Common trap: `!!` anywhere in written code — interviewers read it as a scheduled NPE.",
+    "Common trap: GlobalScope or hardcoded Dispatchers.IO — unstructured lifetimes and untestable code.",
+    "Common trap: committing fragment transactions from callbacks without lifecycle awareness — the state-loss crash.",
+    "Common trap: answering 'which is better' with a winner instead of tradeoffs, measurement, and a deferral list."
+   ],
+   "try_it": "Work through this in the Labs tab."
+  }
+ ],
+ "labs": [
+  {
+   "id": "android-interview-lab1",
+   "domain_id": "android-interview",
+   "title": "Null-safety audit",
+   "objective": "Find every unsafe null assertion in a fixture and rewrite it with idiomatic null-safe Kotlin.",
+   "steps": [
+    "Open the fixture: `cat RiskyAdapter.kt` and list every `!!` you find.",
+    "For each one, decide: safe call + Elvis, `let` block, or a real precondition (`requireNotNull`)?",
+    "Write RiskyAdapter-fixed.kt with the rewrites applied.",
+    "Verify no assertions remain: `grep -c \"!!\" RiskyAdapter-fixed.kt` should print 0.",
+    "Verify the safe-call pattern is present: `grep -n \"?:\" RiskyAdapter-fixed.kt`."
+   ],
+   "checks": [
+    {
+     "command_pattern": "^cat\\s+RiskyAdapter\\.kt",
+     "expect_contains": "!!",
+     "hint": "Read the fixture — count the unsafe assertions first."
+    },
+    {
+     "command_pattern": "^grep\\s+-c\\s+\"!!\"",
+     "expect_contains": "0",
+     "hint": "Your fixed file must contain zero !! operators."
+    }
+   ]
+  },
+  {
+   "id": "android-interview-lab2",
+   "domain_id": "android-interview",
+   "title": "Scope the coroutine",
+   "objective": "Replace an unstructured GlobalScope launch with a lifecycle-bound scope and cooperative cancellation.",
+   "steps": [
+    "Open the fixture: `cat PollingRepo.kt` — find the GlobalScope.launch polling loop.",
+    "Identify what owns the coroutine's lifetime now (nothing — the process) and what should (the ViewModel).",
+    "Write PollingRepo-fixed.kt: inject a CoroutineScope, launch there, check `isActive` in the loop.",
+    "Verify the scope swap: `grep -n \"GlobalScope\" PollingRepo-fixed.kt` should print nothing.",
+    "Say out loud: why does cancellation need the loop to suspend or check isActive?"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^cat\\s+PollingRepo\\.kt",
+     "expect_contains": "GlobalScope",
+     "hint": "Find the unstructured launch in the fixture."
+    },
+    {
+     "command_pattern": "^grep\\s+.*isActive",
+     "expect_contains": "isActive",
+     "hint": "The fixed loop must cooperate with cancellation via isActive."
+    }
+   ]
+  }
+ ],
+ "simulations": [],
+ "consoleSims": [],
+ "terminalMissions": [],
+ "sections": [
+  {
+   "id": "android-interview-sec",
+   "title": "Android Engineering Interview Prep",
+   "kind": "path",
+   "lectures": [],
+   "lab_ids": [
+    "android-interview-lab1",
+    "android-interview-lab2"
+   ],
+   "drill_domain_ids": [
+    "android-kotlin-core",
+    "android-framework",
+    "android-coroutines",
+    "android-persistence",
+    "android-architecture",
+    "android-guided-build",
+    "android-mock-circuit"
+   ]
+  }
+ ],
+ "behavioral": [
+  {
+   "prompt": "Tell me about yourself — as an Android engineer.",
+   "framework": "Present -> past -> future in 90 seconds, anchored on shipped apps and platform depth.",
+   "points": [
+    "Current focus (e.g. Compose, coroutines, offline-first).",
+    "1-2 shipped Play Store apps and your contribution.",
+    "Why this team next."
+   ],
+   "pitfalls": [
+    "Chronological resume recitation.",
+    "No mention of real users or the Play Store."
+   ]
+  },
+  {
+   "prompt": "Tell me about the hardest production bug you fixed on Android.",
+   "framework": "STAR: symptom, narrowing, root cause, fix + guard.",
+   "points": [
+    "Why it was hard (device-specific, race, ANR).",
+    "How you narrowed it (traces, StrictMode, hypothesis list).",
+    "The process change afterward."
+   ],
+   "pitfalls": [
+    "Only the fix, not the investigation.",
+    "Blaming the OS or a teammate."
+   ]
+  },
+  {
+   "prompt": "Describe a disagreement with a designer or PM.",
+   "framework": "STAR with the tradeoff conversation centered.",
+   "points": [
+    "The technical constraint (performance, scope, platform limits).",
+    "Alternatives you proposed.",
+    "Outcome and collaboration lesson."
+   ],
+   "pitfalls": [
+    "Painting the other person as unreasonable.",
+    "No technical detail."
+   ]
+  },
+  {
+   "prompt": "Tell me about a time you missed a deadline or cut scope.",
+   "framework": "STAR: early signal, renegotiation, what shipped.",
+   "points": [
+    "How you detected the slip early.",
+    "How you re-scoped with data.",
+    "Estimation change afterward."
+   ],
+   "pitfalls": [
+    "Claiming you never slip.",
+    "Owning nothing."
+   ]
+  },
+  {
+   "prompt": "How did you learn Jetpack Compose (or coroutines) when it was new?",
+   "framework": "Learning story: gap -> method -> applied result.",
+   "points": [
+    "The gap and why it mattered.",
+    "Your method (docs, sample, migrating a screen).",
+    "Production application."
+   ],
+   "pitfalls": [
+    "No real application.",
+    "Nothing was confusing."
+   ]
+  },
+  {
+   "prompt": "Tell me about a time you improved performance or stability.",
+   "framework": "STAR with before/after numbers.",
+   "points": [
+    "The metric and how you measured it (profiler, vitals).",
+    "The change and why that bottleneck.",
+    "Quantified result."
+   ],
+   "pitfalls": [
+    "No numbers.",
+    "Optimizing without profiling."
+   ]
+  },
+  {
+   "prompt": "Describe handling a bad Play Store review wave or a critical rollout issue.",
+   "framework": "STAR: triage, communication, fix, prevention.",
+   "points": [
+    "How you triaged (staged rollout, vitals).",
+    "Communication with users/stakeholders.",
+    "Guardrail added (staged rollouts, checks)."
+   ],
+   "pitfalls": [
+    "No prevention step.",
+    "Blaming users."
+   ]
+  },
+  {
+   "prompt": "Why Android — and why this team?",
+   "framework": "Genuine motivation + specific team knowledge.",
+   "points": [
+    "What draws you to the platform.",
+    "Something specific about this team's app/tech.",
+    "Role fit with your trajectory."
+   ],
+   "pitfalls": [
+    "Generic praise.",
+    "Only compensation/prestige."
+   ]
+  }
+ ],
+ "resources": {
+  "cheatsheet": [
+   "Null safety: `?.` safe call, `?:` Elvis, `let` scoping; `!!` is a scheduled NPE; `lateinit`/`by lazy` for deferred init.",
+   "Data class: equals/hashCode/toString/copy/destructuring. Sealed: restricted hierarchy + exhaustive when.",
+   "Extensions resolve statically — no overriding, no privates, no state. Delegation (`by`) generates forwarding.",
+   "Lifecycle: onCreate -> onStart -> onResume; onPause -> onStop -> onDestroy. onPause must be fast.",
+   "Survival buckets: ViewModel (rotation), onSaveInstanceState (process death), DB/files (permanent).",
+   "Coroutines: suspend pauses without blocking; scope owns lifetime; Dispatchers: Main/Default/IO; cancellation is cooperative.",
+   "Flows: StateFlow = state (has value, conflates); SharedFlow = events (replay configurable); catch keeps flows alive.",
+   "Operators: debounce, distinctUntilChanged, flatMapLatest (cancels stale), flowOn, stateIn(WhileSubscribed).",
+   "Persistence: DataStore (prefs) < Room (queryable) < Keystore/EncryptedPrefs (secrets); images on disk, not in DB.",
+   "Architecture: UiState in StateFlow; events up via sealed interface; repository owns data policy; Hilt scopes match lifetimes."
+  ],
+  "glossary": [
+   [
+    "ANR",
+    "Application Not Responding: main thread blocked ~5s on input; diagnosed from main-thread traces."
+   ],
+   [
+    "Dispatcher",
+    "Coroutine thread pool: Main (UI), Default (CPU), IO (blocking I/O)."
+   ],
+   [
+    "Exhaustive when",
+    "Compiler-enforced branch coverage over sealed hierarchies."
+   ],
+   [
+    "FlatMapLatest",
+    "Flow operator switching to the newest upstream, cancelling the previous."
+   ],
+   [
+    "Sealed interface",
+    "Restricted type hierarchy enabling exhaustive when."
+   ],
+   [
+    "StateFlow",
+    "Hot observable state holder: always has a value, conflates updates."
+   ],
+   [
+    "Structured concurrency",
+    "Child coroutines bound to a parent scope's lifetime and failure policy."
+   ],
+   [
+    "UDF",
+    "Unidirectional data flow: events up, state down, single reduction point."
+   ],
+   [
+    "ViewModel",
+    "Lifecycle-aware state holder surviving configuration changes."
+   ],
+   [
+    "Tombstone",
+    "Delete marker synced so offline deletes propagate instead of resurrecting."
+   ]
+  ],
+  "links": [
+   [
+    "Kotlin Documentation",
+    "https://kotlinlang.org/docs/home.html"
+   ],
+   [
+    "Android Developers",
+    "https://developer.android.com/"
+   ],
+   [
+    "Coroutines Guide",
+    "https://kotlinlang.org/docs/coroutines-guide.html"
+   ],
+   [
+    "App Architecture Guide",
+    "https://developer.android.com/topic/architecture"
+   ],
+   [
+    "Material Design",
+    "https://m3.material.io/"
+   ]
+  ],
+  "checklist": [
+   "Can you explain suspend vs blocking and pick the right dispatcher for any job?",
+   "Can you narrate the activity lifecycle and place every state in its survival bucket?",
+   "Can you build the search-as-you-type Flow pipeline from memory and justify each operator?",
+   "Do you have two STAR stories rehearsed under 3 minutes?",
+   "Have you done one timed mock per loop type (coding, architecture, debugging, behavioral)?",
+   "Does your take-home survive rotation, airplane mode, and 'Don't keep activities'?"
+  ]
+ },
+ "chat": {
+  "persona": "Kai — a direct, encouraging Android interview coach. Socratic first: asks your approach before revealing answers. Drills Kotlin, lifecycles, coroutines/Flow, and system design; runs timed mock rounds on request.",
+  "topics": [
+   "Kotlin language deep-dives",
+   "Lifecycle and framework discussions",
+   "Coroutines/Flow design reviews",
+   "Mock whiteboard rounds",
+   "Take-home scoping and review",
+   "Behavioral STAR rehearsal"
+  ]
+ },
+ "simulation": {
+  "items": 10,
+  "minutes": 30,
+  "evidence_cost_mins": 2
+ },
+ "media": [],
+ "foundations": [],
+ "math": []
+}

@@ -1,1 +1,1279 @@
-{"disclaimer": "Independent practice material by Interstitium Labs. Not affiliated with, endorsed by, or sponsored by Amazon Web Services. Confers no certificate. All scenarios are original; no exam content is reproduced.", "domains": [{"id": "monitoring-reporting", "name": "Monitoring & Reporting", "scenarios": [{"answer": 1, "choices": ["Increase the CloudWatch alarm period to 1 hour", "Create a CloudWatch alarm on the metric with an SNS notification", "Check the billing dashboard daily", "Enable VPC Flow Logs"], "evidence": [["metric.txt", "Metric: CPUUtilization > 90%\nfor 3 datapoints.\nCurrent: nobody is notified."]], "hint": "Which two services combine for metric-threshold alerting?", "id": "soa-mr-01", "mins": 5, "objectives": ["CloudWatch alarms", "SNS"], "prompt": "What notifies the team?", "situation": "An EC2 fleet's CPU exceeds 90% repeatedly, but nobody finds out until users complain.", "title": "Nobody knew the CPU was pegged", "why": "A CloudWatch alarm on the CPUUtilization metric triggers an SNS notification when the threshold breaches — the standard metric-alerting pattern. Longer periods delay detection; billing dashboards don't monitor CPU; Flow Logs capture network traffic, not CPU."}, {"answer": 0, "choices": ["Enable CloudTrail in all regions with log file validation, delivered to a locked-down S3 bucket", "Enable CloudWatch Logs only", "Rely on the console's event history (90 days)", "Ask developers to log API calls in the app"], "evidence": [["audit.md", "Requirement: immutable record of\nwho called which API, when, from where.\nRetention: 1 year."]], "hint": "Which service exists specifically to log AWS API activity?", "id": "soa-mr-02", "mins": 6, "objectives": ["CloudTrail", "Audit logging"], "prompt": "Which design meets the audit requirement?", "situation": "Compliance requires an immutable one-year record of every AWS API call: who, what, when, from where.", "title": "Who called what, when", "why": "CloudTrail logs AWS API activity; enabling it in all regions with log file validation into a restricted S3 bucket gives a tamper-evident audit trail. Console event history is only 90 days and not immutable; app-level logging misses console/CLI calls."}, {"answer": 2, "choices": ["The default EC2 metrics", "The CloudWatch agent for memory and disk metrics", "CloudTrail", "AWS Config"], "evidence": [["disk.txt", "Outage: /var filled up.\nCloudWatch showed CPU/network fine.\nNo disk or memory metrics existed."]], "hint": "Which metrics does EC2 NOT publish by default?", "id": "soa-mr-03", "mins": 5, "objectives": ["CloudWatch agent", "Custom metrics"], "prompt": "What would have caught the disk-full outage?", "situation": "An outage was caused by a full disk, but CloudWatch only showed CPU and network — no disk or memory metrics existed.", "title": "The metrics you don't get for free", "why": "EC2 publishes hypervisor-visible metrics (CPU, network, disk I/O) by default, but memory and disk-space utilization require the CloudWatch agent installed on the instance. CloudTrail logs API calls; Config tracks configuration changes — neither monitors disk space."}, {"answer": 1, "choices": ["CloudWatch Logs Insights", "S3 access logs", "VPC Flow Logs", "AWS X-Ray"], "evidence": [["logs.txt", "10 GB/day of app logs in\nCloudWatch Logs. Need: find all\nERROR lines with trace IDs, fast."]], "hint": "Which tool queries CloudWatch Logs with a SQL-like language?", "id": "soa-mr-04", "mins": 5, "objectives": ["CloudWatch Logs Insights"], "prompt": "Which tool answers the query fastest?", "situation": "10 GB/day of application logs land in CloudWatch Logs; the team needs to find all ERROR lines with trace IDs quickly.", "title": "Searching 10 GB of logs", "why": "CloudWatch Logs Insights provides an interactive query language purpose-built for searching and aggregating log data at scale. S3 access logs and Flow Logs are different data sources; X-Ray traces requests but doesn't query log text."}, {"answer": 3, "choices": ["CloudWatch", "CloudTrail", "AWS Config", "AWS Systems Manager OpsCenter"], "evidence": [["ops.md", "50+ operational issues/week.\nNeed: aggregate, deduplicate,\nassign, and track to resolution."]], "hint": "Which service is the operational 'to-do list' that aggregates OpsItems?", "id": "soa-mr-05", "mins": 6, "objectives": ["OpsCenter", "Operations management"], "prompt": "Which service centralizes operational work items?", "situation": "Dozens of operational issues per week need aggregation, deduplication, assignment, and tracking to resolution.", "title": "The ops to-do list", "why": "Systems Manager OpsCenter aggregates operational issues as OpsItems from CloudWatch, Config, and other sources, with deduplication and investigation workflows. CloudWatch/Trail/Config generate signals; OpsCenter manages the work."}, {"answer": 0, "choices": ["A CloudWatch dashboard with key metrics and alarms", "The EC2 console instance list", "Cost Explorer", "Trusted Advisor"], "evidence": [["noc.md", "NOC wants: one screen, fleet health,\nerror rates, latency, red/green status."]], "hint": "Which CloudWatch feature is the single-pane-of-glass?", "id": "soa-mr-06", "mins": 4, "objectives": ["CloudWatch dashboards"], "prompt": "What gives the NOC its single screen?", "situation": "The NOC wants one screen showing fleet health, error rates, and latency with red/green status.", "title": "One screen for the NOC", "why": "CloudWatch dashboards provide customizable single-pane views of metrics, alarms, and logs. The EC2 console lists instances without health aggregation; Cost Explorer shows spend; Trusted Advisor shows best-practice checks — none is an ops dashboard."}]}, {"id": "high-availability", "name": "High Availability", "scenarios": [{"answer": 1, "choices": ["A larger single instance", "An Auto Scaling group across multiple AZs behind an ALB", "A single instance with an Elastic IP", "Two instances in one AZ"], "evidence": [["ha.txt", "Single EC2 in AZ-a.\nAZ-a outage: 3h downtime.\nRequirement: survive AZ failure."]], "hint": "What replaces failed instances automatically across fault domains?", "id": "soa-ha-01", "mins": 5, "objectives": ["Auto Scaling", "Multi-AZ"], "prompt": "Which design survives the AZ outage?", "situation": "A single EC2 instance in one AZ caused a 3-hour outage during an AZ event.", "title": "Beyond the single instance", "why": "An Auto Scaling group spanning multiple AZs behind an ALB replaces unhealthy instances and routes around failed AZs automatically. Bigger single instances still fail with their AZ; Elastic IPs don't add capacity; two instances in one AZ share the same fault domain."}, {"answer": 0, "choices": ["RDS Multi-AZ with automated failover", "RDS read replica promoted manually", "A larger RDS instance", "Daily manual snapshots"], "evidence": [["db.txt", "DB on single EC2.\nFailure: 6h restore from snapshot.\nRTO requirement: < 10 min."]], "hint": "Which RDS feature fails over automatically in minutes?", "id": "soa-ha-02", "mins": 5, "objectives": ["RDS Multi-AZ", "Automatic failover"], "prompt": "Which database design meets the 10-minute RTO?", "situation": "A database on a single EC2 instance took 6 hours to restore from snapshot; the RTO requirement is under 10 minutes.", "title": "Failover in minutes, not hours", "why": "RDS Multi-AZ maintains a synchronous standby and fails over automatically, typically within minutes. Manual replica promotion and snapshot restores can't meet a 10-minute RTO; bigger instances don't add redundancy."}, {"answer": 2, "choices": ["Health checks on the instances only", "ALB target group health checks plus Auto Scaling health checks", "DNS health checks only", "No health checks; replace on a schedule"], "evidence": [["hc.txt", "Instance hung (app dead, OS alive).\nALB kept sending traffic: 500s.\nASG considered it healthy."]], "hint": "OS-alive but app-dead — which health check catches that?", "id": "soa-ha-03", "mins": 6, "objectives": ["Health checks", "ALB target groups"], "prompt": "Which health-check design catches the hung app?", "situation": "An instance hung with the app dead but the OS alive; the ALB kept sending traffic and Auto Scaling considered it healthy.", "title": "Alive but not healthy", "why": "ALB target group health checks probe the application endpoint (catching app-dead/OS-alive), and Auto Scaling can use ELB health checks to replace such instances. Instance-level checks only verify the OS; DNS checks don't see app state; scheduled replacement is blind."}, {"answer": 1, "choices": ["Active-active with Route 53 latency routing", "Pilot light", "Backup and restore", "Warm standby with manual failover"], "evidence": [["dr.txt", "RTO: 15 min. RPO: 5 min.\nBudget: moderate.\nThreat: region loss."]], "hint": "15-minute RTO rules out restore-from-backup; 5-minute RPO rules out pilot light — what's left?", "id": "soa-ha-04", "mins": 7, "objectives": ["DR strategies", "Warm standby"], "prompt": "Which DR strategy fits the RTO/RPO and budget?", "situation": "Region-loss DR needs 15-minute RTO and 5-minute RPO on a moderate budget.", "title": "Fifteen minutes to recover", "why": "Warm standby keeps a scaled-down live copy replicating data (meeting the 5-minute RPO) that scales up within the 15-minute RTO — the cost/RTO sweet spot here. Backup-and-restore and pilot light can't meet these targets; active-active meets them but costs far more."}, {"answer": 3, "choices": ["An SQS queue with a 30-second visibility timeout", "An SQS queue with a dead-letter queue and a long visibility timeout", "Direct HTTP calls between services", "An SNS topic with no queue"], "evidence": [["poison.txt", "One malformed message crashes\nthe worker every time.\nQueue backs up; good messages stuck."]], "hint": "What isolates repeatedly-failing messages so the queue keeps flowing?", "id": "soa-ha-05", "mins": 6, "objectives": ["SQS", "Dead-letter queues"], "prompt": "Which design keeps good messages flowing?", "situation": "A single malformed 'poison' message crashes the worker on every retry, blocking the whole queue.", "title": "The poison message", "why": "A dead-letter queue (DLQ) moves messages that fail repeatedly out of the main queue after max receives, so one poison message can't block everything. Visibility timeout alone just delays the next crash; direct calls and SNS-without-queue lose the message or the buffering."}, {"answer": 0, "choices": ["Enable S3 Versioning and Cross-Region Replication", "Rely on a single bucket in one region", "Copy objects manually each week", "Use EBS snapshots of the app servers"], "evidence": [["data.txt", "Critical uploads in S3, single region.\nRequirement: survive region loss\nwith version history."]], "hint": "Which two S3 features combine durability, history, and geographic redundancy?", "id": "soa-ha-06", "mins": 5, "objectives": ["S3 durability", "CRR"], "prompt": "Which S3 design meets the requirement?", "situation": "Critical uploads live in one S3 bucket in one region; they must survive region loss with version history.", "title": "Data that survives a region", "why": "S3 Versioning preserves history (protecting against overwrites/deletes) and Cross-Region Replication copies objects to another region for geographic redundancy. A single bucket is a regional fate-share; manual copies miss the RPO; EBS snapshots don't cover S3 data."}]}, {"id": "deployment-provisioning", "name": "Deployment & Provisioning", "scenarios": [{"answer": 2, "choices": ["ClickOps in the console", "CloudFormation with change sets", "Bash scripts with hardcoded values", "Manual runbooks in a wiki"], "evidence": [["drift.txt", "3 environments diverged.\nNobody knows which console clicks\nbuilt staging."]], "hint": "Which approach makes infrastructure reviewable, repeatable, and diffable?", "id": "soa-dp-01", "mins": 6, "objectives": ["IaC", "CloudFormation"], "prompt": "What prevents the next divergence?", "situation": "Three environments have diverged and nobody can reconstruct how staging was built from console clicks.", "title": "ClickOps leaves no trail", "why": "CloudFormation templates make infrastructure code — versioned, reviewable, repeatable — and change sets preview modifications before applying. Console ClickOps is unrepeatable; hardcoded bash scripts are fragile; wiki runbooks drift from reality."}, {"answer": 1, "choices": ["Blue/green with CodeDeploy", "In-place deployment to all servers at once", "Manual SCP of binaries", "Rolling deploys with no health checks"], "evidence": [["deploy.txt", "Fleet: 60 instances.\nRequirement: zero downtime,\ninstant rollback."]], "hint": "Which strategy keeps the old fleet live until the new one proves healthy?", "id": "soa-dp-02", "mins": 6, "objectives": ["Blue/green deployments", "CodeDeploy"], "prompt": "Which deployment strategy fits?", "situation": "60 instances need zero-downtime deploys with instant rollback.", "title": "Zero downtime, instant rollback", "why": "Blue/green with CodeDeploy provisions the new (green) fleet, validates it, then shifts traffic — the old (blue) fleet stays ready for instant rollback. In-place all-at-once maximizes blast radius; manual SCP doesn't scale; rolling without health checks ships bad builds fleet-wide."}, {"answer": 0, "choices": ["Systems Manager Patch Manager with maintenance windows", "SSH into each instance monthly", "User data that patches at boot", "Disabling automatic updates"], "evidence": [["patch.txt", "300 instances, mixed OS.\nCompliance: patches within 14 days.\nCurrent: ad-hoc SSH, 40% miss."]], "hint": "Which service automates patching fleets on a schedule with compliance reporting?", "id": "soa-dp-03", "mins": 6, "objectives": ["Patch Manager", "Maintenance windows"], "prompt": "What systematizes patching?", "situation": "300 mixed-OS instances need patching within 14 days; ad-hoc SSH misses 40%.", "title": "Patching 300 instances", "why": "Patch Manager automates patching across fleets with baselines, maintenance windows, and compliance reporting. Manual SSH doesn't scale; boot-time patching slows every launch; disabling updates is a compliance violation."}, {"answer": 3, "choices": ["Long-lived instances you SSH into", "Golden AMIs built by EC2 Image Builder in a pipeline", "Manual snapshot of a dev laptop", "Containers on a single host"], "evidence": [["img.txt", "Deploys install deps at boot: 25 min.\nConfig drift between instances."]], "hint": "What bakes a tested, versioned image automatically?", "id": "soa-dp-04", "mins": 6, "objectives": ["Image Builder", "Golden AMIs"], "prompt": "What gives consistent, fast-launching instances?", "situation": "Boot-time installs take 25 minutes and instances drift from each other.", "title": "Bake, don't install at boot", "why": "EC2 Image Builder automates building, testing, and versioning golden AMIs in a pipeline — fast launches, no drift. Long-lived pets accumulate drift; laptop snapshots aren't reproducible; single-host containers don't address the fleet."}, {"answer": 1, "choices": ["aws:username with wildcards", "Attribute-based access control (ABAC) with tags", "One IAM role per developer", "Root credentials for automation"], "evidence": [["scale-iam.txt", "200 developers, 40 projects.\nNeed: devs access only their\nproject's resources."]], "hint": "Which approach scales permissions by attribute instead of by identity?", "id": "soa-dp-05", "mins": 7, "objectives": ["ABAC", "IAM scaling"], "prompt": "Which IAM design scales?", "situation": "200 developers across 40 projects; each developer should access only their project's resources.", "title": "Permissions for 200 developers", "why": "ABAC with tags lets one policy grant access based on matching tags (e.g., project tag on user = project tag on resource) — scaling without per-developer roles. Per-developer roles explode administratively; username wildcards are fragile; root for automation is never acceptable."}, {"answer": 2, "choices": ["Environment variables in plain text", "AWS Systems Manager Parameter Store (SecureString) or Secrets Manager", "A shared Google Doc", "Hardcoded in the AMI"], "evidence": [["cfg.txt", "DB passwords in 30 AMIs.\nRotation requires rebuilding\nall images."]], "hint": "Which services are built for secrets lifecycle, including rotation?", "id": "soa-dp-06", "mins": 5, "objectives": ["Parameter Store", "Secrets management"], "prompt": "Where should the credentials live?", "situation": "Database passwords baked into 30 AMIs; rotation requires rebuilding every image.", "title": "Secrets don't belong in images", "why": "Parameter Store SecureString or Secrets Manager centralize secrets outside images, with rotation support — no rebuilds needed. Plaintext env vars and shared docs leak; hardcoded AMI secrets are the current failure."}]}, {"id": "storage-data", "name": "Storage & Data", "scenarios": [{"answer": 0, "choices": ["EBS gp3 volumes for the database", "EBS io2 for the database; S3 for the media", "Instance store for the database", "EFS for everything"], "evidence": [["store.txt", "DB: needs 20k IOPS, persists.\nMedia: 50 TB, served via CDN."]], "hint": "Match each workload to its storage class: provisioned IOPS for the DB, object storage for media.", "id": "soa-sd-01", "mins": 6, "objectives": ["EBS vs S3", "Storage selection"], "prompt": "Which storage pairing fits?", "situation": "A database needs 20k sustained IOPS with persistence; 50 TB of media is served via CDN.", "title": "Right storage for each workload", "why": "io2 provides provisioned IOPS for the database's performance needs while S3 handles massive media storage with CDN integration. gp3 can't sustain 20k IOPS efficiently; instance store is ephemeral; EFS is a file system, not a media origin."}, {"answer": 1, "choices": ["Copy files over the public internet", "AWS DataSync to S3/EFS/FSx", "Snowcone for 500 GB", "FTP to an EC2 instance"], "evidence": [["mig.txt", "On-prem NAS: 40 TB.\nNeed: one-time migration to S3,\nwith checksums and scheduling."]], "hint": "Which service is the managed migration tool with validation?", "id": "soa-sd-02", "mins": 5, "objectives": ["DataSync", "Data migration"], "prompt": "Which service handles the migration?", "situation": "A 40 TB on-prem NAS needs a one-time migration to S3 with checksums and scheduling.", "title": "40 TB, one trip", "why": "DataSync is the managed service for online data transfer to S3/EFS/FSx with scheduling, bandwidth controls, and data validation. Public-internet copies lack validation; Snowcone/Snowball suit offline/petabyte scale, not 40 TB online; FTP to EC2 is manual and fragile."}, {"answer": 2, "choices": ["S3 Standard forever", "S3 Lifecycle policies to transition to Glacier", "Manual moves each quarter", "Delete after 90 days"], "evidence": [["life.txt", "Compliance logs: hot 30 days,\nwarm 90 days, archive 7 years.\nVolume: 1 TB/day."]], "hint": "Which S3 feature moves objects between classes on a schedule automatically?", "id": "soa-sd-03", "mins": 5, "objectives": ["S3 Lifecycle policies"], "prompt": "What automates the tiering?", "situation": "Compliance logs are hot for 30 days, warm for 90, then archived 7 years, at 1 TB/day.", "title": "Lifecycle of a log file", "why": "S3 Lifecycle policies automatically transition objects between storage classes (and expire them) on age-based rules — zero ongoing effort. Keeping everything in Standard wastes money; manual moves don't scale at 1 TB/day; deletion violates the 7-year retention."}, {"answer": 0, "choices": ["AWS Backup with a backup plan across services", "Manual snapshots per service", "A cron job on one EC2 instance", "Relying on Multi-AZ"], "evidence": [["bkp.txt", "EC2, RDS, EFS, DynamoDB.\nRequirement: centralized 3-2-1\npolicy, 30-day retention."]], "hint": "Which service centralizes backup policies across AWS services?", "id": "soa-sd-04", "mins": 6, "objectives": ["AWS Backup"], "prompt": "What centralizes the backup policy?", "situation": "EC2, RDS, EFS, and DynamoDB need one centralized backup policy with 30-day retention.", "title": "One backup policy to rule them all", "why": "AWS Backup provides centralized backup plans, scheduling, retention, and cross-region copy across supported services. Per-service manual snapshots fragment policy; cron on EC2 is fragile; Multi-AZ is availability, not backup."}, {"answer": 3, "choices": ["EBS", "EFS with default settings", "Amazon FSx for Windows File Server", "S3"], "evidence": [["win.txt", "Windows app needs SMB shares\nwith AD integration and\nWindows ACLs."]], "hint": "Which managed file service speaks native SMB with Active Directory integration?", "id": "soa-sd-05", "mins": 5, "objectives": ["FSx", "Windows workloads"], "prompt": "Which file storage fits?", "situation": "A Windows application needs SMB shares with Active Directory integration and Windows ACLs.", "title": "SMB with Active Directory", "why": "FSx for Windows File Server provides native SMB with AD integration and Windows ACLs as a managed service. EBS is block storage; EFS is NFS (Linux-oriented); S3 is object storage without SMB semantics."}, {"answer": 1, "choices": ["Public S3 website hosting", "S3 with CloudFront OAC and WAF", "EBS-backed web servers only", "FTP server on EC2"], "evidence": [["web.txt", "Static marketing site.\nRequirement: HTTPS, DDoS protection,\nno public S3 access."]], "hint": "Which pattern keeps the bucket private while CloudFront serves it?", "id": "soa-sd-06", "mins": 6, "objectives": ["CloudFront OAC", "Static hosting"], "prompt": "Which design meets all requirements?", "situation": "A static marketing site needs HTTPS, DDoS protection, and no public S3 access.", "title": "Static site, locked-down bucket", "why": "CloudFront with Origin Access Control (OAC) serves the private S3 bucket over HTTPS with Shield Standard DDoS protection built in; WAF adds application-layer filtering. Public S3 website hosting exposes the bucket; EBS/FTP are unnecessary moving parts for static content."}]}, {"id": "security-compliance", "name": "Security & Compliance", "scenarios": [{"answer": 2, "choices": ["IAM users with long-term keys", "IAM roles for EC2 with instance profiles", "Sharing one admin key", "Hardcoded keys in the AMI"], "evidence": [["keys.txt", "App on EC2 calls S3/DynamoDB.\nCurrently: hardcoded access key\nin the AMI, rotated never."]], "hint": "Which mechanism gives EC2 temporary credentials automatically?", "id": "soa-sc-01", "mins": 5, "objectives": ["IAM roles", "Instance profiles"], "prompt": "What replaces the hardcoded key?", "situation": "An app on EC2 uses a hardcoded access key in the AMI to call S3 and DynamoDB.", "title": "Keys that rotate themselves", "why": "IAM roles with instance profiles give EC2 temporary, automatically-rotated credentials — no keys to manage or leak. Long-term user keys reintroduce the same problem; sharing keys destroys accountability; hardcoded AMI keys are the current failure."}, {"answer": 0, "choices": ["AWS Config rules with automatic remediation (e.g., revoke on non-compliant)", "Monthly manual audits", "CloudTrail alone", "Trusted Advisor emails"], "evidence": [["sg.txt", "Requirement: no security group\nopen to 0.0.0.0/0 on port 22.\nCurrent: violations appear weekly."]], "hint": "Which service continuously evaluates configuration and can auto-remediate?", "id": "soa-sc-02", "mins": 6, "objectives": ["AWS Config", "Auto remediation"], "prompt": "What enforces the rule continuously?", "situation": "Security groups open to the world on SSH keep appearing; monthly audits catch them too late.", "title": "Closing port 22, automatically", "why": "AWS Config rules continuously evaluate resource configuration against the desired state and can trigger automatic remediation (e.g., revoke the rule via Lambda/SSM). Manual audits are too slow; CloudTrail records but doesn't evaluate; Trusted Advisor is advisory, not enforcement."}, {"answer": 1, "choices": ["AWS Shield Standard", "AWS WAF with managed rules", "Security groups", "NACLs"], "evidence": [["waf.txt", "Attack: SQL injection probes\nand credential stuffing against\nthe login endpoint."]], "hint": "Which service filters HTTP requests at Layer 7?", "id": "soa-sc-03", "mins": 5, "objectives": ["WAF", "Application-layer protection"], "prompt": "Which service mitigates the attack?", "situation": "SQL injection probes and credential stuffing hit the login endpoint.", "title": "Filtering the application layer", "why": "AWS WAF inspects HTTP requests at Layer 7 with managed rule groups for SQLi, XSS, and bot/credential-stuffing patterns. Shield handles network-layer DDoS; security groups/NACLs filter packets, not HTTP payloads."}, {"answer": 3, "choices": ["The default AWS-managed key", "A customer managed key (CMK) with key policies and rotation", "SSE-S3", "No encryption"], "evidence": [["ebs.txt", "Regulated workload on EBS.\nNeed: control who can use the key,\naudit key use, rotate annually."]], "hint": "Which KMS key type gives you policies, rotation, and CloudTrail audit?", "id": "soa-sc-04", "mins": 6, "objectives": ["KMS", "Customer managed keys"], "prompt": "Which encryption design meets the requirements?", "situation": "Regulated EBS volumes need customer-controlled key policies, audited key use, and annual rotation.", "title": "Keys you control", "why": "Customer managed keys (CMKs) in KMS provide key policies for access control, automatic rotation, and CloudTrail logging of every use. AWS-managed keys don't offer key policies; SSE-S3 is for S3; no encryption fails compliance."}, {"answer": 0, "choices": ["Enable GuardDuty in all regions with findings sent to Security Hub", "Install antivirus on every instance", "Manually review CloudTrail weekly", "Rely on security groups"], "evidence": [["threat.txt", "Need: detect compromised instances,\ncrypto-mining, unusual API calls.\nTeam: 2 people."]], "hint": "Which service does threat detection so a 2-person team doesn't have to build it?", "id": "soa-sc-05", "mins": 5, "objectives": ["GuardDuty", "Threat detection"], "prompt": "What provides the detection?", "situation": "A two-person team needs detection of compromised instances, crypto-mining, and anomalous API calls.", "title": "Threat detection for a tiny team", "why": "GuardDuty provides ML- and threat-intel-based detection across CloudTrail, VPC Flow Logs, and DNS — a managed detective control a small team can actually operate. Antivirus is endpoint-only; manual log review doesn't scale; security groups are preventive, not detective."}, {"answer": 1, "choices": ["IAM password policy only", "AWS IAM Identity Center with MFA enforcement and permission sets", "Shared admin credentials with MFA", "One IAM user per app"], "evidence": [["sso.txt", "50 employees, 12 AWS accounts.\nNeed: single sign-on, MFA required,\nleast-privilege per team."]], "hint": "Which service is AWS's SSO with permission sets across accounts?", "id": "soa-sc-06", "mins": 6, "objectives": ["IAM Identity Center", "SSO"], "prompt": "Which identity design fits?", "situation": "50 employees across 12 AWS accounts need SSO with enforced MFA and least-privilege access per team.", "title": "One login for twelve accounts", "why": "IAM Identity Center provides workforce SSO across accounts with MFA enforcement and permission sets for least privilege. Per-account IAM users multiply management overhead; shared credentials destroy accountability; password policy alone isn't SSO."}]}, {"id": "networking", "name": "Networking", "scenarios": [{"answer": 2, "choices": ["An internet gateway in the private subnet", "A NAT gateway in a public subnet", "VPC peering to another VPC", "A VPN connection"], "evidence": [["out.txt", "Private subnet instances need\nOS patches (outbound HTTPS).\nNo inbound from internet allowed."]], "hint": "Which gateway gives outbound-only internet access?", "id": "soa-nw-01", "mins": 5, "objectives": ["NAT gateway", "Private subnets"], "prompt": "What provides outbound-only internet?", "situation": "Private-subnet instances need outbound HTTPS for patches with no inbound internet access.", "title": "Outbound only, please", "why": "A NAT gateway in a public subnet lets private instances initiate outbound connections while blocking unsolicited inbound traffic. Internet gateways are bidirectional; VPC peering connects VPCs, not the internet; VPN connects on-premises networks."}, {"answer": 0, "choices": ["Interface VPC endpoints (PrivateLink)", "A NAT gateway", "An internet gateway", "Public IPs on the instances"], "evidence": [["pl.txt", "Workload must call a SaaS API\nover private connectivity —\nno internet traversal at all."]], "hint": "Which AWS feature exposes services privately inside a VPC?", "id": "soa-nw-02", "mins": 6, "objectives": ["PrivateLink", "Interface endpoints"], "prompt": "What keeps the traffic off the internet?", "situation": "A workload must reach a third-party SaaS API without any traffic traversing the public internet.", "title": "PrivateLink to the SaaS", "why": "Interface VPC endpoints (PrivateLink) expose services — AWS or SaaS-provider — as private IPs inside the VPC with no internet traversal. NAT/internet gateways still use the public internet; public IPs violate the requirement."}, {"answer": 1, "choices": ["Security groups", "Network ACLs", "Route tables", "IAM policies"], "evidence": [["sub.txt", "Need: block a malicious IP range\nat the subnet boundary, stateless,\nbefore it reaches instances."]], "hint": "Stateless + subnet-level = which control?", "id": "soa-nw-03", "mins": 5, "objectives": ["NACLs", "Subnet filtering"], "prompt": "Which control fits?", "situation": "A malicious IP range must be blocked at the subnet boundary, statelessly, before reaching instances.", "title": "Blocking at the subnet edge", "why": "Network ACLs are stateless subnet-level filters — the right tool for blocking IP ranges at the boundary. Security groups are stateful and instance-level; route tables direct traffic; IAM governs API access, not packets."}, {"answer": 3, "choices": ["VPC peering", "A NAT gateway", "AWS Transit Gateway", "An internet gateway"], "evidence": [["mesh.txt", "8 VPCs across 3 accounts.\nNeed: any-to-any connectivity\nwithout N-squared peering."]], "hint": "Which service is the hub for multi-VPC, multi-account networks?", "id": "soa-nw-04", "mins": 6, "objectives": ["Transit Gateway"], "prompt": "What simplifies the mesh?", "situation": "Eight VPCs across three accounts need any-to-any connectivity without a full peering mesh.", "title": "Eight VPCs, one hub", "why": "Transit Gateway acts as a central hub routing between VPCs and VPN/Direct Connect across accounts — replacing an N-squared peering mesh. VPC peering is pairwise and doesn't scale here; NAT/internet gateways don't interconnect VPCs."}, {"answer": 0, "choices": ["AWS Site-to-Site VPN", "AWS Direct Connect", "VPC peering", "An internet gateway"], "evidence": [["hybrid.txt", "On-prem data center to AWS.\nNeed: private, consistent throughput\nfor nightly 5 TB syncs."]], "hint": "Private + consistent throughput for heavy hybrid traffic = which dedicated connection?", "id": "soa-nw-05", "mins": 5, "objectives": ["Direct Connect", "Hybrid networking"], "prompt": "Which hybrid connectivity fits?", "situation": "Nightly 5 TB syncs between an on-prem data center and AWS need private, consistent throughput.", "title": "Five terabytes a night, privately", "why": "Direct Connect provides dedicated private connectivity with consistent throughput for heavy hybrid workloads. Site-to-Site VPN runs over the public internet with variable throughput; peering is VPC-to-VPC; internet gateways aren't private."}, {"answer": 1, "choices": ["The default VPC", "A custom VPC with public/private subnets across 2+ AZs", "A single public subnet", "The default VPC with all defaults"], "evidence": [["vpc.txt", "New production workload.\nStandard: isolate tiers, survive\nAZ failure, no default shortcuts."]], "hint": "Production VPC design 101: which layout gives tier isolation and AZ resilience?", "id": "soa-nw-06", "mins": 5, "objectives": ["VPC design"], "prompt": "Which VPC design is production-appropriate?", "situation": "A new production workload needs tier isolation, AZ resilience, and no reliance on default shortcuts.", "title": "Designing the production VPC", "why": "A custom VPC with public subnets (load balancers, NAT) and private subnets (app, data) across 2+ AZs gives tier isolation and AZ resilience. The default VPC is a single public-style network; a single subnet has no isolation or resilience."}]}], "lessons": [{"domain_id": "monitoring-reporting", "title": "Monitoring & Reporting — Core concepts", "concepts": ["CloudWatch dashboards provide customizable single-pane views of metrics, alarms, and logs. EC2 publishes hypervisor-visible metrics (CPU, network, disk I/O) by default, but memory and disk-space utilization require the CloudWatch agent installed on the instance.", "SNS: a CloudWatch alarm on the CPUUtilization metric triggers an SNS notification when the threshold breaches — the standard metric-alerting pattern.", "CloudTrail logs AWS API activity; enabling it in all regions with log file validation into a restricted S3 bucket gives a tamper-evident audit trail. CloudTrail logs API calls; Config tracks configuration changes — neither monitors disk space.", "Audit logging: console event history is only 90 days and not immutable; app-level logging misses console/CLI calls.", "CloudWatch Logs Insights provides an interactive query language purpose-built for searching and aggregating log data at scale. Systems Manager OpsCenter aggregates operational issues as OpsItems from CloudWatch, Config, and other sources, with deduplication and investigation workflows."], "example": {"lang": "text", "code": "NOC wants: one screen, fleet health,\nerror rates, latency, red/green status.", "walkthrough": "CloudWatch dashboards provide customizable single-pane views of metrics, alarms, and logs. The EC2 console lists instances without health aggregation; Cost Explorer shows spend; Trusted Advisor shows best-practice checks — none is an ops dashboard."}, "pitfalls": ["Common trap: the CloudWatch agent for memory and disk metrics.", "Common trap: increase the CloudWatch alarm period to 1 hour.", "Common trap: enable VPC Flow Logs.", "Common trap: ask developers to log API calls in the app."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "high-availability", "title": "High Availability — Core concepts", "concepts": ["Auto Scaling: ALB target group health checks probe the application endpoint (catching app-dead/OS-alive), and Auto Scaling can use ELB health checks to replace such instances. An Auto Scaling group spanning multiple AZs behind an ALB replaces unhealthy instances and routes around failed AZs automatically.", "Multi-AZ: RDS Multi-AZ maintains a synchronous standby and fails over automatically, typically within minutes.", "Health checks: instance-level checks only verify the OS; DNS checks don't see app state; scheduled replacement is blind."], "example": {"lang": "text", "code": "Single EC2 in AZ-a.\nAZ-a outage: 3h downtime.\nRequirement: survive AZ failure.", "walkthrough": "An Auto Scaling group spanning multiple AZs behind an ALB replaces unhealthy instances and routes around failed AZs automatically. Bigger single instances still fail with their AZ; Elastic IPs don't add capacity; two instances in one AZ share the same fault domain."}, "pitfalls": ["Common trap: ALB target group health checks plus Auto Scaling health checks.", "Common trap: warm standby with manual failover.", "Common trap: an SQS queue with a dead-letter queue and a long visibility timeout.", "Common trap: no health checks; replace on a schedule."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "deployment-provisioning", "title": "Deployment & Provisioning — Core concepts", "concepts": ["CloudFormation templates make infrastructure code — versioned, reviewable, repeatable — and change sets preview modifications before applying.", "Blue/green with CodeDeploy provisions the new (green) fleet, validates it, then shifts traffic — the old (blue) fleet stays ready for instant rollback.", "Patch Manager automates patching across fleets with baselines, maintenance windows, and compliance reporting. Parameter Store SecureString or Secrets Manager centralize secrets outside images, with rotation support — no rebuilds needed."], "example": {"lang": "text", "code": "Deploys install deps at boot: 25 min.\nConfig drift between instances.", "walkthrough": "EC2 Image Builder automates building, testing, and versioning golden AMIs in a pipeline — fast launches, no drift. Long-lived pets accumulate drift; laptop snapshots aren't reproducible; single-host containers don't address the fleet."}, "pitfalls": ["Common trap: golden AMIs built by EC2 Image Builder in a pipeline.", "Common trap: AWS Systems Manager Parameter Store (SecureString) or Secrets Manager.", "Common trap: one IAM role per developer.", "Common trap: rolling deploys with no health checks."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "storage-data", "title": "Storage & Data — Core concepts", "concepts": ["EBS is block storage; EFS is NFS (Linux-oriented); S3 is object storage without SMB semantics.", "Storage selection: S3 Lifecycle policies automatically transition objects between storage classes (and expire them) on age-based rules — zero ongoing effort.", "DataSync is the managed service for online data transfer to S3/EFS/FSx with scheduling, bandwidth controls, and data validation.", "AWS Backup provides centralized backup plans, scheduling, retention, and cross-region copy across supported services."], "example": {"lang": "text", "code": "DB: needs 20k IOPS, persists.\nMedia: 50 TB, served via CDN.", "walkthrough": "io2 provides provisioned IOPS for the database's performance needs while S3 handles massive media storage with CDN integration. gp3 can't sustain 20k IOPS efficiently; instance store is ephemeral; EFS is a file system, not a media origin."}, "pitfalls": ["Common trap: amazon FSx for Windows File Server.", "Common trap: S3 Lifecycle policies to transition to Glacier.", "Common trap: EBS io2 for the database; S3 for the media.", "Common trap: a cron job on one EC2 instance."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "security-compliance", "title": "Security & Compliance — Core concepts", "concepts": ["IAM roles with instance profiles give EC2 temporary, automatically-rotated credentials — no keys to manage or leak. IAM Identity Center provides workforce SSO across accounts with MFA enforcement and permission sets for least privilege.", "AWS Config rules continuously evaluate resource configuration against the desired state and can trigger automatic remediation (e.g., revoke the rule via Lambda/SSM). AWS WAF inspects HTTP requests at Layer 7 with managed rule groups for SQLi, XSS, and bot/credential-stuffing patterns.", "Principle: long-term user keys reintroduce the same problem; sharing keys destroys accountability; hardcoded AMI keys are the current failure."], "example": {"lang": "text", "code": "Requirement: no security group\nopen to 0.0.0.0/0 on port 22.\nCurrent: violations appear weekly.", "walkthrough": "AWS Config rules continuously evaluate resource configuration against the desired state and can trigger automatic remediation (e.g., revoke the rule via Lambda/SSM). Manual audits are too slow; CloudTrail records but doesn't evaluate; Trusted Advisor is advisory, not enforcement."}, "pitfalls": ["Common trap: IAM roles for EC2 with instance profiles.", "Common trap: a customer managed key (CMK) with key policies and rotation.", "Common trap: IAM users with long-term keys.", "Common trap: install antivirus on every instance."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "networking", "title": "Networking — Core concepts", "concepts": ["NAT gateway: a NAT gateway in a public subnet lets private instances initiate outbound connections while blocking unsolicited inbound traffic. A custom VPC with public subnets (load balancers, NAT) and private subnets (app, data) across 2+ AZs gives tier isolation and AZ resilience.", "Private subnets: interface VPC endpoints (PrivateLink) expose services — AWS or SaaS-provider — as private IPs inside the VPC with no internet traversal. Direct Connect provides dedicated private connectivity with consistent throughput for heavy hybrid workloads.", "Subnet filtering: the default VPC is a single public-style network; a single subnet has no isolation or resilience."], "example": {"lang": "text", "code": "Private subnet instances need\nOS patches (outbound HTTPS).\nNo inbound from internet allowed.", "walkthrough": "A NAT gateway in a public subnet lets private instances initiate outbound connections while blocking unsolicited inbound traffic. Internet gateways are bidirectional; VPC peering connects VPCs, not the internet; VPN connects on-premises networks."}, "pitfalls": ["Common trap: an internet gateway in the private subnet.", "Common trap: a NAT gateway in a public subnet."], "try_it": "Work through this in the Terminal tab →"}], "sections": [{"id": "foundations", "title": "Foundations", "kind": "foundation", "lectures": ["m-binary", "m-subnetting", "f-networking-0", "f-networking-1", "f-networking-2", "f-networking-3", "f-linux-cli-0", "f-linux-cli-1", "f-linux-cli-2", "f-iam-concepts-0", "f-iam-concepts-1", "f-iam-concepts-2"], "lab_ids": [], "drill_domain_ids": []}, {"id": "core", "title": "Core", "kind": "core", "lectures": ["c-monitoring-reporting", "c-high-availability", "c-deployment-provisioning", "c-storage-data", "c-networking"], "lab_ids": ["aws-soa-lab-1", "aws-soa-lab-2"], "drill_domain_ids": ["monitoring-reporting", "high-availability", "deployment-provisioning", "storage-data", "networking"]}, {"id": "advanced", "title": "Advanced", "kind": "advanced", "lectures": ["c-security-compliance"], "lab_ids": ["aws-soa-lab-3", "aws-soa-lab-4"], "drill_domain_ids": ["security-compliance"]}, {"id": "exam-prep", "title": "Exam Prep", "kind": "exam-prep", "lectures": [], "lab_ids": [], "drill_domain_ids": ["monitoring-reporting", "high-availability", "deployment-provisioning", "storage-data", "security-compliance", "networking"]}], "behavioral": [{"prompt": "Tell me about a time you responded to a production incident in AWS.", "framework": "STAR", "points": ["How you detected it", "Your triage steps", "The resolution and follow-up"], "pitfalls": ["Panicking or freezing", "No post-incident action"]}, {"prompt": "Describe a time you automated a manual operational task.", "framework": "STAR", "points": ["The manual pain", "What you automated", "Time saved or errors avoided"], "pitfalls": ["Automating a broken process", "No measurement of benefit"]}, {"prompt": "Tell me about a time you had to troubleshoot a tricky networking issue.", "framework": "STAR", "points": ["The symptoms", "How you isolated the layer", "The root cause"], "pitfalls": ["Guessing without evidence", "Skipping the OSI layers"]}, {"prompt": "Describe a time you improved monitoring or alerting.", "framework": "STAR", "points": ["The gap (missed incident or noisy alert)", "What you changed", "How on-call life improved"], "pitfalls": ["Alert noise without tuning", "Monitoring without action"]}, {"prompt": "Tell me about a deployment that went wrong and how you handled it.", "framework": "STAR", "points": ["What went wrong", "Your rollback or fix", "The safeguard you added"], "pitfalls": ["Blaming the deployer", "No rollback plan"]}, {"prompt": "Describe a time you had to enforce a security or compliance requirement.", "framework": "STAR", "points": ["The requirement", "How you implemented it", "How you verified compliance"], "pitfalls": ["Checkbox compliance", "No verification"]}, {"prompt": "Tell me about a time you managed costs for a growing AWS footprint.", "framework": "STAR", "points": ["How you found the waste", "The action you took", "The savings"], "pitfalls": ["Cutting without understanding", "No ongoing governance"]}, {"prompt": "Describe a time you documented or trained others on an operational procedure.", "framework": "STAR", "points": ["The knowledge gap", "What you created", "How it reduced future incidents"], "pitfalls": ["Documentation nobody reads", "No hands-on validation"]}], "chat": {"persona": "You are a seasoned AWS SysOps interviewer running a mock SOA-C03 assessment. Focus on operations: monitoring, deployments, troubleshooting. Ask what they'd check first and why.", "topics": [{"id": "monitoring-reporting", "name": "Monitoring & Reporting", "key_points": ["CloudWatch alarms and SNS", "CloudTrail audit logging", "CloudWatch agent metrics", "Logs Insights"], "followups": ["What would you check first?", "How would you get alerted before users notice?"]}, {"id": "high-availability", "name": "High Availability", "key_points": ["Auto Scaling multi-AZ", "RDS Multi-AZ failover", "DR strategies", "SQS dead-letter queues"], "followups": ["What is the RTO/RPO of this design?", "What happens when one AZ fails?"]}, {"id": "deployment-provisioning", "name": "Deployment & Provisioning", "key_points": ["CloudFormation change sets", "blue/green with CodeDeploy", "Patch Manager", "golden AMIs"], "followups": ["How would you roll back?", "How do you prevent environment drift?"]}, {"id": "storage-data", "name": "Storage & Data", "key_points": ["EBS vs S3 selection", "DataSync migration", "S3 Lifecycle policies", "AWS Backup"], "followups": ["Why this storage service?", "How do you automate the data lifecycle?"]}, {"id": "security-compliance", "name": "Security & Compliance", "key_points": ["IAM roles vs keys", "Config auto-remediation", "WAF vs Shield", "KMS customer managed keys"], "followups": ["How do you detect misconfiguration?", "Where are the credentials stored?"]}, {"id": "networking", "name": "Networking", "key_points": ["NAT gateway", "PrivateLink", "NACLs vs security groups", "Transit Gateway", "Direct Connect"], "followups": ["Trace the packet path for me.", "Which layer does this control operate at?"]}]}, "slug": "aws-soa", "title": "AWS SysOps Administrator", "tagline": "SOA-C03: deploy, manage, and operate on AWS", "vendor": {"certs": "SOA-C03", "docs": "https://aws.amazon.com/certification", "name": "Amazon Web Services"}, "labs": [{"id": "aws-soa-lab-1", "title": "CloudWatch alarms — AWS CLI drill", "objective": "Run a short sequence of AWS CLI commands that demonstrates cloudWatch alarms, then verify each result against the expected output.", "steps": ["This lab reworks the Monitoring & Reporting practice scenario \"Nobody knew the CPU was pegged\" into commands you run yourself — same concept, hands-on instead of multiple choice.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: aws s3 ls — the listing names your lab buckets", "Type exactly: aws sts get-caller-identity — the identity document includes your Account id", "Type exactly: aws iam list-users — the user list carries the UserName field", "In your own words, say what each command's output taught you about cloudWatch alarms."], "checks": [{"command_pattern": "aws s3 ls", "expect_contains": "bucket", "hint": "In the Terminal tab, run `aws s3 ls`. If the check fails, confirm you typed it exactly and that the output contains \"bucket\"."}, {"command_pattern": "aws sts get-caller-identity", "expect_contains": "Account", "hint": "In the Terminal tab, run `aws sts get-caller-identity`. If the check fails, confirm you typed it exactly and that the output contains \"Account\"."}, {"command_pattern": "aws iam list-users", "expect_contains": "UserName", "hint": "In the Terminal tab, run `aws iam list-users`. If the check fails, confirm you typed it exactly and that the output contains \"UserName\"."}], "success_message": "Lab complete — cloudWatch alarms practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"id": "aws-soa-lab-2", "title": "Auto Scaling — AWS CLI drill", "objective": "Use the AWS CLI to explore auto Scaling hands-on: type each command, read what comes back, and connect the output to the concept.", "steps": ["Inspired by the High Availability scenario \"Beyond the single instance\": take its core idea and prove it live in the terminal instead of answering on paper.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: aws iam list-users — the user list carries the UserName field", "Type exactly: aws ec2 describe-instances — the reservation output includes the Instances block", "Type exactly: aws s3 ls — the listing names your lab buckets", "In your own words, say what each command's output taught you about auto Scaling."], "checks": [{"command_pattern": "aws iam list-users", "expect_contains": "UserName", "hint": "In the Terminal tab, run `aws iam list-users`. If the check fails, confirm you typed it exactly and that the output contains \"UserName\"."}, {"command_pattern": "aws ec2 describe-instances", "expect_contains": "Instances", "hint": "In the Terminal tab, run `aws ec2 describe-instances`. If the check fails, confirm you typed it exactly and that the output contains \"Instances\"."}, {"command_pattern": "aws s3 ls", "expect_contains": "bucket", "hint": "In the Terminal tab, run `aws s3 ls`. If the check fails, confirm you typed it exactly and that the output contains \"bucket\"."}], "success_message": "Lab complete — auto Scaling practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"id": "aws-soa-lab-3", "title": "IaC — AWS CLI drill", "objective": "Prove you can apply iaC in the AWS CLI — follow the steps, watch the output, and confirm every check passes.", "steps": ["The Deployment & Provisioning scenario \"ClickOps leaves no trail\" tests this concept as a question. This lab makes you demonstrate it with real commands.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: aws s3 ls — the listing names your lab buckets", "Type exactly: aws sts get-caller-identity — the identity document includes your Account id", "Type exactly: aws iam list-users — the user list carries the UserName field", "In your own words, say what each command's output taught you about iaC."], "checks": [{"command_pattern": "aws s3 ls", "expect_contains": "bucket", "hint": "In the Terminal tab, run `aws s3 ls`. If the check fails, confirm you typed it exactly and that the output contains \"bucket\"."}, {"command_pattern": "aws sts get-caller-identity", "expect_contains": "Account", "hint": "In the Terminal tab, run `aws sts get-caller-identity`. If the check fails, confirm you typed it exactly and that the output contains \"Account\"."}, {"command_pattern": "aws iam list-users", "expect_contains": "UserName", "hint": "In the Terminal tab, run `aws iam list-users`. If the check fails, confirm you typed it exactly and that the output contains \"UserName\"."}], "success_message": "Lab complete — iaC practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"id": "aws-soa-lab-4", "title": "EBS vs S3 — AWS CLI drill", "objective": "Run a short sequence of AWS CLI commands that demonstrates EBS vs S3, then verify each result against the expected output.", "steps": ["This lab reworks the Storage & Data practice scenario \"Right storage for each workload\" into commands you run yourself — same concept, hands-on instead of multiple choice.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: aws iam list-users — the user list carries the UserName field", "Type exactly: aws ec2 describe-instances — the reservation output includes the Instances block", "Type exactly: aws s3 ls — the listing names your lab buckets", "In your own words, say what each command's output taught you about EBS vs S3."], "checks": [{"command_pattern": "aws iam list-users", "expect_contains": "UserName", "hint": "In the Terminal tab, run `aws iam list-users`. If the check fails, confirm you typed it exactly and that the output contains \"UserName\"."}, {"command_pattern": "aws ec2 describe-instances", "expect_contains": "Instances", "hint": "In the Terminal tab, run `aws ec2 describe-instances`. If the check fails, confirm you typed it exactly and that the output contains \"Instances\"."}, {"command_pattern": "aws s3 ls", "expect_contains": "bucket", "hint": "In the Terminal tab, run `aws s3 ls`. If the check fails, confirm you typed it exactly and that the output contains \"bucket\"."}], "success_message": "Lab complete — EBS vs S3 practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"id": "aws-soa-lab-baseline", "title": "Operational baseline inventory", "objective": "SysOps starts with a baseline: enumerate every instance and VPC so later changes are measurable.", "difficulty": 1, "steps": ["Open the Terminal tab for this bootcamp.", "Type exactly: aws ec2 describe-instances — record each instance name, state, and AZ", "Type exactly: aws ec2 describe-vpcs — record each VPC id and CIDR", "In your own words, say why an operator snapshots this baseline before any change window."], "checks": [{"command_pattern": "^aws ec2 describe-instances$", "expect_contains": "ilb-web-01", "hint": "In the Terminal tab, run `aws ec2 describe-instances`. If the check fails, confirm you typed it exactly and that the output contains \"ilb-web-01\"."}, {"command_pattern": "^aws ec2 describe-vpcs$", "expect_contains": "vpc-0f9e8d7c", "hint": "In the Terminal tab, run `aws ec2 describe-vpcs`. If the check fails, confirm you typed it exactly and that the output contains \"vpc-0f9e8d7c\"."}], "success_message": "Lab complete — baseline captured like a working operator."}, {"id": "aws-soa-lab-s3-ops", "title": "Storage operations — list and retrieve", "objective": "Practice the storage half of SysOps: inventory buckets and pull a backup object down for verification.", "difficulty": 1, "steps": ["Open the Terminal tab for this bootcamp.", "Type exactly: aws s3 ls — confirm both the artifacts and backups buckets exist", "Type exactly: aws s3 ls s3://ilb-backups-2026 — find the database snapshot object", "In your own words, say when you would restore from that snapshot instead of rebuilding."], "checks": [{"command_pattern": "^aws s3 ls$", "expect_contains": "ilb-backups-2026", "hint": "In the Terminal tab, run `aws s3 ls`. If the check fails, confirm you typed it exactly and that the output contains \"ilb-backups-2026\"."}, {"command_pattern": "^aws s3 ls s3://ilb-backups-2026$", "expect_contains": "snapshot", "hint": "In the Terminal tab, run `aws s3 ls s3://ilb-backups-2026`. If the check fails, confirm you typed it exactly and that the output contains \"snapshot\"."}], "success_message": "Lab complete — you handled backup objects hands-on."}, {"id": "aws-soa-lab-ha-recovery", "title": "Recovery drill — bring the standby up", "objective": "High availability is proven, not assumed. Drill the recovery path: start the stopped standby host, verify it, then park it again.", "difficulty": 2, "steps": ["Open the Terminal tab for this bootcamp.", "Type exactly: aws ec2 start-instances --instance-ids i-0f9e8d7c6b5a43210 — start the standby database host", "Type exactly: aws ec2 describe-instances --instance-ids i-0f9e8d7c6b5a43210 — confirm State reads 'running'", "Type exactly: aws ec2 stop-instances --instance-ids i-0f9e8d7c6b5a43210 — park it again (leave the lab clean)", "In your own words, say what an RTO measures using this drill as the example."], "checks": [{"command_pattern": "^aws ec2 start-instances --instance-ids i-0f9e8d7c6b5a43210$", "expect_contains": "now running", "hint": "In the Terminal tab, run `aws ec2 start-instances --instance-ids i-0f9e8d7c6b5a43210`. If the check fails, confirm you typed it exactly and that the output contains \"now running\"."}, {"command_pattern": "^aws ec2 stop-instances --instance-ids i-0f9e8d7c6b5a43210$", "expect_contains": "now stopped", "hint": "In the Terminal tab, run `aws ec2 stop-instances --instance-ids i-0f9e8d7c6b5a43210`. If the check fails, confirm you typed it exactly and that the output contains \"now stopped\"."}], "success_message": "Lab complete — you drilled the standby recovery path end to end."}, {"id": "aws-soa-lab-access-review", "title": "Quarterly access review", "objective": "Security and compliance is a SysOps duty: enumerate every IAM principal and confirm the caller identity for the review record.", "difficulty": 3, "steps": ["Open the Terminal tab for this bootcamp.", "Type exactly: aws iam list-users — every human and bot identity in the account", "Type exactly: aws iam list-roles — every role that can be assumed", "Type exactly: aws sts get-caller-identity — prove which identity YOU are for the review log", "In your own words, say which principal you would flag first in a real review and why."], "checks": [{"command_pattern": "^aws iam list-users$", "expect_contains": "deploy-bot", "hint": "In the Terminal tab, run `aws iam list-users`. If the check fails, confirm you typed it exactly and that the output contains \"deploy-bot\"."}, {"command_pattern": "^aws iam list-roles$", "expect_contains": "ilb-lambda-exec", "hint": "In the Terminal tab, run `aws iam list-roles`. If the check fails, confirm you typed it exactly and that the output contains \"ilb-lambda-exec\"."}, {"command_pattern": "^aws sts get-caller-identity$", "expect_contains": "user/candidate", "hint": "In the Terminal tab, run `aws sts get-caller-identity`. If the check fails, confirm you typed it exactly and that the output contains \"user/candidate\"."}], "success_message": "Lab complete — access review evidence collected like an auditor."}], "foundations": [{"track": "networking", "why_needed": "SysOps means operating VPCs: subnets, routing, and DNS come up in daily operations."}, {"track": "linux-cli", "why_needed": "Deploying and managing on AWS is terminal work over SSH. Command-line fluency comes first."}, {"track": "iam-concepts", "why_needed": "Operations on AWS are permission-gated. Learn users, roles, and policies before the runbooks."}], "math": ["binary", "subnetting"], "simulations": [{"id": "aws-soa-sim-deploy-fail", "title": "The deployment that never finished", "kind": "troubleshoot", "domain_id": "deployment-provisioning", "difficulty": 2, "brief": "The 14:00 deployment window closed with the new build half-rolled-out: one instance runs the new version, the other still runs the old. Work the evidence before you touch anything.", "steps": [{"symptom": "Half the fleet runs the new build, half runs the old; the deploy log shows no errors.", "evidence": [["aws ec2 describe-instances", "i-0a1b2c3d4e5f60718  ilb-web-01  running  t3.medium  us-east-1a\ni-0f9e8d7c6b5a43210  ilb-db-01   stopped  r6g.large  us-east-1b"]], "options": ["Re-run the deployment — it probably just needs a second pass", "Check whether the deploy targeted the stopped instance and stalled on it", "Roll back immediately — a half-deploy is always corrupt", "Terminate the stopped instance so the next deploy has a clean fleet"], "correct": 1, "explain": "A deploy that stalls on an unreachable target is the classic half-rollout cause. Verify the target set before re-running or rolling back — the old instances may be perfectly healthy."}, {"symptom": "The deploy tool waited 30 minutes on ilb-db-01 (stopped) and timed out; ilb-web-01 actually deployed fine.", "evidence": [["aws s3 ls s3://ilb-artifacts/builds", "builds/bootcamp-v3.zip\nbuilds/bootcamp-v4.zip"]], "options": ["Mark the deploy failed and roll ilb-web-01 back to v3", "Exclude stopped instances from the target set and re-run the deploy", "Delete the v4 artifact so nobody deploys it again", "Extend the deploy timeout to 4 hours and re-run as-is"], "correct": 1, "explain": "The artifact is fine and the live host is healthy — the target set was wrong. Fix the targeting (skip stopped instances), then re-run. Rolling back a healthy host adds risk for nothing."}], "debrief": "You diagnosed a stalled rollout by questioning the target set instead of the artifact. Operators fix targeting; amateurs re-run and hope.", "points": 15}, {"id": "aws-soa-sim-blue-green", "title": "Cut over without downtime", "kind": "ordering", "domain_id": "deployment-provisioning", "difficulty": 2, "brief": "The business demands zero-downtime deploys. Order the blue-green cutover so traffic never hits a half-ready fleet.", "steps": {"context": "Blue-green deployment: build the green fleet, verify, switch traffic, retire blue.", "items": ["Shift traffic from blue to green at the load balancer", "Deploy the new build to the green fleet", "Run smoke tests against the green fleet", "Provision the green fleet alongside blue", "Terminate the blue fleet after the bake period"], "correct_order": [3, 1, 2, 0, 4]}, "debrief": "You ordered the safe cutover: provision, deploy, verify, switch, retire. Traffic moves only after proof — that ordering is the whole discipline.", "points": 10}, {"id": "aws-soa-sim-alarm-triage", "title": "The 3 AM page", "kind": "branching", "domain_id": "monitoring-reporting", "difficulty": 2, "brief": "Your phone buzzes at 03:12: CPU alarm on ilb-web-01. The runbook gives you a decision tree — follow it like the on-call you want to be.", "steps": [{"id": "s1", "text": "The alarm says CPU > 90% for 15 minutes on ilb-web-01. First action?", "choices": [{"label": "Acknowledge and check whether the alarm is still firing", "next": "s2", "points": 2, "feedback": "Correct — verify current state before acting. Half of all pages self-resolve."}, {"label": "Immediately reboot the instance", "next": "s2a", "points": 0, "feedback": "Rebooting a production host on an unverified alarm is how outages are born."}]}, {"id": "s2a", "text": "You rebooted; the alarm cleared but you never learned the cause. The reviewer asks what you should have done first. Answer honestly:", "choices": [{"label": "Verified the alarm state and gathered metrics first", "next": "s2", "points": 1, "feedback": "Right — observe before acting, always."}]}, {"id": "s2", "text": "The alarm is still firing and traffic is normal. Next?", "choices": [{"label": "Scale out — add capacity and investigate the cause in parallel", "next": "END", "points": 2, "outcome": "good", "feedback": "Correct: protect the service first (scale), then diagnose. Availability before root cause."}, {"label": "Spend an hour finding the root cause before touching capacity", "next": "END", "points": 0, "outcome": "bad", "feedback": "Wrong priority: while you investigate, users suffer. Mitigate first, diagnose second."}]}], "debrief": "You practiced the on-call order of operations: verify, mitigate, then diagnose. Root cause matters — but never more than the users waiting on the service.", "points": 10}, {"id": "aws-soa-sim-alarm-config", "title": "The alarm that cried wolf", "kind": "config-check", "domain_id": "monitoring-reporting", "difficulty": 3, "brief": "The team mutes half their alarms because this CPU alarm pages constantly. Review the alarm definition and click the lines that make it noisy.", "steps": {"config": "Alarm: web-cpu-high\n1. Metric: CPUUtilization, ilb-web-01\n2. Threshold: > 20% for 1 datapoint (60s)\n3. Missing data: treat as breaching\n4. Actions: page on-call immediately\n5. OK action: none configured", "find": 2, "issues": [{"line": 2, "description": "A 20% threshold on a single 60s datapoint fires on any brief spike — pure noise.", "fix": "Raise the threshold (e.g. > 80%) and require N of M datapoints so transient spikes do not page."}, {"line": 3, "description": "Treating missing data as breaching pages the on-call every time metrics pause.", "fix": "Treat missing data as 'not breaching' or 'ignore' for CPU alarms; reserve breaching for heartbeat-style metrics."}]}, "debrief": "You found why the team ignores pages: a hair-trigger threshold and missing-data-as-breach. Fix the alarm and the team starts trusting pages again.", "points": 10}], "consoleSims": [{"id": "aws-soa-console-iam-1", "title": "Deprovision the departed contractor", "console": "aws-iam", "domain_id": "security-compliance", "difficulty": 2, "brief": "A contractor's engagement ended Friday. Deprovision their access now: disable, detach, and verify — in that order.", "tasks": [{"id": "t1", "instruction": "Set deploy-bot's status to disabled (do not delete yet — audit trail first).", "validate": {"action": "set-field", "params": {"field": "user.deploy-bot.status", "value": "disabled"}}, "hint": "Find the user and change its status field to disabled."}, {"id": "t2", "instruction": "Detach all policies from deploy-bot.", "validate": {"action": "click", "params": {"target": "detach-all-policies"}}, "hint": "Use the policy detachment control on the user's page."}], "debrief": "You deprovisioned by the book: disable first, strip permissions, keep the record. Deleting the user first would have destroyed the audit trail."}, {"id": "aws-soa-console-vpc-1", "title": "Add the private app subnet", "console": "aws-vpc", "domain_id": "networking", "difficulty": 2, "brief": "The app tier must move out of the public subnet. Carve a private subnet for it in the existing VPC.", "tasks": [{"id": "t1", "instruction": "Create subnet ilb-soa-app with CIDR 10.0.10.0/24 inside vpc-0a1b2c3d.", "validate": {"action": "create", "params": {"type": "subnet", "vpc": "vpc-0a1b2c3d", "name": "ilb-soa-app", "cidr": "10.0.10.0/24"}}, "hint": "Create the subnet inside the existing VPC with the exact CIDR from the ticket."}, {"id": "t2", "instruction": "Tag the subnet Tier=private so automation treats it as non-internet-facing.", "validate": {"action": "set-field", "params": {"field": "subnet.ilb-soa-app.tag.Tier", "value": "private"}}, "hint": "Find the tagging control on the new subnet."}], "debrief": "You built the private tier the right way: inside the VPC, correctly sized, and tagged so automation respects it."}], "terminalMissions": [{"id": "aws-soa-mission-caller", "title": "Log the operator", "domain_id": "security-compliance", "difficulty": 1, "brief": "Every change window starts with identity in the log. Pull yours.", "objectives": ["Retrieve the STS caller identity", "Record the user ARN"], "checks": [{"command_pattern": "^aws sts get-caller-identity$", "expect_contains": "arn:aws:iam::123456789012:user/candidate", "hint": "In the Terminal tab, run `aws sts get-caller-identity`. If the check fails, confirm you typed it exactly and that the output contains \"arn:aws:iam::123456789012:user/candidate\"."}], "success_message": "Operator logged — the window is attributed to candidate."}, {"id": "aws-soa-mission-buckets", "title": "Verify the backups", "domain_id": "storage-data", "difficulty": 1, "brief": "Confirm the backup bucket exists before the maintenance window — no bucket, no rollback.", "objectives": ["List all S3 buckets"], "checks": [{"command_pattern": "^aws s3 ls$", "expect_contains": "ilb-backups-2026", "hint": "In the Terminal tab, run `aws s3 ls`. If the check fails, confirm you typed it exactly and that the output contains \"ilb-backups-2026\"."}], "success_message": "Backups confirmed — the safety net is in place."}, {"id": "aws-soa-mission-fleet", "title": "Read the fleet state", "domain_id": "high-availability", "difficulty": 2, "brief": "Record the current state of every instance — this is the 'before' picture for the change record.", "objectives": ["Describe all EC2 instances", "Identify the stopped host by name"], "checks": [{"command_pattern": "^aws ec2 describe-instances$", "expect_contains": "ilb-db-01", "hint": "In the Terminal tab, run `aws ec2 describe-instances`. If the check fails, confirm you typed it exactly and that the output contains \"ilb-db-01\"."}], "success_message": "Fleet state recorded — ilb-db-01 is the parked host."}, {"id": "aws-soa-mission-principals", "title": "Enumerate the principals", "domain_id": "security-compliance", "difficulty": 2, "brief": "List every IAM user so the change record shows who could have acted during the window.", "objectives": ["List all IAM users"], "checks": [{"command_pattern": "^aws iam list-users$", "expect_contains": "deploy-bot", "hint": "In the Terminal tab, run `aws iam list-users`. If the check fails, confirm you typed it exactly and that the output contains \"deploy-bot\"."}], "success_message": "Principals enumerated — the review set is complete."}, {"id": "aws-soa-mission-sgs", "title": "Record the boundaries", "domain_id": "networking", "difficulty": 2, "brief": "Capture the security group inventory for the change record.", "objectives": ["Describe all security groups"], "checks": [{"command_pattern": "^aws ec2 describe-security-groups$", "expect_contains": "sg-0f9e8d7c", "hint": "In the Terminal tab, run `aws ec2 describe-security-groups`. If the check fails, confirm you typed it exactly and that the output contains \"sg-0f9e8d7c\"."}], "success_message": "Boundaries recorded — sg-0f9e8d7c is on file."}, {"id": "aws-soa-mission-restore", "title": "Prove the snapshot is retrievable", "domain_id": "storage-data", "difficulty": 3, "brief": "A backup you cannot retrieve is not a backup. Download the database snapshot to prove retrievability.", "objectives": ["Download s3://ilb-backups-2026/db/snapshot-2026-10-01.sql.gz"], "checks": [{"command_pattern": "^aws s3 cp s3://ilb-backups-2026/db/snapshot-2026-10-01.sql.gz \\.$", "expect_contains": "download:", "hint": "In the Terminal tab, run `aws s3 cp s3://ilb-backups-2026/db/snapshot-2026-10-01.sql.gz .`. If the check fails, confirm you typed it exactly and that the output contains \"download:\"."}], "success_message": "Retrievability proven — the snapshot downloads clean."}], "media": [{"id": "aws-soa-monitoring-reporting-diag", "kind": "diagram", "title": "Monitoring & Reporting", "svg": "assets/diagrams/aws-soa-monitoring-reporting.svg", "lesson_ref": "c-monitoring-reporting", "caption": "Operate with metrics, alarms, and dashboards.", "alt": "Monitoring & Reporting. Shows: Metrics, Alarms, Logs, X-Ray, Dashboards."}, {"id": "aws-soa-high-availability-diag", "kind": "diagram", "title": "High Availability Operations", "svg": "assets/diagrams/aws-soa-high-availability.svg", "lesson_ref": "c-high-availability", "caption": "Design and operate for failure.", "alt": "High Availability Operations. Shows: Multi-AZ, Auto Scaling, Health checks, Backups."}, {"id": "aws-soa-deployment-provisioning-diag", "kind": "diagram", "title": "Deployment & Provisioning", "svg": "assets/diagrams/aws-soa-deployment-provisioning.svg", "lesson_ref": "c-deployment-provisioning", "caption": "Repeatable, automated releases.", "alt": "Deployment & Provisioning. Shows: CodeCommit, CodeBuild, CodeDeploy, CodePipeline."}, {"id": "aws-soa-storage-data-diag", "kind": "diagram", "title": "AWS Storage & Database", "svg": "assets/diagrams/aws-soa-storage-data.svg", "lesson_ref": "c-storage-data", "caption": "Right store for the access pattern.", "alt": "AWS Storage & Database. Table with 5 rows."}, {"id": "aws-soa-security-compliance-diag", "kind": "diagram", "title": "Security & Compliance Ops", "svg": "assets/diagrams/aws-soa-security-compliance.svg", "lesson_ref": "c-security-compliance", "caption": "Continuous guardrails, not one-time audits.", "alt": "Security & Compliance Ops. Shows: AWS Config, Organizations SCPs, CloudFormation Guard, Tag policies, KMS, CloudHSM."}, {"id": "aws-soa-networking-diag", "kind": "diagram", "title": "VPC Networking", "svg": "assets/diagrams/aws-soa-networking.svg", "lesson_ref": "c-networking", "caption": "Subnets, gateways, and stateless/stateful filters.", "alt": "VPC Networking. Covers: Public subnet + IGW, Private subnet + NAT GW, Route tables, Security groups, NACLs (stateless), VPC endpoints."}], "resources": {"cheatsheet": {"title": "AWS SysOps Administrator — Cheat Sheet", "sections": [{"heading": "Monitoring & Reporting", "items": ["CloudWatch dashboards — provide customizable single-pane views of metrics, alarms, and logs. EC2 publishes hypervisor-visible metrics (CPU, network, disk I/O) by default, but memory and disk-space utilization require the CloudWatch agent installed on the instance.", "SNS — a CloudWatch alarm on the CPUUtilization metric triggers an SNS notification when the threshold breaches — the standard metric-alerting pattern.", "CloudTrail — CloudTrail logs AWS API activity; enabling it in all regions with log file validation into a restricted S3 bucket gives a tamper-evident audit trail. CloudTrail logs API calls; Config tracks configuration changes — neither monitors disk space.", "Audit logging — console event history is only 90 days and not immutable; app-level logging misses console/CLI calls.", "CloudWatch Logs Insights — provides an interactive query language purpose-built for searching and aggregating log data at scale. Systems Manager OpsCenter aggregates operational issues as OpsItems from CloudWatch, Config, and other sources, with deduplication and investigation workfl…", "Common trap — the CloudWatch agent for memory and disk metrics.", "Common trap — increase the CloudWatch alarm period to 1 hour.", "Common trap — enable VPC Flow Logs.", "Common trap — ask developers to log API calls in the app.", "CloudWatch dashboards — provide customizable single-pane views of metrics, alarms, and logs. The EC2 console lists instances without health aggregation; Cost Explorer shows spend; Trusted Advisor shows best-practice checks — none is an ops dashboard."]}, {"heading": "High Availability", "items": ["Auto Scaling — ALB target group health checks probe the application endpoint (catching app-dead/OS-alive), and Auto Scaling can use ELB health checks to replace such instances. An Auto Scaling group spanning multiple AZs behind an ALB replaces unhealthy instances and rout…", "Multi-AZ — RDS Multi-AZ maintains a synchronous standby and fails over automatically, typically within minutes.", "Health checks — instance-level checks only verify the OS; DNS checks don't see app state; scheduled replacement is blind.", "Common trap — ALB target group health checks plus Auto Scaling health checks.", "Common trap — warm standby with manual failover.", "Common trap — an SQS queue with a dead-letter queue and a long visibility timeout.", "Common trap — no health checks; replace on a schedule.", "An Auto Scaling — An Auto Scaling group spanning multiple AZs behind an ALB replaces unhealthy instances and routes around failed AZs automatically. Bigger single instances still fail with their AZ; Elastic IPs don't add capacity; two instances in one AZ share the same fault…"]}, {"heading": "Deployment & Provisioning", "items": ["CloudFormation templates make infrastructure code — versioned, reviewable, repeatable — and change sets preview modifications before applying.", "Blue — Blue/green with CodeDeploy provisions the new (green) fleet, validates it, then shifts traffic — the old (blue) fleet stays ready for instant rollback.", "Patch Manager — Patch Manager automates patching across fleets with baselines, maintenance windows, and compliance reporting. Parameter Store SecureString or Secrets Manager centralize secrets outside images, with rotation support — no rebuilds needed.", "Common trap — golden AMIs built by EC2 Image Builder in a pipeline.", "Common trap — AWS Systems Manager Parameter Store (SecureString) or Secrets Manager.", "Common trap — one IAM role per developer.", "Common trap — rolling deploys with no health checks.", "EC2 Image Builder — EC2 Image Builder automates building, testing, and versioning golden AMIs in a pipeline — fast launches, no drift. Long-lived pets accumulate drift; laptop snapshots aren't reproducible; single-host containers don't address the fleet."]}, {"heading": "Storage & Data", "items": ["EBS — is block storage; EFS is NFS (Linux-oriented); S3 is object storage without SMB semantics.", "Storage selection — S3 Lifecycle policies automatically transition objects between storage classes (and expire them) on age-based rules — zero ongoing effort.", "DataSync — is the managed service for online data transfer to S3/EFS/FSx with scheduling, bandwidth controls, and data validation.", "AWS Backup — provides centralized backup plans, scheduling, retention, and cross-region copy across supported services.", "Common trap — amazon FSx for Windows File Server.", "Common trap — S3 Lifecycle policies to transition to Glacier.", "Common trap — EBS io2 for the database; S3 for the media.", "Common trap — a cron job on one EC2 instance."]}, {"heading": "Security & Compliance", "items": ["IAM — IAM roles with instance profiles give EC2 temporary, automatically-rotated credentials — no keys to manage or leak. IAM Identity Center provides workforce SSO across accounts with MFA enforcement and permission sets for least privilege.", "AWS Config — AWS Config rules continuously evaluate resource configuration against the desired state and can trigger automatic remediation (e.g., revoke the rule via Lambda/SSM). AWS WAF inspects HTTP requests at Layer 7 with managed rule groups for SQLi, XSS, and bot/c…", "Principle — long-term user keys reintroduce the same problem; sharing keys destroys accountability; hardcoded AMI keys are the current failure.", "Common trap — IAM roles for EC2 with instance profiles.", "Common trap — a customer managed key (CMK) with key policies and rotation.", "Common trap — IAM users with long-term keys.", "Common trap — install antivirus on every instance.", "AWS Config — AWS Config rules continuously evaluate resource configuration against the desired state and can trigger automatic remediation (e.g., revoke the rule via Lambda/SSM). Manual audits are too slow; CloudTrail records but doesn't evaluate; Trusted Advisor is adv…"]}, {"heading": "Networking", "items": ["NAT gateway — a NAT gateway in a public subnet lets private instances initiate outbound connections while blocking unsolicited inbound traffic. A custom VPC with public subnets (load balancers, NAT) and private subnets (app, data) across 2+ AZs gives tier isolation and A…", "Private subnets — interface VPC endpoints (PrivateLink) expose services — AWS or SaaS-provider — as private IPs inside the VPC with no internet traversal. Direct Connect provides dedicated private connectivity with consistent throughput for heavy hybrid workloads.", "Subnet filtering — the default VPC is a single public-style network; a single subnet has no isolation or resilience.", "Common trap — an internet gateway in the private subnet.", "Common trap — a NAT gateway in a public subnet.", "A NAT — A NAT gateway in a public subnet lets private instances initiate outbound connections while blocking unsolicited inbound traffic. Internet gateways are bidirectional; VPC peering connects VPCs, not the internet; VPN connects on-premises networks."]}]}, "glossary": [{"term": "VPC", "def": "Private subnets: interface VPC endpoints (PrivateLink) expose services — AWS or SaaS-provider — as private IPs inside the VPC with no internet traversal. Direct Connect provides dedicated private connectivity with consistent throughput f…"}, {"term": "AWS", "def": "AWS Backup provides centralized backup plans, scheduling, retention, and cross-region copy across supported services."}, {"term": "IAM", "def": "IAM roles with instance profiles give EC2 temporary, automatically-rotated credentials — no keys to manage or leak. IAM Identity Center provides workforce SSO across accounts with MFA enforcement and permission sets for least privilege."}, {"term": "EBS", "def": "EBS is block storage; EFS is NFS (Linux-oriented); S3 is object storage without SMB semantics."}, {"term": "EC2", "def": "DataSync is the managed service for online data transfer to S3/EFS/FSx with scheduling, bandwidth controls, and data validation. Public-internet copies lack validation; Snowcone/Snowball suit offline/petabyte scale, not 40 TB online; FTP…"}, {"term": "NAT", "def": "Interface VPC endpoints (PrivateLink) expose services — AWS or SaaS-provider — as private IPs inside the VPC with no internet traversal. NAT/internet gateways still use the public internet; public IPs violate the requirement."}, {"term": "EFS", "def": "EBS is block storage; EFS is NFS (Linux-oriented); S3 is object storage without SMB semantics."}, {"term": "CloudWatch", "def": "CloudWatch dashboards provide customizable single-pane views of metrics, alarms, and logs. EC2 publishes hypervisor-visible metrics (CPU, network, disk I/O) by default, but memory and disk-space utilization require the CloudWatch agent i…"}, {"term": "ALB", "def": "Auto Scaling: ALB target group health checks probe the application endpoint (catching app-dead/OS-alive), and Auto Scaling can use ELB health checks to replace such instances. An Auto Scaling group spanning multiple AZs behind an ALB rep…"}, {"term": "CloudTrail", "def": "AWS Config rules continuously evaluate resource configuration against the desired state and can trigger automatic remediation (e.g., revoke the rule via Lambda/SSM). Manual audits are too slow; CloudTrail records but doesn't evaluate; Tr…"}, {"term": "AMI", "def": "Principle: long-term user keys reintroduce the same problem; sharing keys destroys accountability; hardcoded AMI keys are the current failure."}, {"term": "SNS", "def": "SNS: a CloudWatch alarm on the CPUUtilization metric triggers an SNS notification when the threshold breaches — the standard metric-alerting pattern."}, {"term": "NFS", "def": "EBS is block storage; EFS is NFS (Linux-oriented); S3 is object storage without SMB semantics."}, {"term": "IOPS", "def": "io2 provides provisioned IOPS for the database's performance needs while S3 handles massive media storage with CDN integration. gp3 can't sustain 20k IOPS efficiently; instance store is ephemeral; EFS is a file system, not a media origin."}, {"term": "OS", "def": "Auto Scaling: ALB target group health checks probe the application endpoint (catching app-dead/OS-alive), and Auto Scaling can use ELB health checks to replace such instances. An Auto Scaling group spanning multiple AZs behind an ALB rep…"}, {"term": "AZ", "def": "A custom VPC with public subnets (load balancers, NAT) and private subnets (app, data) across 2+ AZs gives tier isolation and AZ resilience. The default VPC is a single public-style network; a single subnet has no isolation or resilience."}, {"term": "WAF", "def": "AWS WAF inspects HTTP requests at Layer 7 with managed rule groups for SQLi, XSS, and bot/credential-stuffing patterns. Shield handles network-layer DDoS; security groups/NACLs filter packets, not HTTP payloads."}, {"term": "Auto Scaling", "def": "Auto Scaling: ALB target group health checks probe the application endpoint (catching app-dead/OS-alive), and Auto Scaling can use ELB health checks to replace such instances. An Auto Scaling group spanning multiple AZs behind an ALB rep…"}, {"term": "KMS", "def": "Customer managed keys (CMKs) in KMS provide key policies for access control, automatic rotation, and CloudTrail logging of every use. AWS-managed keys don't offer key policies; SSE-S3 is for S3; no encryption fails compliance."}, {"term": "Secrets Manager", "def": "Parameter Store SecureString or Secrets Manager centralize secrets outside images, with rotation support — no rebuilds needed. Plaintext env vars and shared docs leak; hardcoded AMI secrets are the current failure."}, {"term": "FTP", "def": "DataSync is the managed service for online data transfer to S3/EFS/FSx with scheduling, bandwidth controls, and data validation. Public-internet copies lack validation; Snowcone/Snowball suit offline/petabyte scale, not 40 TB online; FTP…"}, {"term": "OS-alive", "def": "Auto Scaling: ALB target group health checks probe the application endpoint (catching app-dead/OS-alive), and Auto Scaling can use ELB health checks to replace such instances. An Auto Scaling group spanning multiple AZs behind an ALB rep…"}, {"term": "RDS", "def": "Multi-AZ: RDS Multi-AZ maintains a synchronous standby and fails over automatically, typically within minutes."}, {"term": "AWS API", "def": "CloudTrail logs AWS API activity; enabling it in all regions with log file validation into a restricted S3 bucket gives a tamper-evident audit trail. CloudTrail logs API calls; Config tracks configuration changes — neither monitors disk…"}, {"term": "S3 Lifecycle", "def": "Storage selection: S3 Lifecycle policies automatically transition objects between storage classes (and expire them) on age-based rules — zero ongoing effort."}], "links": [{"label": "Amazon Web Services — official site", "url": "https://aws.amazon.com/certification", "note": "Official vendor documentation and certification information"}, {"label": "AWS documentation", "url": "https://docs.aws.amazon.com/", "note": "Official service documentation"}, {"label": "AWS Well-Architected Framework", "url": "https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html", "note": "Official architecture best practices"}, {"label": "AWS Architecture Center", "url": "https://aws.amazon.com/architecture/", "note": "Official AWS architecture guidance"}, {"label": "AWS whitepapers", "url": "https://aws.amazon.com/whitepapers/", "note": "Official AWS whitepapers"}, {"label": "Google SRE book", "url": "https://sre.google/sre-book/table-of-contents/", "note": "Google's Site Reliability Engineering book"}, {"label": "OpenTelemetry documentation", "url": "https://opentelemetry.io/docs/", "note": "Official OpenTelemetry docs"}], "checklist": ["Get 7–8 hours of sleep the night before — fatigue destroys recall faster than any topic gap.", "Bring valid government-issued photo ID and arrive at the test center 30 minutes early.", "Eat a real meal beforehand; bring water and a light snack if the center allows them.", "Read every question twice before scanning the answer choices.", "Flag uncertain questions and move on — return with fresh eyes at the end.", "Eliminate the obviously wrong answers first, then compare the survivors.", "Budget your time: answer steadily and keep a 10–15 minute review buffer.", "Re-run your weakest-domain drill until mastery is at least 80%.", "For Monitoring & Reporting: restate the 'why' behind each scenario answer in your own words — if you can't explain it, you don't own it.", "Redo one High Availability lab from scratch without looking at the steps.", "Recite the key Deployment & Provisioning terms from the glossary aloud from memory."]}}
+{
+  "slug": "aws-soa",
+  "title": "AWS SysOps Administrator",
+  "tagline": "Operating AWS workloads: CloudWatch monitoring and alarming, Systems Manager automation, deployment strategies, and systematic troubleshooting of EC2 and application issues. Vendor-neutral study aid. ",
+  "vendor": {
+    "name": "Independent interview prep (not affiliated with ThreatLocker)",
+    "certs": "",
+    "docs": "https://www.threatlocker.com"
+  },
+  "disclaimer": "Independent interview-prep material by Interstitium Labs. Not affiliated with, endorsed by, or sponsored by ThreatLocker or any vendor mentioned. Confers no certificate. All scenarios are original practice content; no exam or vendor-training content is reproduced.",
+  "accent": "#e5484d",
+  "domains": [
+    {
+      "id": "aws-soa",
+      "name": "AWS SysOps Administrator",
+      "summary": "Operating AWS workloads: CloudWatch monitoring and alarming, Systems Manager automation, deployment strategies, and systematic troubleshooting of EC2 and application issues. Vendor-neutral study aid. Not affiliated with AWS; this course confers no certification.",
+      "scenarios": [
+        {
+          "id": "aws-soa-sc1",
+          "title": "The 3 AM Page",
+          "situation": "An on-call engineer gets paged for high CPU on a web instance — but the alarm fired on a single 1-minute spike during a deploy, and the instance was healthy. The team wants fewer false pages.",
+          "prompt": "How should the CloudWatch alarm be configured to page only on real problems?",
+          "evidence": [
+            [
+              "CloudWatch alarms",
+              "Alarms evaluate a metric against a threshold over N datapoints within an evaluation period. SNS topics deliver notifications. EC2 default metrics arrive every 5 minutes unless detailed monitoring (1 minute) is enabled."
+            ]
+          ],
+          "choices": [
+            "Require the threshold breached for multiple consecutive datapoints (e.g., 3 of 3 five-minute periods), treat missing data sensibly, and page via SNS only on the ALARM state.",
+            "Set the threshold lower and the period to 10 seconds so the alarm fires even faster.",
+            "Page on every single datapoint above threshold; faster pages are always better.",
+            "Disable the alarm and rely on engineers noticing CloudWatch dashboards."
+          ],
+          "answer": 0,
+          "why": "Alarm quality is a tuning problem: demanding sustained breach across several datapoints filters out deploy spikes and momentary noise, while paging on ALARM state via SNS keeps the signal clean. Hair-trigger single-datapoint alarms train teams to ignore pages — the opposite of reliability.",
+          "hint": "Was the instance actually unhealthy, or was the measurement just noisy?",
+          "objectives": [
+            "CloudWatch alarms",
+            "SNS"
+          ],
+          "mins": 6,
+          "difficulty": 1
+        },
+        {
+          "id": "aws-soa-sc2",
+          "title": "Patch Tuesday at Scale",
+          "situation": "A company runs 200 EC2 instances across three accounts. Today an engineer SSHes into each one to run updates by hand — it takes days, some get missed, and there is no record of what changed.",
+          "prompt": "What is the right way to patch the fleet?",
+          "evidence": [
+            [
+              "Systems Manager",
+              "Patch Manager automates OS patching with baselines and maintenance windows. Run Command executes commands across many instances without SSH. State Manager enforces configuration. All require the SSM Agent and an IAM instance profile."
+            ]
+          ],
+          "choices": [
+            "Systems Manager Patch Manager with patch baselines and maintenance windows, using Run Command for ad-hoc fixes — no SSH, with full compliance reporting.",
+            "Keep SSHing but write a bash for-loop over the instance list to go faster.",
+            "Open RDP/SSH to the internet on all instances so patching tools can reach them directly.",
+            "Rebuild every AMI from scratch monthly and replace all instances at once."
+          ],
+          "answer": 0,
+          "why": "Patch Manager turns a multi-day manual slog into a scheduled, auditable, exception-reported process — baselines define approved patches, maintenance windows control timing, and compliance dashboards prove coverage to auditors. Manual SSH scales with headcount, not with fleets, and internet-open admin ports trade one problem for a worse one.",
+          "hint": "What would the auditor ask for: a spreadsheet of memories, or a compliance report?",
+          "objectives": [
+            "Systems Manager",
+            "Patch Manager"
+          ],
+          "mins": 6,
+          "difficulty": 1
+        },
+        {
+          "id": "aws-soa-sc3",
+          "title": "SSH Is Closed. Now What?",
+          "situation": "Security just closed port 22 on all security groups fleet-wide. An engineer needs shell access to a misbehaving instance in a private subnet with no bastion host.",
+          "prompt": "How does the engineer get in without reopening SSH?",
+          "evidence": [
+            [
+              "Session Manager",
+              "SSM Session Manager gives browser/CLI shell access through the SSM Agent over HTTPS — no inbound ports, no bastion, no keys. Sessions are logged to S3/CloudWatch Logs, and access is controlled by IAM."
+            ]
+          ],
+          "choices": [
+            "Use SSM Session Manager: the instance needs the SSM Agent and an IAM role with AmazonSSMManagedInstanceCore; connect via the console or AWS CLI with sessions logged.",
+            "Temporarily re-add 0.0.0.0/0 on port 22, fix the issue, then remove it — quick and reversible.",
+            "Stop the instance, detach the root volume, attach it to another instance, and edit files directly.",
+            "Rebuild the instance from the AMI; shell access is unnecessary if the AMI is correct."
+          ],
+          "answer": 0,
+          "why": "Session Manager was built for exactly this: secure shell access with zero open inbound ports, IAM-controlled, and fully audited — closing port 22 fleet-wide only works if there is a replacement, and this is it. Temporary 0.0.0.0/0 SSH is how breaches start, and volume surgery is slow overkill for a shell session.",
+          "hint": "What port does the SSM Agent use — and is it inbound or outbound?",
+          "objectives": [
+            "Session Manager",
+            "Systems Manager"
+          ],
+          "mins": 6,
+          "difficulty": 2
+        },
+        {
+          "id": "aws-soa-sc4",
+          "title": "Status Check Failed",
+          "situation": "An EC2 instance stops responding. The console shows 'Instance status check: failed' but 'System status check: passed'. A teammate suggests stopping and starting the instance 'to move it to new hardware.'",
+          "prompt": "What is the correct diagnosis and action?",
+          "evidence": [
+            [
+              "Status checks",
+              "System status check failure = AWS infrastructure problem (host hardware/network) — stop/start migrates to healthy hardware. Instance status check failure = guest OS problem (kernel panic, bad config, exhausted resources) — reboot or fix the OS."
+            ]
+          ],
+          "choices": [
+            "Instance check failed means the guest OS is at fault: reboot the instance or troubleshoot the OS (check system log, memory/disk); stop/start for new hardware only helps system-check failures.",
+            "Stop and start immediately — new hardware fixes every kind of status check failure.",
+            "Terminate the instance; any failed status check means the hardware is dead.",
+            "Wait — status checks always clear themselves within an hour without action."
+          ],
+          "answer": 0,
+          "why": "The two checks exist to split responsibility: passed system check exonerates AWS hardware, so the fault is inside the guest — rebooting or fixing the OS is the remedy, while stop/start migration would just move a sick OS to a new host. Reading the check pair correctly saves the team from 'fixing' the wrong layer.",
+          "hint": "Which check would fail if the hypervisor host lost power?",
+          "objectives": [
+            "EC2 troubleshooting",
+            "Status checks"
+          ],
+          "mins": 7,
+          "difficulty": 2
+        },
+        {
+          "id": "aws-soa-sc5",
+          "title": "Deploy Without Downtime",
+          "situation": "A team deploys a stateful web app with database schema changes. Past in-place deploys caused mixed-version servers writing incompatible rows, and rollbacks were manual and scary.",
+          "prompt": "Which deployment approach minimizes downtime and rollback risk?",
+          "evidence": [
+            [
+              "Strategies",
+              "Rolling: replace instances gradually. Blue/green: run two full environments, shift traffic, keep old as instant rollback. Canary: shift a small % first. In-place: update on existing hosts. Schema changes must be backward-compatible (expand then contract)."
+            ]
+          ],
+          "choices": [
+            "Blue/green with backward-compatible (expand/contract) database migrations: shift traffic via the load balancer, validate, and keep the blue environment as an instant rollback target.",
+            "In-place deployment on all servers simultaneously — fastest, and the schema change applies everywhere at once.",
+            "Rolling deployment with the new code and breaking schema change applied together per server.",
+            "Deploy Friday night when traffic is low, so any incompatibility affects fewer users."
+          ],
+          "answer": 0,
+          "why": "Blue/green gives you a tested, fully separate environment and a one-step rollback (shift traffic back), while expand/contract migrations keep old and new code writing compatible rows during the transition. In-place and rolling with breaking schema changes create the exact mixed-version corruption the team already suffered — and Friday-night deploys just move the blast radius in time, not in risk.",
+          "hint": "If the deploy fails at 50%, how do you get back — and what did the database see meanwhile?",
+          "objectives": [
+            "Deployment strategies",
+            "Blue/green"
+          ],
+          "mins": 8,
+          "difficulty": 3
+        },
+        {
+          "id": "aws-soa-sc6",
+          "title": "The Runaway Log Disk",
+          "situation": "A fleet of app servers periodically fills its log disk, crashing the app. Engineers want automatic detection and remediation without waking anyone for the routine case.",
+          "prompt": "What is the best automated response?",
+          "evidence": [
+            [
+              "Building blocks",
+              "CloudWatch agent collects disk/memory metrics EC2 doesn't emit by default. CloudWatch alarms trigger on thresholds. EventBridge routes events; SSM Automation runbooks execute remediation steps like clearing logs or restarting services."
+            ]
+          ],
+          "choices": [
+            "CloudWatch agent publishes disk metrics, an alarm fires on high disk usage, and an SSM Automation runbook archives/rotates logs and restarts the service — paging a human only if remediation fails.",
+            "A cron job on each server deletes all logs nightly at midnight.",
+            "Set a CloudWatch alarm on CPU and have it reboot the instance when logs fill up.",
+            "Give every engineer SNS alerts on disk metrics and let whoever is awake handle it."
+          ],
+          "answer": 0,
+          "why": "The mature pattern is detect-decide-remediate: custom disk metrics (EC2 doesn't emit them natively) feed an alarm, and an audited runbook does the routine fix the same way every time, escalating only on failure. Blind cron deletion destroys forensic evidence, CPU alarms don't measure disk, and human-triage-at-scale is how routine issues become 3 AM pages.",
+          "hint": "Which metric actually measures the problem — and who should do the boring fix?",
+          "objectives": [
+            "CloudWatch agent",
+            "SSM Automation",
+            "EventBridge"
+          ],
+          "mins": 9,
+          "difficulty": 3
+        }
+      ]
+    },
+    {
+      "id": "aws-cloud-ops",
+      "name": "Cloud Operations on AWS",
+      "summary": "Running AWS well day to day: monitoring and observability, cost optimization and FinOps, incident response, and the Well-Architected Framework as an operational compass. Vendor-neutral study aid. Not affiliated with AWS; this course confers no certification.",
+      "scenarios": [
+        {
+          "id": "aws-cloud-ops-sc1",
+          "title": "Tag or Lose It",
+          "situation": "Finance asks which team owns a $40k/month 'unattributed' line in Cost Explorer. Resources were launched fast with no tags, and three teams all claim innocence.",
+          "prompt": "What fixes cost attribution going forward?",
+          "evidence": [
+            [
+              "Cost allocation",
+              "Cost allocation tags (aws:createdBy, custom keys like Team, Project, Environment) flow into Cost Explorer and CUR. Tag policies and SCPs can enforce required tags at creation time. Untagged past spend often stays unattributed."
+            ]
+          ],
+          "choices": [
+            "Define a mandatory tag schema (Team, Project, Environment), enforce it with tag policies/SCPs so untagged resources can't launch, and backfill what can be identified.",
+            "Ask each team to self-report their spend monthly on the honor system.",
+            "Create one AWS account per team retroactively and migrate resources.",
+            "Accept unattributed spend as the price of agility; tagging slows launches."
+          ],
+          "answer": 0,
+          "why": "Attribution is a creation-time problem: enforcement at launch (tag policies, SCPs) guarantees every future dollar is labeled, while a defined schema keeps tags consistent enough to report on. Self-reporting doesn't reconcile, and per-team accounts are a migration project, not a tagging fix.",
+          "hint": "When is the cheapest moment to label a resource — at launch, or during an audit?",
+          "objectives": [
+            "Cost allocation tags",
+            "Tag policies"
+          ],
+          "mins": 6,
+          "difficulty": 1
+        },
+        {
+          "id": "aws-cloud-ops-sc2",
+          "title": "The Idle Fleet",
+          "situation": "Compute Optimizer flags 60% of the EC2 fleet as over-provisioned, and dev/test instances run 24/7 though engineers work 8x5. The bill keeps climbing while utilization falls.",
+          "prompt": "What is the highest-impact remediation sequence?",
+          "evidence": [
+            [
+              "Rightsizing levers",
+              "Compute Optimizer recommends instance types from utilization history. Instance Scheduler / Lambda can stop-start dev instances on a schedule. Savings Plans discount the remaining steady baseline."
+            ]
+          ],
+          "choices": [
+            "Rightsize per Compute Optimizer, put dev/test on automated stop-start schedules, then cover the smaller steady-state baseline with Savings Plans.",
+            "Buy Savings Plans first for the current fleet, then think about rightsizing later.",
+            "Move everything to bigger instances so utilization percentages look better.",
+            "Delete the dev environments entirely; developers can share one instance."
+          ],
+          "answer": 0,
+          "why": "Order matters: committing to today's oversized fleet locks in waste at a discount, while rightsizing and scheduling first shrink the baseline that commitments then cover. Bigger instances worsen the waste, and deleting dev environments trades cost for velocity.",
+          "hint": "Should you sign a 3-year commitment on capacity you haven't finished shrinking?",
+          "objectives": [
+            "Compute Optimizer",
+            "Rightsizing",
+            "Savings Plans"
+          ],
+          "mins": 6,
+          "difficulty": 1
+        },
+        {
+          "id": "aws-cloud-ops-sc3",
+          "title": "Budgets With Teeth",
+          "situation": "A team blew past its quarterly cloud budget in month two. Leadership wants hard enforcement: 'shut things down when the budget hits.' Finance wants alerts, not outages.",
+          "prompt": "What is the right control design?",
+          "evidence": [
+            [
+              "Budget controls",
+              "AWS Budgets sends alerts (email, SNS, Chatbot) at thresholds — it notifies, it does not enforce. Enforcement comes from SCPs, IAM policies, and automation (e.g., budget-triggered Lambda via EventBridge/Budgets Actions). Hard auto-shutdown risks production outages."
+            ]
+          ],
+          "choices": [
+            "AWS Budgets with tiered alerts (50/80/100% via SNS) plus Budgets Actions or SCP guardrails on non-production accounts; keep production protected from automated shutdown.",
+            "One budget alert at 100% that terminates all EC2 instances in the account automatically.",
+            "No budgets — engineers should just watch the billing console daily.",
+            "Give every developer the root credentials so anyone can check spend anytime."
+          ],
+          "answer": 0,
+          "why": "Budgets are tripwires, not brakes: tiered alerts give humans time to act, while automated enforcement belongs on non-production where a shutdown is an inconvenience, not an outage. Auto-terminating production on a budget threshold converts a cost problem into a revenue problem.",
+          "hint": "What happens to customers if the enforcement fires during peak traffic?",
+          "objectives": [
+            "AWS Budgets",
+            "SCPs"
+          ],
+          "mins": 7,
+          "difficulty": 2
+        },
+        {
+          "id": "aws-cloud-ops-sc4",
+          "title": "Well-Architected Review",
+          "situation": "A workload has never had an architecture review. The team runs the Well-Architected Tool and gets 40 findings across all six pillars, from missing backups to no cost tags. They're overwhelmed.",
+          "prompt": "How should they prioritize?",
+          "evidence": [
+            [
+              "Well-Architected",
+              "Six pillars: Operational Excellence, Security, Reliability, Performance Efficiency, Cost Optimization, Sustainability. The Tool flags high/medium risks per question; best practice is fixing high-risk items first, especially security and reliability."
+            ]
+          ],
+          "choices": [
+            "Fix high-risk findings first — security and reliability risks (backups, access control, AZ redundancy) before cost and sustainability optimizations.",
+            "Fix the easiest findings first to get the count down quickly for the report.",
+            "Fix all Cost Optimization findings first since they fund the rest.",
+            "Skip the review; 40 findings means the tool is too strict for a real workload."
+          ],
+          "answer": 0,
+          "why": "Risk order beats convenience order: a missing backup or open access path can end the business, while untagged resources merely annoy finance. High-risk security and reliability items are existential; cost findings are important but not urgent in the same way.",
+          "hint": "Which findings could end the company this quarter?",
+          "objectives": [
+            "Well-Architected Framework",
+            "Risk prioritization"
+          ],
+          "mins": 7,
+          "difficulty": 2
+        },
+        {
+          "id": "aws-cloud-ops-sc5",
+          "title": "Incident at 2 AM",
+          "situation": "A payment service starts failing. The responder SSHes into servers, restarts things by feel, fixes it in 90 minutes — and nobody learns anything because nothing was recorded. It recurs monthly.",
+          "prompt": "What operational practice breaks this cycle?",
+          "evidence": [
+            [
+              "Incident practice",
+              "Runbooks: pre-written diagnostic/remediation steps. EventBridge + SSM Automation: automatic detection and remediation. Blameless postmortems: record timeline, root cause, and action items. On-call rotations with clear escalation."
+            ]
+          ],
+          "choices": [
+            "Codified runbooks plus automated detection/remediation (EventBridge to SSM Automation), followed by a blameless postmortem with tracked action items after every incident.",
+            "Give the best responder a raise; heroics are the reliability strategy.",
+            "Restart all servers nightly as preventive maintenance.",
+            "Page the whole team for every alert so more eyes see each incident."
+          ],
+          "answer": 0,
+          "why": "Reliability is a system property, not a hero property: runbooks make the fix repeatable, automation handles the known-knowns without waking anyone, and blameless postmortems convert each incident into permanent prevention. Heroics don't scale and don't teach; nightly restarts mask root causes.",
+          "hint": "What would the next responder do differently at 2 AM with a runbook in hand?",
+          "objectives": [
+            "Incident response",
+            "Runbooks",
+            "Postmortems"
+          ],
+          "mins": 9,
+          "difficulty": 3
+        },
+        {
+          "id": "aws-cloud-ops-sc6",
+          "title": "Commitment Math",
+          "situation": "A workload mixes: 40% steady baseline (web tier 24/7), 35% business-hours batch, 25% unpredictable spikes. Finance wants maximum commitment discount; engineering fears lock-in on the wrong capacity.",
+          "prompt": "What is the defensible commitment strategy?",
+          "evidence": [
+            [
+              "Commitments",
+              "Savings Plans/Reserved Instances discount committed usage up to ~72%. Cover the steady baseline you are certain about; keep variable load on On-Demand/Spot. Coverage and utilization reports in Cost Explorer show waste. Convertible RIs / flexible Savings Plans hedge against change."
+            ]
+          ],
+          "choices": [
+            "Commit (Savings Plans) only to the steady 40% baseline; run business-hours batch on scheduled On-Demand or Spot, spikes on On-Demand — then track coverage/utilization monthly.",
+            "Commit to 100% of current usage for the maximum discount; growth only increases usage.",
+            "Avoid all commitments; flexibility is worth paying full On-Demand price forever.",
+            "Put the unpredictable spikes on Spot with no fallback to maximize savings."
+          ],
+          "answer": 0,
+          "why": "Commitments reward certainty and punish guesses: the steady baseline is safe to commit, while batch and spikes are definitionally variable — committing to them buys discounts on capacity you won't use. Monthly coverage reviews keep the commitment matched to reality as the workload evolves.",
+          "hint": "Which 40% would you bet a year of budget on — and which 25% wouldn't you?",
+          "objectives": [
+            "Savings Plans",
+            "Cost Explorer"
+          ],
+          "mins": 9,
+          "difficulty": 3
+        }
+      ]
+    }
+  ],
+  "lessons": [
+    {
+      "domain_id": "aws-soa",
+      "title": "AWS SysOps Administrator — Core concepts",
+      "concepts": [
+        "CloudWatch is the operational nervous system: metrics and alarms for thresholds, Logs for centralized log analysis, Events/EventBridge for reacting to state changes, and dashboards for shared situational awareness. EC2 emits basic metrics every 5 minutes; the CloudWatch agent adds memory, disk, and application metrics.",
+        "Systems Manager replaces SSH-and-hope fleet management: Patch Manager for OS updates, Run Command for fleet-wide commands, Session Manager for portless shell access, State Manager for configuration enforcement, and Parameter Store/Secrets Manager for configuration and secrets.",
+        "Choose deployment strategies by blast radius: in-place is cheapest but riskiest, rolling limits concurrent exposure, blue/green gives instant rollback at double capacity cost, and canary validates with real traffic on a small slice. Database migrations must be backward-compatible regardless of strategy.",
+        "Troubleshoot in layers: read the status check pair (system vs instance) before touching anything, check the system log and CloudWatch metrics for evidence, change one thing at a time, and prefer automated runbooks over heroic manual fixes for recurring issues.",
+        "Tag everything and centralize: consistent tags power cost allocation, automation targeting, and access control; CloudTrail logs every API call for audit; Config records configuration history so you can answer 'what changed?' during incidents."
+      ],
+      "example": {
+        "lang": "shell",
+        "code": "aws cloudwatch put-metric-alarm --alarm-name web-cpu-high \\\n  --metric-name CPUUtilization --namespace AWS/EC2 --statistic Average \\\n  --period 300 --evaluation-periods 3 --threshold 80 \\\n  --comparison-operator GreaterThanThreshold \\\n  --dimensions Name=InstanceId,Value=i-0abc123 --alarm-actions arn:aws:sns:us-east-1:123456789012:ops",
+        "walkthrough": "This pages only when CPU averages over 80% for three consecutive 5-minute periods — sustained breach, not spikes. The SNS action routes to the on-call topic. Tune evaluation-periods first whenever an alarm pages too often."
+      },
+      "pitfalls": [
+        "Common trap: alarming on a single datapoint — require consecutive breaches or inherit pager fatigue.",
+        "Common trap: assuming EC2 emits disk/memory metrics natively — install the CloudWatch agent for those.",
+        "Common trap: using Session Manager without the IAM instance profile — the agent alone is not enough; the role grants the permissions.",
+        "Common trap: stop/start as a universal fix — it only helps system-check (hardware) failures, not sick guest OSes."
+      ],
+      "try_it": "Work through this in the Labs tab."
+    },
+    {
+      "domain_id": "aws-cloud-ops",
+      "title": "Cloud Operations on AWS — Core concepts",
+      "concepts": [
+        "Observability is metrics, logs, and traces together: CloudWatch for the first two, X-Ray for the third, with alarms and dashboards turning telemetry into shared awareness. Alert on symptoms (latency, errors) more than causes (CPU).",
+        "FinOps is a loop, not a project: tag everything at creation (enforced by policy), review Cost Explorer and CUR regularly, rightsize with Compute Optimizer, schedule non-production off-hours, then commit to the steady remainder with Savings Plans. In that order.",
+        "Budgets notify; policies enforce. AWS Budgets with tiered SNS alerts gives humans time to act, while SCPs, tag policies, and Budgets Actions provide actual guardrails — and automated shutdown belongs on non-production, never as a surprise to customers.",
+        "Incidents are handled by systems, not heroes: detection via alarms, codified runbooks and SSM Automation for response, blameless postmortems with tracked action items for learning. Every recurring incident is an automation candidate.",
+        "Use the Well-Architected Framework as the review cadence: run the Tool per workload, fix high-risk security and reliability findings first, and re-review after significant changes. The six pillars keep optimization balanced instead of lopsided."
+      ],
+      "example": {
+        "lang": "shell",
+        "code": "aws ce get-cost-and-usage --time-period Start=2026-09-01,End=2026-10-01 \\\n  --granularity MONTHLY --metrics BlendedCost \\\n  --group-by Type=DIMENSION,Key=SERVICE | head -40",
+        "walkthrough": "This pulls last month's cost grouped by service — the starting point of every FinOps review. The top services tell you where rightsizing, scheduling, and commitments will actually move the number."
+      },
+      "pitfalls": [
+        "Common trap: committing to Savings Plans before rightsizing — you lock in a discount on waste.",
+        "Common trap: treating AWS Budgets as enforcement — it only alerts; something else must act.",
+        "Common trap: alerting on CPU instead of user-facing symptoms — the pager fires while customers are fine, and stays silent while they suffer.",
+        "Common trap: skipping postmortems when the fix was fast — the incident will recur until its action items are tracked to done."
+      ],
+      "try_it": "Work through this in the Labs tab."
+    }
+  ],
+  "labs": [
+    {
+      "id": "aws-soa-lab1",
+      "domain_id": "aws-soa",
+      "title": "Page Only on Real Trouble",
+      "objective": "Create a CloudWatch alarm with multi-datapoint evaluation and an SNS notification action.",
+      "steps": [
+        "Create an SNS topic for ops alerts with `aws sns create-topic`.",
+        "Create the alarm with `aws cloudwatch put-metric-alarm`, evaluation-periods 3, period 300.",
+        "Describe alarms with `aws cloudwatch describe-alarms` and confirm state and configuration.",
+        "Force a state check: verify the alarm action points at your SNS topic ARN."
+      ],
+      "checks": [
+        {
+          "command_pattern": "^aws\\s",
+          "expect_contains": "AlarmArn",
+          "hint": "put-metric-alarm returns an AlarmArn on success — capture it."
+        }
+      ]
+    },
+    {
+      "id": "aws-soa-lab2",
+      "domain_id": "aws-soa",
+      "title": "Command the Fleet Without SSH",
+      "objective": "Use SSM Run Command to execute a command across instances by tag, with output captured centrally.",
+      "steps": [
+        "Confirm targets: `aws ssm describe-instance-information` filtered to managed instances.",
+        "Send a command with `aws ssm send-command --document-name AWS-RunShellScript --targets Key=tag:Env,Values=prod --parameters 'commands=[\"uptime\"]'`.",
+        "Poll the invocation with `aws ssm list-command-invocations` until status is Success.",
+        "Review per-instance output to confirm the fleet responded uniformly."
+      ],
+      "checks": [
+        {
+          "command_pattern": "^aws\\s",
+          "expect_contains": "CommandId",
+          "hint": "send-command returns a CommandId — use it to track the invocation."
+        }
+      ]
+    },
+    {
+      "id": "aws-cloud-ops-lab1",
+      "domain_id": "aws-cloud-ops",
+      "title": "Find Your Top Spend",
+      "objective": "Query Cost Explorer from the CLI to identify the services driving the bill.",
+      "steps": [
+        "Run `aws ce get-cost-and-usage` for the last full month grouped by SERVICE.",
+        "Identify the top 3 services by BlendedCost.",
+        "Re-run grouped by USAGE_TYPE for the top service to see what exactly is billed.",
+        "Write one rightsizing or scheduling hypothesis per top service."
+      ],
+      "checks": [
+        {
+          "command_pattern": "^aws\\s",
+          "expect_contains": "BlendedCost",
+          "hint": "Request the BlendedCost metric so results include actual billed amounts."
+        }
+      ]
+    },
+    {
+      "id": "aws-cloud-ops-lab2",
+      "domain_id": "aws-cloud-ops",
+      "title": "Read Compute Optimizer Findings",
+      "objective": "Pull rightsizing recommendations and translate them into an action list.",
+      "steps": [
+        "Run `aws compute-optimizer get-ec2-instance-recommendations` for the account.",
+        "Note each finding: Overprovisioned, Underprovisioned, or Optimized.",
+        "For over-provisioned instances, record the recommended instance type and estimated savings.",
+        "Draft the change plan: which to resize, which need load testing first, which to leave."
+      ],
+      "checks": [
+        {
+          "command_pattern": "^aws\\s",
+          "expect_contains": "finding",
+          "hint": "Each recommendation includes a 'finding' field — filter for Overprovisioned first."
+        }
+      ]
+    }
+  ],
+  "simulations": [],
+  "consoleSims": [],
+  "terminalMissions": [],
+  "sections": [
+    {
+      "id": "sec-full-spectrum",
+      "title": "Full Spectrum Dominance — core path",
+      "kind": "core",
+      "lectures": [],
+      "lab_ids": [
+        "fsd-tl-lab-1",
+        "fsd-tl-lab-2",
+        "fsd-tl-lab-3",
+        "fsd-sg-lab-1",
+        "fsd-sg-lab-2",
+        "fsd-sg-lab-3",
+        "fsd-ai-lab-1",
+        "fsd-ai-lab-2",
+        "fsd-ai-lab-3"
+      ],
+      "drill_domain_ids": [
+        "tl-interview",
+        "tl-endpoint-ops",
+        "sec-graphs",
+        "graph-defense",
+        "ml-defense",
+        "ai-agent-sec"
+      ]
+    }
+  ],
+  "behavioral": [
+    {
+      "prompt": "Tell me about the most technically difficult problem you have run into — a homelab, a broken environment, anything — and how you solved it.",
+      "framework": "STAR",
+      "points": [
+        "Pick ONE problem with a real evidence trail: the symptom, what you measured, the hypothesis you tested",
+        "Show the loop: scope, observe, hypothesize, smallest safe change, validate — interviewers score the method, not just the fix",
+        "Name the tools (VM build, networking, logs) and the lesson it taught you",
+        "Close with the result in concrete terms: what works now that did not before"
+      ],
+      "pitfalls": [
+        "Choosing a story with no real obstacle (“I Googled it” is not a story)",
+        "Skipping validation — saying it worked without proving it",
+        "Rambling past two minutes without reaching the result"
+      ]
+    },
+    {
+      "prompt": "Tell me about a time you dealt with a frustrated customer or user while something was broken.",
+      "framework": "STAR",
+      "points": [
+        "Lead with empathy and ownership: acknowledge the impact before the technical detail",
+        "Show translation: what you told them, in their language, plus the timeline you committed to",
+        "Show judgment: the narrow fix you chose and what you refused to do (e.g., disabling the control to clear the symptom)",
+        "Close with the relationship outcome, not just the technical one"
+      ],
+      "pitfalls": [
+        "Badmouthing the customer to sound decisive",
+        "Promising a timeline you could not keep",
+        "Framing the user as the problem rather than the situation"
+      ]
+    },
+    {
+      "prompt": "Why ThreatLocker, and why cybersecurity?",
+      "framework": "STAR",
+      "points": [
+        "Connect prevention to something concrete: a moment you saw detection arrive too late, or a system you hardened",
+        "Tie their model to your instincts: deny-by-default matches how you already think about trust",
+        "Show service orientation: the Cyber Hero culture rewards the 2 a.m. helper — give an example of being one",
+        "Name one forward-looking reason: Zero Trust, the MSP mission, or the bootcamp community investment"
+      ],
+      "pitfalls": [
+        "Generic flattery with no specifics about the company",
+        "Leading with compensation, title, or location convenience",
+        "Claiming expertise in products you have only read about — frame it as studied, not mastered"
+      ]
+    },
+    {
+      "framework": "STAR",
+      "pitfalls": [
+        "Staying vague ('I analyzed the data') instead of naming what you connected.",
+        "Skipping your own role: what did YOU see that others missed?",
+        "No outcome: what changed because you joined the dots?"
+      ],
+      "points": [
+        "The scattered signals and why nobody had connected them yet",
+        "The specific links you drew between them (shared host, time, infrastructure)",
+        "What the bigger picture turned out to be and what action it drove",
+        "What the experience taught you about investigating"
+      ],
+      "prompt": "Tell me about a time you connected scattered clues into a bigger picture that others had missed."
+    },
+    {
+      "framework": "STAR",
+      "pitfalls": [
+        "Claiming you fixed everything: credibility comes from trade-offs, not heroics.",
+        "Hiding the constraint: the limitation is what makes the prioritization story real.",
+        "No metric: 'better' needs a before-and-after."
+      ],
+      "points": [
+        "The constraint (time, budget, staff) and the size of the backlog",
+        "How you decided what mattered most (what was reachable, what was critical)",
+        "What you did first and what you deliberately deferred",
+        "The measurable result of the prioritization"
+      ],
+      "prompt": "Describe a time you had to prioritize risks or fixes with limited time or resources. How did you decide what came first?"
+    },
+    {
+      "framework": "STAR",
+      "pitfalls": [
+        "Reciting jargon to a non-technical audience and calling it communication.",
+        "Skipping the audience's reaction: did they actually understand and act?",
+        "Making yourself the hero instead of the translator."
+      ],
+      "points": [
+        "The technical finding and why it mattered",
+        "Who the audience was and what they cared about",
+        "How you reframed it (a picture, an analogy, a story)",
+        "What decision or action the audience took because they understood"
+      ],
+      "prompt": "Tell me about a time you explained a complex technical finding to a non-technical audience and it changed a decision."
+    },
+    {
+      "prompt": "Tell me about a time you used automation or AI to solve a security problem.",
+      "framework": "STAR",
+      "points": [
+        "The repetitive security task and what it cost in analyst time",
+        "The automation or AI approach you built and how you validated it",
+        "Measured outcome: time saved, detection gained, false positives changed"
+      ],
+      "pitfalls": [
+        "Describing the tool but never the validation",
+        "No measurable outcome"
+      ]
+    },
+    {
+      "prompt": "Describe a time you had to decide whether to trust an automated security decision.",
+      "framework": "STAR",
+      "points": [
+        "The stakes of the automated action and its blast radius",
+        "How you verified before acting (or the gate you built)",
+        "What happened and what you would automate differently next time"
+      ],
+      "pitfalls": [
+        "Saying you always trust the tool",
+        "No mention of blast radius or reversibility"
+      ]
+    }
+  ],
+  "resources": {
+    "cheatsheet": {
+      "title": "Full Spectrum Dominance — field reference",
+      "sections": [
+        {
+          "heading": "Company facts (verified)",
+          "items": [
+            "Founded 2017 in Orlando, FL — Danny Jenkins (CEO), Sami Jenkins (COO), John Carolan (QA)",
+            "Philosophy: deny-by-default / default-deny — approve known-good, deny the rest",
+            "Customers: 70,000+ organizations, sold heavily through the MSP channel",
+            "Funding: $190M Series F, July 2026 (Elephant-led); ~730 employees",
+            "Interview address: 1901 Summit Tower Blvd, Orlando, FL 32810",
+            "Culture: in-office 5 days/week; free lunch; post-offer background + drug screening"
+          ]
+        },
+        {
+          "heading": "Product stack",
+          "items": [
+            "Allowlisting — default-deny execution control for apps, DLLs, scripts, installers",
+            "Ringfencing — constrains allowed apps: app-to-app, file, registry, network",
+            "Storage Control — USB/device policy by serial, user, file type, encryption",
+            "Elevation Control — just-in-time per-app admin, no standing rights",
+            "Network Control — host firewall; port/IP/dynamic-ACL rules; ZTNA foundation",
+            "Web Control — agent-based DNS/URL category filtering, works off-network",
+            "Cyber Hero MDR — 24/7/365 US-based response, ~60-second average",
+            "Testing Environment — one-button VDI sandbox; checks AV flags, canary files, registry changes"
+          ]
+        },
+        {
+          "heading": "Rule strength (strongest to weakest)",
+          "items": [
+            "Certificate/publisher rules — survive version updates",
+            "Hash rules — precise but break on every new version",
+            "Path rules — weakest; never in user-writable locations",
+            "Learning Mode catalogs before enforcement; Installation Mode pauses blocking — scope and time-box both"
+          ]
+        },
+        {
+          "heading": "Terminal evidence commands",
+          "items": [
+            "nmap <host> — which ports answer (22/80/443 open)",
+            "dig <name> — ANSWER SECTION with the A record",
+            "ss — listening sockets",
+            "systemctl status <svc> — unit state",
+            "journalctl -u <svc> — service logs",
+            "sha256sum <file> — real SHA-256 identity",
+            "grep <pattern> <file> — search the record",
+            "ps — what is actually running"
+          ]
+        },
+        {
+          "heading": "Graph vocabulary",
+          "items": [
+            "node — any entity tracked in the model (user, host, IP, domain, file hash, vulnerability)",
+            "edge — a labeled relationship between two nodes (logged into, resolved to, downloaded)",
+            "degree — number of edges on a node; high-degree nodes are attacker highways",
+            "centrality — how much traffic or how many paths flow through a node",
+            "directed edge — a relationship with a direction (A downloaded FROM B)",
+            "security graph — the living model of your whole environment as nodes and edges",
+            "attack graph — the subgraph of exploitable paths to your targets",
+            "knowledge graph — threat-intel indicators linked to campaigns and actors"
+          ]
+        },
+        {
+          "heading": "Attack-graph playbook",
+          "items": [
+            "inventory first — you cannot graph what you have not discovered",
+            "model flaws AND misconfigs as exploit edges",
+            "compute shortest paths to the crown jewels",
+            "find the choke point (highest betweenness on those paths)",
+            "break the path: patch, segment, or remove the edge",
+            "re-scan and re-run the graph to prove the path is gone",
+            "never trust yesterday's graph — redeployments redraw the map"
+          ]
+        },
+        {
+          "heading": "Zero Trust + graphs",
+          "items": [
+            "never trust, always verify — re-evaluate every access decision",
+            "assume breach — treat unexpected edges as hostile until proven otherwise",
+            "microsegmentation — allow-list approved edges, alert on new ones",
+            "ReBAC — policies are path queries on the identity graph",
+            "continuous verification — device/location/behavior edges change, trust follows",
+            "anomalous edge — a first-seen connection between strangers is the classic signal"
+          ]
+        },
+        {
+          "heading": "ML detection vocabulary",
+          "items": [
+            "Supervised learning — learns from labeled examples; strong on known threats, blind to novel ones",
+            "Unsupervised learning — finds structure without labels; clustering and dimensionality reduction",
+            "Anomaly detection — models 'normal' and flags deviations; the workhorse for novel threats",
+            "UEBA — user and entity behavior analytics: per-user baselines plus peer-group comparison",
+            "Feature engineering — encoding raw logs into model inputs (login velocity, rare processes, domain entropy)",
+            "Concept drift — model decay as attacker behavior and legitimate traffic shift over time"
+          ]
+        },
+        {
+          "heading": "Detection metrics",
+          "items": [
+            "Precision — of all flagged alerts, how many were real",
+            "Recall — of all real attacks, how many were flagged",
+            "Threshold tuning — sliding the decision cutoff trades precision against recall",
+            "Alert fatigue — when false positives train analysts to ignore the queue",
+            "DGA — domain generation algorithm; detected via character entropy of domain names"
+          ]
+        },
+        {
+          "heading": "Agent and LLM security",
+          "items": [
+            "Direct prompt injection — attacker input overrides app instructions (OWASP LLM01:2025, the #1 LLM risk)",
+            "Indirect prompt injection — hidden instructions inside retrieved data (email, web, docs)",
+            "Jailbreak — defeating the model's own safety policy; distinct from hijacking app behavior",
+            "Tool poisoning — malicious tool descriptions or metadata steer an agent to misuse its tools (MCP ecosystem risk)",
+            "Insecure output handling — executing or trusting model output without validation",
+            "Least-privilege tools — grant each tool only the scope its task requires"
+          ]
+        },
+        {
+          "heading": "Adversarial ML and governance",
+          "items": [
+            "Evasion — perturbing inputs at inference time to dodge a classifier",
+            "Poisoning — corrupting training data to corrupt the model",
+            "Extraction — querying a model to steal its behavior or parameters",
+            "MITRE ATLAS — knowledge base of adversarial ML tactics and techniques",
+            "Red-teaming and evals — adversarial testing of AI systems before deployment",
+            "Human-in-the-loop — required approval for high-impact or irreversible agent actions",
+            "SOAR — security orchestration, automation and response; automate enrichment, gate containment"
+          ]
+        }
+      ]
+    },
+    "glossary": [
+      {
+        "term": "Allowlisting",
+        "def": "Default-deny execution control: only explicitly approved applications, scripts, and installers may run."
+      },
+      {
+        "term": "Blocklisting",
+        "def": "Default-allow model: everything runs except recognized-bad items — the window zero-days live in."
+      },
+      {
+        "term": "Default-deny",
+        "def": "Deny-by-default posture: unknown code, devices, or connections are refused unless explicitly approved."
+      },
+      {
+        "term": "Ringfencing",
+        "def": "Containment applied on top of allowlisting; restricts what a permitted app may do across app-to-app, file, registry, and network dimensions."
+      },
+      {
+        "term": "Learning Mode",
+        "def": "Agent mode that catalogs applications and dependencies and auto-builds policies before enforcement; temporarily disables file blocking."
+      },
+      {
+        "term": "Installation Mode",
+        "def": "Temporary mode that pauses file blocking for installs — must be tightly scoped and time-boxed."
+      },
+      {
+        "term": "Elevation Control",
+        "def": "Grants specific approved applications admin rights for standard users — just-in-time, per-app, time-boxed — without standing admin rights."
+      },
+      {
+        "term": "Application hopping",
+        "def": "An elevated or trusted process spawning another tool (e.g., PowerShell) to inherit its privileges — countered by ringfencing the elevated process."
+      },
+      {
+        "term": "Storage Control",
+        "def": "Device and path policy: USB approved by serial, user, file type, time, and encryption; unapproved devices do not connect."
+      },
+      {
+        "term": "Network Control",
+        "def": "Centrally managed host firewall; rules by port, source IP, and dynamic ACLs; egress allowlisting pins apps to approved destinations."
+      },
+      {
+        "term": "ZTNA",
+        "def": "Zero Trust Network Access: per-session, per-application brokered connections (commonly over port 443) with no open inbound ports — deny-by-default for network access."
+      },
+      {
+        "term": "Approval Center",
+        "def": "Portal queue where end-user software requests arrive for admin review and decision."
+      },
+      {
+        "term": "Unified Audit",
+        "def": "Real-time audit showing what was allowed or denied across endpoints — and why; the evidence layer for triage."
+      },
+      {
+        "term": "Testing Environment",
+        "def": "One-button cloud VDI sandbox launched from an approval request; logs AV flags, canary-file access, and registry/system changes."
+      },
+      {
+        "term": "Cyber Hero MDR",
+        "def": "24/7/365 US-based managed detection and response team; validates alerts, isolates hosts, acts on customer runbooks; ~60-second average response."
+      },
+      {
+        "term": "Assume breach",
+        "def": "Design and operate as if the attacker already has a foothold — least privilege, containment, and monitoring everywhere."
+      },
+      {
+        "term": "Living off the land",
+        "def": "Attacks that hijack trusted built-in tools (Word, PowerShell) instead of dropping malware — defeated by behavior containment, not signatures."
+      },
+      {
+        "term": "Change control",
+        "def": "Scoped, ticketed, tested changes with validation and rollback — emergency speed never cancels the process."
+      },
+      {
+        "def": "A node in an attack graph representing a system or weakness, connected by edges that represent steps an attacker could take between them.",
+        "term": "attack graph"
+      },
+      {
+        "def": "How central a node is to paths through the graph (for example, betweenness: how many shortest paths cross it).",
+        "term": "centrality"
+      },
+      {
+        "def": "The most valuable assets in the environment (customer data, finance systems, source code): what attack paths are measured against.",
+        "term": "crown jewels"
+      },
+      {
+        "def": "A labeled connection between two nodes, representing a relationship such as 'logged into' or 'resolved to'.",
+        "term": "edge"
+      },
+      {
+        "def": "A graph of threat indicators (IPs, domains, hashes) linked to campaigns, actors, and each other through shared infrastructure.",
+        "term": "knowledge graph"
+      },
+      {
+        "def": "The practice of mapping relationships in data to reveal hidden associations; rooted in Euler's 1736 graph theory, 1970s paper link charts, and post-2001 intelligence work.",
+        "term": "link analysis"
+      },
+      {
+        "def": "A segment of the network so small that its allowed communications can be enumerated as a graph of approved edges.",
+        "term": "microsegmentation"
+      },
+      {
+        "def": "An entity in the graph: a user, host, IP address, domain, file, or vulnerability.",
+        "term": "node"
+      },
+      {
+        "def": "Access control where policy is evaluated by traversing relationships on a graph (for example: user reports_to manager who owns the resource's project).",
+        "term": "ReBAC"
+      },
+      {
+        "def": "A machine-learning model that operates directly on graph structure to classify nodes or subgraphs, for example labeling attack vs normal behavior.",
+        "term": "graph neural network (GNN)"
+      },
+      {
+        "def": "Monitoring user and entity behavior by modeling their normal relationship patterns and flagging structural anomalies.",
+        "term": "UEBA"
+      },
+      {
+        "term": "Supervised learning",
+        "def": "ML trained on labeled examples; classifies new inputs into known categories."
+      },
+      {
+        "term": "Anomaly detection",
+        "def": "ML approach that models normal behavior and flags statistically rare deviations."
+      },
+      {
+        "term": "Feature engineering",
+        "def": "Turning raw telemetry into numeric model inputs, e.g. login velocity or domain entropy."
+      },
+      {
+        "term": "Precision",
+        "def": "Share of flagged alerts that were real; the false-positive economics of the queue."
+      },
+      {
+        "term": "Recall",
+        "def": "Share of real attacks the detector flagged; the miss rate's complement."
+      },
+      {
+        "term": "Concept drift",
+        "def": "Decay of model performance as the data distribution shifts over time."
+      },
+      {
+        "term": "Prompt injection",
+        "def": "Attacker-crafted instructions that override an LLM application's intended behavior; direct (user input) or indirect (retrieved data)."
+      },
+      {
+        "term": "Jailbreak",
+        "def": "Crafted input that defeats an LLM's own safety policy or refusal behavior."
+      },
+      {
+        "term": "Tool poisoning",
+        "def": "Malicious tool descriptions or metadata that manipulate an AI agent into misusing its tools."
+      },
+      {
+        "term": "Insecure output handling",
+        "def": "Failing to validate LLM output before acting on it, e.g. executing generated commands."
+      },
+      {
+        "term": "Evasion attack",
+        "def": "Adversarial ML technique: perturbing inputs to cross a classifier's decision boundary."
+      },
+      {
+        "term": "MITRE ATLAS",
+        "def": "Adversarial Threat Landscape for AI Systems; MITRE's knowledge base of AI attack tactics."
+      },
+      {
+        "term": "SOAR",
+        "def": "Security orchestration, automation and response; playbooks that enrich automatically and gate containment on humans."
+      },
+      {
+        "term": "Human-in-the-loop",
+        "def": "Required human approval before high-impact or irreversible automated actions."
+      }
+    ],
+    "links": [
+      {
+        "label": "ThreatLocker Zero Trust platform explainer (official)",
+        "url": "https://www.threatlocker.com/blog/edr-xdr-vs-zero-trust-prevention",
+        "note": "EDR/XDR vs Zero Trust prevention — the deny-by-default argument in their own words."
+      },
+      {
+        "label": "ThreatLocker Bootcamp page (official)",
+        "url": "https://www.threatlocker.com/bootcamp",
+        "note": "Free six-week program: phases, format, and what completion leads to."
+      },
+      {
+        "label": "ThreatLocker Careers (official)",
+        "url": "https://www.threatlocker.com/company/careers",
+        "note": "Open roles and the hiring-event listing; roles are in-office in Orlando."
+      },
+      {
+        "label": "Elevation Control (official)",
+        "url": "https://www.threatlocker.com/secure-privileges-without-sacrificing-agility",
+        "note": "Just-in-time privilege without standing admin."
+      },
+      {
+        "label": "Storage Control (official)",
+        "url": "https://www.threatlocker.com/capabilities/external-storage-device-control",
+        "note": "USB/device policy by serial, user, file type, encryption."
+      },
+      {
+        "label": "Web Control (official)",
+        "url": "https://www.threatlocker.com/capabilities/web-content-control",
+        "note": "Agent-based DNS/URL filtering, including off-network."
+      },
+      {
+        "label": "Cyber Hero MDR (official)",
+        "url": "https://www.threatlocker.com/get-threat-response-in-minutes",
+        "note": "24/7/365 managed response positioning."
+      },
+      {
+        "label": "MDR capabilities (official)",
+        "url": "https://www.threatlocker.com/capabilities/managed-detection-and-response",
+        "note": "Detection and response capability detail."
+      },
+      {
+        "label": "NIST SP 800-207 — Zero Trust Architecture",
+        "url": "https://csrc.nist.gov/pubs/sp/800/207/final",
+        "note": "The canonical Zero Trust reference: tenets, deployment models, policy engine trust algorithm."
+      },
+      {
+        "label": "CISA Zero Trust Maturity Model",
+        "url": "https://www.cisa.gov/zero-trust-maturity-model",
+        "note": "Federal maturity steps across identity, devices, networks, applications, and data."
+      },
+      {
+        "label": "MITRE ATT&CK",
+        "note": "The adversary-tactics framework; codify its tactic chains as subgraphs to hunt for in your security graph.",
+        "url": "https://attack.mitre.org/"
+      },
+      {
+        "label": "CISA — Cybersecurity and Infrastructure Security Agency",
+        "note": "US government advisories, alerts, and guidance frequently referenced in threat-intel work.",
+        "url": "https://www.cisa.gov/"
+      },
+      {
+        "label": "Neo4j getting started",
+        "note": "A widely used graph database; the book's call to action suggests piloting graph queries on exported security data with tools like this.",
+        "url": "https://neo4j.com/docs/getting-started/"
+      },
+      {
+        "label": "OWASP GenAI Security Project",
+        "url": "https://genai.owasp.org/",
+        "note": "Home of the LLM Top 10 and GenAI security guidance"
+      },
+      {
+        "label": "OWASP Top 10 for LLM Applications",
+        "url": "https://genai.owasp.org/llm-top-10/",
+        "note": "The ranked LLM risk list — prompt injection is #1"
+      },
+      {
+        "label": "NIST AI Risk Management Framework",
+        "url": "https://www.nist.gov/itl/ai-risk-management-framework",
+        "note": "The standard governance framework for managing AI risk"
+      },
+      {
+        "label": "MITRE ATLAS",
+        "url": "https://atlas.mitre.org/",
+        "note": "Adversarial Threat Landscape for AI Systems — tactics and techniques"
+      },
+      {
+        "label": "CISA AI guidance",
+        "url": "https://www.cisa.gov/ai",
+        "note": "CISA's AI security resources and guidance"
+      }
+    ],
+    "checklist": [
+      "Sixty-second company brief rehearsed out loud: year, city, philosophy, three products, one milestone",
+      "Two STAR stories ready: hardest technical problem; a frustrated customer or user",
+      "“Why ThreatLocker / why cybersecurity” answer tied to prevention and service, not slogans",
+      "Ringfencing explained in one plain-English sentence (the Word-on-a-leash version)",
+      "Elevation Control answer ready: just-in-time, per-app, time-boxed, ringfenced, logged",
+      "Triage loop memorized: scope → observe → hypothesize → smallest safe change → validate → explain",
+      "Three questions to ask them: team on-call shape, approval SLA expectations, what “most helpful” looks like on the team",
+      "Logistics: 1901 Summit Tower Blvd, Orlando FL; in-office role; ID and references ready",
+      "Define your crown jewels before you model anything.",
+      "Build the asset-and-access graph from live sources (scans, configs, identity), not from the CMDB alone.",
+      "Model vulnerabilities AND misconfigurations as exploit edges.",
+      "Compute shortest attack paths to each crown jewel; name the choke points.",
+      "Prioritize remediation by path risk, not by raw severity score.",
+      "Express at least one access policy as a relationship path (ReBAC pilot).",
+      "Baseline approved communication edges per segment; alert on first-seen edges.",
+      "Brief the next incident or risk review with the graph, not a spreadsheet.",
+      "Can you explain supervised vs unsupervised vs anomaly detection with a security example for each?",
+      "Can you name three log features you would engineer for a C2 detector and why?",
+      "Can you walk through a UEBA alert (baseline, deviation, verification) end to end?",
+      "Can you explain the precision/recall tradeoff and how you would set a threshold for a fatigued SOC?",
+      "Can you define concept drift and describe a retraining process?",
+      "Can you distinguish direct vs indirect prompt injection and jailbreaking?",
+      "Can you explain tool poisoning in the MCP ecosystem and three controls against it?",
+      "Can you describe insecure output handling and how you would validate agent output?",
+      "Can you name the three adversarial ML attack classes and one defense for evasion?",
+      "Can you design a SOAR playbook gate: what automates freely, what needs human approval?"
+    ]
+  },
+  "chat": {
+    "persona": "You are a rigorous but encouraging interviewer preparing a candidate for a Zero Trust endpoint security role. Probe with 'why' and 'how would you explain that' follow-ups. Stay on topic: ThreatLocker-style endpoint defense, security graphs, and AI-powered security. All practice is original; never reproduce vendor material.",
+    "topics": [
+      {
+        "id": "tl-interview",
+        "name": "ThreatLocker Interview Prep",
+        "key_points": [
+          "allowlisting",
+          "ringfencing",
+          "default-deny",
+          "cyber hero",
+          "zero trust tenets",
+          "STAR stories"
+        ],
+        "followups": [
+          "Can you give an example?",
+          "How would you explain that to a CFO?"
+        ]
+      },
+      {
+        "id": "tl-endpoint-ops",
+        "name": "Zero Trust Endpoint Operations",
+        "key_points": [
+          "default-deny",
+          "ringfencing dimensions",
+          "elevation control",
+          "storage control",
+          "network control",
+          "change control"
+        ],
+        "followups": [
+          "Walk me through the triage order.",
+          "When would you deny outright?"
+        ]
+      },
+      {
+        "followups": [
+          "Can you walk through an example?",
+          "How does this change patch prioritization?",
+          "What is the difference between a security graph and an attack graph?"
+        ],
+        "id": "sec-graphs",
+        "key_points": [
+          "nodes",
+          "edges",
+          "attack graphs",
+          "kill chain",
+          "link analysis",
+          "threat intel graphs"
+        ],
+        "name": "Security Graphs: Think Like an Attacker"
+      },
+      {
+        "followups": [
+          "How do graphs change patch prioritization?",
+          "What is ReBAC and how is it different from RBAC?",
+          "How would a small team start with graphs?"
+        ],
+        "id": "graph-defense",
+        "key_points": [
+          "attack-path analysis",
+          "insider threat",
+          "vulnerability graphs",
+          "Zero Trust",
+          "microsegmentation",
+          "blast radius"
+        ],
+        "name": "Graph-Powered Defense Operations"
+      },
+      {
+        "id": "ml-defense",
+        "name": "ML-Powered Threat Defense",
+        "key_points": [
+          "anomaly detection",
+          "UEBA",
+          "alert fatigue",
+          "concept drift",
+          "threat hunting",
+          "precision recall"
+        ],
+        "followups": [
+          "Walk me through an example.",
+          "How do you handle false positives?"
+        ]
+      },
+      {
+        "id": "ai-agent-sec",
+        "name": "Securing AI Systems & Agents",
+        "key_points": [
+          "prompt injection",
+          "tool poisoning",
+          "MCP risks",
+          "insecure output handling",
+          "SOAR gates",
+          "adversarial ML"
+        ],
+        "followups": [
+          "Walk me through an example.",
+          "How do you secure an AI agent end to end?"
+        ]
+      }
+    ]
+  },
+  "simulation": {
+    "items": 12,
+    "minutes": 180,
+    "evidence_cost_mins": 2
+  },
+  "media": [
+    {
+      "id": "tl-allowlist-vs-blocklist",
+      "kind": "diagram",
+      "title": "Allowlisting vs blocklisting: default-deny vs default-allow",
+      "svg": "assets/diagrams/tl-allowlist-vs-blocklist.svg",
+      "lesson_ref": "c-tl-endpoint-ops",
+      "caption": "Default-deny stops unknown code without a signature; default-allow runs it until one exists.",
+      "alt": "Side-by-side comparison: on the left, a default-deny gate runs known-good payroll software and denies unknown ransomware with no signature needed; on the right, a default-allow gate runs both until the ransomware is recognized as bad."
+    },
+    {
+      "id": "tl-ringfencing",
+      "kind": "diagram",
+      "title": "Ringfencing: four leashes on an allowed application",
+      "svg": "assets/diagrams/tl-ringfencing.svg",
+      "lesson_ref": "c-tl-endpoint-ops",
+      "caption": "Word stays approved, but it cannot spawn PowerShell, read the credential store, or reach the internet — while opening its document is allowed.",
+      "alt": "An approved Word application inside a dashed containment ring: arrows show PowerShell launch denied, credential-store registry access denied, external network denied, and document file access allowed."
+    },
+    {
+      "id": "tl-zero-trust-stack",
+      "kind": "diagram",
+      "title": "The Zero Trust endpoint stack",
+      "svg": "assets/diagrams/tl-zero-trust-stack.svg",
+      "lesson_ref": "c-tl-interview",
+      "caption": "Five deny-by-default layers — Allowlisting, Ringfencing, Elevation, Storage, Network — watched by Web Control, the Testing Environment, Unified Audit, and the Cyber Hero MDR team.",
+      "alt": "A vertical stack of five layers from Allowlisting at the foundation up through Ringfencing, Elevation Control, Storage Control, and Network Control, with side boxes for Web Control, Testing Environment, Unified Audit, and Cyber Hero MDR."
+    },
+    {
+      "id": "tl-triage-flow",
+      "kind": "diagram",
+      "title": "Application-request triage flow",
+      "svg": "assets/diagrams/tl-triage-flow.svg",
+      "lesson_ref": "c-tl-endpoint-ops",
+      "caption": "Gather evidence first, then branch: trusted gets a scoped rule, unknown goes to the sandbox, malicious gets a documented deny.",
+      "alt": "Flowchart from request arrival through evidence gathering to a decision diamond branching into three outcomes: approve with a scoped rule, detonate in the Testing Environment then ringfence, or deny with documented evidence."
+    },
+    {
+      "alt": "Diagram of four labeled nodes (user, host, file, domain, IP) joined by labeled directed edges such as logged into, downloaded, and resolved to, illustrating graph vocabulary.",
+      "caption": "Nodes are the things; edges are the relationships. Attackers move along the edges.",
+      "id": "sg-graph-vocabulary",
+      "kind": "diagram",
+      "lesson_ref": "c-sec-graphs",
+      "svg": "assets/diagrams/sg-graph-vocabulary.svg",
+      "title": "Graph vocabulary: nodes and edges"
+    },
+    {
+      "alt": "Attack graph with four nodes in a chain: external attacker to VPN gateway to file server to customer database, with a dead-end branch to a printer, showing the shortest path to the crown jewel.",
+      "caption": "The shortest path to the crown jewel is length 3. Break the choke point and the campaign dies.",
+      "id": "sg-attack-path",
+      "kind": "diagram",
+      "lesson_ref": "c-sec-graphs",
+      "svg": "assets/diagrams/sg-attack-path.svg",
+      "title": "Attack graph: shortest path to the crown jewels"
+    },
+    {
+      "alt": "Seven kill-chain stages as connected graph nodes: reconnaissance, weaponization, delivery, exploitation, installation, command and control, actions. Three alerts are annotated at delivery, installation, and command and control.",
+      "caption": "Three 'unrelated' alerts, one kill-chain subgraph. Correlate by shared entities, not by severity.",
+      "id": "sg-kill-chain",
+      "kind": "diagram",
+      "lesson_ref": "c-sec-graphs",
+      "svg": "assets/diagrams/sg-kill-chain.svg",
+      "title": "Kill chain as a graph"
+    },
+    {
+      "alt": "A policy engine at the center of a small graph evaluates an access request from a finance user on an untrusted laptop to an R and D code server. The request is denied because there is no prior relationship edge and the device is untrusted.",
+      "caption": "Valid credentials are not enough. The graph checks device trust, history, and relationships on every request.",
+      "id": "sg-zero-trust",
+      "kind": "diagram",
+      "lesson_ref": "c-graph-defense",
+      "svg": "assets/diagrams/sg-zero-trust.svg",
+      "title": "Zero Trust runs on relationships"
+    },
+    {
+      "id": "ai-ml-pipeline",
+      "kind": "diagram",
+      "title": "ML detection pipeline: telemetry to triage",
+      "svg": "assets/diagrams/ai-ml-pipeline.svg",
+      "lesson_ref": "c-ml-defense",
+      "caption": "How raw telemetry becomes scored alerts: features feed the model, the model scores, analysts triage top-down — and analyst verdicts feed retraining.",
+      "alt": "Flow diagram: telemetry sources feed feature extraction, which feeds an ML model, which outputs scored alerts into an analyst triage queue, with a feedback arrow for retraining."
+    },
+    {
+      "id": "ai-ueba-baseline-diagram",
+      "kind": "diagram",
+      "title": "UEBA: baseline vs deviation",
+      "svg": "assets/diagrams/ai-ueba-baseline.svg",
+      "lesson_ref": "c-ml-defense",
+      "caption": "UEBA learns each user's normal hours, locations, and volumes, then scores deviations from that baseline.",
+      "alt": "24-hour timeline showing a shaded normal login window from 8 AM to 6 PM with normal logins inside it, and a red anomaly marker at 2:47 AM for a foreign login scoring 97 out of 100."
+    },
+    {
+      "id": "ai-injection-flow",
+      "kind": "diagram",
+      "title": "Indirect prompt injection attack flow",
+      "svg": "assets/diagrams/ai-injection-flow.svg",
+      "lesson_ref": "c-ai-agent-sec",
+      "caption": "An attacker hides instructions in data the agent retrieves; the agent mistakes data for instructions and misuses its tools.",
+      "alt": "Attack flow diagram: hidden instruction in an email is read by an AI agent, which mistakes it for a command and calls a privileged tool, causing fraud; three defense boxes below: sanitize content, least-privilege tools, human approval."
+    }
+  ],
+  "foundations": [
+    {
+      "track": "linux-cli",
+      "why_needed": "Terminal labs and missions run in a simulated Linux shell; command-line fluency is required to complete them."
+    },
+    {
+      "track": "security-basics",
+      "why_needed": "Security-graph and ML-detection lessons assume baseline vocabulary (CIA triad, malware types, incident response phases)."
+    }
+  ],
+  "math": [
+    "stats",
+    "probability"
+  ]
+}

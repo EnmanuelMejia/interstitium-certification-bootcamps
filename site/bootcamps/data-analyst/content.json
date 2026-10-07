@@ -1,1 +1,1082 @@
-{"behavioral": [{"framework": "STAR", "pitfalls": ["No stakeholder alignment", "Skipping the decision"], "points": ["The question you were asked to answer", "Your analysis approach", "The decision it drove"], "prompt": "Tell me about an analysis that changed a business decision."}, {"framework": "STAR", "pitfalls": ["Blaming the data", "No verification"], "points": ["How you discovered the issue", "Your investigation", "How you fixed and prevented it"], "prompt": "Describe a time your analysis was wrong and how you handled it."}, {"framework": "STAR", "pitfalls": ["Technical jargon dump", "No adaptation"], "points": ["Your audience", "How you tailored the message", "Their response"], "prompt": "Tell me about presenting findings to a non-technical audience."}, {"framework": "STAR", "pitfalls": ["Skipping the trade-off", "No prioritization criteria"], "points": ["Competing requests", "How you prioritized", "Outcome"], "prompt": "Describe juggling multiple analysis requests with competing deadlines."}, {"framework": "STAR", "pitfalls": ["No specifics on the automation", "No time saved"], "points": ["What was manual", "What you built", "Time saved and adoption"], "prompt": "Tell me about automating a recurring report."}, {"framework": "STAR", "pitfalls": ["Ignoring the ambiguity", "No clarification process"], "points": ["How you clarified the question", "Your analytical approach", "What you delivered"], "prompt": "Describe an ambiguous business question you turned into analysis."}, {"framework": "STAR", "pitfalls": ["No collaboration details", "Skipping the conflict"], "points": ["The disagreement", "How you resolved it", "What you learned"], "prompt": "Tell me about a disagreement over what data showed."}, {"framework": "STAR", "pitfalls": ["Tool-first thinking", "No learning method"], "points": ["What you needed to learn", "How you learned it", "How you applied it"], "prompt": "Describe learning a new analytics tool quickly for a project."}], "chat": {"persona": "You are a friendly but rigorous data-analyst interviewer running a mock assessment.", "topics": [{"followups": ["How do you find the top 3 per group?", "What does COUNT(DISTINCT) tell you?"], "id": "sql-analysis", "key_points": ["aggregations at the right grain", "window functions for ranking", "CTEs for readability", "NULL handling in analysis", "date truncation for time series"], "name": "SQL for Analysis"}, {"followups": ["When is a pivot table better than formulas?", "How do you make a spreadsheet auditable?"], "id": "spreadsheets", "key_points": ["pivot tables for exploration", "VLOOKUP vs XLOOKUP/INDEX-MATCH", "data validation and cleaning", "named ranges and structure", "reproducibility limits of spreadsheets"], "name": "Spreadsheets"}, {"followups": ["What chart for a distribution?", "When is a pie chart wrong?"], "id": "visualization", "key_points": ["chart selection by data type", "avoiding misleading axes", "color and accessibility", "dashboards: hierarchy of information", "annotations and context"], "name": "Visualization"}, {"followups": ["Is the difference statistically significant?", "What is a confounder here?"], "id": "statistics", "key_points": ["mean vs median for skew", "correlation vs causation", "sampling and bias", "confidence intervals basics", "A/B test fundamentals"], "name": "Statistics"}, {"followups": ["When do you build a new dashboard vs extend one?", "Who owns the metric definition?"], "id": "bi-tools", "key_points": ["semantic layers and single definitions", "dashboard design and performance", "self-service vs governed BI", "scheduled refreshes and alerts", "row-level security concepts"], "name": "BI Tools"}, {"followups": ["What is the one sentence a busy exec needs?", "What would change your conclusion?"], "id": "storytelling", "key_points": ["pyramid principle: conclusion first", "context before detail", "recommendations tied to evidence", "handling uncertainty honestly", "call to action"], "name": "Storytelling"}]}, "disclaimer": "Independent practice material by Interstitium Labs. Vendor-neutral; no affiliation with any vendor. Confers no certificate. All scenarios are original.", "domains": [{"id": "sql-analysis", "name": "SQL for Analysis", "scenarios": [{"answer": 0, "choices": ["DATE_TRUNC the timestamp to month, GROUP BY the truncated month — time-series analysis needs a consistent time grain before aggregating", "GROUP BY the raw timestamp — each second is a group", "Time grain doesn't matter for trends", "Use string formatting for months"], "evidence": [["q.sql", "SELECT DATE_TRUNC('month', created_at) AS month,\n COUNT(*) AS signups\nFROM users GROUP BY 1 ORDER BY 1;"]], "hint": "What does one row of the result represent — a second, or a month?", "id": "da-date-trunc", "mins": 5, "objectives": ["Time-series aggregation", "DATE_TRUNC"], "prompt": "How do you build a monthly trend?", "situation": "'Signups per month' — a junior analyst groups by the raw timestamp and gets millions of groups.", "title": "The timestamp groups", "why": "Time-series analysis starts by choosing the grain: DATE_TRUNC('month', ts) buckets timestamps to month starts, then GROUP BY aggregates. Without truncation, every distinct timestamp is its own group — noise, not trend. (Syntax varies: DATE_TRUNC in Postgres, DATETRUNC in T-SQL, DATE_FORMAT in MySQL — the concept is universal.) Also mind time zones: truncate in the business's time zone, not UTC, or month boundaries shift."}, {"answer": 0, "choices": ["COUNT(DISTINCT user_id) — unique users; COUNT(*) counts events; the ratio is events per user — know which the question asks", "COUNT(*) — it counts users", "They are the same when grouped", "COUNT(user_id) counts unique users"], "evidence": [["q.sql", "SELECT DATE_TRUNC('day', ts) AS day,\n COUNT(*) AS events,\n COUNT(DISTINCT user_id) AS users\nFROM clicks GROUP BY 1;"]], "hint": "If one user clicks 50 times, how many 'users' is that — and how many 'events'?", "id": "da-count-distinct-users", "mins": 5, "objectives": ["COUNT DISTINCT", "Events vs users"], "prompt": "What is the difference, and why does it matter?", "situation": "'Daily active users' computed with COUNT(*) shows 10x the known user base — power users dominate.", "title": "The active-user inflation", "why": "COUNT(*) counts rows (events); COUNT(DISTINCT user_id) counts unique users. 'Active users' = distinct users; 'engagement' might = events. Mixing them up inflates DAU by the activity of power users. The events-per-user ratio (COUNT(*)/COUNT(DISTINCT)) is itself a useful metric — but only when you know which numerator and denominator you're using."}, {"answer": 0, "choices": ["Cohort retention: GROUP BY signup month (cohort), then compute % active in each subsequent month — retention curves reveal whether the product keeps users", "Overall monthly actives — it shows retention", "Cohort analysis needs no SQL", "Retention equals 1 minus churn always"], "evidence": [["q.sql", "WITH cohorts AS (\n SELECT user_id, DATE_TRUNC('month', signup_at) AS cohort FROM users)\nSELECT c.cohort,\n DATE_TRUNC('month', a.active_at) AS m,\n COUNT(DISTINCT a.user_id) AS active\nFROM cohorts c JOIN activity a ON a.user_id = c.user_id\nGROUP BY 1, 2;"]], "hint": "'Users who signed up in January, what % were active in March?' — what two groupings do you need?", "id": "da-cohort", "mins": 6, "objectives": ["Cohort analysis", "Retention"], "prompt": "How do you measure whether the product retains users?", "situation": "Total signups grow, but nobody knows if users stick around. Overall actives look flat.", "title": "The leaky bucket", "why": "Cohort retention: group users by signup period (the cohort), then track each cohort's activity over subsequent periods — producing retention curves. Flat overall actives + growing signups = churn masking growth (the leaky bucket). Cohort curves show whether newer cohorts retain better (product improving) or all cohorts decay the same (structural problem). It's the core product-health analysis."}, {"answer": 0, "choices": ["Funnel with step-by-step conversion: count users reaching each stage (ordered), compute conversion between consecutive steps — drop-off pinpoints friction", "Total conversions only — funnels add nothing", "Funnel steps can be in any order", "Conversion rates need no denominators"], "evidence": [["q.sql", "WITH steps AS (\n SELECT user_id,\n  MAX(CASE WHEN event='view' THEN 1 ELSE 0 END) AS viewed,\n  MAX(CASE WHEN event='cart' THEN 1 ELSE 0 END) AS carted,\n  MAX(CASE WHEN event='buy' THEN 1 ELSE 0 END) AS bought\n FROM events GROUP BY user_id)\nSELECT COUNT(*) AS users,\n SUM(viewed) AS viewed, SUM(carted) AS carted, SUM(bought) AS bought\nFROM steps;"]], "hint": "To find where users drop off, what do you need at each stage — and in what order?", "id": "da-funnel", "mins": 6, "objectives": ["Funnel analysis", "Conversion"], "prompt": "How do you build a conversion funnel in SQL?", "situation": "'Where do shoppers drop off?' — the team has event data but no funnel.", "title": "The leaky funnel", "why": "Funnel = ordered stages with per-stage user counts; conversion = stage_n / stage_{n-1}. The conditional-aggregation pattern (MAX(CASE WHEN event=...) per user) builds the funnel in one pass. The biggest drop-off between consecutive steps is where friction lives. Caveats: enforce event ordering (cart before buy), define the time window (session? 7 days?), and segment (mobile vs desktop funnels differ wildly)."}, {"answer": 0, "choices": ["Window function: ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY ts DESC) = 1 — latest row per user without collapsing; or DISTINCT ON / QUALIFY per dialect", "GROUP BY user_id with MAX(ts) — then join back for the full row", "ORDER BY ts DESC LIMIT 1 — gives one user's latest", "Latest row per user is impossible in SQL"], "evidence": [["q.sql", "SELECT * FROM (\n SELECT s.*, ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY ts DESC) AS rn\n FROM subscriptions s) t WHERE rn = 1;"]], "hint": "Which pattern keeps the full row of each user's latest event?", "id": "da-latest-row", "mins": 5, "objectives": ["Latest record per group", "Window functions"], "prompt": "How do you get each user's current subscription status?", "situation": "A subscriptions table has history rows per user. 'Current status per user' needs the latest row each.", "title": "The current status", "why": "ROW_NUMBER() partitioned by user ordered by time desc, filter rn=1 — the standard 'latest per group' pattern, returning full rows. (GROUP BY + MAX gets the timestamp but needs a self-join for the rest of the row.) Dialect shortcuts exist (Postgres DISTINCT ON, Snowflake/BigQuery QUALIFY). Every analyst needs this pattern — slowly-changing entity state is everywhere."}, {"answer": 0, "choices": ["Percent of total: SUM(amount) / SUM(SUM(amount)) OVER () — window over the grouped result; or ratio-to-report patterns per dialect", "Subquery computing the grand total, joined back — the only way", "Percentages can't be computed in SQL", "Divide by COUNT(*) instead"], "evidence": [["q.sql", "SELECT region, SUM(amount) AS total,\n SUM(amount) / SUM(SUM(amount)) OVER () AS pct_of_total\nFROM sales GROUP BY region;"]], "hint": "After GROUP BY, what does SUM(SUM(amount)) OVER () compute?", "id": "da-pct-of-total", "mins": 6, "objectives": ["Window over aggregates", "Percent of total"], "prompt": "How do you compute each region's share of total?", "situation": "'Each region's % of total sales' — the analyst writes two queries and divides in a spreadsheet.", "title": "The share of total", "why": "Window functions evaluate after GROUP BY: SUM(SUM(amount)) OVER () = grand total over the grouped rows, so each row's share = its sum / grand total. One query, no spreadsheet round-trip. (Some dialects need a subquery/CTE: compute grouped sums, then window over them.) It's the 'percent of total' and 'running share' foundation."}]}, {"id": "spreadsheets", "name": "Spreadsheets", "scenarios": [{"answer": 0, "choices": ["Pivot table — drag-and-drop grouping/summarizing for exploration; formulas (SUMIFS/COUNTIFS) for fixed, auditable calculations", "Formulas for everything — pivots aren't reproducible", "Pivot tables can't handle large data", "VLOOKUP for aggregation"], "evidence": [], "hint": "Exploring 'sales by region by quarter' interactively — formulas or drag-and-drop?", "id": "da-pivot", "mins": 4, "objectives": ["Pivot tables", "Exploration"], "prompt": "When do you reach for a pivot table vs formulas?", "situation": "An analyst writes 40 SUMIFS formulas to slice sales by region × quarter. The VP asks for 'by product too' — 40 more formulas.", "title": "The formula sprawl", "why": "Pivot tables are the exploration tool: drag fields to rows/columns/values, slice interactively, no formula maintenance. Formulas (SUMIFS/COUNTIFS/XLOOKUP) suit fixed, repeatable calculations that must be auditable cell-by-cell. Rule: exploring → pivot; productionizing a fixed report → formulas (or better, SQL). 40 SUMIFS is a pivot table crying for help."}, {"answer": 0, "choices": ["XLOOKUP (or INDEX+MATCH) — looks left or right, exact match by default, handles missing gracefully; VLOOKUP only looks right and breaks when columns move", "VLOOKUP — the standard; limitations are fine", "VLOOKUP can look left with a flag", "Lookup direction doesn't matter"], "evidence": [], "hint": "The lookup column is to the RIGHT of the return column — which function handles that?", "id": "da-xlookup", "mins": 4, "objectives": ["Lookups", "XLOOKUP"], "prompt": "Why has XLOOKUP replaced VLOOKUP?", "situation": "A VLOOKUP breaks every time someone inserts a column; another needs to look left of the key column.", "title": "The broken VLOOKUP", "why": "VLOOKUP: searches the first column, returns from a column index to the right — brittle (column inserts shift the index) and one-directional. XLOOKUP (or INDEX+MATCH): separate lookup and return arrays — looks any direction, exact match default, built-in if-not-found handling. For analysts still on VLOOKUP: the upgrade removes an entire bug class."}, {"answer": 0, "choices": ["Clean first: TRIM whitespace, standardize case, fix date formats, split/merge columns, remove duplicates — analysis on dirty data is fiction", "Analyze first; cleaning is optional", "Dirty data averages out", "Whitespace doesn't affect matching"], "evidence": [], "hint": "'New York' vs 'new york ' vs 'NEW YORK' — how many distinct values does the pivot see?", "id": "da-cleaning", "mins": 5, "objectives": ["Data cleaning", "Text normalization"], "prompt": "What is the cleaning checklist before analysis?", "situation": "A pivot shows 3 versions of 'New York'; dates mix US/EU formats; duplicates inflate counts.", "title": "The dirty column", "why": "Cleaning checklist: TRIM whitespace, UPPER/LOWER standardization, consistent date parsing (TEXTSPLIT or DATEVALUE with known format), dedupe (Remove Duplicates on key columns), handle blanks vs zeros explicitly. 'New York' × 3 = 3 groups in the pivot. Garbage in, gospel out is the analyst's original sin — clean before you conclude."}, {"answer": 0, "choices": ["One row per observation, one column per variable (tidy data); headers in row 1, no merged cells, no totals rows mixed into data — structure for analysis, format for presentation separately", "Merged headers look professional — keep them", "Totals rows inside the data are fine", "Multiple tables per sheet is tidiest"], "evidence": [], "hint": "Can a pivot table read a sheet with merged headers and subtotal rows mixed in?", "id": "da-tidy-sheets", "mins": 4, "objectives": ["Tidy data", "Spreadsheet structure"], "prompt": "What makes a spreadsheet analysis-ready?", "situation": "A 'report' sheet with merged headers, subtotal rows, and notes in cells can't be pivoted or imported.", "title": "The unpivotable sheet", "why": "Tidy structure: row 1 = single-row headers, one observation per row, one variable per column, no merged cells, no embedded totals/notes. Presentation formatting (merges, subtotals) belongs on a separate presentation sheet fed by formulas — never mixed into the data. If a pivot can't read it, it's not data, it's a picture of data."}, {"answer": 0, "choices": ["Spreadsheets are for exploration and small, manual work — beyond ~1M rows, multi-source joins, or scheduled refreshes, move to SQL/BI; version control is the hard limit", "Spreadsheets scale infinitely", "Version control works fine with emailed files", "1M rows is plenty for any analysis"], "evidence": [], "hint": "The file is emailed as 'final_v7_REALLY_FINAL.xlsx' — what broke?", "id": "da-sheet-limits", "mins": 4, "objectives": ["Spreadsheet limits", "Reproducibility"], "prompt": "When do you outgrow spreadsheets?", "situation": "A 2M-row 'analysis' spreadsheet crashes; three versions circulate by email; nobody can reproduce last month's numbers.", "title": "The final_v7 spreadsheet", "why": "Spreadsheet limits: row caps (~1M), no real version control (email chains), manual steps that don't reproduce, silent formula errors at scale. Graduate to SQL (data size, joins), BI tools (scheduled refresh, governed metrics), and version-controlled code when: data exceeds comfortable size, the analysis repeats on a schedule, or more than one person must reproduce it. Spreadsheets are the sketchpad, not the system."}, {"answer": 0, "choices": ["Data validation rules + conditional formatting for outliers + protected ranges — prevent bad input, highlight anomalies, lock formulas", "More training for data enterers", "Validation is unnecessary for internal sheets", "Conditional formatting is decoration"], "evidence": [], "hint": "A typo'd date breaks the monthly rollup — where should that typo have been caught?", "id": "da-validation", "mins": 4, "objectives": ["Data validation", "Error prevention"], "prompt": "How do you make a shared input sheet trustworthy?", "situation": "A team expense tracker: typos in dates and categories break the summary; someone overwrote a formula.", "title": "The shared tracker", "why": "Prevent, don't fix: data validation dropdowns constrain categories, date validation constrains formats, conditional formatting flags outliers/duplicates visually, and sheet protection locks formula cells while leaving inputs editable. A shared sheet without validation is a data-quality incident waiting for a deadline."}]}, {"id": "visualization", "name": "Visualization", "scenarios": [{"answer": 0, "choices": ["Start the y-axis at zero for bar charts (bar length encodes value); line charts for trends can zoom — truncated bar axes exaggerate tiny differences into dramatic gaps", "Truncated axes are always fine", "Bar charts should never start at zero", "Axis choice doesn't affect perception"], "evidence": [], "hint": "Two bars: 98 vs 100. With the axis starting at 95, how big does the difference look?", "id": "da-axis-zero", "mins": 5, "objectives": ["Honest axes", "Perception"], "prompt": "Why does the y-axis baseline matter?", "situation": "A bar chart with the y-axis starting at 90 makes a 2% difference look like a 10x gap. Marketing loves it.", "title": "The dramatic bar chart", "why": "Bar length encodes value — truncating the axis breaks the encoding, turning small differences into visual lies. Bars: start at zero. Lines (position encodes value, not length) may zoom to show variation — but label clearly. The analyst's job: choose the axis that informs, not the one that impresses. When someone asks for the truncated version, show both and explain."}, {"answer": 0, "choices": ["Line chart for trends over time, bar for comparisons, scatter for relationships, histogram for distributions — and almost never pie (humans judge angles poorly)", "Pie charts for everything — they're friendly", "3D charts add clarity", "One chart type fits all data"], "evidence": [], "hint": "'Sales over 12 months' vs 'market share' vs 'price vs demand' — which shape answers each?", "id": "da-chart-choice", "mins": 5, "objectives": ["Chart selection"], "prompt": "How do you choose the chart type?", "situation": "A deck uses pie charts for trends, 3D bars for comparisons, and a table for a distribution.", "title": "The chart-type roulette", "why": "Match encoding to question: trends over time → line; categorical comparison → bar; two-variable relationship → scatter; distribution shape → histogram; part-of-whole (few parts) → stacked bar beats pie (angle judgment is weak; length judgment is strong). 3D distorts every encoding it touches. The chart is an argument — pick the one that makes the true pattern easiest to see."}, {"answer": 0, "choices": ["Direct labels / annotations on the chart — put the numbers where the eye already is; legends force eye-tennis between chart and key", "Legends are mandatory for all charts", "Colors alone communicate values", "Annotations clutter charts"], "evidence": [], "hint": "With 8 similar colors and a legend, how long does it take to find 'Northeast'?", "id": "da-direct-labels", "mins": 4, "objectives": ["Labeling", "Legends"], "prompt": "How do you make a multi-series chart readable?", "situation": "An 8-region line chart with a legend: readers can't tell which line is which.", "title": "The legend hunt", "why": "Direct labeling (series names at line ends, values on bars) removes the legend-lookup round trip — the eye stays on the data. Legends fail past ~4 similar series. Annotate the insight too ('Launch spike', 'Policy change') — a chart without the 'so what' labeled is a puzzle, not a message. Reduce the reader's work to zero."}, {"answer": 0, "choices": ["Colorblind-safe palettes, sufficient contrast, never color-as-only-encoding (add labels/patterns) — ~8% of men have color-vision deficiency", "Rainbow palettes maximize information", "Red-green is fine; everyone sees it", "Accessibility doesn't apply to internal dashboards"], "evidence": [], "hint": "If red and green look identical to the reader, what does your 'good vs bad' encoding say?", "id": "da-color-access", "mins": 4, "objectives": ["Color accessibility"], "prompt": "What are the color rules for dashboards?", "situation": "A dashboard encodes good/bad as red/green only. A colorblind stakeholder misreads it.", "title": "The red-green dashboard", "why": "~1 in 12 men has color-vision deficiency — red/green as the sole encoding excludes them. Rules: colorblind-safe palettes (blue/orange, not red/green), color never the only channel (add labels, shapes, or position), sufficient contrast for text. Accessibility isn't polish; it's correctness for part of your audience."}, {"answer": 0, "choices": ["Small multiples — same chart repeated per segment at the same scale; comparison happens visually, instantly", "One chart with 20 series", "Separate dashboards per segment", "Animation between segments"], "evidence": [], "hint": "12 regions × monthly trend — one spaghetti chart, or 12 small identical charts?", "id": "da-small-multiples", "mins": 4, "objectives": ["Small multiples", "Comparisons"], "prompt": "How do you compare many segments?", "situation": "A 20-series line chart is spaghetti. Splitting into 20 slides loses comparison.", "title": "The spaghetti chart", "why": "Small multiples: the same chart repeated per segment, identical scales, in a grid — the eye compares shapes instantly. One overloaded chart is unreadable; separate pages break comparison. Same scale is the discipline (different scales lie). For segment comparison, small multiples are the most information-dense honest layout."}, {"answer": 0, "choices": ["Declutter: remove gridlines/borders/3D, highlight the data (one accent color for the insight, gray for context), maximize data-ink ratio", "More elements look more professional", "Every chart needs a border and background shading", "Data-ink ratio is aesthetic trivia"], "evidence": [], "hint": "What remains when you delete everything that isn't data?", "id": "da-declutter", "mins": 4, "objectives": ["Decluttering", "Data-ink ratio"], "prompt": "What is the decluttering discipline?", "situation": "A dashboard is heavy borders, gridlines, gradients, and 3D — the data is hard to find.", "title": "The chartjunk", "why": "Data-ink ratio: maximize ink spent on data, minimize on decoration. Remove: heavy gridlines, borders, backgrounds, 3D effects, redundant labels. Then highlight: one accent color draws the eye to the insight; everything else recedes to gray. A clean chart isn't minimalism for style — it's respect for the reader's attention."}]}, {"id": "statistics", "name": "Statistics", "scenarios": [{"answer": 0, "choices": ["Median (robust to skew) alongside the mean — report both, and show the distribution; the mean alone lies about skewed data", "Mean is always the right 'average'", "Drop the outliers to fix the mean", "Median hides information"], "evidence": [["data", "Salaries: 45k, 52k, 48k, 55k, 50k, 47k, 2.5M (CEO)  →  mean ≈ 400k, median = 50k"]], "hint": "Which single number describes 'the typical employee's salary' here?", "id": "da-mean-median", "mins": 5, "objectives": ["Central tendency", "Skew"], "prompt": "Which average, and why does the choice matter?", "situation": "'Average salary is $400k!' — the mean includes the CEO's $2.5M. Employees are confused.", "title": "The $400k average", "why": "The mean is pulled by skew; the median (50th percentile) resists it. For skewed distributions (income, home prices, deal sizes), the median describes the typical case; the mean describes the total-per-head. Report both + the distribution shape. Choosing the mean for skewed data isn't wrong math — it's wrong communication."}, {"answer": 0, "choices": ["Correlation ≠ causation — ice-cream sales correlate with drownings (both rise in summer); look for confounders, and test with experiments", "Correlation proves causation with enough data", "Confounders don't matter with big data", "A/B tests are unnecessary when correlation is strong"], "evidence": [], "hint": "What third variable rises in summer alongside both ice cream and drownings?", "id": "da-correlation", "mins": 5, "objectives": ["Correlation vs causation", "Confounders"], "prompt": "What is the analytical failure?", "situation": "'Users who use feature X retain better!' — the team ships more X. Retention doesn't move. Power users adopt every feature.", "title": "The feature fallacy", "why": "Correlation: X-users retain more. Causation would need: X causes retention. The confounder: power users both adopt features and retain — X is a marker of engagement, not its cause. Before acting on correlation: name plausible confounders, segment (does X help within engagement bands?), and run an experiment. Observational wins are hypotheses, not conclusions."}, {"answer": 0, "choices": ["Randomized A/B test with a pre-registered metric, sufficient sample size/power, and a fixed runtime — then check statistical significance, not just the raw lift", "Ship it; the 5% lift is obvious", "Run the test until it looks significant, then stop", "Sample size doesn't matter with a big lift"], "evidence": [], "hint": "If you peek daily and stop when it's significant, what happens to your false-positive rate?", "id": "da-ab-test", "mins": 6, "objectives": ["A/B testing", "Statistical significance"], "prompt": "How do you run the test properly?", "situation": "A button change shows +5% conversion after 3 days. The team wants to ship; nobody computed power or significance.", "title": "The 5% lift", "why": "Proper A/B: randomize, pre-register the primary metric and runtime, size for statistical power (enough users to detect a meaningful effect), then read significance at the end. Sins: peeking/stopping early (inflates false positives), tiny samples (noise), and multiple metrics without correction (one will 'win' by chance). +5% on 200 users is noise; on 200k it's signal. Do the math before shipping."}, {"answer": 0, "choices": ["Selection bias — survey respondents self-select (happy/angry extremes); the sample doesn't represent all users. Weight, or better, sample randomly", "Survey results are representative by default", "More responses fix bias", "Bias only matters in small samples"], "evidence": [], "hint": "Who bothers to answer a satisfaction survey — the delighted, the furious, or the indifferent middle?", "id": "da-survey-bias", "mins": 5, "objectives": ["Sampling bias", "Surveys"], "prompt": "Why might the 4.8/5 satisfaction score be misleading?", "situation": "A satisfaction survey (2% response rate) scores 4.8/5, but churn is rising and support tickets grow.", "title": "The 4.8 paradox", "why": "2% response = self-selected extremes; the indifferent middle (often the churners) doesn't answer. The score measures 'respondents', not 'users'. Fixes: random sampling with follow-up, compare respondent vs population characteristics, weight responses, and triangulate with behavioral data (tickets, churn). A biased sample doesn't improve with size — 100k biased responses are still biased."}, {"answer": 0, "choices": ["Base rates — 1% defect rate means most positives are false positives even with a '99% accurate' test; always combine test accuracy with the base rate (Bayes)", "99% accurate means 99% of positives are true", "Base rates don't matter with good tests", "False positives are rare by definition"], "evidence": [["math", "1000 shipments, 1% truly late (10). Test: 99% accurate.\n→ ~10 true positives + ~10 false positives → P(late | flagged) ≈ 50%"]], "hint": "Out of 1000 shipments with 10 truly late, how many false alarms does a 99%-accurate flag raise?", "id": "da-base-rate", "mins": 6, "objectives": ["Base-rate fallacy", "Conditional probability"], "prompt": "Why is the '99% accurate' alert wrong half the time?", "situation": "A '99% accurate' late-shipment predictor flags orders; half the flags are wrong. The team blames the model.", "title": "The base-rate trap", "why": "With a 1% base rate, even 99% accuracy yields ~equal true and false positives (10 real lates caught, ~10 false alarms from 990 on-time). P(late|flagged) ≈ 50%. The model is fine; the expectation ignored Bayes. Lesson: rare-event prediction needs either much higher precision or a workflow that tolerates false alarms. Always condition on the base rate."}, {"answer": 0, "choices": ["Simpson's paradox — the aggregate reverses the segment trends; segment before concluding (e.g., by traffic source/device)", "Aggregates are always trustworthy", "The segments must be wrong", "Paradoxes don't occur in real data"], "evidence": [["data", "Overall: new design converts better (5% vs 4%).\nBy segment: old design wins on mobile AND on desktop."]], "hint": "What if the new design got 90% desktop traffic (high-converting) and the old got 90% mobile?", "id": "da-simpsons", "mins": 6, "objectives": ["Simpson's paradox", "Segmentation"], "prompt": "How can the new design win overall but lose in every segment?", "situation": "Overall conversion favors the new design, but it loses within mobile and within desktop separately.", "title": "The paradox", "why": "Simpson's paradox: a lurking variable (traffic mix) reverses the aggregate. If the new design received mostly high-converting desktop traffic, its overall rate is inflated by mix, not merit. Within each segment, the old design wins. Rule: always segment by known confounders (device, source, region) before trusting an aggregate — the overall number can lie while every segment tells the truth."}]}, {"id": "bi-tools", "name": "BI Tools", "scenarios": [{"answer": 0, "choices": ["Semantic layer — define each metric once (SQL/model), certify it, and have every dashboard consume the definition; 'revenue' has one author and one meaning", "Each dashboard defines its own metrics — flexibility", "Semantic layers slow down analysis", "One definition per dashboard is fine"], "evidence": [], "hint": "Who decides what 'active user' means — each dashboard author, or one governed definition?", "id": "da-semantic-layer", "mins": 6, "objectives": ["Semantic layer", "Metric governance"], "prompt": "How do you end 'three dashboards, three revenues'?", "situation": "Three dashboards show three different revenue numbers. Each defines revenue slightly differently.", "title": "The three revenues", "why": "A semantic layer centralizes metric definitions: one governed 'revenue' (with its exact logic, filters, and grain), consumed by all dashboards and self-service. Dashboards become presentations of certified metrics, not independent computations. Without it, every dashboard is a new opinion. With it, arguments move from 'whose number is right' to 'is the definition right' — a much better argument."}, {"answer": 0, "choices": ["Aggregate/navigation design: pre-aggregate at common grains, limit default date ranges, push filters to the source, and monitor query performance — dashboards must feel instant", "Load raw billions of rows into the dashboard", "Performance is the warehouse's problem", "Users tolerate 2-minute dashboard loads"], "evidence": [], "hint": "A dashboard scanning 5B rows per load — what computes once instead of per-view?", "id": "da-dashboard-perf", "mins": 5, "objectives": ["Dashboard performance", "Aggregates"], "prompt": "How do you keep dashboards fast over big data?", "situation": "A dashboard over billions of rows takes 90 seconds to load. Users stop using it.", "title": "The 90-second dashboard", "why": "Dashboard performance discipline: pre-aggregate to the dashboard's grain (materialized/aggregate tables), default to sane date ranges (not 'all time'), ensure filters hit partitioned/indexed columns, and cache. A dashboard is a serving layer — it should query aggregates, not raw fact tables. If the dashboard queries billions of rows per interaction, the modeling failed, not the tool."}, {"answer": 0, "choices": ["Certified vs sandbox: governed, certified datasets for official metrics; sandbox/exploratory space for ad-hoc work — with clear labeling so nobody mistakes one for the other", "All self-service, no governance — fastest", "Lock everything down — no self-service", "Governance and self-service are opposites"], "evidence": [], "hint": "How do you let analysts explore freely without letting experiments become 'official numbers'?", "id": "da-self-service", "mins": 5, "objectives": ["Self-service BI", "Governance balance"], "prompt": "How do you balance self-service with trust?", "situation": "Analysts build on raw tables; executives quote exploratory numbers as fact. Locking everything down kills productivity.", "title": "The wild-west BI", "why": "Two-tier: certified datasets (governed, documented, tested — the official numbers) and a sandbox (raw/exploratory — clearly labeled 'unverified'). Analysts explore freely in the sandbox; promotion to certified requires review. Labeling is the keystone: every dashboard states its certification status. Self-service without governance produces confident wrong numbers; governance without self-service produces shadow BI."}, {"answer": 0, "choices": ["Row-level security — filter data by the viewer's identity/role in the BI tool or semantic layer; one dashboard, many views, enforced centrally", "One dashboard per team — simplest secure", "RLS is just hiding tabs", "Security can be handled by telling users not to look"], "evidence": [], "hint": "The CEO and a regional manager open the same dashboard — who should see whose numbers?", "id": "da-rls", "mins": 5, "objectives": ["Row-level security"], "prompt": "How does one dashboard serve many audiences securely?", "situation": "A sales dashboard must show each rep only their territory, managers their region, execs everything.", "title": "The one-dashboard rule", "why": "Row-level security applies data filters by viewer identity (role, territory mapping) — one dashboard definition, personalized data, enforced in the platform (not in the user's hands). Cloning dashboards per audience multiplies maintenance and leaks via stale copies. RLS belongs in the semantic layer/platform so it's consistent across every surface."}, {"answer": 0, "choices": ["Scheduled refresh aligned to data SLAs + data-driven alerts (alert when a metric crosses a threshold, not just 'dashboard updated') — push the insight, don't just publish it", "Refresh everything hourly — fresher is always better", "Alerts on every data change", "Manual refresh is fine"], "evidence": [], "hint": "Nobody opens the dashboard — how does the insight reach them?", "id": "da-alerts", "mins": 4, "objectives": ["Refresh schedules", "Data-driven alerts"], "prompt": "How do dashboards stay fresh and actually seen?", "situation": "A dashboard refreshes nightly, but the metric it tracks moves intraday. Nobody checks it anyway.", "title": "The unseen dashboard", "why": "Match refresh to the data's SLA and decision cadence (intraday metric → intraday refresh; daily KPI → daily). Then invert the model: data-driven alerts push exceptions to stakeholders (Slack/email when churn spikes) instead of hoping they open the dashboard. Dashboards are for investigation; alerts are for attention. An unopened dashboard is a write-only report."}, {"answer": 0, "choices": ["Version the dashboard definitions, document metric logic, and review changes — dashboards are code; treat them like it", "Dashboards don't need version control", "Screenshots document dashboards", "Only the data needs governance"], "evidence": [], "hint": "Who changed the revenue filter last Tuesday, and can you get the old version back?", "id": "da-dashboard-ops", "mins": 4, "objectives": ["Dashboard governance", "Version control"], "prompt": "How do you operate dashboards like software?", "situation": "A dashboard's numbers change; nobody knows who edited it or what changed.", "title": "The mystery edit", "why": "Dashboards are production artifacts: version their definitions (BI tools with git integration, or exported definitions in version control), document metric logic alongside, require review for certified dashboards, and keep a changelog. 'Someone edited the filter' shouldn't be a mystery — it should be a commit. Operate dashboards with the same discipline as the pipelines feeding them."}]}, {"id": "storytelling", "name": "Storytelling", "scenarios": [{"answer": 0, "choices": ["Pyramid principle — lead with the conclusion/recommendation, then supporting evidence, then details; executives decide, they don't explore", "Build suspense: background, methodology, then the answer on slide 20", "Chronological order is clearest", "Details first, conclusion last"], "evidence": [], "hint": "The exec has 2 minutes — do they get the answer first or last?", "id": "da-pyramid", "mins": 5, "objectives": ["Pyramid principle", "Executive communication"], "prompt": "How do you structure findings for decision-makers?", "situation": "A 30-slide deck buries the recommendation on slide 28. The exec stops paying attention at slide 5.", "title": "The buried lede", "why": "Pyramid principle: answer first ('We should do X'), then the 2-3 supporting reasons, then details as backup. Executives need the decision up front; they drill into evidence only where they doubt. Chronological 'here's what I did' structures serve the analyst's journey, not the reader's decision. Lead with the 'so what', earn the right to the 'how'."}, {"answer": 0, "choices": ["One message per chart, stated in the title — 'Churn spikes after the price increase' not 'Churn by month'; the title is the takeaway", "Cute titles: 'Churn analysis'", "Titles should describe the chart type", "Takeaways belong in the appendix"], "evidence": [], "hint": "Does the title tell the reader what to conclude, or just what the chart shows?", "id": "da-chart-titles", "mins": 4, "objectives": ["Message titles", "Insight communication"], "prompt": "What makes a chart title effective?", "situation": "A deck of charts titled 'Revenue by segment', 'Churn by month' — readers must deduce each point themselves.", "title": "The descriptive titles", "why": "Action titles state the insight ('Enterprise churn doubled after onboarding changes'), not the content ('Churn by segment'). Each chart makes one point; the title is that point. Descriptive titles outsource interpretation to the busiest readers — they'll get it wrong or skip it. Write the title last, after you know the message."}, {"answer": 0, "choices": ["Show the uncertainty: ranges, confidence intervals, sensitivity ('if X, then Y') — and state what would change the conclusion; false precision destroys trust when you're wrong", "Point estimates only — ranges look indecisive", "Hide the caveats; they'll ask if needed", "Uncertainty means the analysis failed"], "evidence": [], "hint": "'Revenue will grow 12%' vs 'likely 8–15%, driven by enterprise renewals' — which survives being slightly wrong?", "id": "da-uncertainty", "mins": 5, "objectives": ["Communicating uncertainty"], "prompt": "How do you present uncertain findings honestly?", "situation": "A forecast is presented as a single number. It's wrong; stakeholders stop trusting the team's numbers.", "title": "The false precision", "why": "Honest uncertainty: ranges instead of point estimates, key assumptions stated, sensitivity to drivers ('±3 points if renewal rate moves 5%'), and pre-mortem ('what would change this conclusion'). False precision borrows trust and repays it with interest when wrong. Decision-makers can act on ranges; they can't act on a number nobody believes."}, {"answer": 0, "choices": ["Context → complication → resolution: set the business context, name the tension, then the recommendation — a narrative arc, not a data dump", "Data dump in appendix order", "Start with methodology — credibility first", "Narratives are for marketing, not analysis"], "evidence": [], "hint": "'Sales are flat' (context), 'but enterprise is collapsing while SMB grows' (tension) — what's the resolution?", "id": "da-narrative", "mins": 5, "objectives": ["Narrative structure"], "prompt": "How do you turn analysis into a story?", "situation": "A readout lists 15 findings. Stakeholders remember none and ask 'so what do we do?'", "title": "The 15 findings", "why": "Narrative arc: context (what's happening), complication (the tension/change), resolution (what we should do). Fifteen findings with no arc = fifteen forgettable facts. Group findings into 2-3 insights that build to one recommendation. Stories are memory structures — the same data, shaped as tension→resolution, gets remembered and acted on."}, {"answer": 0, "choices": ["Recommendation tied to evidence with trade-offs named: 'Do X because [evidence]; costs [Y]; if [assumption] is wrong, do Z' — a decision, not a suggestion", "'Further analysis needed' — safest close", "Recommendations without trade-offs", "Let stakeholders decide; analysts shouldn't recommend"], "evidence": [], "hint": "Does the close tell them what to do Monday morning, or just what you found?", "id": "da-recommendation", "mins": 5, "objectives": ["Recommendations", "Decision support"], "prompt": "How do you close an analysis?", "situation": "A readout ends with 'interesting patterns'. No decision is made; the work dies.", "title": "The inconclusive close", "why": "Close with a recommendation: the action, the evidence behind it, the trade-offs/costs, and the tripwire ('revisit if X'). 'Further analysis needed' is sometimes honest but usually abdication — say what the current evidence supports and what would change your mind. Analysis exists to drive decisions; a readout without a recommendation is entertainment."}, {"answer": 0, "choices": ["Pre-wire: share findings with key stakeholders before the big meeting, gather objections privately, adjust — the meeting ratifies, it doesn't discover", "Surprise everyone in the meeting — impact", "Pre-wiring is politics, not analysis", "Only present to friendly audiences"], "evidence": [], "hint": "The VP objects to your methodology in front of 20 people — when should that conversation have happened?", "id": "da-prewire", "mins": 4, "objectives": ["Stakeholder management", "Pre-wiring"], "prompt": "How do you land a controversial finding?", "situation": "A finding ('the flagship feature hurts retention') blindsides its owner in a big review. The meeting derails into methodology debate.", "title": "The ambush", "why": "Pre-wire controversial findings: walk key stakeholders through the analysis 1:1 before the forum — hear objections, stress-test the logic, adjust where they're right. The big meeting then decides rather than discovers. An ambush triggers defensiveness; a pre-wired finding gets a fair hearing. It's not politics — it's giving the analysis its best chance to be judged on merit."}]}], "lessons": [{"domain_id": "sql-analysis", "title": "SQL for Analysis — Core concepts", "concepts": ["Time-series analysis starts by choosing the grain: DATE_TRUNC('month', ts) buckets timestamps to month starts, then GROUP BY aggregates.", "DATE_TRUNC: (Syntax varies: DATE_TRUNC in Postgres, DATETRUNC in T-SQL, DATE_FORMAT in MySQL — the concept is universal.) Also mind time zones: truncate in the business's time zone, not UTC, or month boundaries shift.", "COUNT(*) counts rows (events); COUNT(DISTINCT user_id) counts unique users. Without truncation, every distinct timestamp is its own group — noise, not trend.", "Events vs users: cohort retention: group users by signup period (the cohort), then track each cohort's activity over subsequent periods — producing retention curves. 'Active users' = distinct users; 'engagement' might = events.", "Cohort curves show whether newer cohorts retain better (product improving) or all cohorts decay the same (structural problem)."], "example": {"lang": "sql", "code": "SELECT DATE_TRUNC('month', created_at) AS month,\n COUNT(*) AS signups\nFROM users GROUP BY 1 ORDER BY 1;", "walkthrough": "Time-series analysis starts by choosing the grain: DATE_TRUNC('month', ts) buckets timestamps to month starts, then GROUP BY aggregates. Without truncation, every distinct timestamp is its own group — noise, not trend."}, "pitfalls": ["Common trap: cohort analysis needs no SQL.", "Common trap: cOUNT(user_id) counts unique users.", "Common trap: latest row per user is impossible in SQL.", "Common trap: subquery computing the grand total, joined back."], "try_it": "Try it now in the Terminal tab →"}, {"domain_id": "spreadsheets", "title": "Spreadsheets — Core concepts", "concepts": ["Pivot tables are the exploration tool: drag fields to rows/columns/values, slice interactively, no formula maintenance. If a pivot can't read it, it's not data, it's a picture of data.", "XLOOKUP (or INDEX+MATCH): separate lookup and return arrays — looks any direction, exact match default, built-in if-not-found handling. Formulas (SUMIFS/COUNTIFS/XLOOKUP) suit fixed, repeatable calculations that must be auditable cell-by-cell.", "Data cleaning: prevent, don't fix: data validation dropdowns constrain categories, date validation constrains formats, conditional formatting flags outliers/duplicates visually, and sheet protection locks formula cells while leaving inputs editable."], "example": {"lang": "text", "code": "Worked example — pivot tables\nSetup: Pivot tables are the exploration tool: drag fields to rows/columns/values, slice interactively, no formula maintenance.\nReasoning: Rule: exploring → pivot; productionizing a fixed report → formulas (or better, SQL).\nTakeaway: Cleaning checklist: TRIM whitespace, UPPER/LOWER standardization, consistent date parsing (TEXTSPLIT or DATEVALUE with known format), dedupe (Remove…", "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."}, "pitfalls": ["Common trap: pivot tables can't handle large data.", "Common trap: totals rows inside the data are fine.", "Common trap: analyze first; cleaning is optional.", "Common trap: multiple tables per sheet is tidiest."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "visualization", "title": "Visualization — Core concepts", "concepts": ["Honest axes: for segment comparison, small multiples are the most information-dense honest layout.", "Chart selection: small multiples: the same chart repeated per segment, identical scales, in a grid — the eye compares shapes instantly. The chart is an argument — pick the one that makes the true pattern easiest to see.", "Labeling: direct labeling (series names at line ends, values on bars) removes the legend-lookup round trip — the eye stays on the data.", "Legends fail past ~4 similar series.", "Color accessibility: rules: colorblind-safe palettes (blue/orange, not red/green), color never the only channel (add labels, shapes, or position), sufficient contrast for text. Then highlight: one accent color draws the eye to the insight; everything else recedes to gray."], "example": {"lang": "text", "code": "Worked example — honest axes\nSetup: Rules: colorblind-safe palettes (blue/orange, not red/green), color never the only channel (add labels, shapes, or position), sufficient contrast for…\nReasoning: Small multiples: the same chart repeated per segment, identical scales, in a grid — the eye compares shapes instantly.\nTakeaway: For segment comparison, small multiples are the most information-dense honest layout.", "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."}, "pitfalls": ["Common trap: data-ink ratio is aesthetic trivia.", "Common trap: every chart needs a border and background shading.", "Common trap: axis choice doesn't affect perception.", "Common trap: one chart type fits all data."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "statistics", "title": "Statistics — Core concepts", "concepts": ["Skew: the mean is pulled by skew; the median (50th percentile) resists it.", "Correlation vs causation: before acting on correlation: name plausible confounders, segment (does X help within engagement bands?), and run an experiment.", "Confounders: rule: always segment by known confounders (device, source, region) before trusting an aggregate — the overall number can lie while every segment tells the truth.", "A/B testing: proper A/B: randomize, pre-register the primary metric and runtime, size for statistical power (enough users to detect a meaningful effect), then read significance at the end."], "example": {"lang": "text", "code": "1000 shipments, 1% truly late (10). Test: 99% accurate.\n→ ~10 true positives + ~10 false positives → P(late | flagged) ≈ 50%", "walkthrough": "With a 1% base rate, even 99% accuracy yields ~equal true and false positives (10 real lates caught, ~10 false alarms from 990 on-time). The model is fine; the expectation ignored Bayes. Lesson: rare-event prediction needs either much higher precision or a workflow that tolerates false alarms."}, "pitfalls": ["Common trap: correlation proves causation with enough data.", "Common trap: A/B tests are unnecessary when correlation is strong.", "Common trap: confounders don't matter with big data.", "Common trap: bias only matters in small samples."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "bi-tools", "title": "BI Tools — Core concepts", "concepts": ["Semantic layer: a semantic layer centralizes metric definitions: one governed 'revenue' (with its exact logic, filters, and grain), consumed by all dashboards and self-service. RLS belongs in the semantic layer/platform so it's consistent across every surface.", "Metric governance: dashboards are production artifacts: version their definitions (BI tools with git integration, or exported definitions in version control), document metric logic alongside, require review for certified dashboards, and keep a changelog.", "Dashboard performance discipline: pre-aggregate to the dashboard's grain (materialized/aggregate tables), default to sane date ranges (not 'all time'), ensure filters hit partitioned/indexed columns, and cache.", "Aggregates: a dashboard is a serving layer — it should query aggregates, not raw fact tables."], "example": {"lang": "text", "code": "Worked example — semantic layer\nSetup: Dashboards are production artifacts: version their definitions (BI tools with git integration, or exported definitions in version control), document…\nReasoning: A semantic layer centralizes metric definitions: one governed 'revenue' (with its exact logic, filters, and grain), consumed by all dashboards and…\nTakeaway: A dashboard is a serving layer — it should query aggregates, not raw fact tables.", "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."}, "pitfalls": ["Common trap: dashboards don't need version control.", "Common trap: load raw billions of rows into the dashboard.", "Common trap: users tolerate 2-minute dashboard loads.", "Common trap: security can be handled by telling users not to look."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "storytelling", "title": "Storytelling — Core concepts", "concepts": ["Pyramid principle: answer first ('We should do X'), then the 2-3 supporting reasons, then details as backup.", "Message titles: action titles state the insight ('Enterprise churn doubled after onboarding changes'), not the content ('Churn by segment').", "Communicating uncertainty: honest uncertainty: ranges instead of point estimates, key assumptions stated, sensitivity to drivers ('±3 points if renewal rate moves 5%'), and pre-mortem ('what would change this conclusion').", "Narrative arc: context (what's happening), complication (the tension/change), resolution (what we should do)."], "example": {"lang": "text", "code": "Worked example — pyramid principle\nSetup: Pyramid principle: answer first ('We should do X'), then the 2-3 supporting reasons, then details as backup.\nReasoning: Honest uncertainty: ranges instead of point estimates, key assumptions stated, sensitivity to drivers ('±3 points if renewal rate moves 5%'), and…\nTakeaway: Action titles state the insight ('Enterprise churn doubled after onboarding changes'), not the content ('Churn by segment').", "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."}, "pitfalls": ["Common trap: cute titles: 'Churn analysis'.", "Common trap: titles should describe the chart type.", "Common trap: uncertainty means the analysis failed.", "Common trap: build suspense: background, methodology, then the answer on slide 20."], "try_it": "Work through this in the Terminal tab →"}], "sections": [{"id": "foundations", "title": "Foundations", "kind": "foundation", "lectures": ["m-stats", "m-probability", "f-sql-0", "f-sql-1", "f-sql-2", "f-python-0", "f-python-1", "f-python-2"], "lab_ids": [], "drill_domain_ids": []}, {"id": "core", "title": "Core", "kind": "core", "lectures": ["c-sql-analysis", "c-spreadsheets", "c-visualization"], "lab_ids": ["data-analyst-lab-1", "data-analyst-lab-2"], "drill_domain_ids": ["sql-analysis", "spreadsheets", "visualization"]}, {"id": "advanced", "title": "Advanced", "kind": "advanced", "lectures": ["c-statistics", "c-bi-tools", "c-storytelling"], "lab_ids": ["data-analyst-lab-3", "data-analyst-lab-4"], "drill_domain_ids": ["statistics", "bi-tools", "storytelling"]}, {"id": "exam-prep", "title": "Exam Prep", "kind": "exam-prep", "lectures": [], "lab_ids": [], "drill_domain_ids": ["sql-analysis", "spreadsheets", "visualization", "statistics", "bi-tools", "storytelling"]}], "slug": "data-analyst", "tagline": "From raw data to decisions", "title": "Data Analyst", "vendor": {"certs": "", "docs": "", "name": "Vendor-neutral"}, "labs": [{"id": "data-analyst-lab-1", "title": "Time-series aggregation — SQL drill", "objective": "Run a short sequence of SQL shell commands that demonstrates time-series aggregation, then verify each result against the expected output.", "steps": ["This lab reworks the SQL for Analysis practice scenario \"The timestamp groups\" into commands you run yourself — same concept, hands-on instead of multiple choice.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: .tables — the schema listing includes the employees table", "Type exactly: SELECT * FROM employees; — the result set shows the name column", "Type exactly: .tables — run CREATE TABLE lab_notes (id INTEGER, note TEXT); first, then .tables lists it", "In your own words, say what each command's output taught you about time-series aggregation."], "checks": [{"command_pattern": "\\.tables", "expect_contains": "employees", "hint": "In the Terminal tab, run `.tables`. If the check fails, confirm you typed it exactly and that the output contains \"employees\"."}, {"command_pattern": "SELECT \\* FROM", "expect_contains": "name", "hint": "In the Terminal tab, run `SELECT * FROM employees;`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."}, {"command_pattern": "\\.tables", "expect_contains": "lab_notes", "hint": "In the Terminal tab, run `.tables`. If the check fails, confirm you typed it exactly and that the output contains \"lab_notes\"."}], "success_message": "Lab complete — time-series aggregation practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"id": "data-analyst-lab-2", "title": "Pivot tables — SQL drill", "objective": "Use the SQL shell to explore pivot tables hands-on: type each command, read what comes back, and connect the output to the concept.", "steps": ["Inspired by the Spreadsheets scenario \"The formula sprawl\": take its core idea and prove it live in the terminal instead of answering on paper.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: .tables — run CREATE TABLE lab_notes (id INTEGER, note TEXT); first, then .tables lists it", "Type exactly: SELECT name FROM employees WHERE name = 'Ada'; — run INSERT INTO employees (name, role) VALUES ('Ada', 'engineer'); first, then this SELECT shows Ada", "Type exactly: .tables — the schema listing includes the employees table", "In your own words, say what each command's output taught you about pivot tables."], "checks": [{"command_pattern": "\\.tables", "expect_contains": "lab_notes", "hint": "In the Terminal tab, run `.tables`. If the check fails, confirm you typed it exactly and that the output contains \"lab_notes\"."}, {"command_pattern": "SELECT name FROM", "expect_contains": "Ada", "hint": "In the Terminal tab, run `SELECT name FROM employees WHERE name = 'Ada';`. If the check fails, confirm you typed it exactly and that the output contains \"Ada\"."}, {"command_pattern": "\\.tables", "expect_contains": "employees", "hint": "In the Terminal tab, run `.tables`. If the check fails, confirm you typed it exactly and that the output contains \"employees\"."}], "success_message": "Lab complete — pivot tables practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"id": "data-analyst-lab-3", "title": "Honest axes — SQL drill", "objective": "Prove you can apply honest axes in the SQL shell — follow the steps, watch the output, and confirm every check passes.", "steps": ["The Visualization scenario \"The dramatic bar chart\" tests this concept as a question. This lab makes you demonstrate it with real commands.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: .tables — the schema listing includes the employees table", "Type exactly: SELECT * FROM employees; — the result set shows the name column", "Type exactly: .tables — run CREATE TABLE lab_notes (id INTEGER, note TEXT); first, then .tables lists it", "In your own words, say what each command's output taught you about honest axes."], "checks": [{"command_pattern": "\\.tables", "expect_contains": "employees", "hint": "In the Terminal tab, run `.tables`. If the check fails, confirm you typed it exactly and that the output contains \"employees\"."}, {"command_pattern": "SELECT \\* FROM", "expect_contains": "name", "hint": "In the Terminal tab, run `SELECT * FROM employees;`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."}, {"command_pattern": "\\.tables", "expect_contains": "lab_notes", "hint": "In the Terminal tab, run `.tables`. If the check fails, confirm you typed it exactly and that the output contains \"lab_notes\"."}], "success_message": "Lab complete — honest axes practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"id": "data-analyst-lab-4", "title": "Central tendency — SQL drill", "objective": "Run a short sequence of SQL shell commands that demonstrates central tendency, then verify each result against the expected output.", "steps": ["This lab reworks the Statistics practice scenario \"The $400k average\" into commands you run yourself — same concept, hands-on instead of multiple choice.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: .tables — run CREATE TABLE lab_notes (id INTEGER, note TEXT); first, then .tables lists it", "Type exactly: SELECT name FROM employees WHERE name = 'Ada'; — run INSERT INTO employees (name, role) VALUES ('Ada', 'engineer'); first, then this SELECT shows Ada", "Type exactly: .tables — the schema listing includes the employees table", "In your own words, say what each command's output taught you about central tendency."], "checks": [{"command_pattern": "\\.tables", "expect_contains": "lab_notes", "hint": "In the Terminal tab, run `.tables`. If the check fails, confirm you typed it exactly and that the output contains \"lab_notes\"."}, {"command_pattern": "SELECT name FROM", "expect_contains": "Ada", "hint": "In the Terminal tab, run `SELECT name FROM employees WHERE name = 'Ada';`. If the check fails, confirm you typed it exactly and that the output contains \"Ada\"."}, {"command_pattern": "\\.tables", "expect_contains": "employees", "hint": "In the Terminal tab, run `.tables`. If the check fails, confirm you typed it exactly and that the output contains \"employees\"."}], "success_message": "Lab complete — central tendency practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"checks": [{"command_pattern": "^\\.tables", "expect_contains": "employees", "hint": "Run `.tables`."}, {"command_pattern": "SELECT \\* FROM employees LIMIT 3", "expect_contains": "3 row(s)", "hint": "Run `SELECT * FROM employees LIMIT 3;`."}], "difficulty": 1, "id": "data-analyst-lab-5", "objective": "First look at the data: tables and a three-row sample.", "steps": ["Open the Terminal tab for this bootcamp.", "Type exactly: .tables — what datasets do you have?", "Type exactly: SELECT * FROM employees LIMIT 3; — read every field.", "Type exactly: SELECT * FROM orders LIMIT 3; — read every field.", "Write one sentence describing each table's grain."], "success_message": "Lab complete — data sampled. Analysts look before they calculate.", "title": "First look — SQL drill"}, {"checks": [{"command_pattern": "ORDER BY salary DESC", "expect_contains": "Noah Kim", "hint": "Run `SELECT name, salary FROM employees ORDER BY salary DESC;`."}, {"command_pattern": "WHERE dept = 'Data'", "expect_contains": "Maya Ruiz", "hint": "Run `SELECT name FROM employees WHERE dept = 'Data';`."}], "difficulty": 1, "id": "data-analyst-lab-6", "objective": "Sort and filter: highest paid first, then the Data team.", "steps": ["Open the Terminal tab.", "Type exactly: SELECT name, salary FROM employees ORDER BY salary DESC; — top earner?", "Type exactly: SELECT name FROM employees WHERE dept = 'Data'; — who is on the Data team?", "Type exactly: SELECT name, hired FROM employees ORDER BY hired; — longest tenure first?", "Sorting changes the story: what does each ordering emphasize?"], "success_message": "Lab complete — sorted and filtered. ORDER BY is the analyst's spotlight.", "title": "Sort and filter — SQL drill"}, {"checks": [{"command_pattern": "SELECT COUNT\\(\\*\\) FROM employees", "expect_contains": "6", "hint": "Run `SELECT COUNT(*) FROM employees;`."}, {"command_pattern": "SELECT DISTINCT dept FROM employees", "expect_contains": "3 row(s)", "hint": "Run `SELECT DISTINCT dept FROM employees;`."}, {"command_pattern": "amount > 1000", "expect_contains": "3", "hint": "Run `SELECT COUNT(*) FROM orders WHERE amount > 1000;`."}], "difficulty": 2, "id": "data-analyst-lab-7", "objective": "Summary statistics: counts, distinct categories, threshold counts.", "steps": ["Open the Terminal tab.", "Type exactly: SELECT COUNT(*) FROM employees; — headcount.", "Type exactly: SELECT DISTINCT dept FROM employees; — how many departments?", "Type exactly: SELECT COUNT(*) FROM orders WHERE amount > 1000; — big-ticket orders.", "Type exactly: SELECT COUNT(*) FROM orders WHERE status = 'shipped'; — fulfillment rate numerator.", "Compute the shipped share (shipped / total) in your head. What is it?"], "success_message": "Lab complete — summary stats. Counts and shares are the vocabulary of reporting.", "title": "Summary statistics — SQL drill"}, {"checks": [{"command_pattern": "SELECT id, product, status FROM orders WHERE status = 'pending'", "expect_contains": "pending", "hint": "Run `SELECT id, product, status FROM orders WHERE status = 'pending';` to see the two pending orders."}, {"command_pattern": "UPDATE orders SET status = 'cancelled' WHERE id = 103", "expect_contains": "1 row(s) updated", "hint": "Run `UPDATE orders SET status = 'cancelled' WHERE id = 103;`."}, {"command_pattern": "SELECT COUNT\\(\\*\\) FROM orders WHERE status = 'pending'", "expect_contains": "1", "hint": "Re-run the pending count."}], "difficulty": 3, "id": "data-analyst-lab-8", "objective": "Correct a mislabeled order and re-verify the pending count.", "steps": ["Open the Terminal tab.", "Type exactly: SELECT id, product, status FROM orders WHERE status = 'pending'; — the two pending orders.", "Business note: order 103 (keyboard) was cancelled by the customer. Fix it.", "Type exactly: UPDATE orders SET status = 'cancelled' WHERE id = 103;", "Type exactly: SELECT COUNT(*) FROM orders WHERE status = 'pending'; — should be 1 now.", "Type exactly: SELECT COUNT(*) FROM orders WHERE status = 'cancelled'; — should be 2.", "Why verify both the old and new status counts? One sentence."], "success_message": "Lab complete — data corrected with full verification. Analysts fix and prove.", "title": "Correct a mislabeled order — SQL drill"}], "foundations": [{"track": "sql", "why_needed": "Analysis is querying: SELECT, filter, sort, aggregate. Learn the query language before the BI tools."}, {"track": "python", "why_needed": "Spreadsheets end where Python begins. Scripting unlocks repeatable analysis."}], "math": ["stats", "probability"], "simulations": [{"brief": "A bar chart shows Engineering with the tallest bar, but the y-axis starts at 120000. Leadership thinks Engineering earns triple.", "debrief": "Truncated axes exaggerate differences — the honest fix is a zero baseline (or a dot plot for small differences). Chart choices are analysis choices: the axis is part of the claim.", "difficulty": 2, "domain_id": "visualization", "id": "data-analyst-sim-1", "kind": "troubleshoot", "points": 15, "steps": [{"correct": 1, "evidence": [["chart", "Bar chart, y-axis from 120000 to 160000; Engineering bar ~3x the Data bar visually"], ["data", "Engineering avg 127333, Data avg 125000 — a 1.9% difference"]], "explain": "The data differs by under 2%, but the truncated axis makes it look 3x. The visual lies while the numbers tell the truth — reset the axis to zero.", "options": ["Make the bars 3D for clarity", "Reset the y-axis to start at zero", "Remove the Data bar", "Change to a pie chart"], "symptom": "Chart exaggerates a 2% gap into 3x."}], "title": "The misleading bar chart"}, {"brief": "Stakeholders want 'the average salary'. The data has one extreme outlier. Choose the right statistic.", "debrief": "With skew, the median represents the typical case; the mean follows the outlier. Report the median as the headline, and mention the mean and the outlier in a footnote — honesty with context.", "difficulty": 2, "domain_id": "statistics", "id": "data-analyst-sim-2", "kind": "branching", "points": 15, "steps": [{"choices": [{"feedback": "Correct: median for the headline, mean + outlier noted for context.", "label": "Report the median; footnote the mean and the outlier", "next": "END", "outcome": "good", "points": 2}, {"feedback": "The mean alone lets one outlier set the narrative — misleading.", "label": "Report only the mean", "next": "END", "outcome": "bad", "points": 0}], "id": "s1", "text": "Salaries: five around 120-150k, one at 890k (executive). Which average?"}], "title": "Mean or median?"}, {"brief": "Put these analysis steps in order.", "debrief": "Understand the question, explore the data, clean it, analyze, then visualize and communicate. Analysis that skips exploration answers the wrong question precisely.", "difficulty": 1, "domain_id": "storytelling", "id": "data-analyst-sim-3", "kind": "ordering", "points": 10, "steps": {"context": "An analysis workflow", "correct_order": [0, 1, 2, 3, 4], "items": ["Clarify the business question with the stakeholder", "Explore the data: distributions, missing values", "Clean: handle nulls, fix mislabeled rows", "Analyze: aggregate, compare, test", "Visualize and tell the story"]}, "title": "Analysis workflow order"}, {"brief": "This dashboard spec is headed for review. Click the problematic lines (2 issues to find).", "debrief": "Two dashboard sins: a dual-axis chart comparing unrelated units (invites false correlation), and a KPI with no definition of its denominator (unverifiable). One message per visual; every KPI defined.", "difficulty": 3, "domain_id": "bi-tools", "id": "data-analyst-sim-4", "kind": "config-check", "points": 10, "steps": {"config": "Dashboard: Q3 Review\nChart 1: Dual-axis — headcount (bars) vs avg salary (line)\nKPI 1: 'Fulfillment rate 83%' (no definition)\nChart 2: Order amounts by month, y-axis from 0\nFilter: status = shipped", "find": 2, "issues": [{"description": "Dual-axis chart mixes headcount and salary scales — readers infer correlation that may not exist.", "fix": "Split into two charts with honest single axes.", "line": 2}, {"description": "KPI has no definition — 83% of what? Unverifiable.", "fix": "Define the KPI: shipped orders / total orders, with the date range.", "line": 3}]}, "title": "Review the dashboard spec"}], "consoleSims": [{"brief": "Build the headcount-by-department chart for the leadership deck in the BI tool: pick the right visual and aggregation.", "console": "sql-studio", "debrief": "Bar charts compare categories; the aggregation (COUNT) must match the question (how many per department). The wrong visual or wrong aggregation is how dashboards lie.", "difficulty": 2, "domain_id": "visualization", "id": "data-analyst-console-1", "tasks": [{"hint": "Categories on the axis.", "id": "data-analyst-console-1-t1", "instruction": "Set the chart type to Bar and the dimension to dept.", "validate": {"action": "set-field", "params": {"field": "chart-dimension", "value": "dept"}}}, {"hint": "Count people, not salaries.", "id": "data-analyst-console-1-t2", "instruction": "Set the measure to COUNT of employees.", "validate": {"action": "set-field", "params": {"field": "chart-measure", "value": "COUNT"}}}, {"hint": "Render it.", "id": "data-analyst-console-1-t3", "instruction": "Click Render to build the chart.", "validate": {"action": "click", "params": {"target": "render-chart"}}}], "title": "Build a headcount chart"}, {"brief": "A stakeholder asks for 'average order value'. Build the KPI card showing the right average for skewed order data.", "console": "sql-studio", "debrief": "Skewed data (one huge server order) pulls the mean up — the median describes the typical order better. Analysts pick the statistic that answers the stakeholder's real question, and say which one they used.", "difficulty": 2, "domain_id": "statistics", "id": "data-analyst-console-2", "tasks": [{"hint": "KPIs need one number.", "id": "data-analyst-console-2-t1", "instruction": "Create a KPI card on the orders dataset.", "validate": {"action": "create", "params": {"name": "aov-kpi", "type": "kpi-card"}}}, {"hint": "Skewed data: prefer the median.", "id": "data-analyst-console-2-t2", "instruction": "Set the aggregation to Median of amount.", "validate": {"action": "set-field", "params": {"field": "kpi-aggregation", "value": "Median"}}}, {"hint": "Label honestly.", "id": "data-analyst-console-2-t3", "instruction": "Set the card title to 'Median order value'.", "validate": {"action": "set-field", "params": {"field": "kpi-title", "value": "Median order value"}}}], "title": "Build an honest KPI card"}], "terminalMissions": [{"brief": "List the tables.", "checks": [{"command_pattern": "^\\.tables", "expect_contains": "orders", "hint": "Run `.tables`."}], "difficulty": 1, "domain_id": "sql-analysis", "id": "data-analyst-mission-1", "objectives": ["Show available tables"], "success_message": "Mission complete — tables listed.", "title": "Dataset check"}, {"brief": "Sample three employees.", "checks": [{"command_pattern": "SELECT \\* FROM employees LIMIT 3", "expect_contains": "3 row(s)", "hint": "Run `SELECT * FROM employees LIMIT 3;`."}], "difficulty": 1, "domain_id": "sql-analysis", "id": "data-analyst-mission-2", "objectives": ["Return a 3-row sample"], "success_message": "Mission complete — sample taken.", "title": "Sample the data"}, {"brief": "Count shipped orders.", "checks": [{"command_pattern": "WHERE status = 'shipped'", "expect_contains": "3", "hint": "Run `SELECT COUNT(*) FROM orders WHERE status = 'shipped';`."}], "difficulty": 2, "domain_id": "sql-analysis", "id": "data-analyst-mission-3", "objectives": ["Count shipped orders"], "success_message": "Mission complete — 3 shipped.", "title": "Fulfillment count"}, {"brief": "List employees hired before 2022.", "checks": [{"command_pattern": "hired < '2022", "expect_contains": "Noah Kim", "hint": "Run `SELECT name FROM employees WHERE hired < '2022-01-01';`."}], "difficulty": 2, "domain_id": "sql-analysis", "id": "data-analyst-mission-4", "objectives": ["Filter by hire date"], "success_message": "Mission complete — tenure filter done.", "title": "Tenure filter"}, {"brief": "Find the lowest-paid employee.", "checks": [{"command_pattern": "ORDER BY salary", "expect_contains": "Eli Park", "hint": "Run `SELECT name FROM employees ORDER BY salary LIMIT 1;`."}], "difficulty": 3, "domain_id": "statistics", "id": "data-analyst-mission-5", "objectives": ["Sort ascending and take the first row"], "success_message": "Mission complete — lowest salary found.", "title": "Lowest salary"}, {"brief": "Correct order 103 and show the new pending count.", "checks": [{"command_pattern": "UPDATE orders SET status = 'cancelled' WHERE id = 103", "expect_contains": "1 row(s) updated", "hint": "Run `UPDATE orders SET status = 'cancelled' WHERE id = 103;`."}, {"command_pattern": "SELECT COUNT\\(\\*\\) FROM orders WHERE status = 'pending'", "expect_contains": "1", "hint": "Run `SELECT COUNT(*) FROM orders WHERE status = 'pending';`."}], "difficulty": 3, "domain_id": "sql-analysis", "id": "data-analyst-mission-6", "objectives": ["Fix the order status", "Verify the pending count"], "success_message": "Mission complete — data fixed and verified.", "title": "Fix and verify"}], "media": [{"id": "data-analyst-sql-analysis-diag", "kind": "diagram", "title": "Analyst SQL Toolkit", "svg": "assets/diagrams/data-analyst-sql-analysis.svg", "lesson_ref": "c-sql-analysis", "caption": "The queries behind every dashboard.", "alt": "Analyst SQL Toolkit. Commands: SELECT a, b FROM t WHERE x > 5, GROUP BY d HAVING COUNT(*) > 1, t1 JOIN t2 ON t1.id = t2.id, INSERT / UPDATE / DELETE, CREATE TABLE t (…)."}, {"id": "data-analyst-spreadsheets-diag", "kind": "diagram", "title": "Spreadsheet Power Moves", "svg": "assets/diagrams/data-analyst-spreadsheets.svg", "lesson_ref": "c-spreadsheets", "caption": "Fast answers without a database.", "alt": "Spreadsheet Power Moves. Shows: Pivot tables, VLOOKUP / XLOOKUP, Clean first, Charts."}, {"id": "data-analyst-visualization-diag", "kind": "diagram", "title": "Choosing the Right Chart", "svg": "assets/diagrams/data-analyst-visualization.svg", "lesson_ref": "c-visualization", "caption": "Match the visual to the question.", "alt": "Choosing the Right Chart. Shows: Line, Bar, Scatter, Histogram, Avoid."}, {"id": "data-analyst-statistics-diag", "kind": "diagram", "title": "Statistics for Analysts", "svg": "assets/diagrams/data-analyst-statistics.svg", "lesson_ref": "c-statistics", "caption": "Describe data honestly.", "alt": "Statistics for Analysts. Shows: Mean / median / mode, Std dev, Correlation ≠ causation, Sampling, p-values."}, {"id": "data-analyst-bi-tools-diag", "kind": "diagram", "title": "BI Tool Concepts", "svg": "assets/diagrams/data-analyst-bi-tools.svg", "lesson_ref": "c-bi-tools", "caption": "Power BI / Tableau share the same ideas.", "alt": "BI Tool Concepts. Shows: Data model, DAX / LOD, Dashboards, Refresh."}, {"id": "data-analyst-storytelling-diag", "kind": "diagram", "title": "Data Storytelling Flow", "svg": "assets/diagrams/data-analyst-storytelling.svg", "lesson_ref": "c-storytelling", "caption": "From raw numbers to a decision.", "alt": "Data Storytelling Flow. Shows: Question, Explore, Insight, Narrative, Visual."}], "resources": {"cheatsheet": {"title": "Data Analyst — Cheat Sheet", "sections": [{"heading": "SQL for Analysis", "items": ["Time-series analysis starts by choosing the grain — DATE_TRUNC('month', ts) buckets timestamps to month starts, then GROUP BY aggregates.", "DATE_TRUNC — (Syntax varies: DATE_TRUNC in Postgres, DATETRUNC in T-SQL, DATE_FORMAT in MySQL — the concept is universal.) Also mind time zones: truncate in the business's time zone, not UTC, or month boundaries shift.", "COUNT — COUNT(*) counts rows (events); COUNT(DISTINCT user_id) counts unique users. Without truncation, every distinct timestamp is its own group — noise, not trend.", "Events vs users — cohort retention: group users by signup period (the cohort), then track each cohort's activity over subsequent periods — producing retention curves. 'Active users' = distinct users; 'engagement' might = events.", "Cohort — Cohort curves show whether newer cohorts retain better (product improving) or all cohorts decay the same (structural problem).", "Common trap — cohort analysis needs no SQL.", "Common trap — cOUNT(user_id) counts unique users.", "Common trap — latest row per user is impossible in SQL.", "Common trap — subquery computing the grand total, joined back.", "Time-series analysis starts by choosing the grain — DATE_TRUNC('month', ts) buckets timestamps to month starts, then GROUP BY aggregates. Without truncation, every distinct timestamp is its own group — noise, not trend."]}, {"heading": "Spreadsheets", "items": ["Pivot tables are the exploration tool — drag fields to rows/columns/values, slice interactively, no formula maintenance. If a pivot can't read it, it's not data, it's a picture of data.", "XLOOKUP (or INDEX+MATCH) — separate lookup and return arrays — looks any direction, exact match default, built-in if-not-found handling. Formulas (SUMIFS/COUNTIFS/XLOOKUP) suit fixed, repeatable calculations that must be auditable cell-by-cell.", "Data cleaning — prevent, don't fix: data validation dropdowns constrain categories, date validation constrains formats, conditional formatting flags outliers/duplicates visually, and sheet protection locks formula cells while leaving inputs editable.", "Common trap — pivot tables can't handle large data.", "Common trap — totals rows inside the data are fine.", "Common trap — analyze first; cleaning is optional.", "Common trap — multiple tables per sheet is tidiest.", "Read — Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."]}, {"heading": "Visualization", "items": ["Honest axes — for segment comparison, small multiples are the most information-dense honest layout.", "Chart selection — small multiples: the same chart repeated per segment, identical scales, in a grid — the eye compares shapes instantly. The chart is an argument — pick the one that makes the true pattern easiest to see.", "Labeling — direct labeling (series names at line ends, values on bars) removes the legend-lookup round trip — the eye stays on the data.", "Legends — Legends fail past ~4 similar series.", "Color accessibility — rules: colorblind-safe palettes (blue/orange, not red/green), color never the only channel (add labels, shapes, or position), sufficient contrast for text. Then highlight: one accent color draws the eye to the insight; everything else recedes to gray.", "Common trap — data-ink ratio is aesthetic trivia.", "Common trap — every chart needs a border and background shading.", "Common trap — axis choice doesn't affect perception.", "Common trap — one chart type fits all data."]}, {"heading": "Statistics", "items": ["Skew — the mean is pulled by skew; the median (50th percentile) resists it.", "Correlation vs causation — before acting on correlation: name plausible confounders, segment (does X help within engagement bands?), and run an experiment.", "Confounders — rule: always segment by known confounders (device, source, region) before trusting an aggregate — the overall number can lie while every segment tells the truth.", "A/B testing — proper A/B: randomize, pre-register the primary metric and runtime, size for statistical power (enough users to detect a meaningful effect), then read significance at the end.", "Common trap — correlation proves causation with enough data.", "Common trap — A/B tests are unnecessary when correlation is strong.", "Common trap — confounders don't matter with big data.", "Common trap — bias only matters in small samples.", "With — With a 1% base rate, even 99% accuracy yields ~equal true and false positives (10 real lates caught, ~10 false alarms from 990 on-time). The model is fine; the expectation ignored Bayes. Lesson: rare-event prediction needs either much higher precision or a…"]}, {"heading": "BI Tools", "items": ["Semantic layer — a semantic layer centralizes metric definitions: one governed 'revenue' (with its exact logic, filters, and grain), consumed by all dashboards and self-service. RLS belongs in the semantic layer/platform so it's consistent across every surface.", "Metric governance — dashboards are production artifacts: version their definitions (BI tools with git integration, or exported definitions in version control), document metric logic alongside, require review for certified dashboards, and keep a changelog.", "Dashboard performance discipline — pre-aggregate to the dashboard's grain (materialized/aggregate tables), default to sane date ranges (not 'all time'), ensure filters hit partitioned/indexed columns, and cache.", "Aggregates — a dashboard is a serving layer — it should query aggregates, not raw fact tables.", "Common trap — dashboards don't need version control.", "Common trap — load raw billions of rows into the dashboard.", "Common trap — users tolerate 2-minute dashboard loads.", "Common trap — security can be handled by telling users not to look."]}, {"heading": "Storytelling", "items": ["Pyramid principle — answer first ('We should do X'), then the 2-3 supporting reasons, then details as backup.", "Message titles — action titles state the insight ('Enterprise churn doubled after onboarding changes'), not the content ('Churn by segment').", "Communicating uncertainty — honest uncertainty: ranges instead of point estimates, key assumptions stated, sensitivity to drivers ('±3 points if renewal rate moves 5%'), and pre-mortem ('what would change this conclusion').", "Narrative arc — context (what's happening), complication (the tension/change), resolution (what we should do).", "Common trap — cute titles: 'Churn analysis'.", "Common trap — titles should describe the chart type.", "Common trap — uncertainty means the analysis failed.", "Common trap — build suspense: background, methodology, then the answer on slide 20."]}]}, "glossary": [{"term": "SQL", "def": "Pivot tables are the exploration tool: drag fields to rows/columns/values, slice interactively, no formula maintenance. Formulas (SUMIFS/COUNTIFS/XLOOKUP) suit fixed, repeatable calculations that must be auditable cell-by-cell."}, {"term": "GROUP", "def": "Window functions evaluate after GROUP BY: SUM(SUM(amount)) OVER () = grand total over the grouped rows, so each row's share = its sum / grand total. One query, no spreadsheet round-trip."}, {"term": "GROUP BY", "def": "Window functions evaluate after GROUP BY: SUM(SUM(amount)) OVER () = grand total over the grouped rows, so each row's share = its sum / grand total. One query, no spreadsheet round-trip."}, {"term": "COUNT", "def": "COUNT(*) counts rows (events); COUNT(DISTINCT user_id) counts unique users. 'Active users' = distinct users; 'engagement' might = events."}, {"term": "Without", "def": "COUNT(*) counts rows (events); COUNT(DISTINCT user_id) counts unique users. Without truncation, every distinct timestamp is its own group — noise, not trend."}, {"term": "MATCH", "def": "XLOOKUP (or INDEX+MATCH): separate lookup and return arrays — looks any direction, exact match default, built-in if-not-found handling. Formulas (SUMIFS/COUNTIFS/XLOOKUP) suit fixed, repeatable calculations that must be auditable cell-by…"}, {"term": "Who", "def": "Who decides what 'active user' means — each dashboard author, or one governed definition?"}, {"term": "Dashboards", "def": "Dashboards are production artifacts: version their definitions (BI tools with git integration, or exported definitions in version control), document metric logic alongside, require review for certified dashboards, and keep a changelog. '…"}, {"term": "SUMIFS", "def": "Pivot tables are the exploration tool: drag fields to rows/columns/values, slice interactively, no formula maintenance. Formulas (SUMIFS/COUNTIFS/XLOOKUP) suit fixed, repeatable calculations that must be auditable cell-by-cell."}, {"term": "Time-series", "def": "Time-series analysis starts by choosing the grain: DATE_TRUNC('month', ts) buckets timestamps to month starts, then GROUP BY aggregates."}, {"term": "A/B", "def": "A/B testing: proper A/B: randomize, pre-register the primary metric and runtime, size for statistical power (enough users to detect a meaningful effect), then read significance at the end."}, {"term": "Pivot", "def": "Pivot tables are the exploration tool: drag fields to rows/columns/values, slice interactively, no formula maintenance. If a pivot can't read it, it's not data, it's a picture of data."}, {"term": "Sales", "def": "'Sales are flat' (context), 'but enterprise is collapsing while SMB grows' (tension) — what's the resolution?"}, {"term": "Honest", "def": "Honest axes: for segment comparison, small multiples are the most information-dense honest layout."}, {"term": "VLOOKUP", "def": "VLOOKUP: searches the first column, returns from a column index to the right — brittle (column inserts shift the index) and one-directional. XLOOKUP (or INDEX+MATCH): separate lookup and return arrays — looks any direction, exact match d…"}, {"term": "DISTINCT", "def": "COUNT(*) counts rows (events); COUNT(DISTINCT user_id) counts unique users. Without truncation, every distinct timestamp is its own group — noise, not trend."}, {"term": "Labeling", "def": "Labeling: direct labeling (series names at line ends, values on bars) removes the legend-lookup round trip — the eye stays on the data."}, {"term": "Dashboard", "def": "Dashboard performance discipline: pre-aggregate to the dashboard's grain (materialized/aggregate tables), default to sane date ranges (not 'all time'), ensure filters hit partitioned/indexed columns, and cache. A dashboard is a serving l…"}, {"term": "Correlation", "def": "Correlation: X-users retain more. Causation would need: X causes retention."}, {"term": "CTE", "def": "Window functions evaluate after GROUP BY: SUM(SUM(amount)) OVER () = grand total over the grouped rows, so each row's share = its sum / grand total. One query, no spreadsheet round-trip."}, {"term": "Rule", "def": "Pivot tables are the exploration tool: drag fields to rows/columns/values, slice interactively, no formula maintenance. Formulas (SUMIFS/COUNTIFS/XLOOKUP) suit fixed, repeatable calculations that must be auditable cell-by-cell."}, {"term": "T-SQL", "def": "DATE_TRUNC: (Syntax varies: DATE_TRUNC in Postgres, DATETRUNC in T-SQL, DATE_FORMAT in MySQL — the concept is universal.) Also mind time zones: truncate in the business's time zone, not UTC, or month boundaries shift."}, {"term": "MySQL", "def": "DATE_TRUNC: (Syntax varies: DATE_TRUNC in Postgres, DATETRUNC in T-SQL, DATE_FORMAT in MySQL — the concept is universal.) Also mind time zones: truncate in the business's time zone, not UTC, or month boundaries shift."}, {"term": "Formulas", "def": "Pivot tables are the exploration tool: drag fields to rows/columns/values, slice interactively, no formula maintenance. Formulas (SUMIFS/COUNTIFS/XLOOKUP) suit fixed, repeatable calculations that must be auditable cell-by-cell."}, {"term": "DATETRUNC", "def": "DATE_TRUNC: (Syntax varies: DATE_TRUNC in Postgres, DATETRUNC in T-SQL, DATE_FORMAT in MySQL — the concept is universal.) Also mind time zones: truncate in the business's time zone, not UTC, or month boundaries shift."}], "links": [{"label": "PostgreSQL documentation", "url": "https://www.postgresql.org/docs/", "note": "Official PostgreSQL docs"}, {"label": "PostgreSQL tutorial", "url": "https://www.postgresql.org/docs/current/tutorial.html", "note": "Official PostgreSQL tutorial"}, {"label": "Microsoft Learn — SQL", "url": "https://learn.microsoft.com/en-us/sql/", "note": "Official SQL Server docs"}, {"label": "SQL Server documentation", "url": "https://learn.microsoft.com/en-us/sql/sql-server/", "note": "Official SQL Server reference"}, {"label": "SQLite documentation", "url": "https://sqlite.org/docs.html", "note": "Official SQLite docs"}], "checklist": ["Get 7–8 hours of sleep the night before — fatigue destroys recall faster than any topic gap.", "Bring valid government-issued photo ID and arrive at the test center 30 minutes early.", "Eat a real meal beforehand; bring water and a light snack if the center allows them.", "Read every question twice before scanning the answer choices.", "Flag uncertain questions and move on — return with fresh eyes at the end.", "Eliminate the obviously wrong answers first, then compare the survivors.", "Budget your time: answer steadily and keep a 10–15 minute review buffer.", "Re-run your weakest-domain drill until mastery is at least 80%.", "For SQL for Analysis: restate the 'why' behind each scenario answer in your own words — if you can't explain it, you don't own it.", "Redo one Spreadsheets lab from scratch without looking at the steps.", "Recite the key Visualization terms from the glossary aloud from memory."]}}
+{
+ "slug": "data-analyst",
+ "title": "Data Analyst",
+ "tagline": "Core data-analysis skills: SQL for analytics, spreadsheet fluency, BI dashboard design, and statistics basics for honest reporting. Independent training content; no vendor affiliation, and no certific",
+ "vendor": {
+  "name": "Independent interview prep (not affiliated with ThreatLocker)",
+  "certs": "",
+  "docs": "https://www.threatlocker.com"
+ },
+ "disclaimer": "Independent interview-prep material by Interstitium Labs. Not affiliated with, endorsed by, or sponsored by ThreatLocker or any vendor mentioned. Confers no certificate. All scenarios are original practice content; no exam or vendor-training content is reproduced.",
+ "accent": "#e5484d",
+ "domains": [
+  {
+   "id": "data-analyst",
+   "name": "Data Analyst",
+   "summary": "Core data-analysis skills: SQL for analytics, spreadsheet fluency, BI dashboard design, and statistics basics for honest reporting. Independent training content; no vendor affiliation, and no certificate is conferred.",
+   "scenarios": [
+    {
+     "id": "data-analyst-sc1",
+     "title": "Line, Not Pie",
+     "situation": "You have 24 months of monthly active users: a steady climb with one dip in month 14. A stakeholder asks for a pie chart of all 24 months for the exec review.",
+     "prompt": "Which chart best answers the execs' real question \u2014 are we growing?",
+     "evidence": [
+      [
+       "the data",
+       "24 monthly totals, steady upward trend, one dip in month 14."
+      ],
+      [
+       "the audience",
+       "Executives asking 'are we growing?' \u2014 they need the trend, not 24 slices."
+      ]
+     ],
+     "choices": [
+      "Line chart of users over time \u2014 position along a common scale shows the trend and the dip precisely.",
+      "Pie chart with 24 slices \u2014 every month gets equal visual weight.",
+      "3D bar chart of the same data \u2014 the depth effect makes it look executive-ready.",
+      "Gauge showing only the latest month \u2014 clean, single number."
+     ],
+     "answer": 0,
+     "why": "A line chart maps time to horizontal position, which humans read precisely \u2014 the trend and the month-14 dip are obvious. A 24-slice pie is unreadable (angles are poorly judged), 3D distorts bar heights, and a gauge discards the entire history the question is about.",
+     "hint": "Which visual channel \u2014 angle, area, or position \u2014 shows change over time most precisely?",
+     "objectives": [
+      "chart selection",
+      "time series"
+     ],
+     "mins": 5,
+     "difficulty": 1
+    },
+    {
+     "id": "data-analyst-sc2",
+     "title": "The Doubled Total",
+     "situation": "Your revenue report joins orders to shipments, and the total suddenly doubles. The shipments table holds multiple rows per order, so each order's amount is summed once per shipment.",
+     "prompt": "How do you fix the inflated total?",
+     "evidence": [
+      [
+       "the query",
+       "SELECT SUM(o.amount) FROM orders o JOIN shipments s ON s.order_id = o.order_id;"
+      ],
+      [
+       "the schema",
+       "orders 1:N shipments \u2014 one order fans out to many shipment rows."
+      ]
+     ],
+     "choices": [
+      "Pre-aggregate the many side first (shipments per order in a subquery/CTE), then join to orders \u2014 or aggregate orders before joining.",
+      "Add DISTINCT inside the SUM to remove the duplicates.",
+      "Switch the INNER JOIN to a LEFT JOIN so no orders are lost.",
+      "Add LIMIT 1 so only one shipment per order is counted."
+     ],
+     "answer": 0,
+     "why": "This is join fanout: a one-to-many join repeats the order row, so SUM counts it multiple times. Aggregating the many-side to one row per order before joining fixes the grain. DISTINCT doesn't apply inside SUM the way people hope, LEFT JOIN doesn't change fanout, and LIMIT 1 corrupts the shipment data.",
+     "hint": "Count how many times each order row appears after the join \u2014 where is the duplication born?",
+     "objectives": [
+      "SQL joins",
+      "fanout"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "data-analyst-sc3",
+     "title": "Average of Averages",
+     "situation": "Three regions report conversion rates of 82%, 91%, and 77%. A manager averages the three rates and announces 83.3% overall \u2014 but the regions ran 10,000, 1,000, and 500 leads respectively.",
+     "prompt": "What is the correct overall conversion rate?",
+     "evidence": [
+      [
+       "the volumes",
+       "Region A: 10,000 leads; Region B: 1,000; Region C: 500."
+      ],
+      [
+       "the trap",
+       "Each rate was computed on a different denominator."
+      ]
+     ],
+     "choices": [
+      "Recompute from raw totals: total conversions divided by total leads \u2014 a weighted average dominated by Region A.",
+      "Average the three rates: (82 + 91 + 77) / 3 = 83.3% is fine.",
+      "Take the median of the three rates to be robust.",
+      "Report only the largest region's rate and ignore the rest."
+     ],
+     "answer": 0,
+     "why": "Averaging averages gives each region equal weight regardless of size, so the tiny 500-lead region pulls the result as hard as the 10,000-lead one. The correct overall rate weights by volume: sum of conversions over sum of leads. Whenever denominators differ, go back to the raw counts.",
+     "hint": "Would you trust a rate built on 500 leads as much as one built on 10,000?",
+     "objectives": [
+      "aggregates",
+      "weighted averages"
+     ],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "data-analyst-sc4",
+     "title": "Mean or Median Pay",
+     "situation": "Salary data for a job posting: most employees earn 70\u2013100k, a few executives earn 500k+. The mean is $142k, the median is $88k. You must quote one 'typical pay' figure.",
+     "prompt": "Which single number best represents typical compensation?",
+     "evidence": [
+      [
+       "the distribution",
+       "Right-skewed: a cluster at 70\u2013100k plus a few very high earners."
+      ],
+      [
+       "the use",
+       "A job posting line: 'competitive pay around ___'."
+      ]
+     ],
+     "choices": [
+      "The median ($88k) \u2014 it resists the executive outliers and sits where most people actually are.",
+      "The mean ($142k) \u2014 it uses every data point, so it must be more accurate.",
+      "The mode \u2014 the single most common exact salary.",
+      "The maximum \u2014 aspirational figures attract more applicants."
+     ],
+     "answer": 0,
+     "why": "The mean is dragged upward by the skew \u2014 quoting $142k misleads candidates about typical pay. The median is robust to outliers and lands inside the actual cluster of salaries. Report the median (ideally alongside the mean and the range) for any skewed distribution.",
+     "hint": "Which statistic barely moves if the CEO gets a raise tomorrow?",
+     "objectives": [
+      "descriptive statistics",
+      "skew"
+     ],
+     "mins": 5,
+     "difficulty": 2
+    },
+    {
+     "id": "data-analyst-sc5",
+     "title": "The Paradox Campaign",
+     "situation": "Campaign B beats Campaign A overall, 12% vs 10% conversion. But Campaign A beats B in every single segment \u2014 new vs returning, mobile vs desktop. B simply ran most of its traffic in the highest-converting segment.",
+     "prompt": "Which result should drive the budget decision?",
+     "evidence": [
+      [
+       "the segments",
+       "A wins each of the 4 segments by 1\u20133 points."
+      ],
+      [
+       "the mix",
+       "B's traffic was concentrated in the segment that converts best for everyone."
+      ]
+     ],
+     "choices": [
+      "Trust the segment-level results \u2014 the overall rate is distorted by different traffic mix. This is Simpson's paradox.",
+      "Trust the overall rate \u2014 the bigger blended sample is more reliable.",
+      "Split the budget 50/50 to stay neutral.",
+      "Drop segmentation entirely and rerun one blended test."
+     ],
+     "answer": 0,
+     "why": "When groups have different base rates and different mix, the aggregate can reverse every subgroup result \u2014 Simpson's paradox. The segment wins are the real signal about creative effectiveness; the overall gap is an artifact of where traffic ran. Decide per segment, or re-weight to a common mix before comparing.",
+     "hint": "What differed between the campaigns besides the creative itself?",
+     "objectives": [
+      "Simpson's paradox",
+      "segmentation"
+     ],
+     "mins": 8,
+     "difficulty": 3
+    },
+    {
+     "id": "data-analyst-sc6",
+     "title": "Top 3 per Category",
+     "situation": "You need the top-3 products by revenue in each of 40 categories. A colleague's GROUP BY ... LIMIT 3 returns only 3 rows total.",
+     "prompt": "Which SQL pattern returns exactly the top 3 per category?",
+     "evidence": [
+      [
+       "the failed attempt",
+       "GROUP BY category, product ORDER BY revenue DESC LIMIT 3 \u2014 LIMIT applies after everything, globally."
+      ],
+      [
+       "the dialect",
+       "PostgreSQL, so window functions are available."
+      ]
+     ],
+     "choices": [
+      "RANK() OVER (PARTITION BY category ORDER BY revenue DESC) in a subquery, then filter to rank <= 3.",
+      "GROUP BY category, product ORDER BY revenue DESC LIMIT 3 \u2014 just add the category to the GROUP BY.",
+      "ORDER BY revenue DESC LIMIT 3 with a separate WHERE clause per category, unioned 40 times.",
+      "ROW_NUMBER() OVER (ORDER BY revenue DESC) with no PARTITION BY, filtered to <= 3."
+     ],
+     "answer": 0,
+     "why": "The 'per category' boundary must be enforced by PARTITION BY \u2014 it restarts the ranking inside each category. A bare LIMIT always applies to the whole result set, and ROW_NUMBER() without PARTITION BY ranks globally. The window-function-then-filter pattern is the standard top-N-per-group query.",
+     "hint": "Where, exactly, does the 'per category' boundary get enforced in each option?",
+     "objectives": [
+      "window functions",
+      "SQL analytics"
+     ],
+     "mins": 7,
+     "difficulty": 3
+    }
+   ]
+  }
+ ],
+ "lessons": [
+  {
+   "domain_id": "data-analyst",
+   "title": "Data Analyst \u2014 Core concepts",
+   "concepts": [
+    "Aggregate with intent: SUM, COUNT, and AVG answer 'how much' and 'how many', but always check the grain first \u2014 joining before aggregating across a one-to-many relationship silently multiplies rows.",
+    "Window functions (ROW_NUMBER, RANK, LAG, SUM ... OVER) compute across rows without collapsing them \u2014 the workhorse for rankings, running totals, and period-over-period change.",
+    "Clean before you chart: strip whitespace, fix types deliberately (zip codes are text, not numbers), remove duplicates, and document every transformation so the analysis is reproducible.",
+    "Pick the chart for the question: lines for trends over time, bars for comparisons across categories \u2014 and almost never pie, because humans judge position and length far better than angle.",
+    "Summarize skew honestly: report the median alongside the mean for skewed distributions, and never average averages that were computed on different denominators."
+   ],
+   "example": {
+    "lang": "sql",
+    "code": "WITH monthly AS (\n  SELECT date_trunc('month', order_date) AS m,\n         SUM(amount) AS revenue\n  FROM orders\n  GROUP BY 1\n)\nSELECT m,\n       revenue,\n       revenue - LAG(revenue) OVER (ORDER BY m) AS mom_change\nFROM monthly\nORDER BY m;",
+    "walkthrough": "The CTE first rolls orders up to one row per month, fixing the grain before any math happens. LAG then reaches back one row in month order to compute month-over-month change \u2014 no self-join needed."
+   },
+   "pitfalls": [
+    "Common trap: COUNT(column) skips NULLs while COUNT(*) counts rows \u2014 pick the one you actually mean.",
+    "Common trap: spreadsheet auto-conversion on import (leading zeros lost, dates mangled) \u2014 import IDs as text, then convert deliberately.",
+    "Common trap: a y-axis that doesn't start at zero, exaggerating tiny differences \u2014 start at zero or annotate the break.",
+    "Common trap: presenting correlation as causation in the meeting \u2014 label it 'associated with', not 'drives'."
+   ],
+   "try_it": "Work through this in the Labs tab."
+  }
+ ],
+ "labs": [
+  {
+   "id": "data-analyst-lab1",
+   "domain_id": "data-analyst",
+   "title": "Rankings with window functions in sqlite3",
+   "objective": "Use RANK() and LAG() in sqlite3 to rank customers by revenue and compute month-over-month change.",
+   "steps": [
+    "Create a practice database: sqlite3 practice.db \"CREATE TABLE orders(id INTEGER, cust TEXT, amt REAL, m TEXT);\"",
+    "Insert sample rows: sqlite3 practice.db \"INSERT INTO orders VALUES (1,'acme',120,'2026-08'),(2,'acme',80,'2026-09'),(3,'globex',300,'2026-09');\"",
+    "Verify the grain: sqlite3 practice.db \"SELECT cust, SUM(amt) FROM orders GROUP BY cust;\"",
+    "Rank customers: sqlite3 practice.db \"SELECT cust, SUM(amt) AS t, RANK() OVER (ORDER BY SUM(amt) DESC) AS r FROM orders GROUP BY cust;\"",
+    "Clean up when done: rm practice.db"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^sqlite3 practice\\.db \"SELECT cust, SUM\\(amt\\) FROM",
+     "expect_contains": "|",
+     "hint": "Run the GROUP BY query against practice.db \u2014 sqlite3 separates columns with |."
+    },
+    {
+     "command_pattern": "^sqlite3 practice\\.db \"SELECT cust, SUM\\(amt\\) AS t, RANK",
+     "expect_contains": "|1|",
+     "hint": "The top-ranked customer row should end with |1 \u2014 the rank column."
+    }
+   ]
+  },
+  {
+   "id": "data-analyst-lab2",
+   "domain_id": "data-analyst",
+   "title": "Audit a messy CSV with csvkit",
+   "objective": "Profile a messy leads CSV with csvkit, dry-run the cleaning, and produce a cleaned file.",
+   "steps": [
+    "Confirm csvkit is installed: csvstat --version (install with: pip install csvkit).",
+    "Save the lab's sample file as leads.csv in your working directory.",
+    "Profile it: csvstat leads.csv \u2014 note the row count, nulls, and unique counts per column.",
+    "Dry-run the cleaner: csvclean -n leads.csv \u2014 review what it flags before changing anything.",
+    "Clean for real: csvclean leads.csv, then inspect the result: csvcut -c name,email leads_out.csv | head."
+   ],
+   "checks": [
+    {
+     "command_pattern": "^csvstat",
+     "expect_contains": "Row count",
+     "hint": "csvstat prints a 'Row count' summary line \u2014 find it in the output."
+    },
+    {
+     "command_pattern": "^csvclean leads\\.csv$",
+     "expect_contains": "leads_out.csv",
+     "hint": "csvclean writes the cleaned file as leads_out.csv \u2014 confirm it exists with ls."
+    }
+   ]
+  }
+ ],
+ "simulations": [],
+ "consoleSims": [],
+ "terminalMissions": [],
+ "sections": [
+  {
+   "id": "sec-full-spectrum",
+   "title": "Full Spectrum Dominance \u2014 core path",
+   "kind": "core",
+   "lectures": [],
+   "lab_ids": [
+    "fsd-tl-lab-1",
+    "fsd-tl-lab-2",
+    "fsd-tl-lab-3",
+    "fsd-sg-lab-1",
+    "fsd-sg-lab-2",
+    "fsd-sg-lab-3",
+    "fsd-ai-lab-1",
+    "fsd-ai-lab-2",
+    "fsd-ai-lab-3"
+   ],
+   "drill_domain_ids": [
+    "tl-interview",
+    "tl-endpoint-ops",
+    "sec-graphs",
+    "graph-defense",
+    "ml-defense",
+    "ai-agent-sec"
+   ]
+  }
+ ],
+ "behavioral": [
+  {
+   "prompt": "Tell me about the most technically difficult problem you have run into \u2014 a homelab, a broken environment, anything \u2014 and how you solved it.",
+   "framework": "STAR",
+   "points": [
+    "Pick ONE problem with a real evidence trail: the symptom, what you measured, the hypothesis you tested",
+    "Show the loop: scope, observe, hypothesize, smallest safe change, validate \u2014 interviewers score the method, not just the fix",
+    "Name the tools (VM build, networking, logs) and the lesson it taught you",
+    "Close with the result in concrete terms: what works now that did not before"
+   ],
+   "pitfalls": [
+    "Choosing a story with no real obstacle (\u201cI Googled it\u201d is not a story)",
+    "Skipping validation \u2014 saying it worked without proving it",
+    "Rambling past two minutes without reaching the result"
+   ]
+  },
+  {
+   "prompt": "Tell me about a time you dealt with a frustrated customer or user while something was broken.",
+   "framework": "STAR",
+   "points": [
+    "Lead with empathy and ownership: acknowledge the impact before the technical detail",
+    "Show translation: what you told them, in their language, plus the timeline you committed to",
+    "Show judgment: the narrow fix you chose and what you refused to do (e.g., disabling the control to clear the symptom)",
+    "Close with the relationship outcome, not just the technical one"
+   ],
+   "pitfalls": [
+    "Badmouthing the customer to sound decisive",
+    "Promising a timeline you could not keep",
+    "Framing the user as the problem rather than the situation"
+   ]
+  },
+  {
+   "prompt": "Why ThreatLocker, and why cybersecurity?",
+   "framework": "STAR",
+   "points": [
+    "Connect prevention to something concrete: a moment you saw detection arrive too late, or a system you hardened",
+    "Tie their model to your instincts: deny-by-default matches how you already think about trust",
+    "Show service orientation: the Cyber Hero culture rewards the 2 a.m. helper \u2014 give an example of being one",
+    "Name one forward-looking reason: Zero Trust, the MSP mission, or the bootcamp community investment"
+   ],
+   "pitfalls": [
+    "Generic flattery with no specifics about the company",
+    "Leading with compensation, title, or location convenience",
+    "Claiming expertise in products you have only read about \u2014 frame it as studied, not mastered"
+   ]
+  },
+  {
+   "framework": "STAR",
+   "pitfalls": [
+    "Staying vague ('I analyzed the data') instead of naming what you connected.",
+    "Skipping your own role: what did YOU see that others missed?",
+    "No outcome: what changed because you joined the dots?"
+   ],
+   "points": [
+    "The scattered signals and why nobody had connected them yet",
+    "The specific links you drew between them (shared host, time, infrastructure)",
+    "What the bigger picture turned out to be and what action it drove",
+    "What the experience taught you about investigating"
+   ],
+   "prompt": "Tell me about a time you connected scattered clues into a bigger picture that others had missed."
+  },
+  {
+   "framework": "STAR",
+   "pitfalls": [
+    "Claiming you fixed everything: credibility comes from trade-offs, not heroics.",
+    "Hiding the constraint: the limitation is what makes the prioritization story real.",
+    "No metric: 'better' needs a before-and-after."
+   ],
+   "points": [
+    "The constraint (time, budget, staff) and the size of the backlog",
+    "How you decided what mattered most (what was reachable, what was critical)",
+    "What you did first and what you deliberately deferred",
+    "The measurable result of the prioritization"
+   ],
+   "prompt": "Describe a time you had to prioritize risks or fixes with limited time or resources. How did you decide what came first?"
+  },
+  {
+   "framework": "STAR",
+   "pitfalls": [
+    "Reciting jargon to a non-technical audience and calling it communication.",
+    "Skipping the audience's reaction: did they actually understand and act?",
+    "Making yourself the hero instead of the translator."
+   ],
+   "points": [
+    "The technical finding and why it mattered",
+    "Who the audience was and what they cared about",
+    "How you reframed it (a picture, an analogy, a story)",
+    "What decision or action the audience took because they understood"
+   ],
+   "prompt": "Tell me about a time you explained a complex technical finding to a non-technical audience and it changed a decision."
+  },
+  {
+   "prompt": "Tell me about a time you used automation or AI to solve a security problem.",
+   "framework": "STAR",
+   "points": [
+    "The repetitive security task and what it cost in analyst time",
+    "The automation or AI approach you built and how you validated it",
+    "Measured outcome: time saved, detection gained, false positives changed"
+   ],
+   "pitfalls": [
+    "Describing the tool but never the validation",
+    "No measurable outcome"
+   ]
+  },
+  {
+   "prompt": "Describe a time you had to decide whether to trust an automated security decision.",
+   "framework": "STAR",
+   "points": [
+    "The stakes of the automated action and its blast radius",
+    "How you verified before acting (or the gate you built)",
+    "What happened and what you would automate differently next time"
+   ],
+   "pitfalls": [
+    "Saying you always trust the tool",
+    "No mention of blast radius or reversibility"
+   ]
+  }
+ ],
+ "resources": {
+  "cheatsheet": {
+   "title": "Full Spectrum Dominance \u2014 field reference",
+   "sections": [
+    {
+     "heading": "Company facts (verified)",
+     "items": [
+      "Founded 2017 in Orlando, FL \u2014 Danny Jenkins (CEO), Sami Jenkins (COO), John Carolan (QA)",
+      "Philosophy: deny-by-default / default-deny \u2014 approve known-good, deny the rest",
+      "Customers: 70,000+ organizations, sold heavily through the MSP channel",
+      "Funding: $190M Series F, July 2026 (Elephant-led); ~730 employees",
+      "Interview address: 1901 Summit Tower Blvd, Orlando, FL 32810",
+      "Culture: in-office 5 days/week; free lunch; post-offer background + drug screening"
+     ]
+    },
+    {
+     "heading": "Product stack",
+     "items": [
+      "Allowlisting \u2014 default-deny execution control for apps, DLLs, scripts, installers",
+      "Ringfencing \u2014 constrains allowed apps: app-to-app, file, registry, network",
+      "Storage Control \u2014 USB/device policy by serial, user, file type, encryption",
+      "Elevation Control \u2014 just-in-time per-app admin, no standing rights",
+      "Network Control \u2014 host firewall; port/IP/dynamic-ACL rules; ZTNA foundation",
+      "Web Control \u2014 agent-based DNS/URL category filtering, works off-network",
+      "Cyber Hero MDR \u2014 24/7/365 US-based response, ~60-second average",
+      "Testing Environment \u2014 one-button VDI sandbox; checks AV flags, canary files, registry changes"
+     ]
+    },
+    {
+     "heading": "Rule strength (strongest to weakest)",
+     "items": [
+      "Certificate/publisher rules \u2014 survive version updates",
+      "Hash rules \u2014 precise but break on every new version",
+      "Path rules \u2014 weakest; never in user-writable locations",
+      "Learning Mode catalogs before enforcement; Installation Mode pauses blocking \u2014 scope and time-box both"
+     ]
+    },
+    {
+     "heading": "Terminal evidence commands",
+     "items": [
+      "nmap <host> \u2014 which ports answer (22/80/443 open)",
+      "dig <name> \u2014 ANSWER SECTION with the A record",
+      "ss \u2014 listening sockets",
+      "systemctl status <svc> \u2014 unit state",
+      "journalctl -u <svc> \u2014 service logs",
+      "sha256sum <file> \u2014 real SHA-256 identity",
+      "grep <pattern> <file> \u2014 search the record",
+      "ps \u2014 what is actually running"
+     ]
+    },
+    {
+     "heading": "Graph vocabulary",
+     "items": [
+      "node \u2014 any entity tracked in the model (user, host, IP, domain, file hash, vulnerability)",
+      "edge \u2014 a labeled relationship between two nodes (logged into, resolved to, downloaded)",
+      "degree \u2014 number of edges on a node; high-degree nodes are attacker highways",
+      "centrality \u2014 how much traffic or how many paths flow through a node",
+      "directed edge \u2014 a relationship with a direction (A downloaded FROM B)",
+      "security graph \u2014 the living model of your whole environment as nodes and edges",
+      "attack graph \u2014 the subgraph of exploitable paths to your targets",
+      "knowledge graph \u2014 threat-intel indicators linked to campaigns and actors"
+     ]
+    },
+    {
+     "heading": "Attack-graph playbook",
+     "items": [
+      "inventory first \u2014 you cannot graph what you have not discovered",
+      "model flaws AND misconfigs as exploit edges",
+      "compute shortest paths to the crown jewels",
+      "find the choke point (highest betweenness on those paths)",
+      "break the path: patch, segment, or remove the edge",
+      "re-scan and re-run the graph to prove the path is gone",
+      "never trust yesterday's graph \u2014 redeployments redraw the map"
+     ]
+    },
+    {
+     "heading": "Zero Trust + graphs",
+     "items": [
+      "never trust, always verify \u2014 re-evaluate every access decision",
+      "assume breach \u2014 treat unexpected edges as hostile until proven otherwise",
+      "microsegmentation \u2014 allow-list approved edges, alert on new ones",
+      "ReBAC \u2014 policies are path queries on the identity graph",
+      "continuous verification \u2014 device/location/behavior edges change, trust follows",
+      "anomalous edge \u2014 a first-seen connection between strangers is the classic signal"
+     ]
+    },
+    {
+     "heading": "ML detection vocabulary",
+     "items": [
+      "Supervised learning \u2014 learns from labeled examples; strong on known threats, blind to novel ones",
+      "Unsupervised learning \u2014 finds structure without labels; clustering and dimensionality reduction",
+      "Anomaly detection \u2014 models 'normal' and flags deviations; the workhorse for novel threats",
+      "UEBA \u2014 user and entity behavior analytics: per-user baselines plus peer-group comparison",
+      "Feature engineering \u2014 encoding raw logs into model inputs (login velocity, rare processes, domain entropy)",
+      "Concept drift \u2014 model decay as attacker behavior and legitimate traffic shift over time"
+     ]
+    },
+    {
+     "heading": "Detection metrics",
+     "items": [
+      "Precision \u2014 of all flagged alerts, how many were real",
+      "Recall \u2014 of all real attacks, how many were flagged",
+      "Threshold tuning \u2014 sliding the decision cutoff trades precision against recall",
+      "Alert fatigue \u2014 when false positives train analysts to ignore the queue",
+      "DGA \u2014 domain generation algorithm; detected via character entropy of domain names"
+     ]
+    },
+    {
+     "heading": "Agent and LLM security",
+     "items": [
+      "Direct prompt injection \u2014 attacker input overrides app instructions (OWASP LLM01:2025, the #1 LLM risk)",
+      "Indirect prompt injection \u2014 hidden instructions inside retrieved data (email, web, docs)",
+      "Jailbreak \u2014 defeating the model's own safety policy; distinct from hijacking app behavior",
+      "Tool poisoning \u2014 malicious tool descriptions or metadata steer an agent to misuse its tools (MCP ecosystem risk)",
+      "Insecure output handling \u2014 executing or trusting model output without validation",
+      "Least-privilege tools \u2014 grant each tool only the scope its task requires"
+     ]
+    },
+    {
+     "heading": "Adversarial ML and governance",
+     "items": [
+      "Evasion \u2014 perturbing inputs at inference time to dodge a classifier",
+      "Poisoning \u2014 corrupting training data to corrupt the model",
+      "Extraction \u2014 querying a model to steal its behavior or parameters",
+      "MITRE ATLAS \u2014 knowledge base of adversarial ML tactics and techniques",
+      "Red-teaming and evals \u2014 adversarial testing of AI systems before deployment",
+      "Human-in-the-loop \u2014 required approval for high-impact or irreversible agent actions",
+      "SOAR \u2014 security orchestration, automation and response; automate enrichment, gate containment"
+     ]
+    }
+   ]
+  },
+  "glossary": [
+   {
+    "term": "Allowlisting",
+    "def": "Default-deny execution control: only explicitly approved applications, scripts, and installers may run."
+   },
+   {
+    "term": "Blocklisting",
+    "def": "Default-allow model: everything runs except recognized-bad items \u2014 the window zero-days live in."
+   },
+   {
+    "term": "Default-deny",
+    "def": "Deny-by-default posture: unknown code, devices, or connections are refused unless explicitly approved."
+   },
+   {
+    "term": "Ringfencing",
+    "def": "Containment applied on top of allowlisting; restricts what a permitted app may do across app-to-app, file, registry, and network dimensions."
+   },
+   {
+    "term": "Learning Mode",
+    "def": "Agent mode that catalogs applications and dependencies and auto-builds policies before enforcement; temporarily disables file blocking."
+   },
+   {
+    "term": "Installation Mode",
+    "def": "Temporary mode that pauses file blocking for installs \u2014 must be tightly scoped and time-boxed."
+   },
+   {
+    "term": "Elevation Control",
+    "def": "Grants specific approved applications admin rights for standard users \u2014 just-in-time, per-app, time-boxed \u2014 without standing admin rights."
+   },
+   {
+    "term": "Application hopping",
+    "def": "An elevated or trusted process spawning another tool (e.g., PowerShell) to inherit its privileges \u2014 countered by ringfencing the elevated process."
+   },
+   {
+    "term": "Storage Control",
+    "def": "Device and path policy: USB approved by serial, user, file type, time, and encryption; unapproved devices do not connect."
+   },
+   {
+    "term": "Network Control",
+    "def": "Centrally managed host firewall; rules by port, source IP, and dynamic ACLs; egress allowlisting pins apps to approved destinations."
+   },
+   {
+    "term": "ZTNA",
+    "def": "Zero Trust Network Access: per-session, per-application brokered connections (commonly over port 443) with no open inbound ports \u2014 deny-by-default for network access."
+   },
+   {
+    "term": "Approval Center",
+    "def": "Portal queue where end-user software requests arrive for admin review and decision."
+   },
+   {
+    "term": "Unified Audit",
+    "def": "Real-time audit showing what was allowed or denied across endpoints \u2014 and why; the evidence layer for triage."
+   },
+   {
+    "term": "Testing Environment",
+    "def": "One-button cloud VDI sandbox launched from an approval request; logs AV flags, canary-file access, and registry/system changes."
+   },
+   {
+    "term": "Cyber Hero MDR",
+    "def": "24/7/365 US-based managed detection and response team; validates alerts, isolates hosts, acts on customer runbooks; ~60-second average response."
+   },
+   {
+    "term": "Assume breach",
+    "def": "Design and operate as if the attacker already has a foothold \u2014 least privilege, containment, and monitoring everywhere."
+   },
+   {
+    "term": "Living off the land",
+    "def": "Attacks that hijack trusted built-in tools (Word, PowerShell) instead of dropping malware \u2014 defeated by behavior containment, not signatures."
+   },
+   {
+    "term": "Change control",
+    "def": "Scoped, ticketed, tested changes with validation and rollback \u2014 emergency speed never cancels the process."
+   },
+   {
+    "def": "A node in an attack graph representing a system or weakness, connected by edges that represent steps an attacker could take between them.",
+    "term": "attack graph"
+   },
+   {
+    "def": "How central a node is to paths through the graph (for example, betweenness: how many shortest paths cross it).",
+    "term": "centrality"
+   },
+   {
+    "def": "The most valuable assets in the environment (customer data, finance systems, source code): what attack paths are measured against.",
+    "term": "crown jewels"
+   },
+   {
+    "def": "A labeled connection between two nodes, representing a relationship such as 'logged into' or 'resolved to'.",
+    "term": "edge"
+   },
+   {
+    "def": "A graph of threat indicators (IPs, domains, hashes) linked to campaigns, actors, and each other through shared infrastructure.",
+    "term": "knowledge graph"
+   },
+   {
+    "def": "The practice of mapping relationships in data to reveal hidden associations; rooted in Euler's 1736 graph theory, 1970s paper link charts, and post-2001 intelligence work.",
+    "term": "link analysis"
+   },
+   {
+    "def": "A segment of the network so small that its allowed communications can be enumerated as a graph of approved edges.",
+    "term": "microsegmentation"
+   },
+   {
+    "def": "An entity in the graph: a user, host, IP address, domain, file, or vulnerability.",
+    "term": "node"
+   },
+   {
+    "def": "Access control where policy is evaluated by traversing relationships on a graph (for example: user reports_to manager who owns the resource's project).",
+    "term": "ReBAC"
+   },
+   {
+    "def": "A machine-learning model that operates directly on graph structure to classify nodes or subgraphs, for example labeling attack vs normal behavior.",
+    "term": "graph neural network (GNN)"
+   },
+   {
+    "def": "Monitoring user and entity behavior by modeling their normal relationship patterns and flagging structural anomalies.",
+    "term": "UEBA"
+   },
+   {
+    "term": "Supervised learning",
+    "def": "ML trained on labeled examples; classifies new inputs into known categories."
+   },
+   {
+    "term": "Anomaly detection",
+    "def": "ML approach that models normal behavior and flags statistically rare deviations."
+   },
+   {
+    "term": "Feature engineering",
+    "def": "Turning raw telemetry into numeric model inputs, e.g. login velocity or domain entropy."
+   },
+   {
+    "term": "Precision",
+    "def": "Share of flagged alerts that were real; the false-positive economics of the queue."
+   },
+   {
+    "term": "Recall",
+    "def": "Share of real attacks the detector flagged; the miss rate's complement."
+   },
+   {
+    "term": "Concept drift",
+    "def": "Decay of model performance as the data distribution shifts over time."
+   },
+   {
+    "term": "Prompt injection",
+    "def": "Attacker-crafted instructions that override an LLM application's intended behavior; direct (user input) or indirect (retrieved data)."
+   },
+   {
+    "term": "Jailbreak",
+    "def": "Crafted input that defeats an LLM's own safety policy or refusal behavior."
+   },
+   {
+    "term": "Tool poisoning",
+    "def": "Malicious tool descriptions or metadata that manipulate an AI agent into misusing its tools."
+   },
+   {
+    "term": "Insecure output handling",
+    "def": "Failing to validate LLM output before acting on it, e.g. executing generated commands."
+   },
+   {
+    "term": "Evasion attack",
+    "def": "Adversarial ML technique: perturbing inputs to cross a classifier's decision boundary."
+   },
+   {
+    "term": "MITRE ATLAS",
+    "def": "Adversarial Threat Landscape for AI Systems; MITRE's knowledge base of AI attack tactics."
+   },
+   {
+    "term": "SOAR",
+    "def": "Security orchestration, automation and response; playbooks that enrich automatically and gate containment on humans."
+   },
+   {
+    "term": "Human-in-the-loop",
+    "def": "Required human approval before high-impact or irreversible automated actions."
+   }
+  ],
+  "links": [
+   {
+    "label": "ThreatLocker Zero Trust platform explainer (official)",
+    "url": "https://www.threatlocker.com/blog/edr-xdr-vs-zero-trust-prevention",
+    "note": "EDR/XDR vs Zero Trust prevention \u2014 the deny-by-default argument in their own words."
+   },
+   {
+    "label": "ThreatLocker Bootcamp page (official)",
+    "url": "https://www.threatlocker.com/bootcamp",
+    "note": "Free six-week program: phases, format, and what completion leads to."
+   },
+   {
+    "label": "ThreatLocker Careers (official)",
+    "url": "https://www.threatlocker.com/company/careers",
+    "note": "Open roles and the hiring-event listing; roles are in-office in Orlando."
+   },
+   {
+    "label": "Elevation Control (official)",
+    "url": "https://www.threatlocker.com/secure-privileges-without-sacrificing-agility",
+    "note": "Just-in-time privilege without standing admin."
+   },
+   {
+    "label": "Storage Control (official)",
+    "url": "https://www.threatlocker.com/capabilities/external-storage-device-control",
+    "note": "USB/device policy by serial, user, file type, encryption."
+   },
+   {
+    "label": "Web Control (official)",
+    "url": "https://www.threatlocker.com/capabilities/web-content-control",
+    "note": "Agent-based DNS/URL filtering, including off-network."
+   },
+   {
+    "label": "Cyber Hero MDR (official)",
+    "url": "https://www.threatlocker.com/get-threat-response-in-minutes",
+    "note": "24/7/365 managed response positioning."
+   },
+   {
+    "label": "MDR capabilities (official)",
+    "url": "https://www.threatlocker.com/capabilities/managed-detection-and-response",
+    "note": "Detection and response capability detail."
+   },
+   {
+    "label": "NIST SP 800-207 \u2014 Zero Trust Architecture",
+    "url": "https://csrc.nist.gov/pubs/sp/800/207/final",
+    "note": "The canonical Zero Trust reference: tenets, deployment models, policy engine trust algorithm."
+   },
+   {
+    "label": "CISA Zero Trust Maturity Model",
+    "url": "https://www.cisa.gov/zero-trust-maturity-model",
+    "note": "Federal maturity steps across identity, devices, networks, applications, and data."
+   },
+   {
+    "label": "MITRE ATT&CK",
+    "note": "The adversary-tactics framework; codify its tactic chains as subgraphs to hunt for in your security graph.",
+    "url": "https://attack.mitre.org/"
+   },
+   {
+    "label": "CISA \u2014 Cybersecurity and Infrastructure Security Agency",
+    "note": "US government advisories, alerts, and guidance frequently referenced in threat-intel work.",
+    "url": "https://www.cisa.gov/"
+   },
+   {
+    "label": "Neo4j getting started",
+    "note": "A widely used graph database; the book's call to action suggests piloting graph queries on exported security data with tools like this.",
+    "url": "https://neo4j.com/docs/getting-started/"
+   },
+   {
+    "label": "OWASP GenAI Security Project",
+    "url": "https://genai.owasp.org/",
+    "note": "Home of the LLM Top 10 and GenAI security guidance"
+   },
+   {
+    "label": "OWASP Top 10 for LLM Applications",
+    "url": "https://genai.owasp.org/llm-top-10/",
+    "note": "The ranked LLM risk list \u2014 prompt injection is #1"
+   },
+   {
+    "label": "NIST AI Risk Management Framework",
+    "url": "https://www.nist.gov/itl/ai-risk-management-framework",
+    "note": "The standard governance framework for managing AI risk"
+   },
+   {
+    "label": "MITRE ATLAS",
+    "url": "https://atlas.mitre.org/",
+    "note": "Adversarial Threat Landscape for AI Systems \u2014 tactics and techniques"
+   },
+   {
+    "label": "CISA AI guidance",
+    "url": "https://www.cisa.gov/ai",
+    "note": "CISA's AI security resources and guidance"
+   }
+  ],
+  "checklist": [
+   "Sixty-second company brief rehearsed out loud: year, city, philosophy, three products, one milestone",
+   "Two STAR stories ready: hardest technical problem; a frustrated customer or user",
+   "\u201cWhy ThreatLocker / why cybersecurity\u201d answer tied to prevention and service, not slogans",
+   "Ringfencing explained in one plain-English sentence (the Word-on-a-leash version)",
+   "Elevation Control answer ready: just-in-time, per-app, time-boxed, ringfenced, logged",
+   "Triage loop memorized: scope \u2192 observe \u2192 hypothesize \u2192 smallest safe change \u2192 validate \u2192 explain",
+   "Three questions to ask them: team on-call shape, approval SLA expectations, what \u201cmost helpful\u201d looks like on the team",
+   "Logistics: 1901 Summit Tower Blvd, Orlando FL; in-office role; ID and references ready",
+   "Define your crown jewels before you model anything.",
+   "Build the asset-and-access graph from live sources (scans, configs, identity), not from the CMDB alone.",
+   "Model vulnerabilities AND misconfigurations as exploit edges.",
+   "Compute shortest attack paths to each crown jewel; name the choke points.",
+   "Prioritize remediation by path risk, not by raw severity score.",
+   "Express at least one access policy as a relationship path (ReBAC pilot).",
+   "Baseline approved communication edges per segment; alert on first-seen edges.",
+   "Brief the next incident or risk review with the graph, not a spreadsheet.",
+   "Can you explain supervised vs unsupervised vs anomaly detection with a security example for each?",
+   "Can you name three log features you would engineer for a C2 detector and why?",
+   "Can you walk through a UEBA alert (baseline, deviation, verification) end to end?",
+   "Can you explain the precision/recall tradeoff and how you would set a threshold for a fatigued SOC?",
+   "Can you define concept drift and describe a retraining process?",
+   "Can you distinguish direct vs indirect prompt injection and jailbreaking?",
+   "Can you explain tool poisoning in the MCP ecosystem and three controls against it?",
+   "Can you describe insecure output handling and how you would validate agent output?",
+   "Can you name the three adversarial ML attack classes and one defense for evasion?",
+   "Can you design a SOAR playbook gate: what automates freely, what needs human approval?"
+  ]
+ },
+ "chat": {
+  "persona": "You are a rigorous but encouraging interviewer preparing a candidate for a Zero Trust endpoint security role. Probe with 'why' and 'how would you explain that' follow-ups. Stay on topic: ThreatLocker-style endpoint defense, security graphs, and AI-powered security. All practice is original; never reproduce vendor material.",
+  "topics": [
+   {
+    "id": "tl-interview",
+    "name": "ThreatLocker Interview Prep",
+    "key_points": [
+     "allowlisting",
+     "ringfencing",
+     "default-deny",
+     "cyber hero",
+     "zero trust tenets",
+     "STAR stories"
+    ],
+    "followups": [
+     "Can you give an example?",
+     "How would you explain that to a CFO?"
+    ]
+   },
+   {
+    "id": "tl-endpoint-ops",
+    "name": "Zero Trust Endpoint Operations",
+    "key_points": [
+     "default-deny",
+     "ringfencing dimensions",
+     "elevation control",
+     "storage control",
+     "network control",
+     "change control"
+    ],
+    "followups": [
+     "Walk me through the triage order.",
+     "When would you deny outright?"
+    ]
+   },
+   {
+    "followups": [
+     "Can you walk through an example?",
+     "How does this change patch prioritization?",
+     "What is the difference between a security graph and an attack graph?"
+    ],
+    "id": "sec-graphs",
+    "key_points": [
+     "nodes",
+     "edges",
+     "attack graphs",
+     "kill chain",
+     "link analysis",
+     "threat intel graphs"
+    ],
+    "name": "Security Graphs: Think Like an Attacker"
+   },
+   {
+    "followups": [
+     "How do graphs change patch prioritization?",
+     "What is ReBAC and how is it different from RBAC?",
+     "How would a small team start with graphs?"
+    ],
+    "id": "graph-defense",
+    "key_points": [
+     "attack-path analysis",
+     "insider threat",
+     "vulnerability graphs",
+     "Zero Trust",
+     "microsegmentation",
+     "blast radius"
+    ],
+    "name": "Graph-Powered Defense Operations"
+   },
+   {
+    "id": "ml-defense",
+    "name": "ML-Powered Threat Defense",
+    "key_points": [
+     "anomaly detection",
+     "UEBA",
+     "alert fatigue",
+     "concept drift",
+     "threat hunting",
+     "precision recall"
+    ],
+    "followups": [
+     "Walk me through an example.",
+     "How do you handle false positives?"
+    ]
+   },
+   {
+    "id": "ai-agent-sec",
+    "name": "Securing AI Systems & Agents",
+    "key_points": [
+     "prompt injection",
+     "tool poisoning",
+     "MCP risks",
+     "insecure output handling",
+     "SOAR gates",
+     "adversarial ML"
+    ],
+    "followups": [
+     "Walk me through an example.",
+     "How do you secure an AI agent end to end?"
+    ]
+   }
+  ]
+ },
+ "simulation": {
+  "items": 12,
+  "minutes": 180,
+  "evidence_cost_mins": 2
+ },
+ "media": [
+  {
+   "id": "tl-allowlist-vs-blocklist",
+   "kind": "diagram",
+   "title": "Allowlisting vs blocklisting: default-deny vs default-allow",
+   "svg": "assets/diagrams/tl-allowlist-vs-blocklist.svg",
+   "lesson_ref": "c-tl-endpoint-ops",
+   "caption": "Default-deny stops unknown code without a signature; default-allow runs it until one exists.",
+   "alt": "Side-by-side comparison: on the left, a default-deny gate runs known-good payroll software and denies unknown ransomware with no signature needed; on the right, a default-allow gate runs both until the ransomware is recognized as bad."
+  },
+  {
+   "id": "tl-ringfencing",
+   "kind": "diagram",
+   "title": "Ringfencing: four leashes on an allowed application",
+   "svg": "assets/diagrams/tl-ringfencing.svg",
+   "lesson_ref": "c-tl-endpoint-ops",
+   "caption": "Word stays approved, but it cannot spawn PowerShell, read the credential store, or reach the internet \u2014 while opening its document is allowed.",
+   "alt": "An approved Word application inside a dashed containment ring: arrows show PowerShell launch denied, credential-store registry access denied, external network denied, and document file access allowed."
+  },
+  {
+   "id": "tl-zero-trust-stack",
+   "kind": "diagram",
+   "title": "The Zero Trust endpoint stack",
+   "svg": "assets/diagrams/tl-zero-trust-stack.svg",
+   "lesson_ref": "c-tl-interview",
+   "caption": "Five deny-by-default layers \u2014 Allowlisting, Ringfencing, Elevation, Storage, Network \u2014 watched by Web Control, the Testing Environment, Unified Audit, and the Cyber Hero MDR team.",
+   "alt": "A vertical stack of five layers from Allowlisting at the foundation up through Ringfencing, Elevation Control, Storage Control, and Network Control, with side boxes for Web Control, Testing Environment, Unified Audit, and Cyber Hero MDR."
+  },
+  {
+   "id": "tl-triage-flow",
+   "kind": "diagram",
+   "title": "Application-request triage flow",
+   "svg": "assets/diagrams/tl-triage-flow.svg",
+   "lesson_ref": "c-tl-endpoint-ops",
+   "caption": "Gather evidence first, then branch: trusted gets a scoped rule, unknown goes to the sandbox, malicious gets a documented deny.",
+   "alt": "Flowchart from request arrival through evidence gathering to a decision diamond branching into three outcomes: approve with a scoped rule, detonate in the Testing Environment then ringfence, or deny with documented evidence."
+  },
+  {
+   "alt": "Diagram of four labeled nodes (user, host, file, domain, IP) joined by labeled directed edges such as logged into, downloaded, and resolved to, illustrating graph vocabulary.",
+   "caption": "Nodes are the things; edges are the relationships. Attackers move along the edges.",
+   "id": "sg-graph-vocabulary",
+   "kind": "diagram",
+   "lesson_ref": "c-sec-graphs",
+   "svg": "assets/diagrams/sg-graph-vocabulary.svg",
+   "title": "Graph vocabulary: nodes and edges"
+  },
+  {
+   "alt": "Attack graph with four nodes in a chain: external attacker to VPN gateway to file server to customer database, with a dead-end branch to a printer, showing the shortest path to the crown jewel.",
+   "caption": "The shortest path to the crown jewel is length 3. Break the choke point and the campaign dies.",
+   "id": "sg-attack-path",
+   "kind": "diagram",
+   "lesson_ref": "c-sec-graphs",
+   "svg": "assets/diagrams/sg-attack-path.svg",
+   "title": "Attack graph: shortest path to the crown jewels"
+  },
+  {
+   "alt": "Seven kill-chain stages as connected graph nodes: reconnaissance, weaponization, delivery, exploitation, installation, command and control, actions. Three alerts are annotated at delivery, installation, and command and control.",
+   "caption": "Three 'unrelated' alerts, one kill-chain subgraph. Correlate by shared entities, not by severity.",
+   "id": "sg-kill-chain",
+   "kind": "diagram",
+   "lesson_ref": "c-sec-graphs",
+   "svg": "assets/diagrams/sg-kill-chain.svg",
+   "title": "Kill chain as a graph"
+  },
+  {
+   "alt": "A policy engine at the center of a small graph evaluates an access request from a finance user on an untrusted laptop to an R and D code server. The request is denied because there is no prior relationship edge and the device is untrusted.",
+   "caption": "Valid credentials are not enough. The graph checks device trust, history, and relationships on every request.",
+   "id": "sg-zero-trust",
+   "kind": "diagram",
+   "lesson_ref": "c-graph-defense",
+   "svg": "assets/diagrams/sg-zero-trust.svg",
+   "title": "Zero Trust runs on relationships"
+  },
+  {
+   "id": "ai-ml-pipeline",
+   "kind": "diagram",
+   "title": "ML detection pipeline: telemetry to triage",
+   "svg": "assets/diagrams/ai-ml-pipeline.svg",
+   "lesson_ref": "c-ml-defense",
+   "caption": "How raw telemetry becomes scored alerts: features feed the model, the model scores, analysts triage top-down \u2014 and analyst verdicts feed retraining.",
+   "alt": "Flow diagram: telemetry sources feed feature extraction, which feeds an ML model, which outputs scored alerts into an analyst triage queue, with a feedback arrow for retraining."
+  },
+  {
+   "id": "ai-ueba-baseline-diagram",
+   "kind": "diagram",
+   "title": "UEBA: baseline vs deviation",
+   "svg": "assets/diagrams/ai-ueba-baseline.svg",
+   "lesson_ref": "c-ml-defense",
+   "caption": "UEBA learns each user's normal hours, locations, and volumes, then scores deviations from that baseline.",
+   "alt": "24-hour timeline showing a shaded normal login window from 8 AM to 6 PM with normal logins inside it, and a red anomaly marker at 2:47 AM for a foreign login scoring 97 out of 100."
+  },
+  {
+   "id": "ai-injection-flow",
+   "kind": "diagram",
+   "title": "Indirect prompt injection attack flow",
+   "svg": "assets/diagrams/ai-injection-flow.svg",
+   "lesson_ref": "c-ai-agent-sec",
+   "caption": "An attacker hides instructions in data the agent retrieves; the agent mistakes data for instructions and misuses its tools.",
+   "alt": "Attack flow diagram: hidden instruction in an email is read by an AI agent, which mistakes it for a command and calls a privileged tool, causing fraud; three defense boxes below: sanitize content, least-privilege tools, human approval."
+  }
+ ],
+ "foundations": [
+  {
+   "track": "linux-cli",
+   "why_needed": "Terminal labs and missions run in a simulated Linux shell; command-line fluency is required to complete them."
+  },
+  {
+   "track": "security-basics",
+   "why_needed": "Security-graph and ML-detection lessons assume baseline vocabulary (CIA triad, malware types, incident response phases)."
+  }
+ ],
+ "math": [
+  "stats",
+  "probability"
+ ]
+}

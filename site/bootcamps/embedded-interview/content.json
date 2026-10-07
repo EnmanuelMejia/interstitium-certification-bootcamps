@@ -1,0 +1,1258 @@
+{
+ "slug": "embedded-interview",
+ "title": "Embedded Software Engineering Interview Prep",
+ "tagline": "C, RTOS, peripherals, and the embedded interview loop.",
+ "vendor": {
+  "name": "Independent",
+  "certs": [],
+  "docs": []
+ },
+ "disclaimer": "Independent study material by Interstitium Labs. Not affiliated with or endorsed by any vendor. Confers no certificate.",
+ "accent": "#e8a33d",
+ "domains": [
+  {
+   "id": "embedded-c-memory",
+   "name": "C & Memory Models",
+   "summary": "Pointers, stack/heap/static, volatile, alignment, and undefined behavior — the C questions embedded loops open with.",
+   "scenarios": [
+    {
+     "id": "embedded-interview-sc1",
+     "title": "Where does it live?",
+     "situation": "Fundamentals round. The interviewer points at three declarations — a local array, a malloc'd buffer, and a file-scope static — and asks where each lives and what that implies.",
+     "prompt": "What is the correct memory-model answer?",
+     "evidence": [],
+     "choices": [
+      "Local array: stack (automatic, freed on return — never return its pointer); malloc'd buffer: heap (manual lifetime, fragmentation risk — often banned in safety-critical firmware); file-scope static: .bss/.data (exists for the program's life, zero-initialized if .bss).",
+      "All three live on the heap — C has no stack on microcontrollers.",
+      "Locals live in flash, malloc uses SRAM, statics live in registers.",
+      "It is implementation-defined; a correct program cannot depend on any of it."
+     ],
+     "answer": 0,
+     "why": "The embedded memory map: .text (code, flash), .rodata (constants), .data (initialized statics, copied from flash at boot), .bss (zeroed statics), stack (grows down, automatic), heap (grows up, manual). Returning a stack pointer is the classic bug; heap fragmentation is why many firmware teams use static pools instead.",
+     "hint": "Which of the three survives the function returning — and which one can fragment?",
+     "objectives": [
+      "Place objects in stack/heap/static correctly"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "embedded-interview-sc2",
+     "title": "What volatile really means",
+     "situation": "C round. A status register is polled in a loop: `while (!(UART->SR & READY));`. The interviewer asks why the pointer must be volatile-qualified.",
+     "prompt": "What does volatile guarantee — and what does it NOT guarantee?",
+     "evidence": [],
+     "choices": [
+      "It forces the compiler to emit every read/write exactly as written (no caching in registers, no eliding 'redundant' reads) — for MMIO and ISR-shared flags. It does NOT make access atomic, ordered across cores, or thread-safe; that needs atomics/barriers/critical sections.",
+      "It makes the access atomic and thread-safe — volatile is C's mutex.",
+      "It moves the variable to a special fast memory region.",
+      "It is only documentation; compilers ignore it."
+     ],
+     "answer": 0,
+     "why": "The classic failure: without volatile, the compiler hoists the register read out of the loop ('it cannot change') and you spin forever on a stale value. But volatile is not synchronization: a volatile flag shared with an ISR is fine for single-word set/check on most MCUs, while multi-word state needs critical sections. Interviewers love the 'volatile != atomic' correction.",
+     "hint": "The compiler is allowed to assume memory does not change behind its back. What breaks that assumption here — and what still is not safe?",
+     "objectives": [
+      "Use volatile for MMIO, not as synchronization"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "embedded-interview-sc3",
+     "title": "The struct grew",
+     "situation": "C round. `struct { uint8_t a; uint32_t b; uint8_t c; }` measures 12 bytes, not 6. A packed protocol frame must be 6.",
+     "prompt": "Explain the padding and give the correct fix for a wire format.",
+     "evidence": [],
+     "choices": [
+      "The compiler inserts padding for alignment (b wants 4-byte alignment), so layout is a + 3 pad + b + c + 3 pad = 12. For wire formats, serialize field-by-field (or use explicit offsets) rather than memcpy'ing the struct — `packed` attributes are compiler-specific and can cause unaligned-access faults.",
+      "The compiler is buggy; file a report and use bitfields instead.",
+      "Add `packed` and memcpy the struct directly — packing is portable and always safe.",
+      "Reorder to `{ uint32_t b; uint8_t a; uint8_t c; }` giving 8 bytes — close enough for the wire."
+     ],
+     "answer": 0,
+     "why": "Alignment is a hardware requirement: many cores fault (or slow down) on unaligned access. Reordering fields minimizes padding (8 bytes here), but wire formats demand exact layout — so serialize explicitly. `__attribute__((packed))` works but generates byte-wise access code and is non-portable; naming that tradeoff is the senior point.",
+     "hint": "Why does the hardware care where a uint32_t sits — and why is memcpy'ing a struct onto the wire fragile even when packed?",
+     "objectives": [
+      "Explain padding; serialize wire formats explicitly"
+     ],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "embedded-interview-sc4",
+     "title": "Array decay in a driver",
+     "situation": "C round. A driver function `void spi_write(uint8_t *buf, size_t len)` is called with a 256-byte array, but `sizeof(buf)` inside returns 4 (or 8).",
+     "prompt": "What happened, and what is the defensive pattern?",
+     "evidence": [],
+     "choices": [
+      "Arrays decay to pointers when passed to functions — sizeof then measures the pointer, not the array. Defensive pattern: always pass the length explicitly (as this API does), and at the call site use `sizeof(arr)` where the array is still an array, or a `#define`/enum constant for the size.",
+      "The array was optimized away; declare it volatile to preserve sizeof.",
+      "sizeof is broken for uint8_t; use uint32_t buffers instead.",
+      "The linker truncated the array; increase the stack size."
+     ],
+     "answer": 0,
+     "why": "Decay is the source of half of C's buffer bugs: the callee cannot know the size, so length must travel with the pointer (or use explicit array parameters in C99+ with static bounds as documentation). Embedded interviews connect this to DMA descriptors and ring buffers, where length discipline is safety-critical.",
+     "hint": "At which exact point does the compiler still know the size — and what information crosses the function boundary?",
+     "objectives": [
+      "Handle array-to-pointer decay defensively"
+     ],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "embedded-interview-sc5",
+     "title": "Strict aliasing in the register map",
+     "situation": "Senior C round. A driver casts a `uint32_t*` register to `uint16_t*` to tweak half-words, and it works at -O0 but breaks at -O2.",
+     "prompt": "What is the root cause?",
+     "evidence": [],
+     "choices": [
+      "Strict-aliasing violation: the compiler may assume pointers of different types do not alias, so it reorders/caches accesses across the cast — undefined behavior. Fix: access through the correct type, use memcpy for type punning, or character types (which may alias anything); `-fno-strict-aliasing` is a bandage, not a fix.",
+      "The optimizer has a bug at -O2; ship at -O0 for drivers.",
+      "uint16_t is not supported on 32-bit buses; use two uint32_t writes.",
+      "The cast needs volatile on both sides; aliasing is irrelevant."
+     ],
+     "answer": 0,
+     "why": "Type punning through casts is UB (except via char/unsigned char or memcpy, which optimizers understand). The -O0/-O2 divergence is the signature: the optimizer exploited an assumption your code violated. Unions for punning are the traditional (implementation-defined but universally supported) alternative — name it as the pragmatic middle ground.",
+     "hint": "What assumption is the optimizer legally allowed to make about two pointers of different types?",
+     "objectives": [
+      "Avoid strict-aliasing UB in drivers"
+     ],
+     "mins": 6,
+     "difficulty": 3
+    },
+    {
+     "id": "embedded-interview-sc6",
+     "title": "Design a fixed-block allocator",
+     "situation": "Whiteboard round. 'No malloc allowed (safety-critical). Design an allocator for fixed-size message blocks.'",
+     "prompt": "What design earns full marks?",
+     "evidence": [],
+     "choices": [
+      "A static pool: one array of N blocks plus a free-list (intrusive next-pointers or a bitmap); alloc pops, free pushes — O(1), deterministic, no fragmentation; guard with canaries or a magic field for debug builds, and make alloc/free safe for the ISR/task split you actually have (critical section or lock-free SPSC).",
+      "A bump allocator that never frees — simplest deterministic option.",
+      "malloc but wrapped with a mutex — the ban is about thread safety.",
+      "One global static block reused by everyone — zero allocation overhead."
+     ],
+     "answer": 0,
+     "why": "The graded pieces: determinism (O(1), bounded), no fragmentation (fixed size), debuggability (canaries, high-water mark), and the concurrency story (who allocates — ISR, task, or both). Mention sizing the pool from measured worst case plus margin, and what happens on exhaustion (assert vs graceful drop — a product decision).",
+     "hint": "Who allocates and who frees, from which contexts — and what happens when the pool is empty?",
+     "objectives": [
+      "Design deterministic allocators for firmware"
+     ],
+     "mins": 6,
+     "difficulty": 3
+    }
+   ]
+  },
+  {
+   "id": "embedded-rtos",
+   "name": "RTOS Concepts",
+   "summary": "Tasks, preemption, tickless idle, IPC choices, stack sizing, and priority inversion — FreeRTOS and Zephyr judgment.",
+   "scenarios": [
+    {
+     "id": "embedded-interview-sc7",
+     "title": "Task, thread, or ISR?",
+     "situation": "RTOS round. 'Explain the difference between a task, a thread, and an ISR — and why ISRs are special.'",
+     "prompt": "What is the crisp answer?",
+     "evidence": [],
+     "choices": [
+      "Tasks/threads are scheduler-managed contexts that can block, sleep, and be preempted; an ISR is hardware-triggered, runs at interrupt priority above the scheduler, cannot block, and must be short — deferring work to a task (via queues/semaphores) is the standard pattern.",
+      "They are synonyms; RTOS vendors just use different marketing terms.",
+      "ISRs are tasks with the highest priority — otherwise identical.",
+      "Tasks cannot be preempted; only ISRs preempt."
+     ],
+     "answer": 0,
+     "why": "The scheduler does not schedule ISRs — the NVIC (on Cortex-M) does, by hardware priority, preempting anything including the kernel's critical sections (which is why BASEPRI masking exists). 'Never block in an ISR' and 'defer to a task' are the mantras; FreeRTOS's FromISR API variants exist precisely because ISR context has different rules.",
+     "hint": "What can a task do that an ISR must never do — and how does work get from the ISR to the task?",
+     "objectives": [
+      "Separate ISR context from task context"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "embedded-interview-sc8",
+     "title": "Why tickless idle?",
+     "situation": "RTOS round. A battery-powered sensor node sleeps between measurements. The interviewer asks about tickless idle.",
+     "prompt": "What is it and why does it matter?",
+     "evidence": [],
+     "choices": [
+      "Normally a periodic tick interrupt wakes the CPU on a fixed cadence; tickless idle suppresses the tick during idle and programs a wakeup for the next real deadline — the MCU stays in deep sleep instead of waking thousands of times per second, which dominates battery life on duty-cycled nodes.",
+      "It disables the scheduler so tasks run to completion — fewer context switches, less power.",
+      "It overclocks the tick during idle to finish housekeeping faster.",
+      "It is a debugging mode that stops the tick so breakpoints do not drift."
+     ],
+     "answer": 0,
+     "why": "Power math: a 1 kHz tick means 1000 wakeups/second even when nothing is due; each wakeup costs the sleep-entry/exit energy plus clock restabilization. Tickless (FreeRTOS `configUSE_TICKLESS_IDLE`, Zephyr's tickless kernel) converts idle time into one long sleep. Caveat to name: sleep-mode depth vs wakeup latency, and keeping time across sleep (RTC compensation).",
+     "hint": "If your node does real work 1% of the time, where does the other 99% of energy go without tickless idle?",
+     "objectives": [
+      "Explain tickless idle's power win"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "embedded-interview-sc9",
+     "title": "Queue vs direct-to-task notification",
+     "situation": "FreeRTOS round. An ISR must wake a task with a 32-bit sensor reading. Two options: queue or task notification.",
+     "prompt": "Which do you pick and why?",
+     "evidence": [],
+     "choices": [
+      "Task notification: lighter (no queue object, single word, ~45% faster per the FreeRTOS docs' guidance) and sufficient for one 32-bit value + wakeup; queues win when you need buffering of multiple items, multiple receivers, or structured data.",
+      "Always queues — notifications are deprecated.",
+      "Always notifications — queues waste RAM in every design.",
+      "Neither: set a global volatile flag and poll it from the task."
+     ],
+     "answer": 0,
+     "why": "The tradeoff is buffering vs overhead: a queue of length 10 survives ISR bursts; a notification overwrites (or counts, in counting mode). Interviewers want the decision rule, not a favorite: one value + wakeup = notification; stream of samples = queue/stream buffer; and always the FromISR variant from interrupt context.",
+     "hint": "The sensor fires three times before the task runs. What does each mechanism deliver — and which data loss is acceptable here?",
+     "objectives": [
+      "Choose IPC by buffering needs"
+     ],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "embedded-interview-sc10",
+     "title": "Sizing task stacks",
+     "situation": "RTOS round. 'How do you size task stacks, and how do you know you got it wrong?'",
+     "prompt": "What is the professional answer?",
+     "evidence": [],
+     "choices": [
+      "Estimate from call depth + locals + ISR nesting margin, then verify empirically: fill stacks with a watermark pattern (FreeRTOS `uxTaskGetStackHighWaterMark`) under worst-case load and keep margin (e.g. 20-30%); overflow detection (`configCHECK_FOR_STACK_OVERFLOW`) and MPU guards catch mistakes in test — a stack overflow corrupts neighbors silently, so you never 'just pick 1KB'.",
+      "1KB per task is the industry standard; it always works.",
+      "Make all stacks huge — RAM is cheap and overflow is impossible then.",
+      "Stacks cannot overflow on Cortex-M; the hardware guards them."
+     ],
+     "answer": 0,
+     "why": "Stack overflow is the silent killer: it corrupts adjacent RAM with no fault, manifesting as 'impossible' bugs. The method — estimate, watermark-measure under stress, keep margin, enable overflow hooks in development — is what interviewers grade. Bonus: worst-case interrupt nesting eats the interrupted task's stack.",
+     "hint": "Your bug manifests as corrupted globals with no HardFault. What is your prime suspect, and how do you confirm it?",
+     "objectives": [
+      "Size stacks by measurement, guard with watermarks"
+     ],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "embedded-interview-sc11",
+     "title": "Priority inversion at the whiteboard",
+     "situation": "Senior RTOS round. Low-priority task holds a mutex; medium-priority task starves it; high-priority task blocks on the mutex. The interviewer asks you to narrate the failure and the fix.",
+     "prompt": "What is the complete answer?",
+     "evidence": [],
+     "choices": [
+      "Classic unbounded priority inversion: the high task waits on the low task, but the medium task preempts the low task indefinitely. Fix: mutexes with priority inheritance (temporarily boost the holder to the waiter's priority — FreeRTOS mutexes do this; binary semaphores do not) or priority ceiling; design fix: keep critical sections short and avoid sharing between far-apart priorities.",
+      "Raise the low task's priority permanently — problem solved.",
+      "Disable preemption during the critical section — simplest correct fix.",
+      "Inversion is theoretical; on real hardware the high task always wins."
+     ],
+     "answer": 0,
+     "why": "The Mars Pathfinder story is the canonical citation (and interviewers love it). Key distinctions: mutexes (with inheritance) vs binary semaphores (no inheritance) — using a semaphore as a mutex forfeits the fix. Priority ceiling protocol is the stronger alternative. Also note: inheritance chains can still deadlock; keep holdings short and ordered.",
+     "hint": "Why does a mutex fix this but a binary semaphore does not — and what did the Pathfinder team actually change?",
+     "objectives": [
+      "Diagnose inversion; apply inheritance/ceiling"
+     ],
+     "mins": 6,
+     "difficulty": 3
+    },
+    {
+     "id": "embedded-interview-sc12",
+     "title": "FreeRTOS or Zephyr?",
+     "situation": "Architecture round. New battery sensor product, 5-year life, BLE + sensors, small team. 'Pick the RTOS and defend it.'",
+     "prompt": "What shows senior judgment?",
+     "evidence": [],
+     "choices": [
+      "No mandated winner — argue from requirements: Zephyr for the upstream BLE stack, devicetree-driven board support, and long-term maintainability; FreeRTOS for minimal footprint, huge hiring pool, and AWS IoT integration — then name the real costs (Zephyr's learning curve/Kconfig, FreeRTOS's fragmented ecosystem) and the decision driver (radio stack availability usually decides).",
+      "FreeRTOS always — it is the industry standard, no discussion needed.",
+      "Zephyr always — modern and Linux-like, FreeRTOS is legacy.",
+      "Bare metal — an RTOS is overhead for a sensor node."
+     ],
+     "answer": 0,
+     "why": "The grade is the decision framework: what actually differentiates (radio stacks, driver coverage, power management, security update story, team expertise) vs what does not (both schedule tasks fine). 'The BLE stack we need is upstream in Zephyr, which outweighs familiarity' is a hireable sentence. Bare-metal gets credit only with a real justification (sub-µA sleep, trivial concurrency).",
+     "hint": "What single requirement most constrains this choice — and what would flip your answer?",
+     "objectives": [
+      "Decide RTOS from product requirements"
+     ],
+     "mins": 6,
+     "difficulty": 3
+    }
+   ]
+  },
+  {
+   "id": "embedded-drivers",
+   "name": "Drivers & Peripherals",
+   "summary": "GPIO, UART/SPI/I2C, DMA, interrupts, clock trees, and reading datasheets like the primary source they are.",
+   "scenarios": [
+    {
+     "id": "embedded-interview-sc13",
+     "title": "UART, SPI, or I2C?",
+     "situation": "Peripherals round. Three sensors: a GPS module (NMEA text), an IMU (6-axis, 1 kHz sampling), and a temperature sensor (1 Hz). One MCU.",
+     "prompt": "Assign each a bus and defend it.",
+     "evidence": [],
+     "choices": [
+      "GPS -> UART (async point-to-point text stream, no clock sharing needed); IMU -> SPI (full-duplex, MHz clocks, no addressing overhead for 1 kHz streaming); temp sensor -> I2C (slow, multi-drop with addressing, two wires shared with other slow sensors).",
+      "All on I2C — one bus, fewest pins, simplest layout.",
+      "All on SPI — fastest bus wins for everything.",
+      "All on UART — asynchronous means no clock headaches."
+     ],
+     "answer": 0,
+     "why": "The decision axes: speed (SPI > I2C for streaming), wiring (I2C multi-drop vs SPI per-device CS), duplex (SPI full-duplex), and framing (UART for async text). Naming the IMU's data rate as the driver ('1 kHz x 6 axes x 16 bits needs real bandwidth') shows engineering, not memorization.",
+     "hint": "Which sensor's data rate forces the choice — and what does the slowest one not need?",
+     "objectives": [
+      "Match the bus to the traffic pattern"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "embedded-interview-sc14",
+     "title": "Push-pull vs open-drain",
+     "situation": "GPIO round. You are wiring an I2C bus and a status LED. The interviewer asks about the GPIO modes.",
+     "prompt": "What is the correct configuration?",
+     "evidence": [],
+     "choices": [
+      "I2C SDA/SCL: open-drain with pull-ups (any device pulls low; the resistor pulls high — this enables wired-AND, clock stretching, and arbitration); LED: push-pull (actively drives high and low for current). Mixing them up breaks the bus.",
+      "Both push-pull — actively driven lines are always better.",
+      "Both open-drain — consistency simplifies the schematic.",
+      "GPIO mode does not matter; the peripheral overrides it."
+     ],
+     "answer": 0,
+     "why": "Open-drain's wired-AND is what makes I2C work: multiple devices share lines without shorting, and a target can hold SCL low (clock stretching). Push-pull drivers fighting each other is a hardware bug. The pull-up value is a real design parameter (rise time vs power) worth mentioning.",
+     "hint": "What happens electrically if two push-pull outputs disagree on a shared line — and which I2C features need the wired-AND?",
+     "objectives": [
+      "Configure GPIO modes from electrical first principles"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "embedded-interview-sc15",
+     "title": "SPI shows garbage",
+     "situation": "Debugging round. An SPI flash returns garbage. Clock and MOSI look right on the scope; CS toggles correctly.",
+     "prompt": "What is your prime suspect and how do you confirm it?",
+     "evidence": [],
+     "choices": [
+      "Clock polarity/phase mismatch (SPI mode 0-3): if CPOL/CPHA disagree, sampling happens on the wrong edge — confirm by checking the flash datasheet's mode against the MCU config and zooming the scope to see which edge MISO transitions vs when the MCU samples.",
+      "The flash is dead — replace it.",
+      "SPI needs pull-ups like I2C; add them.",
+      "Increase the clock speed — faster clocks clean up marginal signals."
+     ],
+     "answer": 0,
+     "why": "SPI has no negotiation — both sides must agree on mode, bit order, and word size in advance, so mode mismatch is the classic 'looks alive, reads garbage' failure. The scope technique (sample edge vs transition edge) is the check; the datasheet timing diagram is the authority. Also worth naming: MISO/MOSI swap and CS timing (setup/hold).",
+     "hint": "The signals look alive but the bits are wrong. What must both sides agree on with no way to negotiate?",
+     "objectives": [
+      "Debug SPI from the timing diagram"
+     ],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "embedded-interview-sc16",
+     "title": "I2C NACK on address",
+     "situation": "Debugging round. The temperature sensor NACKs its address byte. Power is good, pull-ups are populated.",
+     "prompt": "What is your systematic hunt?",
+     "evidence": [],
+     "choices": [
+      "Check the 7-bit vs 8-bit address confusion (datasheet gives 7-bit; some code shifts it — the #1 I2C bug), verify the address pins (A0/A1 strapping) match the code, confirm bus speed vs device max, then scope SDA/SCL for stuck-low (a crashed device holding the bus) or missing ACK timing.",
+      "The sensor is dead — replace it and move on.",
+      "Remove the pull-ups — they fight the driver.",
+      "Slow the bus to 1 Hz — slower is always more reliable."
+     ],
+     "answer": 0,
+     "why": "The 7-bit/8-bit shift bug is so common it is the first question. Stuck bus (SDA held low by a device mid-byte) needs the 9-clock recovery sequence — naming it shows depth. Clock stretching by a slow target is the subtler cousin. Always: address, strapping, speed, scope — in that order.",
+     "hint": "Your code sends 0x90; the datasheet says 0x48. Are these actually different addresses?",
+     "objectives": [
+      "Hunt I2C NACKs in a fixed order"
+     ],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "embedded-interview-sc17",
+     "title": "DMA double-buffered ADC",
+     "situation": "Senior peripherals round. 'Stream ADC samples at 100 kHz to processing with zero CPU per sample.'",
+     "prompt": "What is the design?",
+     "evidence": [],
+     "choices": [
+      "DMA in circular double-buffer (or circular with half/full interrupts): ADC fills buffer A while the CPU processes buffer B, then they swap — the CPU never touches a sample twice and never polls; size buffers from worst-case processing jitter, and handle overrun flags as the error path.",
+      "Poll the ADC data register in a tight loop — simplest, zero setup.",
+      "Interrupt per sample — 100 kHz is slow for a modern MCU.",
+      "DMA in single-shot mode, re-armed by the CPU per buffer."
+     ],
+     "answer": 0,
+     "why": "Double-buffering decouples producer jitter from consumer jitter: the half-transfer interrupt is the synchronization point. The interview checks: who owns each buffer when (ownership discipline), overrun handling (data integrity), and cache coherency if the core has a data cache (invalidate before CPU read — the classic corruption bug).",
+     "hint": "While the CPU processes buffer B, who is writing buffer A — and what goes wrong if the CPU is still in B when A fills?",
+     "objectives": [
+      "Design zero-CPU streaming with DMA"
+     ],
+     "mins": 6,
+     "difficulty": 3
+    },
+    {
+     "id": "embedded-interview-sc18",
+     "title": "The clock tree betrayal",
+     "situation": "Debugging war-story round. UART baud is off by 4x after a 'harmless' clock config change; everything else works.",
+     "prompt": "What happened, and what is the systematic check?",
+     "evidence": [],
+     "choices": [
+      "The UART's baud divisor derives from a peripheral clock (PCLK) that the change altered (prescaler or PLL source) — the divisor was computed for the old PCLK. Systematic: recompute every derived frequency from the actual clock tree (HSE/HSI -> PLL -> SYSCLK -> AHB/APB prescalers -> peripheral), and assert with a timer-measured MCO pin or scope.",
+      "The UART peripheral is damaged — replace the MCU.",
+      "Baud rate is temperature-dependent; recalibrate per board.",
+      "4x error means the divisor register is write-only; use a different UART."
+     ],
+     "answer": 0,
+     "why": "Clock trees are the silent dependency: baud rates, timer periods, and ADC clocks all derive from PCLK via prescalers. The method — draw the tree, compute each node, verify at a measurable pin — generalizes to every 'worked until the clock change' bug. Mention the common trap: APB prescaler != 1 doubles some timer clocks on STM32 (know your family).",
+     "hint": "What single number did the baud divisor assume — and where does it actually come from?",
+     "objectives": [
+      "Trace derived clocks from the tree, not assumptions"
+     ],
+     "mins": 6,
+     "difficulty": 3
+    }
+   ]
+  },
+  {
+   "id": "embedded-concurrency",
+   "name": "Concurrency & Interrupts",
+   "summary": "ISR discipline, critical sections, priority inversion, torn reads, and lock-free ring buffers with ordering.",
+   "scenarios": [
+    {
+     "id": "embedded-interview-sc19",
+     "title": "Keep ISRs short",
+     "situation": "Concurrency round. 'Why must ISRs be short? What goes wrong if they are not?'",
+     "prompt": "What is the complete answer?",
+     "evidence": [],
+     "choices": [
+      "Long ISRs raise worst-case interrupt latency (higher-priority events wait), can starve the scheduler (tasks never run), risk stack overflow (ISR nesting on one stack), and on some designs block lower-priority interrupts entirely — so ISRs capture the event and defer processing to a task via queue/semaphore/notification.",
+      "ISRs are slow because they run from flash; keep them short for speed.",
+      "The watchdog resets the MCU if any ISR exceeds 1 ms — it is a hardware rule.",
+      "Long ISRs are fine as long as they do not use floating point."
+     ],
+     "answer": 0,
+     "why": "Latency math: worst-case latency = longest lower-priority ISR + critical sections. The deferral pattern (ISR signals, task works) is the architectural answer — and FreeRTOS's FromISR APIs plus deferred interrupt processing exist to make it easy. Jitter-sensitive work (motor control) is where this bites hardest.",
+     "hint": "A 500 µs UART ISR fires during a motor-control deadline. Who waits, and for how long in the worst case?",
+     "objectives": [
+      "Justify short ISRs with latency math"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "embedded-interview-sc20",
+     "title": "Critical sections",
+     "situation": "Concurrency round. A task and an ISR share a 32-bit counter. The task does read-modify-write.",
+     "prompt": "How do you protect it, and what are the options?",
+     "evidence": [],
+     "choices": [
+      "For ISR-vs-task: briefly mask interrupts (or raise BASEPRI on Cortex-M) around the task's read-modify-write — short, bounded, no deadlock possible; alternatives: make the ISR the only writer (task only reads atomically), or defer via queue so no sharing exists. Mutexes do not work — an ISR cannot block on one.",
+      "A mutex around both accesses — standard and sufficient.",
+      "volatile on the counter — volatile makes read-modify-write atomic.",
+      "Disable the scheduler with vTaskSuspendAll — ISRs respect it."
+     ],
+     "answer": 0,
+     "why": "The key insight: ISRs cannot block, so any lock an ISR might take is undeadlockable — interrupt masking is the tool, kept to microseconds. BASEPRI masking (only interrupts below a priority) is the refined Cortex-M version, preserving high-priority latency. And the best sharing is no sharing: queues move the data instead.",
+     "hint": "The ISR cannot wait. So what mechanism protects the task's read-modify-write — and why is a mutex the wrong tool?",
+     "objectives": [
+      "Protect ISR-shared data by masking, briefly"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "embedded-interview-sc21",
+     "title": "Lock-free ring buffer",
+     "situation": "Senior concurrency round. 'Implement a single-producer/single-consumer ring buffer between ISR and task, no locks.'",
+     "prompt": "What is the correct design and the subtlety to name?",
+     "evidence": [],
+     "choices": [
+      "Power-of-two size with head/tail indices; producer (ISR) writes data then advances head, consumer (task) reads then advances tail; each side touches only its own index, and index updates are single-word (atomic on the platform) with a memory barrier (or volatile + compiler barrier) so the data write is visible before the index update.",
+      "A circular array with head/tail as plain ints — no special handling needed on a single core.",
+      "Disable interrupts around every access — lock-free is impossible in C.",
+      "Use a linked list with malloc per item — no indices to race on."
+     ],
+     "answer": 0,
+     "why": "The subtlety is ordering, not atomicity: the compiler/CPU may reorder the data write after the index update, letting the consumer read garbage. Barriers (or C11 atomics with release/acquire) fix it. SPSC is the tractable case — name that MPMC needs real atomics/CAS. This is the same pattern as DMA double-buffering ownership.",
+     "hint": "The indices are each touched by one side — so where is the race, exactly?",
+     "objectives": [
+      "Build SPSC rings with ordering discipline"
+     ],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "embedded-interview-sc22",
+     "title": "Volatile flag vs atomic",
+     "situation": "Concurrency round. An ISR sets `flag = 1`; the task spins on it. Works today. The interviewer asks when it breaks.",
+     "prompt": "Where are the holes?",
+     "evidence": [],
+     "choices": [
+      "Single-word flag set/check is fine on most MCUs — but it breaks for multi-word state (torn reads), for read-modify-write (not atomic), across compiler reordering (needs barriers for ordering with other data), and on multi-core (needs real atomics + cache coherency); the pattern to name is 'flag plus payload needs release/acquire semantics'.",
+      "It never breaks — volatile is fully thread-safe.",
+      "It breaks immediately — ISRs cannot write shared variables at all.",
+      "It only breaks at -O2; ship at -O0."
+     ],
+     "answer": 0,
+     "why": "This tests whether 'volatile works here' is understanding or luck. The flag+payload pattern (ISR fills a struct, then sets flag) is the real-world case: without a barrier, the task can see the flag before the payload. C11 stdatomic (where available) or explicit DMB instructions are the grown-up tools.",
+     "hint": "The ISR writes 64 bytes of sensor data, then sets the flag. What can the task observe — in the worst case?",
+     "objectives": [
+      "Know exactly what volatile does and does not cover"
+     ],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "embedded-interview-sc23",
+     "title": "Priority inversion, firmware edition",
+     "situation": "Senior round. A low-priority logging task holds an SPI mutex; a medium-priority sensor task preempts it for 50 ms; a high-priority control task blocks on the mutex and misses its deadline.",
+     "prompt": "Diagnose and fix.",
+     "evidence": [],
+     "choices": [
+      "Unbounded priority inversion: the control task effectively waits on the sensor task via the logger. Fix: mutex with priority inheritance (boosts logger to control priority while holding), or restructure — short critical sections, separate buses, or lock-free handoff so control never waits on logging.",
+      "Raise the logger above the sensor task permanently.",
+      "Give the control task its own SPI bus — hardware solves software problems.",
+      "Increase the control task's deadline — 50 ms jitter is acceptable."
+     ],
+     "answer": 0,
+     "why": "Same inversion as the RTOS domain, now with hardware: the design-level fix (don't share the bus between control and logging — DMA queue, separate peripheral, or deferred logging) often beats the protocol fix. Inheritance bounds the inversion but does not remove the coupling; naming both is senior.",
+     "hint": "Inheritance bounds the wait — but what architectural change removes the coupling entirely?",
+     "objectives": [
+      "Fix inversion at the protocol and architecture levels"
+     ],
+     "mins": 6,
+     "difficulty": 3
+    },
+    {
+     "id": "embedded-interview-sc24",
+     "title": "The torn 64-bit timestamp",
+     "situation": "Debugging round. A 64-bit microsecond timestamp shared between a timer ISR (writer) and a task (reader) occasionally shows garbage on a 32-bit MCU.",
+     "prompt": "Root cause and fix?",
+     "evidence": [],
+     "choices": [
+      "Torn read: the 32-bit core reads the timestamp in two 32-bit halves, and the ISR updates between them — the task sees half old, half new. Fix: read with interrupts masked (short critical section), use a sequence counter (read-copy-update style), or have the ISR write to a queue instead.",
+      "The timer peripheral is faulty — replace it.",
+      "64-bit types are not supported on 32-bit MCUs; use 32-bit timestamps.",
+      "Add volatile — volatile makes multi-word reads atomic."
+     ],
+     "answer": 0,
+     "why": "Any multi-word object shared across contexts can tear; single-word is the atomic unit (on most 32-bit cores). The sequence-counter pattern (read seq, read data, re-read seq, retry if changed) is the lock-free classic worth naming. This is the concrete case of the 'volatile != atomic' lesson.",
+     "hint": "How many bus cycles does the reader need — and what can happen between them?",
+     "objectives": [
+      "Diagnose torn reads on multi-word shared state"
+     ],
+     "mins": 6,
+     "difficulty": 3
+    }
+   ]
+  },
+  {
+   "id": "embedded-debugging",
+   "name": "Debugging Embedded Systems",
+   "summary": "JTAG/SWD, logic analyzers, HardFault register triage, field intermittents, and host-side testing with sanitizers.",
+   "scenarios": [
+    {
+     "id": "embedded-interview-sc25",
+     "title": "First HardFault",
+     "situation": "Debugging round. The board HardFaults on boot, every time. You have a debugger and 15 minutes.",
+     "prompt": "What is your triage order?",
+     "evidence": [],
+     "choices": [
+      "Halt at reset and step, or let it fault and read the stacked registers: PC tells you where (look up the address — is it in your code, an ISR, or garbage?), LR's EXC_RETURN tells you which stack, CFSR/HFSR classify the fault (precise vs imprecise bus fault, usage fault like divide-by-zero or unaligned) — then form hypotheses from the classification, not guesses.",
+      "Reflash the board — most HardFaults are corrupted flash.",
+      "Comment out code until it boots — binary search by deletion.",
+      "Increase all stack sizes — HardFaults are usually stack overflows."
+     ],
+     "answer": 0,
+     "why": "HardFaults are the most diagnosable crash in embedded: the hardware hands you PC, LR, and fault status registers on a platter. The method — classify first (CFSR bits), locate (PC), then hypothesize — is what interviewers watch. Imprecise bus faults (fault address unknown) are the hard ones; say so.",
+     "hint": "Before reading any code, what three registers classify and locate the fault?",
+     "objectives": [
+      "Triage HardFaults from stacked registers"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "embedded-interview-sc26",
+     "title": "JTAG vs SWD",
+     "situation": "Tools round. 'You get four pins for debug. JTAG or SWD, and why?'",
+     "prompt": "What is the right call?",
+     "evidence": [],
+     "choices": [
+      "SWD: two pins (clock + bidirectional data) vs JTAG's four-plus, and it adds SWO trace output for printf-style logging — JTAG remains for boundary scan and legacy chains; on pin-constrained boards SWD wins, and you keep the reset pin accessible regardless.",
+      "JTAG always — it is the industry standard and SWD is proprietary.",
+      "Neither — printf over UART is sufficient for all debugging.",
+      "JTAG for Cortex-M, SWD for Cortex-A — the core decides."
+     ],
+     "answer": 0,
+     "why": "The practical answer: SWD is ARM's two-wire debug for Cortex-M, with SWO giving you ITM printf without a UART. Keep NRST accessible (a wedged MCU needs hardware reset to attach). Mention OpenOCD/pyOCD/ST-Link as the open tooling — interviewers like tool fluency.",
+     "hint": "What does SWO give you that plain JTAG does not — and which pin do you never sacrifice?",
+     "objectives": [
+      "Choose the debug interface deliberately"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "embedded-interview-sc27",
+     "title": "Reading the fault registers",
+     "situation": "Debugging round. The HardFault handler runs. The interviewer asks: 'What do you read, and what does each register tell you?'",
+     "prompt": "What is the complete register-level answer?",
+     "evidence": [],
+     "choices": [
+      "The stacked frame gives PC (faulting instruction address), stacked LR/EXC_RETURN (which stack pointer and mode were active), and xPSR; then the fault status registers — CFSR's MemManage/BusFault/UsageFault subfields classify the fault type, HFSR confirms escalation, and BFAR/MMFAR hold the faulting address when their VALID bits are set — classify first, then map PC to code.",
+      "Only the PC matters — it points at the bug.",
+      "Read the general-purpose registers r0-r3 — they hold the fault cause.",
+      "The watchdog timer register — it tells you how long the fault took."
+     ],
+     "answer": 0,
+     "why": "The method is the answer: stacked PC locates, EXC_RETURN identifies the active stack (MSP vs PSP — crucial when an RTOS is involved), CFSR classifies (memory protection vs bus error vs usage faults like divide-by-zero or unaligned access), and BFAR/MMFAR address it. Imprecise bus faults (no valid address) are the hard case — saying that out loud shows experience. Never guess bit meanings from memory; look them up in the reference manual.",
+     "hint": "The PC points into the middle of a memcpy. Which register tells you whether the fault was a protection violation, a bus error, or an illegal operation?",
+     "objectives": [
+      "Extract fault cause from hardware registers"
+     ],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "embedded-interview-sc28",
+     "title": "I2C on the logic analyzer",
+     "situation": "Tools round. The bus misbehaves; you clip on a logic analyzer. The interviewer asks what you look for.",
+     "prompt": "What is your capture checklist?",
+     "evidence": [],
+     "choices": [
+      "START/STOP framing, 9th-bit ACK/NACK per byte, correct 7-bit address on the wire, clock stretching (SCL held low by target), bus speed vs device max, and analog quality (rise times — weak pull-ups show as slow shark fins); decode with the analyzer's I2C decoder and compare against the datasheet timing.",
+      "Just the voltage levels — digital protocol issues are rare.",
+      "The color of the wires — organization prevents bugs.",
+      "Capture at the slowest sample rate — smaller files, same insight."
+     ],
+     "answer": 0,
+     "why": "The analyzer turns 'the sensor does not respond' into a visible NACK on byte one. Rise-time inspection catches the weak-pull-up/dim-bus class of bugs that digital-only thinking misses. Sample rate rule: 4-10x the bus clock minimum — name it.",
+     "hint": "The decoder shows NACK on the address byte. What are your top three suspects, in order?",
+     "objectives": [
+      "Read I2C failures off a logic analyzer"
+     ],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "embedded-interview-sc29",
+     "title": "Intermittent corruption",
+     "situation": "Senior debugging round. A device corrupts a config struct once every few days in the field. No debugger attached, no repro on the bench.",
+     "prompt": "What is your investigation plan?",
+     "evidence": [],
+     "choices": [
+      "Instrument for the field: add a hardfault/panic handler that logs stacked registers + a RAM snapshot to reserved flash, add stack watermarks and a heap-canary/debug allocator, log the corruption signature (which bytes, alignment, timing vs interrupts) — then classify: stack overflow (adjacent corruption), DMA overrun (peripheral-adjacent), or use-after-free; fix the class, not the instance.",
+      "It is cosmic rays — add ECC RAM and close the ticket.",
+      "Rewrite the struct as globals — heap corruption cannot touch globals.",
+      "Increase all timeouts — intermittent means timing."
+     ],
+     "answer": 0,
+     "why": "Field intermittents are solved by making the device tell you: persistent crash logs, brownout detectors, and corruption-pattern analysis (repeating values = DMA, adjacent-variable damage = stack overflow, bit flips = EMI/power). The interview grades the instrumentation plan — 'I cannot repro it' is where juniors stop.",
+     "hint": "You cannot attach a debugger to a customer's attic. What does the device record so the NEXT failure diagnoses itself?",
+     "objectives": [
+      "Instrument firmware for field diagnosis"
+     ],
+     "mins": 6,
+     "difficulty": 3
+    },
+    {
+     "id": "embedded-interview-sc30",
+     "title": "Valgrind on the host",
+     "situation": "Testing round. 'How do you test firmware logic without hardware?' The interviewer wants your host-side strategy.",
+     "prompt": "What is the professional setup?",
+     "evidence": [],
+     "choices": [
+      "Separate hardware-independent logic (protocols, parsers, ring buffers, allocators) behind HAL interfaces; build it natively and run under Valgrind/ASan/UBSan with unit tests — catching memory errors and UB on the host where tools are rich — while hardware-touching code gets tested on-target or on emulators (QEMU, Renode).",
+      "You cannot test firmware without hardware — skip host testing.",
+      "Run the full firmware binary under Valgrind — it emulates ARM.",
+      "Test only on hardware; host tests give false confidence."
+     ],
+     "answer": 0,
+     "why": "The seam is the HAL: logic that does not touch registers compiles for the host, where Valgrind finds the leaks/overflows that would be silent on-target. ASan+UBSan in CI is the modern baseline. QEMU/Renode covers peripheral interaction. Interviewers check that you know what Valgrind cannot do (it runs host binaries, not ARM firmware).",
+     "hint": "Which half of your firmware can compile for x86 — and what bug classes does Valgrind catch there that on-target testing misses?",
+     "objectives": [
+      "Test hardware-independent logic on the host"
+     ],
+     "mins": 6,
+     "difficulty": 3
+    }
+   ]
+  },
+  {
+   "id": "embedded-capstone",
+   "name": "Capstone: Sensor Node",
+   "summary": "Design a battery sensor node end to end: energy budget, tasks, transport, OTA, and failure modes.",
+   "scenarios": [
+    {
+     "id": "embedded-interview-sc31",
+     "title": "Sensor node requirements",
+     "situation": "Capstone round. 'Design a battery sensor node: temperature + humidity every 10 minutes, 5-year battery, BLE upload.' Where do you start?",
+     "prompt": "What is the correct first move?",
+     "evidence": [],
+     "choices": [
+      "Quantify the energy budget first: per-cycle cost (wake, sample, transmit) vs sleep current over 5 years — that budget picks the battery, the sleep depth, and whether BLE's connection overhead is affordable; everything else (RTOS choice, sampling) follows the power math.",
+      "Pick the MCU with the most RAM — headroom first.",
+      "Start with the BLE stack — connectivity is the hard part.",
+      "Choose the RTOS — the OS decision drives everything."
+     ],
+     "answer": 0,
+     "why": "Embedded design starts from constraints: energy, then cost, then compute. A 5-year budget (roughly 43,800 hours) makes sleep current the dominant term — 10 µA vs 1 µA is the whole product. Candidates who start with parts instead of budgets get redirected in interviews.",
+     "hint": "How many wake cycles happen in 5 years — and which current dominates the total?",
+     "objectives": [
+      "Start embedded design from the energy budget"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "embedded-interview-sc32",
+     "title": "Power states",
+     "situation": "Capstone round. The MCU offers Run, Sleep, Stop, and Standby with different wakeup latencies and RAM retention.",
+     "prompt": "How do you choose?",
+     "evidence": [],
+     "choices": [
+      "Match the state to the idle duration: Sleep for millisecond gaps (fast wake, peripherals alive), Stop for seconds (RAM retained, slower wake), Standby for minutes+ (lowest current, RAM lost — reinitialize on wake); the 10-minute sampling interval points at the deepest state whose wakeup + reinit cost still fits the energy budget.",
+      "Always the deepest sleep — lowest current always wins.",
+      "Never sleep — the reinit complexity is not worth it.",
+      "Sleep only; Stop/Standby are marketing modes."
+     ],
+     "answer": 0,
+     "why": "The tradeoff is wakeup cost vs sleep savings: deep states lose RAM/clocks, so reinit energy and time count against the savings. Tickless idle + RTC wakeup is the mechanism; measuring actual sleep current (not datasheet typical) is the verification. This is where '5-year battery' claims live or die.",
+     "hint": "Waking from Standby costs 2 ms and 5 mA to reinit. At what sleep duration does it beat staying in Stop?",
+     "objectives": [
+      "Choose sleep depth from wakeup economics"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "embedded-interview-sc33",
+     "title": "Task decomposition",
+     "situation": "Capstone round. Decompose the node firmware into RTOS tasks.",
+     "prompt": "What is a clean decomposition?",
+     "evidence": [],
+     "choices": [
+      "Sampler task (periodic, medium priority: read sensors via DMA, push to queue), BLE task (high during connection events: drain queue, transmit), supervisor task (low: watchdog kicks, battery monitoring, error handling) — with priorities reflecting deadline criticality and the ISR doing only timestamp + notify.",
+      "One task that does everything in a loop — simplest, no IPC bugs.",
+      "A task per sensor register — maximum parallelism.",
+      "All work in the RTC ISR — no RTOS needed."
+     ],
+     "answer": 0,
+     "why": "Decomposition follows rate-monotonic intuition: fastest/most-critical gets priority, and each task owns one concern with queues between them. The supervisor/watchdog task is the senior touch — who watches the watchers. Keep the ISR minimal (notify, not process).",
+     "hint": "The BLE transmission stalls. Which tasks are affected, and which keep running — and why does that isolation matter?",
+     "objectives": [
+      "Decompose firmware into deadline-driven tasks"
+     ],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "embedded-interview-sc34",
+     "title": "Choosing the transport",
+     "situation": "Capstone round. BLE vs LoRa for the 10-minute upload. The interviewer asks for the decision.",
+     "prompt": "How do you decide?",
+     "evidence": [],
+     "choices": [
+      "From the deployment: BLE for phone-gateway scenarios (short range, high data rate, phone as hub); LoRa for long-range, gateway-owned deployments (kilometers, tiny payloads, duty-cycle limits) — decide by range, infrastructure, payload size, and who owns the gateway, then verify with link-budget and energy-per-bit math.",
+      "BLE always — it is in every phone.",
+      "LoRa always — range is king.",
+      "Wi-Fi — simplest to develop."
+     ],
+     "answer": 0,
+     "why": "Range, energy-per-bit, and gateway ownership are the axes; 'it is in phones' is not an architecture. LoRa's regulatory duty-cycle limits (e.g. 1% in EU bands) constrain the 10-minute cadence discussion — naming a real constraint like that is what separates candidates.",
+     "hint": "Who receives the packet — a phone in the next room, or a gateway 2 km away? That single answer nearly decides it.",
+     "objectives": [
+      "Decide transports from deployment reality"
+     ],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "embedded-interview-sc35",
+     "title": "OTA update design",
+     "situation": "Senior capstone round. 'These nodes are in attics for 5 years. Design the firmware update story.'",
+     "prompt": "What does a credible OTA design cover?",
+     "evidence": [],
+     "choices": [
+      "A/B image slots with atomic swap (bootloader picks the valid slot), cryptographic signature verification before boot, version anti-rollback, download-while-running with resume, update window scheduling (not during sampling), and a recovery path (factory slot / bootloader USB) if both slots fail — plus what happens on power loss mid-write.",
+      "Overwrite the running image in place — simplest, fewest slots.",
+      "Ship new hardware for updates — firmware updates are too risky.",
+      "Download to RAM and jump to it — no flash wear."
+     ],
+     "answer": 0,
+     "why": "The graded pieces: atomicity (never a half-written boot image), authenticity (signed, not just checksummed), rollback safety, and power-loss behavior at every step. 'What happens if power dies here?' asked at each stage is the interview technique — apply it to your own design first.",
+     "hint": "Power dies mid-swap. What boots next — and how does the bootloader know?",
+     "objectives": [
+      "Design OTA for atomicity and recovery"
+     ],
+     "mins": 6,
+     "difficulty": 3
+    },
+    {
+     "id": "embedded-interview-sc36",
+     "title": "Failure-mode review",
+     "situation": "Senior capstone round. 'Walk me through everything that can kill this node in 5 years.'",
+     "prompt": "What does a strong FMEA-style answer cover?",
+     "evidence": [],
+     "choices": [
+      "Battery depletion curve vs temperature, flash wear (write cycles on config/logging), brownout during flash writes (atomicity), sensor drift (calibration strategy), BLE stack bugs (watchdog + recovery), clock drift (RTC calibration), physical tampering/environment — each with detection and mitigation, ranked by likelihood x impact.",
+      "Batteries die — replace them yearly.",
+      "Software does not wear out, so only the battery matters.",
+      "Add a bigger battery — margin solves all failure modes."
+     ],
+     "answer": 0,
+     "why": "The FMEA habit — enumerate, rank by likelihood x severity, mitigate the top — is the senior signal. Brownout-during-write deserves emphasis (the classic bricked-device story), as does flash wear from over-logging. End with what you would monitor in the field to catch the top three early.",
+     "hint": "Rank your top three killers by likelihood x impact — and what field telemetry would warn you first?",
+     "objectives": [
+      "Run failure-mode analysis on the design"
+     ],
+     "mins": 6,
+     "difficulty": 3
+    }
+   ]
+  },
+  {
+   "id": "embedded-mock-circuit",
+   "name": "Mock Interview Circuit",
+   "summary": "Full-loop rehearsal: rapid-fire fundamentals, whiteboard C, dead-board triage under time, behavioral STAR.",
+   "scenarios": [
+    {
+     "id": "embedded-interview-sc37",
+     "title": "Explain volatile in 60 seconds",
+     "situation": "Phone screen. 'Explain volatile to a smart backend engineer.'",
+     "prompt": "What is the 60-second version?",
+     "evidence": [],
+     "choices": [
+      "A qualifier telling the compiler 'this memory changes behind your back' — every read/write is emitted exactly as written, no caching or elision. Used for memory-mapped hardware registers and flags shared with ISRs. The caveat that earns the pass: it is not atomicity, not ordering, not thread-safety — those need atomics, barriers, or critical sections.",
+      "It makes variables thread-safe — C's built-in mutex.",
+      "It puts the variable in fast SRAM.",
+      "It is a comment; compilers ignore it."
+     ],
+     "answer": 0,
+     "why": "The backend framing wants the compiler-optimization angle: without volatile, the compiler legally assumes memory does not change between accesses and optimizes accordingly. Then the MMIO example (polling a status register) makes it concrete, and the 'not atomic' caveat shows depth.",
+     "hint": "Without volatile, what does the compiler do to your polling loop — and why is it legally allowed to?",
+     "objectives": [
+      "Explain volatile with its exact limits"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "embedded-interview-sc38",
+     "title": "Whiteboard: ring buffer",
+     "situation": "Coding round. 'Write a fixed-size ring buffer for bytes, with put/get and full/empty checks.'",
+     "prompt": "What is the clean implementation?",
+     "evidence": [],
+     "choices": [
+      "Power-of-two size, mask indexing (`head & (SIZE-1)`), separate read/write counts or head/tail with full/empty disambiguation (waste one slot or keep a count) — and you narrate the ISR/task ownership split and where a barrier would go for the lock-free variant.",
+      "A linked list with malloc per byte — no size limits.",
+      "memmove the array on every get — simple and obviously correct.",
+      "Two stacks — one for input, one for output."
+     ],
+     "answer": 0,
+     "why": "The full/empty disambiguation (head==tail means both — hence count or wasted slot) is the classic check. Power-of-two + mask avoids modulo cost. Narrating the concurrency variant unprompted (SPSC, barriers) turns a data-structure question into an embedded answer.",
+     "hint": "head == tail: is it full or empty — and how does your design answer that?",
+     "objectives": [
+      "Implement rings with ownership awareness"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "embedded-interview-sc39",
+     "title": "Dead board under time",
+     "situation": "Onsite debugging. A board is dead: no output, debugger cannot attach. 10 minutes.",
+     "prompt": "What is your triage order?",
+     "evidence": [],
+     "choices": [
+      "Power first (rails at the right voltage, current draw sane — a short reads as current limit), then clock (oscillator running?), then reset line (held low?), then boot mode pins (is it in bootloader?), then attach under reset (connect with NRST asserted to catch a wedged core) — hardware before software, always, narrating each measurement.",
+      "Reflash immediately — dead usually means bad firmware.",
+      "Replace the MCU — fastest path to a working board.",
+      "Increase the debugger clock speed — attachment is a timing issue."
+     ],
+     "answer": 0,
+     "why": "The 'attach under reset' technique is the key unlock: a core wedged in a HardFault loop or with SWD disabled by firmware can still be caught if you halt it out of reset. Power-current-then-clock-then-reset is the inviolable order — software hypotheses come only after the rails are right.",
+     "hint": "The debugger says 'no target found.' What is the very first thing you measure — and with what?",
+     "objectives": [
+      "Triage dead boards hardware-first"
+     ],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "embedded-interview-sc40",
+     "title": "Your hardest bug",
+     "situation": "Behavioral. 'Tell me about the hardest bug you fixed on firmware.'",
+     "prompt": "What structure lands it?",
+     "evidence": [],
+     "choices": [
+      "STAR compressed: symptom and why it was hard (intermittent, field-only, no debugger), systematic narrowing (instrumentation, what you ruled out), root cause, fix plus guard (watchdog, assertion, test) — ending with the process change (e.g. 'now every ISR gets a worst-case latency budget').",
+      "Five minutes of register-level detail — depth proves skill.",
+      "Pick a trivial bug to look fast.",
+      "Say you have never had a hard bug."
+     ],
+     "answer": 0,
+     "why": "Same grading: structure and growth. Embedded war stories (the field intermittent, the 3 AM brownout) are memorable — quantify the pain (devices affected, days) and land the process change. The guard (what prevents recurrence) matters more than the fix.",
+     "hint": "What does your team do differently now because of that bug?",
+     "objectives": [
+      "Answer behaviorals with STAR + lesson"
+     ],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "embedded-interview-sc41",
+     "title": "Design a thermostat",
+     "situation": "System design onsite. 'Design the firmware for a smart thermostat.' 30 minutes.",
+     "prompt": "What do you cover?",
+     "evidence": [],
+     "choices": [
+      "Constraints first (mains-powered vs battery changes everything), then: control loop design (hysteresis vs PID, sensor placement, relay chatter protection), task decomposition (sampling, control, UI/comms), persistence (setpoints in flash with wear leveling), comms (Wi-Fi/Matter), safety (watchdog, failsafe relay state, overtemp cutoff) — and what you defer.",
+      "Start with the mobile app UI — users see the app.",
+      "Draw the cloud architecture — firmware is just a client.",
+      "List every smart-home feature — completeness first."
+     ],
+     "answer": 0,
+     "why": "The safety story is the differentiator: a thermostat controls heaters, so failsafe states, watchdog recovery, and overtemp cutoffs are product requirements, not nice-to-haves. Hysteresis vs PID shows control awareness; relay minimum-on/off times show hardware respect.",
+     "hint": "The MCU resets while the heater is on. What state does the relay wake up in — and who guarantees it?",
+     "objectives": [
+      "Design firmware from constraints and safety"
+     ],
+     "mins": 6,
+     "difficulty": 3
+    },
+    {
+     "id": "embedded-interview-sc42",
+     "title": "The full loop simulation",
+     "situation": "Final prep. Onsite in 3 days: coding, architecture, debugging, behavioral.",
+     "prompt": "What is the highest-leverage plan?",
+     "evidence": [],
+     "choices": [
+      "Day 1: timed C reps (ring buffer, fixed-block allocator, bit manipulation) on paper/whiteboard; Day 2: narrated debugging (HardFault triage, dead-board order) and one system design (sensor node) out loud; Day 3: light review + STAR stories + sleep — plus reading one real datasheet section to stay sharp on the skill interviewers actually test.",
+      "Grind 200 LeetCode hards — volume separates candidates.",
+      "Memorize register maps — recall speed is the bottleneck.",
+      "Rest entirely — cramming hurts."
+     ],
+     "answer": 0,
+     "why": "Embedded loops test reading comprehension (datasheets) as much as coding — the differentiator is method under time. One peer mock of a debugging round beats ten solo hours. Sleep protects the register-level recall you actually need.",
+     "hint": "Which loop section is weakest — and can you narrate a HardFault triage cold, right now?",
+     "objectives": [
+      "Train the test format, not just the material"
+     ],
+     "mins": 6,
+     "difficulty": 3
+    }
+   ]
+  }
+ ],
+ "lessons": [
+  {
+   "domain_id": "embedded-interview",
+   "title": "Embedded Software Engineering Interview Prep — Core concepts",
+   "concepts": [
+    "Embedded interviews test five things: C precision (memory model, volatile, UB), RTOS judgment (tasks, IPC, inversion), peripheral fluency (buses, DMA, clocks, datasheets), concurrency discipline (ISRs, critical sections, lock-free patterns), and debugging method (registers, scopes, analyzers).",
+    "The memory model is physical: stack/heap/static/.bss/.data/.text each have a home and a lifetime. Returning stack pointers, fragmenting heaps, and ignoring alignment are the bug classes — know where everything lives.",
+    "volatile means 'the compiler cannot assume' — nothing more. It is for MMIO and ISR flags, never for synchronization. Atomicity needs atomics or critical sections; ordering needs barriers.",
+    "ISRs are not tasks: they cannot block, must be short, and defer work. Every sharing question is really 'who can wait?' — and ISRs cannot, so interrupt masking (brief) or lock-free handoff are the tools.",
+    "Datasheets are the primary source: timing diagrams decide SPI modes, address formats decide I2C bugs, clock trees decide baud rates. Interviewers test whether you read the manual or guess.",
+    "Debugging is classification before hypothesis: HardFault registers, ANR-style traces, scope captures, analyzer decodes. The method — measure, classify, hypothesize, verify — is the product; the fix is evidence."
+   ],
+   "example": {
+    "lang": "c",
+    "code": "#define RING_SIZE 256  /* power of two */\ntypedef struct { uint8_t buf[RING_SIZE];\n    volatile uint32_t head; /* written by producer only */\n    volatile uint32_t tail; /* written by consumer only */ } ring_t;\n\nint ring_put(ring_t *r, uint8_t b) {\n    uint32_t h = r->head;\n    if ((uint32_t)(h - r->tail) >= RING_SIZE) return -1; /* full */\n    r->buf[h & (RING_SIZE - 1)] = b;\n    __DMB();              /* data visible before index moves */\n    r->head = h + 1;\n    return 0;\n}",
+    "walkthrough": "One ring buffer, four interview themes: power-of-two masking instead of modulo, full detection via count difference (no wasted slot ambiguity), single-writer indices (the SPSC insight), and the barrier making the data write visible before the index update — ordering, not just atomicity. Narrate each line and you own the concurrency round."
+   },
+   "pitfalls": [
+    "Common trap: saying volatile makes code thread-safe — it does not; it only defeats compiler assumptions.",
+    "Common trap: debugging by guessing — HardFaults hand you PC and fault registers; read them before theorizing.",
+    "Common trap: answering 'which RTOS/bus/MCU' with a favorite instead of requirements, tradeoffs, and the decision driver.",
+    "Common trap: forgetting the energy budget — on battery products, sleep current dominates every other decision."
+   ],
+   "try_it": "Work through this in the Labs tab."
+  }
+ ],
+ "labs": [
+  {
+   "id": "embedded-interview-lab1",
+   "domain_id": "embedded-interview",
+   "title": "Ring buffer on the host",
+   "objective": "Implement a byte ring buffer in C, compile with warnings-as-errors, and prove it correct with a self-test.",
+   "steps": [
+    "Write ringbuf.c: power-of-two size, head/tail indices, put/get with full/empty checks, and a main() self-test.",
+    "Compile strict: `gcc -Wall -Wextra -Werror -std=c11 -o ringbuf ringbuf.c`.",
+    "Run it: `./ringbuf` — the self-test must print ALL TESTS PASS.",
+    "Break it deliberately: remove the full check, recompile, rerun — observe the failure mode.",
+    "Restore the check and re-verify: `./ringbuf` prints ALL TESTS PASS again."
+   ],
+   "checks": [
+    {
+     "command_pattern": "^gcc\\s+.*ringbuf",
+     "expect_contains": "ringbuf",
+     "hint": "Compile with -Wall -Wextra -Werror so warnings become failures."
+    },
+    {
+     "command_pattern": "^\\./ringbuf",
+     "expect_contains": "ALL TESTS PASS",
+     "hint": "Your self-test binary must print ALL TESTS PASS."
+    }
+   ]
+  },
+  {
+   "id": "embedded-interview-lab2",
+   "domain_id": "embedded-interview",
+   "title": "Volatile vs the optimizer",
+   "objective": "Watch the compiler delete a polling loop, then fix it with volatile — on the host, with real gcc.",
+   "steps": [
+    "Write spin.c: a global `int ready = 0;` polled in `while (!ready);` after a function that 'sets' it (in another TU or via signal-safe write).",
+    "Compile `gcc -O2 -o spin spin.c` and observe: the loop may be optimized into an infinite loop — check with `timeout 2 ./spin; echo $?`.",
+    "Change the flag to `volatile int ready` and recompile.",
+    "Re-run with timeout — the program must now terminate (exit code 0).",
+    "Say out loud: what assumption did the optimizer legally make at -O2?"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^gcc\\s+.*spin",
+     "expect_contains": "spin",
+     "hint": "Compile the spin demo at -O2 to see the optimizer's assumption."
+    },
+    {
+     "command_pattern": "^grep\\s+.*volatile",
+     "expect_contains": "volatile",
+     "hint": "The fixed source must qualify the flag as volatile."
+    }
+   ]
+  }
+ ],
+ "simulations": [],
+ "consoleSims": [],
+ "terminalMissions": [],
+ "sections": [
+  {
+   "id": "embedded-interview-sec",
+   "title": "Embedded Software Engineering Interview Prep",
+   "kind": "path",
+   "lectures": [],
+   "lab_ids": [
+    "embedded-interview-lab1",
+    "embedded-interview-lab2"
+   ],
+   "drill_domain_ids": [
+    "embedded-c-memory",
+    "embedded-rtos",
+    "embedded-drivers",
+    "embedded-concurrency",
+    "embedded-debugging",
+    "embedded-capstone",
+    "embedded-mock-circuit"
+   ]
+  }
+ ],
+ "behavioral": [
+  {
+   "prompt": "Tell me about yourself — as an embedded engineer.",
+   "framework": "Present -> past -> future in 90 seconds, anchored on shipped hardware and constraints.",
+   "points": [
+    "Current focus (e.g. RTOS, low-power, drivers).",
+    "1-2 shipped products and your concrete contribution.",
+    "Why this team/product next."
+   ],
+   "pitfalls": [
+    "Only software background with no hardware touch.",
+    "No mention of real constraints (power, cost, time)."
+   ]
+  },
+  {
+   "prompt": "Tell me about the hardest firmware bug you fixed.",
+   "framework": "STAR: symptom, narrowing, root cause, fix + guard.",
+   "points": [
+    "Why it was hard (intermittent, field-only, no debugger).",
+    "Instrumentation and hypothesis discipline.",
+    "The process change afterward."
+   ],
+   "pitfalls": [
+    "Only the fix, not the investigation.",
+    "No guard against recurrence."
+   ]
+  },
+  {
+   "prompt": "Describe a disagreement with hardware or product about a design.",
+   "framework": "STAR with the tradeoff conversation centered.",
+   "points": [
+    "The constraint (power, cost, pins, schedule).",
+    "Alternatives you proposed with data.",
+    "Outcome and collaboration lesson."
+   ],
+   "pitfalls": [
+    "'Hardware was wrong' with no data.",
+    "No technical detail."
+   ]
+  },
+  {
+   "prompt": "Tell me about a time you missed a deadline or cut scope on a firmware project.",
+   "framework": "STAR: early signal, renegotiation, what shipped.",
+   "points": [
+    "How you detected the slip (bring-up always slips).",
+    "How you re-scoped with the team.",
+    "Estimation change afterward."
+   ],
+   "pitfalls": [
+    "Claiming firmware never slips.",
+    "Owning nothing."
+   ]
+  },
+  {
+   "prompt": "How did you learn a new MCU family or RTOS under schedule pressure?",
+   "framework": "Learning story: gap -> method -> applied result.",
+   "points": [
+    "The gap and the deadline.",
+    "Your method (reference manual first, then bring-up).",
+    "What shipped on it."
+   ],
+   "pitfalls": [
+    "'I just read the datasheet' with no story.",
+    "Nothing was hard."
+   ]
+  },
+  {
+   "prompt": "Tell me about a time you cut power consumption or cost significantly.",
+   "framework": "STAR with numbers: before/after measurements.",
+   "points": [
+    "The measurement setup (not datasheet claims).",
+    "The change and why that term dominated.",
+    "Quantified result."
+   ],
+   "pitfalls": [
+    "No measurements.",
+    "Datasheet typicals presented as results."
+   ]
+  },
+  {
+   "prompt": "Describe a field failure and how the team responded.",
+   "framework": "STAR: detection, triage, fix, prevention.",
+   "points": [
+    "How it was detected (telemetry, returns).",
+    "Root cause and the fix.",
+    "What now prevents the class (tests, reviews, monitoring)."
+   ],
+   "pitfalls": [
+    "No prevention step.",
+    "Blaming manufacturing."
+   ]
+  },
+  {
+   "prompt": "Why embedded — and why this product?",
+   "framework": "Genuine motivation + specific product knowledge.",
+   "points": [
+    "What draws you to the metal (constraints, physicality).",
+    "Something specific about this product's engineering.",
+    "Role fit with your trajectory."
+   ],
+   "pitfalls": [
+    "Generic praise.",
+    "Only compensation."
+   ]
+  }
+ ],
+ "resources": {
+  "cheatsheet": [
+   "Memory: stack (auto) / heap (manual, fragments) / static (.data/.bss, forever); never return stack pointers.",
+   "volatile = compiler may not assume; NOT atomic, NOT ordered, NOT thread-safe. MMIO + ISR flags only.",
+   "Alignment: compilers pad for it; serialize wire formats field-by-field; packed is non-portable.",
+   "UB to name: signed overflow, strict aliasing, use-after-free, null deref; -O0 vs -O2 divergence is the signature.",
+   "RTOS: tasks block, ISRs cannot; tickless idle saves battery; size stacks by watermark + margin.",
+   "IPC: queues buffer, notifications are light; FromISR variants in ISRs; mutexes inherit priority, semaphores do not.",
+   "Buses: UART async text, SPI fast full-duplex streaming, I2C slow multi-drop; mode/address agreement is manual.",
+   "Concurrency: mask interrupts briefly for ISR-shared data; SPSC rings need barriers (ordering!); multi-word reads tear.",
+   "Debug: HardFault -> stacked PC + CFSR/HFSR + BFAR/MMFAR; dead board -> power, clock, reset, attach-under-reset.",
+   "Power: budget first; sleep depth from wakeup economics; measure sleep current, do not trust typicals."
+  ],
+  "glossary": [
+   [
+    "HardFault",
+    "Cortex-M fault escalated from a configurable fault; diagnosed via stacked registers."
+   ],
+   [
+    "Tickless idle",
+    "RTOS power mode suppressing the periodic tick during idle; wake on next deadline."
+   ],
+   [
+    "Priority inversion",
+    "High-priority task blocked behind low-priority holder; fixed by inheritance/ceiling."
+   ],
+   [
+    "SPSC",
+    "Single-producer/single-consumer: the tractable lock-free case (ring buffers)."
+   ],
+   [
+    "Torn read",
+    "Multi-word read split across an update — half old, half new."
+   ],
+   [
+    "Strict aliasing",
+    "Compiler rule: different-type pointers are assumed not to alias; violating it is UB."
+   ],
+   [
+    "DMA",
+    "Direct Memory Access: peripheral-to-memory transfers without CPU involvement."
+   ],
+   [
+    "Watchdog",
+    "Hardware timer resetting the MCU unless kicked — the last-resort liveness guard."
+   ],
+   [
+    "Devicetree",
+    "Zephyr/Linux hardware description separating board config from drivers."
+   ],
+   [
+    "FMEA",
+    "Failure-mode analysis: enumerate, rank by likelihood x severity, mitigate the top."
+   ]
+  ],
+  "links": [
+   [
+    "FreeRTOS Documentation",
+    "https://www.freertos.org/Documentation/RTOS_book.html"
+   ],
+   [
+    "Zephyr Documentation",
+    "https://docs.zephyrproject.org/"
+   ],
+   [
+    "ARM Cortex-M Resources",
+    "https://developer.arm.com/Architectures/Cortex-M"
+   ],
+   [
+    "C11 Standard (N1570 draft)",
+    "https://www.open-std.org/jtc1/sc22/wg14/www/docs/n1570.pdf"
+   ],
+   [
+    "Interrupt (memfault blog)",
+    "https://interrupt.memfault.com/"
+   ]
+  ],
+  "checklist": [
+   "Can you place any declaration in the memory map and state its lifetime?",
+   "Can you state exactly what volatile guarantees — and three things it does not?",
+   "Can you triage a HardFault from stacked registers without guessing?",
+   "Can you whiteboard an SPSC ring buffer and name where the barrier goes?",
+   "Do you have two STAR stories (field bug, hardware disagreement) rehearsed?",
+   "Have you done one timed mock per loop type, including a datasheet-reading exercise?"
+  ]
+ },
+ "chat": {
+  "persona": "Ferrite — a direct, encouraging embedded interview coach. Socratic first: asks your approach before revealing answers. Drills C, RTOS, peripherals, and debugging; runs timed mock rounds and datasheet-reading drills on request.",
+  "topics": [
+   "C and memory-model deep-dives",
+   "RTOS design discussions",
+   "Peripheral and datasheet reading drills",
+   "Mock whiteboard rounds",
+   "Debugging narrations",
+   "Behavioral STAR rehearsal"
+  ]
+ },
+ "simulation": {
+  "items": 10,
+  "minutes": 30,
+  "evidence_cost_mins": 2
+ },
+ "media": [],
+ "foundations": [],
+ "math": []
+}

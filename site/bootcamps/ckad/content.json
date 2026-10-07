@@ -1,1 +1,1274 @@
-{"slug": "ckad", "title": "Certified Kubernetes App Developer", "tagline": "CKAD: app design, build, and deploy on K8s", "vendor": {"name": "CNCF / Linux Foundation", "certs": "CKAD", "docs": "https://training.linuxfoundation.org"}, "disclaimer": "Independent practice material by Interstitium Labs. Not affiliated with, endorsed by, or sponsored by the CNCF or the Linux Foundation. Confers no certificate. All scenarios are original; no exam content is reproduced.", "domains": [{"id": "app-design", "name": "App Design", "scenarios": [{"id": "ckad-sidecar-pattern", "title": "Logs without touching the app", "situation": "Your app writes logs to a file at /var/log/app/app.log. You can't modify the app, but you need those logs shipped to your central aggregator as container stdout.", "prompt": "Which multi-container pattern solves this, and how?", "evidence": [], "choices": ["Sidecar: add a second container in the same Pod sharing an emptyDir volume that tails the log file to its own stdout", "Ambassador: add a proxy container that rewrites the app's log format", "Adapter: run the app twice so one copy handles logging", "Init container: it runs first and converts the log file to stdout before the app starts"], "answer": 0, "why": "The sidecar pattern extends a Pod with a helper container sharing its lifecycle and volumes. Mounting the same emptyDir at /var/log/app in both containers lets the sidecar 'tail -f' the file to stdout, where the cluster logging pipeline picks it up — no app changes needed. Init containers run to completion before the app starts, so they can't tail ongoing logs.", "hint": "Which pattern runs alongside the app for its whole lifetime?", "objectives": ["Multi-container patterns", "Sidecar"], "mins": 6}, {"id": "ckad-init-container", "title": "Wait for the database", "situation": "Your API Pod crashes on startup when the database isn't ready yet. You want the API container to start only after the DB accepts connections, without baking retry logic into the app.", "prompt": "What is the Kubernetes-native approach?", "evidence": [], "choices": ["An init container that blocks until the DB is reachable — app containers start only after init containers complete", "A livenessProbe on the API that restarts it until the DB is up", "A second replica of the API so one is always ready", "A preStop hook that delays termination until the DB appears"], "answer": 0, "why": "Init containers run sequentially to completion before any app container starts — ideal for 'wait for dependency' gates (e.g., sh -c 'until nc -z db 5432; do sleep 2; done'). A livenessProbe would just restart-loop the app; preStop runs at shutdown, not startup.", "hint": "What runs to completion before the app containers start?", "objectives": ["Init containers", "Startup ordering"], "mins": 5}, {"id": "ckad-probes", "title": "Slow starter keeps getting killed", "situation": "Your Java app takes 90 seconds to boot. Kubernetes keeps restarting it after 30 seconds, so it never becomes ready.", "prompt": "Which probe configuration fixes this correctly?", "evidence": [["deployment.yaml (excerpt)", "livenessProbe:\n  httpGet: {path: /healthz, port: 8080}\n  periodSeconds: 10"]], "choices": ["Add a startupProbe with failureThreshold high enough to cover 90s+ of boot, so liveness stays disabled until startup succeeds", "Increase the livenessProbe periodSeconds to 90", "Remove the livenessProbe — probes are optional", "Add a readinessProbe with initialDelaySeconds: 90"], "answer": 0, "why": "startupProbe gates the other probes: while it hasn't succeeded, liveness and readiness are disabled, so slow boots aren't killed. It's the purpose-built tool (e.g., failureThreshold: 18 × periodSeconds: 10 = 180s budget). Raising liveness periodSeconds leaves a permanent 90s blind spot; readinessProbe alone doesn't stop liveness kills.", "hint": "Which probe exists specifically to protect slow-starting containers?", "objectives": ["Probes", "startupProbe"], "mins": 6}, {"id": "ckad-job-restartpolicy", "title": "The Job that won't validate", "situation": "You write a Job for a nightly report. 'kubectl apply' rejects it: the Pod template's restartPolicy is invalid for Jobs.", "prompt": "What restartPolicy values are legal in a Job, and which should you pick?", "evidence": [["job.yaml (excerpt)", "spec:\n  template:\n    spec:\n      restartPolicy: Always\n      containers: [...]"]], "choices": ["Only OnFailure or Never — use OnFailure so transient failures retry within the Pod before the Job counts a failure", "Always is required — the error means something else", "Jobs don't use restartPolicy — delete the field", "Only Never — Jobs must never retry"], "answer": 0, "why": "Jobs forbid restartPolicy: Always (it would loop forever on success). OnFailure restarts the container in place on failure — usually what you want for transient errors; Never lets the Job controller create a fresh Pod per retry (counted against backoffLimit). Pick based on whether in-place retry or a clean Pod is better.", "hint": "What would restartPolicy: Always do to a Job that already succeeded?", "objectives": ["Jobs", "restartPolicy"], "mins": 5}, {"id": "ckad-cronjob-schedule", "title": "The report ran twice", "situation": "Your CronJob 'nightly-report' with schedule '0 2 * * *' produced two overlapping runs last night, corrupting the output file they both write.", "prompt": "How do you prevent overlapping runs?", "evidence": [], "choices": ["Set concurrencyPolicy: Forbid so a new run is skipped while the previous is still active", "Set parallelism: 1 — that limits Pods per Job", "Shorten the schedule so runs finish faster", "Set backoffLimit: 0 — that prevents retries"], "answer": 0, "why": "concurrencyPolicy controls overlapping CronJob runs: Allow (default), Forbid (skip if previous still running), or Replace (kill the old run). Forbid is the safe choice for non-reentrant jobs. parallelism limits Pods within one Job, not across scheduled runs.", "hint": "Which CronJob field governs what happens when the schedule fires while the last run is still going?", "objectives": ["CronJobs", "concurrencyPolicy"], "mins": 5}, {"id": "ckad-12factor-env", "title": "Config baked into the image", "situation": "The team builds a separate container image per environment (dev, staging, prod) because the API URL and feature flags differ. Promoting to prod means rebuilding — and last week the 'prod' image differed from the tested one.", "prompt": "What is the cloud-native fix?", "evidence": [], "choices": ["Build one immutable image; inject per-environment config via env vars, ConfigMaps, or Secrets at deploy time", "Keep per-env images but tag them more carefully", "Store config in the image layers but document the differences", "Build the image in prod so it's guaranteed to match"], "answer": 0, "why": "Twelve-factor config principle: code and config are strictly separated; the same artifact promotes through environments with config injected at runtime. Per-env images break the guarantee that what you tested is what you ship. ConfigMaps/Secrets plus env or volume mounts are the Kubernetes mechanism.", "hint": "What should differ between the dev and prod deployments if the image is identical?", "objectives": ["App design", "Config separation"], "mins": 5}]}, {"id": "deployment", "name": "Deployment", "scenarios": [{"id": "ckad-rolling-params", "title": "Zero-downtime deploy tuning", "situation": "Your Deployment rolls out v2, but during the rollout capacity dips and a few requests fail. Defaults are maxSurge: 25%, maxUnavailable: 25%.", "prompt": "How do you tune the strategy for a strict zero-downtime requirement?", "evidence": [], "choices": ["Set maxUnavailable: 0 (never drop below desired replicas) and maxSurge: 1+ — new Pods come up before old ones go down", "Set maxSurge: 0 and maxUnavailable: 50% — faster rollouts", "Switch strategy to Recreate — it's the zero-downtime strategy", "Delete the strategy field — defaults guarantee zero downtime"], "answer": 0, "why": "RollingUpdate's two knobs: maxSurge (how many extra Pods above desired) and maxUnavailable (how many may be down). maxUnavailable: 0 guarantees full capacity throughout; a positive maxSurge provides the extra Pods to make that possible. Recreate kills everything first — the opposite of zero-downtime. Note: with maxUnavailable: 0 and maxSurge: 0 the rollout deadlocks.", "hint": "Which knob controls 'how many can be down' during the rollout?", "objectives": ["Deployment strategies", "RollingUpdate"], "mins": 6}, {"id": "ckad-set-image", "title": "Ship the new image now", "situation": "CI built app:2.4.1. You need to update the running Deployment's container image without editing YAML by hand, then verify the rollout.", "prompt": "What is the imperative sequence?", "evidence": [], "choices": ["kubectl set image deployment/api api=app:2.4.1, then kubectl rollout status deployment/api", "kubectl edit deployment/api — the only way to change images", "kubectl scale deployment/api --replicas=0 then back up", "Delete the Pods — the Deployment will pull the new image automatically"], "answer": 0, "why": "'kubectl set image deployment/<name> <container>=<image>' updates the Pod template, triggering a rolling update; 'rollout status' watches it to completion. The container name (not the Deployment name) goes before the '='. For history/rollback: 'rollout history' and 'rollout undo'.", "hint": "Which kubectl verb is designed for updating a workload's image?", "objectives": ["kubectl", "Rollouts"], "mins": 5}, {"id": "ckad-rollback", "title": "v2 is broken — go back", "situation": "The v2 rollout completed but error rates spiked. You need v1 back immediately, and you want to confirm what changed between revisions.", "prompt": "What is the rollback procedure?", "evidence": [], "choices": ["kubectl rollout undo deployment/api (optionally --to-revision=N); inspect with kubectl rollout history deployment/api", "kubectl delete deployment/api and recreate v1 from memory", "Scale v2 to 0 — the old ReplicaSet reactivates automatically", "Edit the image tag back and hope the ReplicaSets sort it out"], "answer": 0, "why": "Deployments keep old ReplicaSets (revisionHistoryLimit, default 10), so 'rollout undo' rolls the Pod template back to the previous (or specified) revision as a new rollout. 'rollout history' shows revisions. This is why keeping revision history matters — without it there's nothing to roll back to.", "hint": "What does the Deployment keep around that makes rollback possible?", "objectives": ["Rollbacks", "Revision history"], "mins": 5}, {"id": "ckad-bluegreen", "title": "Blue-green on a budget", "situation": "You need blue-green deploys (full new version up, instant cutover, instant rollback) but have no service mesh or progressive-delivery tool.", "prompt": "How do you do it with plain Services and labels?", "evidence": [], "choices": ["Run blue and green Deployments with version labels; flip the Service selector from version=blue to version=green to cut over instantly", "Create two Services and update DNS — label selectors can't switch traffic", "Use kubectl port-forward to redirect traffic", "Blue-green requires Istio — it can't be done with primitives"], "answer": 0, "why": "A Service routes to whatever its selector matches. With blue (v1) and green (v2) Deployments carrying version=blue/green labels, changing the Service selector flips 100% of traffic atomically; flipping back is the instant rollback. Keep both environments' resource cost in mind — you run 2x capacity during the transition.", "hint": "What determines which Pods a Service sends traffic to?", "objectives": ["Blue-green", "Service selectors"], "mins": 5}, {"id": "ckad-helm-values", "title": "Same chart, three environments", "situation": "Your Helm chart deploys the API. Dev needs 1 replica and debug logging; prod needs 5 replicas, production logging, and a larger memory limit.", "prompt": "How do you handle per-environment differences with Helm?", "evidence": [], "choices": ["Parameterize with values.yaml and override per environment: helm install -f values-prod.yaml (or --set) — one chart, multiple value files", "Maintain three copies of the chart, one per environment", "Edit the deployed manifests with kubectl edit after install", "Helm charts can't vary by environment — use raw YAML instead"], "answer": 0, "why": "Helm's values mechanism separates the template (chart) from configuration (values): defaults in values.yaml, per-env overrides via -f values-prod.yaml or --set (later sources win). 'helm upgrade --install' makes releases idempotent; 'helm rollback' reverts to a previous release revision.", "hint": "What is the chart's equivalent of function parameters?", "objectives": ["Helm", "Values overrides"], "mins": 5}, {"id": "ckad-kustomize-overlay", "title": "Kustomize for environment tweaks", "situation": "You like plain YAML but need small per-environment patches (replica counts, an extra env var in prod) without templating.", "prompt": "How does Kustomize structure this?", "evidence": [], "choices": ["A base with common resources; overlays per environment with patches — 'kubectl apply -k overlays/prod'", "One kustomization.yaml per file — overlays are for Helm only", "Copy the base YAML per environment and edit — Kustomize is just a linter", "Kustomize requires converting YAML to JSON first"], "answer": 0, "why": "Kustomize's base/overlay model: base holds shared manifests; each overlay references the base and applies patches (strategic merge or JSON patches), name prefixes, or configMap generators. 'kubectl apply -k' (or kustomize build) renders the final YAML. No templating language — it's pure YAML transformation.", "hint": "Where do the shared manifests live, and where do the differences live?", "objectives": ["Kustomize", "Overlays"], "mins": 5}]}, {"id": "observability", "name": "Observability", "scenarios": [{"id": "ckad-logs-selector", "title": "Logs from all replicas at once", "situation": "Your API has 6 replicas (label app=api). An error is intermittent — you need to tail logs from ALL of them simultaneously, including crashed previous containers.", "prompt": "Which kubectl commands do this?", "evidence": [], "choices": ["kubectl logs -l app=api --all-containers -f, and add --previous for crashed container instances", "kubectl logs deployment/api — that tails all replicas automatically", "SSH to each node and read /var/log — kubectl can't aggregate", "kubectl get logs -l app=api — the get verb fetches logs"], "answer": 0, "why": "-l selects all matching Pods and streams their logs multiplexed (prefixed by Pod name); --all-containers covers multi-container Pods; -f follows; --previous shows the last terminated container's logs (essential for CrashLoopBackOff). 'kubectl logs' on a Deployment name alone errors — it needs a Pod or selector.", "hint": "Which flags select many Pods, follow, and show the previous crashed instance?", "objectives": ["kubectl logs", "Multi-pod logs"], "mins": 5}, {"id": "ckad-kubectl-top", "title": "Is it actually using that memory?", "situation": "You set memory limit 1Gi on the API. Users report slowness; you suspect the limit throttles it — or that the request is wrong and it's being evicted.", "prompt": "How do you check live usage vs configured requests/limits?", "evidence": [], "choices": ["kubectl top pod -l app=api --containers (metrics-server) for live usage; compare with kubectl describe pod requests/limits", "kubectl logs — memory pressure appears in logs", "top on your laptop — it shows Pod usage", "Metrics aren't available in Kubernetes — install a separate APM"], "answer": 0, "why": "'kubectl top' reads the metrics-server (CPU/memory per Pod/node, --containers for per-container). Compare usage against requests (scheduling/eviction baseline) and limits (throttle/kill ceiling). If usage hugs the limit, raise it; if the node is pressured and usage exceeds requests, expect eviction. metrics-server is the in-cluster metrics pipeline (short-term); Prometheus is for history.", "hint": "Which command shows live resource usage, and what provides its data?", "objectives": ["Metrics", "kubectl top"], "mins": 5}, {"id": "ckad-events", "title": "Reading the cluster's diary", "situation": "A Pod won't schedule. describe shows little, logs are empty (it never started). You need the scheduler's reasoning.", "prompt": "Where is that recorded?", "evidence": [], "choices": ["kubectl get events --sort-by=.metadata.creationTimestamp (or describe's Events section) — the scheduler and kubelet record decisions there", "Events are only in the cloud provider console", "kubectl logs kube-scheduler — scheduler logs stream to kubectl", "Events don't exist for unscheduled Pods"], "answer": 0, "why": "Events are namespaced objects recording cluster decisions: 'FailedScheduling', 'FailedMount', 'Unhealthy' probe failures, image pull errors. 'kubectl describe pod' shows recent ones; 'kubectl get events -w' watches live. They're the first place to look when a Pod never starts — but note events expire (default 1h TTL), so check promptly.", "hint": "What object records '0/3 nodes available: insufficient cpu'?", "objectives": ["Events", "Troubleshooting"], "mins": 4}, {"id": "ckad-structured-logging", "title": "Grep-proof log soup", "situation": "The app logs free-text lines like 'user 123 bought thing at 10:05ish'. The logging pipeline can't parse timestamps, levels, or request IDs — dashboards are impossible.", "prompt": "What logging discipline fixes this?", "evidence": [], "choices": ["Structured (JSON) logging with consistent fields — timestamp, level, message, request_id — emitted to stdout for the collector", "Log more text — volume solves parsing", "Write logs to files instead of stdout — files are structured", "Logging format doesn't matter — the pipeline guesses"], "answer": 0, "why": "Structured JSON logs are machine-parseable: every line carries timestamp (ISO8601), level, logger, message, and correlation fields (request_id/trace_id). Written to stdout/stderr, the node/cluster collector (Fluent Bit/Fluentd/Vector) forwards them without sidecars. Correlation IDs tie one request's logs across services — the foundation of traceable debugging.", "hint": "What format can both humans and machines read reliably?", "objectives": ["Logging", "Structured logs"], "mins": 5}, {"id": "ckad-probe-observability", "title": "Probes as monitoring", "situation": "Your readinessProbe fails during a downstream outage, and the Pod is removed from the Service. Monitoring pages 'Pod not ready' — but the Pod itself is healthy.", "prompt": "How should you interpret probe-based signals?", "evidence": [], "choices": ["Readiness reflects dependency-aware servability, not app health — alert on the downstream SLO, and treat 'not ready' as a routing signal, not an app failure", "Delete the readinessProbe — it causes false alarms", "Make readiness always succeed — probes shouldn't fail", "Page on every probe failure — all failures are equal"], "answer": 0, "why": "Probes have distinct semantics: liveness = 'restart me if broken', readiness = 'don't send traffic (maybe temporarily)', startup = 'still booting'. A readiness failure that sheds load during a downstream outage is working as designed — the alert should target the downstream dependency's SLI, with Pod-readiness as context, not the page trigger.", "hint": "Is 'not ready' a verdict on the app, or on whether it should receive traffic right now?", "objectives": ["Probes", "Signal interpretation"], "mins": 6}, {"id": "ckad-tracing-concept", "title": "Where did the 2 seconds go?", "situation": "A request takes 2s across api → auth → db → cache. Metrics show each service is 'fine' on average. You need the per-request breakdown.", "prompt": "Which observability pillar answers this, and what does it require from the app?", "evidence": [], "choices": ["Distributed tracing (spans per service, one trace per request) — requires propagating trace context (headers) through every hop", "More metrics — averages hide the problem so add more", "Logs with timestamps — sufficient for cross-service timing", "Tracing works with zero app changes — just enable it"], "answer": 0, "why": "Traces decompose one request into spans across services, exposing exactly which hop consumed the 2s. They require context propagation (W3C traceparent headers) — libraries/instrumentation must pass the trace ID along; a hop that drops headers breaks the trace. Sampling (head/tail-based) controls cost. Jaeger/Tempo store, Grafana visualizes.", "hint": "How does the auth service know it's part of the same request as the api service?", "objectives": ["Tracing", "Context propagation"], "mins": 6}]}, {"id": "services-networking", "name": "Services & Networking", "scenarios": [{"id": "ckad-expose-app", "title": "From Pod to URL", "situation": "Your app Deployment is running but unreachable. You need: internal ClusterIP access for other services, plus external HTTPS via Ingress on app.example.com.", "prompt": "What are the two objects and their relationship?", "evidence": [], "choices": ["A ClusterIP Service selecting the Pods, plus an Ingress with host app.example.com routing to that Service — Ingress never targets Pods directly", "An Ingress selecting the Pods directly — Services are optional", "A NodePort Service — Ingress is only for external load balancers", "Expose the Deployment with --type=Ingress — kubectl creates both"], "answer": 0, "why": "The layering: Deployment → Pods; Service → stable virtual IP + DNS selecting Pods; Ingress → HTTP routing rules pointing at Services (service.name + port). Ingress controllers implement the rules. Skipping the Service breaks the model — Ingress backends are always Services.", "hint": "What does an Ingress rule point at — Pods or something else?", "objectives": ["Service + Ingress", "Layering"], "mins": 5}, {"id": "ckad-svc-discovery", "title": "Finding the database", "situation": "Your app needs the Postgres host and port. The DB is exposed as Service 'db' in the same namespace. You want zero hardcoded IPs.", "prompt": "What are the two built-in discovery mechanisms?", "evidence": [], "choices": ["DNS (db resolves to the ClusterIP) and environment variables (DB_SERVICE_HOST/DB_SERVICE_PORT injected into Pods created after the Service)", "Hardcode the ClusterIP — it never changes", "Query the API server from the app on every request", "Services can't be discovered — use Ingress for everything"], "answer": 0, "why": "Kubernetes injects discovery two ways: DNS A records (<svc>.<ns>.svc.cluster.local, plus short names in-namespace) and legacy env vars (DB_SERVICE_HOST, DB_SERVICE_PORT — only for Services existing at Pod creation). DNS is the modern, reliable path; SRV records give named ports. Never hardcode ClusterIPs.", "hint": "What does every Pod get in /etc/resolv.conf, and what env vars appear for pre-existing Services?", "objectives": ["Service discovery", "DNS vs env"], "mins": 5}, {"id": "ckad-netpol-app", "title": "Locking down the app", "situation": "Your 3-tier app (web → api → db) currently allows any Pod to reach the DB. You want: web only from Ingress, api only from web, db only from api.", "prompt": "How many NetworkPolicies, and what pattern?", "evidence": [], "choices": ["Three policies (one per tier): default-deny ingress per namespace/tier, then explicit allow rules web←ingress, api←web, db←api via podSelectors", "One policy on the web tier — it protects everything behind it", "NetworkPolicies are egress-only — this can't be done", "Use ServiceAccounts — they enforce network isolation"], "answer": 0, "why": "Each tier gets a policy selecting its Pods with ingress.from listing only the allowed source (podSelector for the upstream tier; for Ingress-sourced traffic, allow from the ingress controller's Pods/namespace). Default-deny first (empty podSelector ingress policy), then whitelist. Egress policies similarly lock outbound. Defense in depth per tier.", "hint": "Does one flat rule express three different trust relationships?", "objectives": ["NetworkPolicy", "Tiered isolation"], "mins": 6}, {"id": "ckad-ingress-paths", "title": "One host, two services", "situation": "app.example.com/ should go to the frontend Service, app.example.com/api to the backend Service. You need to watch out for path matching semantics.", "prompt": "How do you write the Ingress rules, and what pathType pitfall matters?", "evidence": [], "choices": ["Two paths in one rule with pathType: Prefix — and remember Prefix matches '/api' AND '/apifoo' (element-wise), so order/trailing-slash behavior matters per controller", "pathType doesn't matter — all controllers treat paths identically", "Use two Ingress objects — one rule can't have two paths", "Paths route by DNS — use api.app.example.com instead, paths can't work"], "answer": 0, "why": "Ingress rules support multiple paths per host, each with pathType: Prefix (element-wise prefix match) or Exact (full match) — ImplementationSpecific defers to controller annotations. The Prefix '/api' matching '/apifoo' surprise is real (it's path-element based: '/api' matches '/api/' and '/api/v1' but the exact boundary rules vary). Test with your controller; prefer Exact or careful Prefix design.", "hint": "Does Prefix '/api' match '/apifoo'?", "objectives": ["Ingress paths", "pathType"], "mins": 6}, {"id": "ckad-headless", "title": "When you need the Pod IPs", "situation": "Your clustered database does its own peer discovery and needs to reach each Pod directly (not load-balanced through a VIP).", "prompt": "What Service type gives direct Pod DNS records?", "evidence": [], "choices": ["Headless Service (clusterIP: None) — DNS returns the individual Pod A records instead of a single VIP", "ClusterIP with sessionAffinity — that pins to Pods", "NodePort — it exposes Pod IPs", "ExternalName — it lists Pod IPs"], "answer": 0, "why": "clusterIP: None disables the virtual IP; DNS then returns A records for each backing Pod (pod-0.db.default.svc...), enabling client-side discovery/load-balancing — exactly what clustered datastores (Cassandra, Kafka, etcd) need. StatefulSets pair naturally with headless Services for stable Pod DNS names.", "hint": "What does clusterIP: None change about DNS responses?", "objectives": ["Headless Services", "Stateful discovery"], "mins": 5}, {"id": "ckad-portforward-debug", "title": "Reaching the app without exposure", "situation": "The app isn't exposed externally yet, but you need to test its HTTP endpoint from your laptop right now.", "prompt": "What is the quick debug path, and what is it NOT for?", "evidence": [], "choices": ["kubectl port-forward svc/api 8080:80 (or pod/<pod>) — forwards localhost:8080 to the Service; it's a debug tool, not a production exposure method", "Expose it with a LoadBalancer temporarily — port-forward doesn't exist", "port-forward is for production traffic — leave it running", "SSH to the node — the only way"], "answer": 0, "why": "'kubectl port-forward' tunnels a local port to a Pod/Service port via the API server — instant, no Service/Ingress changes, perfect for debugging. It's single-connection, tied to your kubectl session, and bypasses network policies — never a production pattern. For real exposure, use Service/Ingress.", "hint": "What tunnels a port through the API server for ad-hoc access?", "objectives": ["port-forward", "Debugging"], "mins": 4}]}, {"id": "state-config", "name": "State & Config", "scenarios": [{"id": "ckad-configmap-env", "title": "Twelve env vars, zero hardcoding", "situation": "Your app reads 12 config values. They're currently hardcoded in the Deployment YAML, duplicated across 4 environments.", "prompt": "How do you externalize them idiomatically?", "evidence": [], "choices": ["A ConfigMap per environment + envFrom: configMapRef in the Pod spec — all keys become env vars; one Deployment, N ConfigMaps", "Bake them into the image per environment — simplest", "One env: entry per variable copied into each Deployment — explicit is better", "ConfigMaps can't hold 12 keys — split into 12 ConfigMaps"], "answer": 0, "why": "envFrom: configMapRef injects every ConfigMap key as an env var — clean for bulk config. Alternatives: valueFrom: configMapKeyRef for single keys (with optional: true for tolerance), or volume mounts for file-style config. Per-environment ConfigMaps keep one Deployment portable. Remember: updating a ConfigMap doesn't restart Pods — trigger a rollout after changes.", "hint": "Which Pod spec field injects ALL of a ConfigMap's keys as env vars?", "objectives": ["ConfigMaps", "envFrom"], "mins": 5}, {"id": "ckad-secret-types", "title": "TLS cert and registry creds", "situation": "You need to store a TLS certificate and a private-registry credential as Secrets. A teammate creates both as generic 'Opaque' with hand-named keys.", "prompt": "What are the purpose-built Secret types, and why use them?", "evidence": [], "choices": ["kubernetes.io/tls (tls.crt/tls.key — Ingress expects this shape) and kubernetes.io/dockerconfigjson (.dockerconfigjson — for imagePullSecrets)", "Opaque is the only real type — the others are aliases", "Secrets can't hold certs — use ConfigMaps", "Types don't matter — any keys work everywhere"], "answer": 0, "why": "Typed Secrets enforce expected key shapes: tls Secrets carry tls.crt/tls.key (what Ingress TLS and serving-cert flows consume); dockerconfigjson carries .dockerconfigjson (what imagePullSecrets reads). Controllers validate the shape — hand-rolled Opaque Secrets with wrong key names fail silently at consumption time. 'kubectl create secret tls/docker-registry' builds them correctly.", "hint": "What key names does an Ingress expect in its TLS Secret?", "objectives": ["Secret types", "tls/dockerconfigjson"], "mins": 5}, {"id": "ckad-config-update", "title": "Config changed, Pods didn't", "situation": "You updated a ConfigMap mounted as env vars. The Pods still serve the old config. 'kubectl get configmap' shows the new values.", "prompt": "Why, and what are the update strategies?", "evidence": [], "choices": ["Env-var injection happens once at Pod creation — restart Pods ('kubectl rollout restart') to pick up changes; volume-mounted ConfigMaps update automatically (kubelet syncs, ~1min)", "ConfigMaps are immutable — you must delete and recreate", "The update failed — ConfigMaps can't be edited", "Pods poll ConfigMaps every 30 seconds — just wait"], "answer": 0, "why": "Env injection is a creation-time snapshot — no live updates, hence the 'rollout restart' pattern (or Reloader/Stakater automation). Volume mounts ARE eventually consistent (kubelet syncs projected volumes). For versioned config, the immutable-ConfigMap + new-name + rollout pattern gives atomic, rollbackable changes. Secrets behave the same way.", "hint": "When are env vars resolved — continuously, or once?", "objectives": ["Config updates", "rollout restart"], "mins": 5}, {"id": "ckad-downward-api", "title": "The app needs its own name", "situation": "Your clustered app must know its Pod name, namespace, and node name at runtime for peer discovery and logging — without API server credentials.", "prompt": "How do you expose Pod metadata to the container?", "evidence": [], "choices": ["Downward API: env with valueFrom.fieldRef (fieldPath: metadata.name/namespace) or volume files — no RBAC or API calls needed", "Give the Pod a ServiceAccount with Pod read rights and query the API", "Hardcode the values — Pod names are stable", "The app can't know its own identity — redesign"], "answer": 0, "why": "The Downward API projects Pod fields (metadata.name, namespace, labels, annotations, podIP, nodeName via spec.nodeName, resource limits) into env vars or files. It's the no-privilege way for self-awareness — no ServiceAccount, no API round-trips. Labels/annotations via fieldRef expose scheduling context (e.g., zone) to the app.", "hint": "Which API injects the Pod's own fields without any API calls?", "objectives": ["Downward API", "fieldRef"], "mins": 5}, {"id": "ckad-emptydir-scratch", "title": "Scratch space for the pipeline", "situation": "An init container downloads a dataset; the app container processes it; both need the same files. The data must NOT survive Pod deletion.", "prompt": "Which volume type fits?", "evidence": [], "choices": ["emptyDir — shared ephemeral storage, created with the Pod, deleted with it; perfect for init→app handoff and scratch", "A PVC — data must persist", "hostPath — shared via the node", "ConfigMap — it holds files"], "answer": 0, "why": "emptyDir is Pod-scoped ephemeral storage: all containers in the Pod share it, it starts empty, and it's deleted with the Pod. Ideal for scratch space, caches, and init-container→app handoffs. (Medium: Memory makes it a tmpfs for speed.) Anything needing persistence → PVC; node-tied → hostPath (avoid).", "hint": "Which volume lives and dies exactly with the Pod?", "objectives": ["emptyDir", "Ephemeral storage"], "mins": 4}, {"id": "ckad-secret-env-risk", "title": "Secrets in env vs files", "situation": "Security review flags Secrets injected as env vars: they appear in '/proc/<pid>/environ', crash dumps, and application error pages.", "prompt": "What is the safer consumption pattern, and its trade-off?", "evidence": [], "choices": ["Mount Secrets as volumes (files) — readable only by the process user, not leaked via environ; trade-off: app must read files instead of env", "Env vars are safer — files are world-readable", "Encode Secrets twice — double base64 is secure", "Secrets shouldn't be used at all — use ConfigMaps"], "answer": 0, "why": "Env-var secrets leak through /proc, core dumps, debug endpoints, and child processes inheriting the environment. Volume-mounted Secrets appear as files with controllable permissions (defaultMode), readable only as the app needs. Trade-off: the app reads files (or a sidecar/entrypoint maps them to env at the last moment). Either way: RBAC-limit Secret access, enable etcd encryption at rest.", "hint": "Who can read /proc/<pid>/environ that shouldn't see the DB password?", "objectives": ["Secret consumption", "Security"], "mins": 6}]}, {"id": "security", "name": "Security", "scenarios": [{"id": "ckad-least-privilege-sa", "title": "The app's ServiceAccount can do too much", "situation": "Your app only needs to read ConfigMaps in its namespace, but it uses the default ServiceAccount bound to a broad Role.", "prompt": "What is the least-privilege setup?", "evidence": [], "choices": ["Dedicated ServiceAccount + Role (get/list/watch on configmaps in that namespace) + RoleBinding — verify with kubectl auth can-i --as", "Keep the default SA — creating SAs is overhead", "Bind cluster-admin to the app's SA — apps need full access", "ServiceAccounts are only for humans — use a user cert"], "answer": 0, "why": "Each app gets its own ServiceAccount ('kubectl create sa api-reader'), a Role with only needed verbs/resources, and a RoleBinding tying them in the namespace. 'kubectl auth can-i list configmaps --as=system:serviceaccount:prod:api-reader -n prod' verifies. Default SAs accumulate broad bindings over time — dedicated SAs keep blast radius minimal and auditable.", "hint": "What three objects give a workload exactly the permissions it needs?", "objectives": ["RBAC", "Least privilege"], "mins": 5}, {"id": "ckad-nonroot", "title": "Running as non-root", "situation": "Your image runs as root by default. Security policy requires non-root. The app writes to /tmp and listens on 8080.", "prompt": "What changes make this work?", "evidence": [], "choices": ["Dockerfile USER appuser (numeric UID preferred) + Pod securityContext runAsNonRoot: true; ensure /tmp is writable and the port is > 1024", "Just add runAsNonRoot — the image handles the rest", "Non-root can't write files — keep root", "USER is cosmetic — containers always run as root"], "answer": 0, "why": "Defense in depth: the image should default to non-root (USER with numeric UID — name resolution isn't guaranteed), and the Pod spec enforces runAsNonRoot: true (kubelet rejects root containers). The app must then work unprivileged: ports > 1024, writable dirs (emptyDir for /tmp/scratch), file ownership matching the UID. Verify with 'kubectl exec -- whoami'.", "hint": "What breaks in the app when it stops being root?", "objectives": ["Non-root", "USER", "runAsNonRoot"], "mins": 5}, {"id": "ckad-capabilities", "title": "Dropping capabilities", "situation": "Your container needs to bind port 443 (privileged port) but nothing else special. Running the whole container as privileged is overkill.", "prompt": "What is the surgical approach?", "evidence": [], "choices": ["capabilities: drop: [ALL], add: [NET_BIND_SERVICE] — grant only the needed Linux capability", "privileged: true — simplest and fine", "Capabilities can't be managed per-container — all or nothing", "Bind to 8443 instead — capabilities are deprecated"], "answer": 0, "why": "Linux capabilities split root's powers: drop ALL then add back only what's needed (NET_BIND_SERVICE for sub-1024 ports). This is the least-privilege alternative to privileged: true (which disables nearly all isolation). Set in the container securityContext. (Or avoid the need: listen on 8080 and map externally.)", "hint": "Which capability governs binding privileged ports?", "objectives": ["Capabilities", "Least privilege"], "mins": 5}, {"id": "ckad-readonly-fs", "title": "Immutable container filesystem", "situation": "An attacker who compromises the app could write malware to the container filesystem. You want the filesystem read-only, but the app needs /tmp and a cache dir.", "prompt": "How do you configure this?", "evidence": [], "choices": ["readOnlyRootFilesystem: true + emptyDir volumes mounted at /tmp and the cache path for the writable bits", "Read-only filesystems break all apps — don't do it", "chmod -R a-w / in the Dockerfile — equivalent", "readOnlyRootFilesystem only works with privileged containers"], "answer": 0, "why": "readOnlyRootFilesystem: true makes the container's root immutable — a strong anti-tampering control. Apps declare their writable needs explicitly via emptyDir mounts (or configMap/secret volumes). This pairs with allowPrivilegeEscalation: false and dropped capabilities for the standard hardened container profile.", "hint": "Where do the writable bits go when the root is read-only?", "objectives": ["readOnlyRootFilesystem", "Hardening"], "mins": 5}, {"id": "ckad-image-security", "title": "Trusting the image", "situation": "Your Deployment pulls app:v3 from a public registry over HTTP (not HTTPS). Supply-chain review flags three issues.", "prompt": "What are they, and what are the fixes?", "evidence": [], "choices": ["Mutable tag (pin digest), unverified provenance (verify signatures/policy), insecure transport (use HTTPS registry) — plus scan for CVEs and use minimal base images", "Public registries are fine — no issues", "Only the HTTP matters — tags and signatures are cosmetic", "Pulling images is inherently safe — skip the review"], "answer": 0, "why": "Image supply-chain hygiene: pin immutable digests (tags move), verify signatures (cosign) with admission enforcement, always use TLS registries, scan for CVEs in CI (and fail on criticals), minimize attack surface (distroless/slim bases, no secrets in layers). Each is a distinct control; together they're the SLSA-minded baseline.", "hint": "What proves the image is the one your CI built?", "objectives": ["Image security", "Supply chain"], "mins": 6}, {"id": "ckad-netpol-egress", "title": "The app that shouldn't phone home", "situation": "Your app only needs: DNS, the internal api Service, and the DB. Egress to the public internet should be blocked (data-exfiltration control).", "prompt": "How do you express least-privilege egress?", "evidence": [], "choices": ["An egress NetworkPolicy: allow DNS (port 53 to kube-dns), allow to the api/DB podSelectors on their ports — everything else denied by the policy's presence", "Egress can't be controlled — only ingress", "Block it with a firewall on the node — policies are ingress-only", "The app needs internet — allow all egress"], "answer": 0, "why": "NetworkPolicy policyTypes: [Egress] with egress.to rules: DNS first (to: namespaceSelector/podSelector for kube-dns, port 53 — without it nothing resolves), then specific podSelectors/ports for api and DB. Once any egress policy selects the Pod, all other egress is denied. This is the data-exfiltration guardrail for compromised Pods.", "hint": "What breaks first if you forget to allow DNS in the egress policy?", "objectives": ["Egress policy", "Data exfiltration"], "mins": 6}]}], "lessons": [{"domain_id": "app-design", "title": "App Design — Core concepts", "concepts": ["Sidecar: mounting the same emptyDir at /var/log/app in both containers lets the sidecar 'tail -f' the file to stdout, where the cluster logging pipeline picks it up — no app changes needed.", "Init containers run to completion before the app starts, so they can't tail ongoing logs. Init containers run sequentially to completion before any app container starts — ideal for 'wait for dependency' gates (e.g., sh -c 'until nc -z db 5432; do sleep 2; done').", "Probes: startupProbe gates the other probes: while it hasn't succeeded, liveness and readiness are disabled, so slow boots aren't killed."], "example": {"lang": "yaml", "code": "livenessProbe:\n  httpGet: {path: /healthz, port: 8080}\n  periodSeconds: 10", "walkthrough": "startupProbe gates the other probes: while it hasn't succeeded, liveness and readiness are disabled, so slow boots aren't killed. It's the purpose-built tool (e.g., failureThreshold: 18 × periodSeconds: 10 = 180s budget). Raising liveness periodSeconds leaves a permanent 90s blind spot; readinessProbe alone doesn't stop liveness kills."}, "pitfalls": ["Common trap: init container: it runs first and converts the log file to stdout before the app starts.", "Common trap: ambassador: add a proxy container that rewrites the app's log format.", "Common trap: adapter: run the app twice so one copy handles logging.", "Common trap: store config in the image layers but document the differences."], "try_it": "Try it now in the Terminal tab →"}, {"domain_id": "deployment", "title": "Deployment — Core concepts", "concepts": ["Deployment strategies: the container name (not the Deployment name) goes before the '='.", "RollingUpdate's two knobs: maxSurge (how many extra Pods above desired) and maxUnavailable (how many may be down). maxUnavailable: 0 guarantees full capacity throughout; a positive maxSurge provides the extra Pods to make that possible.", "kubectl: 'kubectl apply -k' (or kustomize build) renders the final YAML. 'kubectl set image deployment/<name> <container>=<image>' updates the Pod template, triggering a rolling update; 'rollout status' watches it to completion.", "Revision history: this is why keeping revision history matters — without it there's nothing to roll back to. For history/rollback: 'rollout history' and 'rollout undo'."], "example": {"lang": "text", "code": "Worked example — deployment strategies\nSetup: Helm's values mechanism separates the template (chart) from configuration (values): defaults in values.yaml, per-env overrides via -f…\nReasoning: This is why keeping revision history matters — without it there's nothing to roll back to.\nTakeaway: 'kubectl apply -k' (or kustomize build) renders the final YAML.", "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."}, "pitfalls": ["Common trap: kustomize requires converting YAML to JSON first.", "Common trap: kubectl scale deployment/api --replicas=0 then back up.", "Common trap: the Deployment will pull the new image automatically.", "Common trap: kubectl delete deployment/api and recreate v1 from memory."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "observability", "title": "Observability — Core concepts", "concepts": ["kubectl logs: 'kubectl logs' on a Deployment name alone errors — it needs a Pod or selector. 'kubectl top' reads the metrics-server (CPU/memory per Pod/node, --containers for per-container).", "Multi-pod logs: structured JSON logs are machine-parseable: every line carries timestamp (ISO8601), level, logger, message, and correlation fields (request_id/trace_id).", "Metrics: if usage hugs the limit, raise it; if the node is pressured and usage exceeds requests, expect eviction. metrics-server is the in-cluster metrics pipeline (short-term); Prometheus is for history.", "kubectl top: 'kubectl describe pod' shows recent ones; 'kubectl get events -w' watches live.", "Events are namespaced objects recording cluster decisions: 'FailedScheduling', 'FailedMount', 'Unhealthy' probe failures, image pull errors."], "example": {"lang": "text", "code": "Worked example — kubectl logs\nSetup: They're the first place to look when a Pod never starts — but note events expire (default 1h TTL), so check promptly.\nReasoning: 'kubectl logs' on a Deployment name alone errors — it needs a Pod or selector.\nTakeaway: 'kubectl top' reads the metrics-server (CPU/memory per Pod/node, --containers for per-container).", "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."}, "pitfalls": ["Common trap: kubectl get logs -l app=api.", "Common trap: write logs to files instead of stdout.", "Common trap: tracing works with zero app changes.", "Common trap: metrics aren't available in Kubernetes."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "services-networking", "title": "Services & Networking — Core concepts", "concepts": ["Service + Ingress: the layering: Deployment → Pods; Service → stable virtual IP + DNS selecting Pods; Ingress → HTTP routing rules pointing at Services (service.name + port).", "Service discovery: kubernetes injects discovery two ways: DNS A records (<svc>.<ns>.svc.cluster.local, plus short names in-namespace) and legacy env vars (DB_SERVICE_HOST, DB_SERVICE_PORT — only for Services existing at Pod creation).", "DNS vs env: statefulSets pair naturally with headless Services for stable Pod DNS names. DNS is the modern, reliable path; SRV records give named ports."], "example": {"lang": "text", "code": "Worked example — service + ingress\nSetup: The layering: Deployment → Pods; Service → stable virtual IP + DNS selecting Pods; Ingress → HTTP routing rules pointing at Services (service.name +…\nReasoning: Skipping the Service breaks the model — Ingress backends are always Services.\nTakeaway: Kubernetes injects discovery two ways: DNS A records (<svc>.<ns>.svc.cluster.local, plus short names in-namespace) and legacy env vars…", "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."}, "pitfalls": ["Common trap: use api.app.example.com instead, paths can't work.", "Common trap: an Ingress selecting the Pods directly.", "Common trap: ingress is only for external load balancers.", "Common trap: expose the Deployment with --type=Ingress."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "state-config", "title": "State & Config — Core concepts", "concepts": ["ConfigMaps: per-environment ConfigMaps keep one Deployment portable.", "EnvFrom: configMapRef injects every ConfigMap key as an env var — clean for bulk config.", "Secret types: 'kubectl create secret tls/docker-registry' builds them correctly. Either way: RBAC-limit Secret access, enable etcd encryption at rest.", "Config updates: env injection is a creation-time snapshot — no live updates, hence the 'rollout restart' pattern (or Reloader/Stakater automation).", "rollout restart: remember: updating a ConfigMap doesn't restart Pods — trigger a rollout after changes. For versioned config, the immutable-ConfigMap + new-name + rollout pattern gives atomic, rollbackable changes."], "example": {"lang": "text", "code": "Worked example — configmaps\nSetup: envFrom: configMapRef injects every ConfigMap key as an env var — clean for bulk config.\nReasoning: Controllers validate the shape — hand-rolled Opaque Secrets with wrong key names fail silently at consumption time.\nTakeaway: Env injection is a creation-time snapshot — no live updates, hence the 'rollout restart' pattern (or Reloader/Stakater automation).", "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."}, "pitfalls": ["Common trap: give the Pod a ServiceAccount with Pod read rights and query the API.", "Common trap: pods poll ConfigMaps every 30 seconds.", "Common trap: one env: entry per variable copied into each Deployment."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "security", "title": "Security — Core concepts", "concepts": ["Non-root: defense in depth: the image should default to non-root (USER with numeric UID — name resolution isn't guaranteed), and the Pod spec enforces runAsNonRoot: true (kubelet rejects root containers).", "Capabilities: linux capabilities split root's powers: drop ALL then add back only what's needed (NET_BIND_SERVICE for sub-1024 ports). This pairs with allowPrivilegeEscalation: false and dropped capabilities for the standard hardened container profile.", "Principle: each app gets its own ServiceAccount ('kubectl create sa api-reader'), a Role with only needed verbs/resources, and a RoleBinding tying them in the namespace."], "example": {"lang": "text", "code": "Worked example — least privilege\nSetup: Defense in depth: the image should default to non-root (USER with numeric UID — name resolution isn't guaranteed), and the Pod spec enforces…\nReasoning: Image supply-chain hygiene: pin immutable digests (tags move), verify signatures (cosign) with admission enforcement, always use TLS registries, scan…\nTakeaway: Once any egress policy selects the Pod, all other egress is denied.", "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."}, "pitfalls": ["Common trap: readOnlyRootFilesystem only works with privileged containers.", "Common trap: read-only filesystems break all apps.", "Common trap: pulling images is inherently safe."], "try_it": "Work through this in the Terminal tab →"}], "sections": [{"id": "foundations", "title": "Foundations", "kind": "foundation", "lectures": ["m-binary", "m-subnetting", "f-linux-cli-0", "f-linux-cli-1", "f-linux-cli-2", "f-yaml-0", "f-yaml-1", "f-yaml-2", "f-networking-0", "f-networking-1", "f-networking-2", "f-networking-3"], "lab_ids": [], "drill_domain_ids": []}, {"id": "core", "title": "Core", "kind": "core", "lectures": ["c-deployment", "c-observability", "c-services-networking", "c-state-config"], "lab_ids": ["ckad-lab-1", "ckad-lab-2"], "drill_domain_ids": ["deployment", "observability", "services-networking", "state-config"]}, {"id": "advanced", "title": "Advanced", "kind": "advanced", "lectures": ["c-app-design", "c-security"], "lab_ids": ["ckad-lab-3", "ckad-lab-4"], "drill_domain_ids": ["app-design", "security"]}, {"id": "exam-prep", "title": "Exam Prep", "kind": "exam-prep", "lectures": [], "lab_ids": [], "drill_domain_ids": ["app-design", "deployment", "observability", "services-networking", "state-config", "security"]}], "behavioral": [{"prompt": "Tell me about a Kubernetes application you designed, built, or deployed. What decisions did you make?", "framework": "STAR", "points": ["The app and its requirements", "Key design choices (probes, resources, config)", "How it behaved in production"], "pitfalls": ["No specifics", "Can't explain the choices"]}, {"prompt": "Describe a time an application behaved differently on Kubernetes than you expected.", "framework": "STAR", "points": ["The surprise", "How you diagnosed the platform interaction", "The fix"], "pitfalls": ["Blaming Kubernetes", "No root cause"]}, {"prompt": "Tell me about a deployment that went wrong and how you recovered.", "framework": "STAR", "points": ["What went wrong", "Rollback or fix-forward decision", "Safeguards added"], "pitfalls": ["No rollback plan existed", "No learning"]}, {"prompt": "Describe how you handle configuration and secrets across environments for your apps.", "framework": "STAR", "points": ["Your approach (ConfigMaps, Secrets, etc.)", "How environments differ", "A mistake you avoided or fixed"], "pitfalls": ["Hardcoded config", "Secrets in git"]}, {"prompt": "Tell me about a time you had to meet a security requirement for a containerized app.", "framework": "STAR", "points": ["The requirement", "What you changed (non-root, policies, etc.)", "How you verified"], "pitfalls": ["Security as an afterthought", "No verification"]}, {"prompt": "Describe a performance or reliability problem in an app on Kubernetes and how you fixed it.", "framework": "STAR", "points": ["Symptoms and measurement", "Root cause", "The fix and its validation"], "pitfalls": ["Guessing without data", "No validation"]}, {"prompt": "Tell me about collaborating with platform/cluster teams as an app developer.", "framework": "STAR", "points": ["What you needed from them", "How you communicated", "The outcome"], "pitfalls": ["Throwing things over the wall", "No shared ownership"]}, {"prompt": "What kind of applications do you most enjoy building on Kubernetes, and why?", "framework": "Present-Past-Future", "points": ["Genuine interest area", "Evidence from past work", "Where you're heading"], "pitfalls": ["Generic answers", "No evidence"]}], "chat": {"persona": "You are a friendly but rigorous CKAD-style interviewer running a mock assessment. Give app-development scenarios on Kubernetes, expect manifests and kubectl commands, and give concise keyword-driven feedback.", "topics": [{"id": "app-design", "name": "App Design", "key_points": ["sidecar/init containers", "startup/liveness/readiness probes", "Jobs restartPolicy", "CronJob concurrencyPolicy", "twelve-factor config"], "followups": ["Which pattern fits and why?", "What happens at startup?"]}, {"id": "deployment", "name": "Deployment", "key_points": ["maxSurge/maxUnavailable", "kubectl set image", "rollout undo/history", "blue-green via selectors", "Helm values", "Kustomize overlays"], "followups": ["How do you roll back?", "What does the Service select?"]}, {"id": "observability", "name": "Observability", "key_points": ["kubectl logs flags", "kubectl top", "events", "structured logging", "probe semantics", "trace context propagation"], "followups": ["Which command shows...?", "What does that signal mean?"]}, {"id": "services-networking", "name": "Services & Networking", "key_points": ["Service + Ingress layering", "DNS and env discovery", "NetworkPolicy tiers", "pathType", "headless Services", "port-forward"], "followups": ["What does the Ingress point at?", "How do Pods find each other?"]}, {"id": "state-config", "name": "State & Config", "key_points": ["envFrom vs valueFrom", "Secret types", "config update behavior", "downward API", "emptyDir", "secret as files vs env"], "followups": ["When do Pods see the change?", "What's the safer pattern?"]}, {"id": "security", "name": "Security", "key_points": ["dedicated ServiceAccounts", "runAsNonRoot", "capabilities drop/add", "readOnlyRootFilesystem", "image digests and signing", "egress policies"], "followups": ["What's the least-privilege version?", "How do you verify?"]}]}, "labs": [{"id": "ckad-lab-1", "title": "Multi-container patterns — kubectl drill", "objective": "Run a short sequence of kubectl commands that demonstrates multi-container patterns, then verify each result against the expected output.", "steps": ["This lab reworks the App Design practice scenario \"Logs without touching the app\" into commands you run yourself — same concept, hands-on instead of multiple choice.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: kubectl get pods — the pod list shows pods in the Running phase", "Type exactly: kubectl get nodes — the node list reports Ready status", "Type exactly: kubectl get deployments — the deployment list shows available replicas", "In your own words, say what each command's output taught you about multi-container patterns."], "checks": [{"command_pattern": "kubectl get pods", "expect_contains": "Running", "hint": "In the Terminal tab, run `kubectl get pods`. If the check fails, confirm you typed it exactly and that the output contains \"Running\"."}, {"command_pattern": "kubectl get nodes", "expect_contains": "Ready", "hint": "In the Terminal tab, run `kubectl get nodes`. If the check fails, confirm you typed it exactly and that the output contains \"Ready\"."}, {"command_pattern": "kubectl get deployments", "expect_contains": "Available", "hint": "In the Terminal tab, run `kubectl get deployments`. If the check fails, confirm you typed it exactly and that the output contains \"Available\"."}], "success_message": "Lab complete — multi-container patterns practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"id": "ckad-lab-2", "title": "Deployment strategies — kubectl drill", "objective": "Use the kubectl to explore deployment strategies hands-on: type each command, read what comes back, and connect the output to the concept.", "steps": ["Inspired by the Deployment scenario \"Zero-downtime deploy tuning\": take its core idea and prove it live in the terminal instead of answering on paper.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: kubectl get deployments — the deployment list shows available replicas", "Type exactly: kubectl describe pod/web — the describe output names the pod web", "Type exactly: kubectl get pods — the pod list shows pods in the Running phase", "In your own words, say what each command's output taught you about deployment strategies."], "checks": [{"command_pattern": "kubectl get deployments", "expect_contains": "Available", "hint": "In the Terminal tab, run `kubectl get deployments`. If the check fails, confirm you typed it exactly and that the output contains \"Available\"."}, {"command_pattern": "kubectl describe pod", "expect_contains": "web", "hint": "In the Terminal tab, run `kubectl describe pod/web`. If the check fails, confirm you typed it exactly and that the output contains \"web\"."}, {"command_pattern": "kubectl get pods", "expect_contains": "Running", "hint": "In the Terminal tab, run `kubectl get pods`. If the check fails, confirm you typed it exactly and that the output contains \"Running\"."}], "success_message": "Lab complete — deployment strategies practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"id": "ckad-lab-3", "title": "kubectl logs — kubectl drill", "objective": "Prove you can apply kubectl logs in the kubectl — follow the steps, watch the output, and confirm every check passes.", "steps": ["The Observability scenario \"Logs from all replicas at once\" tests this concept as a question. This lab makes you demonstrate it with real commands.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: kubectl get pods — the pod list shows pods in the Running phase", "Type exactly: kubectl get nodes — the node list reports Ready status", "Type exactly: kubectl get deployments — the deployment list shows available replicas", "In your own words, say what each command's output taught you about kubectl logs."], "checks": [{"command_pattern": "kubectl get pods", "expect_contains": "Running", "hint": "In the Terminal tab, run `kubectl get pods`. If the check fails, confirm you typed it exactly and that the output contains \"Running\"."}, {"command_pattern": "kubectl get nodes", "expect_contains": "Ready", "hint": "In the Terminal tab, run `kubectl get nodes`. If the check fails, confirm you typed it exactly and that the output contains \"Ready\"."}, {"command_pattern": "kubectl get deployments", "expect_contains": "Available", "hint": "In the Terminal tab, run `kubectl get deployments`. If the check fails, confirm you typed it exactly and that the output contains \"Available\"."}], "success_message": "Lab complete — kubectl logs practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"id": "ckad-lab-4", "title": "Service + Ingress — kubectl drill", "objective": "Run a short sequence of kubectl commands that demonstrates service + Ingress, then verify each result against the expected output.", "steps": ["This lab reworks the Services & Networking practice scenario \"From Pod to URL\" into commands you run yourself — same concept, hands-on instead of multiple choice.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: kubectl get deployments — the deployment list shows available replicas", "Type exactly: kubectl describe pod/web — the describe output names the pod web", "Type exactly: kubectl get pods — the pod list shows pods in the Running phase", "In your own words, say what each command's output taught you about service + Ingress."], "checks": [{"command_pattern": "kubectl get deployments", "expect_contains": "Available", "hint": "In the Terminal tab, run `kubectl get deployments`. If the check fails, confirm you typed it exactly and that the output contains \"Available\"."}, {"command_pattern": "kubectl describe pod", "expect_contains": "web", "hint": "In the Terminal tab, run `kubectl describe pod/web`. If the check fails, confirm you typed it exactly and that the output contains \"web\"."}, {"command_pattern": "kubectl get pods", "expect_contains": "Running", "hint": "In the Terminal tab, run `kubectl get pods`. If the check fails, confirm you typed it exactly and that the output contains \"Running\"."}], "success_message": "Lab complete — service + Ingress practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"checks": [{"command_pattern": "kubectl get deployments", "expect_contains": "2/2", "hint": "Run `kubectl get deployments`."}, {"command_pattern": "kubectl get services", "expect_contains": "api-svc", "hint": "Run `kubectl get services`."}, {"command_pattern": "kubectl get pods", "expect_contains": "web-5c4d8f2a1-q7rtx", "hint": "Run `kubectl get pods`."}], "difficulty": 1, "id": "ckad-lab-5", "objective": "Map the app landscape: deployments, services, pods.", "steps": ["Open the Terminal tab for this bootcamp.", "Type exactly: kubectl get deployments — which apps run here, and are they fully ready?", "Type exactly: kubectl get services — how is each app exposed?", "Type exactly: kubectl get pods — the running instances behind them.", "Deployments, services, pods: which one do users actually reach? One sentence."], "success_message": "Lab complete — landscape mapped. Deployments run it, services expose it, pods do it.", "title": "Map the app — kubectl drill"}, {"checks": [{"command_pattern": "kubectl logs web-5c4d8f2a1-q7rtx", "expect_contains": "INFO", "hint": "Run `kubectl logs web-5c4d8f2a1-q7rtx`."}, {"command_pattern": "kubectl describe pod/web-5c4d8f2a1-q7rtx", "expect_contains": "Ready:", "hint": "Run `kubectl describe pod/web-5c4d8f2a1-q7rtx`."}, {"command_pattern": "kubectl get pods -o wide", "expect_contains": "10.244.1.20", "hint": "Run `kubectl get pods -o wide` and read the IP column."}], "difficulty": 1, "id": "ckad-lab-6", "objective": "Observe one pod deeply: logs, readiness, and its cluster IP.", "steps": ["Open the Terminal tab.", "Type exactly: kubectl logs web-5c4d8f2a1-q7rtx — the app's own words.", "Type exactly: kubectl describe pod/web-5c4d8f2a1-q7rtx — find the Ready condition.", "Type exactly: kubectl get pods -o wide — the pod's IP and node.", "A pod can be Running but not Ready. What does each state mean for traffic?"], "success_message": "Lab complete — one pod, fully observed. Logs, conditions, IP: the observability trio.", "title": "Observe a pod — kubectl drill"}, {"checks": [{"command_pattern": "kubectl get namespaces", "expect_contains": "prod", "hint": "Run `kubectl get namespaces`."}, {"command_pattern": "kubectl get pods -n prod", "expect_contains": "api-9a1b2c3d4-e5f66", "hint": "Run `kubectl get pods -n prod`."}, {"command_pattern": "kubectl describe pod/api-9a1b2c3d4-e5f66 -n prod", "expect_contains": "Namespace:        prod", "hint": "Run `kubectl describe pod/api-9a1b2c3d4-e5f66 -n prod`."}], "difficulty": 2, "id": "ckad-lab-7", "objective": "Work across namespaces: list them, inspect prod's pods, describe one.", "steps": ["Open the Terminal tab.", "Type exactly: kubectl get namespaces — the cluster's isolated spaces.", "Type exactly: kubectl get pods -n prod — who lives in prod?", "Type exactly: kubectl describe pod/api-9a1b2c3d4-e5f66 -n prod — confirm its namespace.", "Why do teams put prod workloads in their own namespace? One sentence."], "success_message": "Lab complete — namespaces navigated. -n is the developer's second home.", "title": "Cross namespaces — kubectl drill"}, {"checks": [{"command_pattern": "kubectl create deployment temp --image=busybox", "expect_contains": "deployment.apps/temp created", "hint": "Run `kubectl create deployment temp --image=busybox`."}, {"command_pattern": "kubectl delete deployment temp", "expect_contains": "deleted", "hint": "Run `kubectl delete deployment temp`."}, {"command_pattern": "kubectl get deployments", "expect_contains": "api", "hint": "Run `kubectl get deployments` — temp should be gone, api still there."}], "difficulty": 3, "id": "ckad-lab-8", "objective": "Full lifecycle: create a throwaway deployment, then delete it cleanly.", "steps": ["Open the Terminal tab.", "Type exactly: kubectl create deployment temp --image=busybox — a scratch deployment.", "Type exactly: kubectl get deployments — confirm temp exists.", "Type exactly: kubectl delete deployment temp — tear it down.", "Type exactly: kubectl get deployments — confirm temp is gone and api survived.", "Create and delete are the same API. What does that tell you about Kubernetes' design?"], "success_message": "Lab complete — lifecycle closed: created, verified, deleted, verified. Clean clusters stay clean.", "title": "Create and delete — kubectl drill"}], "foundations": [{"track": "linux-cli", "why_needed": "App developers debug pods from the terminal. Command-line fluency comes before deployment topics."}, {"track": "yaml", "why_needed": "Deployments, services, and config are all YAML manifests. Learn the format before the API objects."}, {"track": "networking", "why_needed": "Exposing apps means services, DNS, and ingress: networking fundamentals applied."}], "math": ["binary", "subnetting"], "simulations": [{"brief": "A pod's liveness probe keeps killing a healthy app — the app just starts slowly.", "debrief": "Liveness probes that fire before the app finishes starting cause restart loops. The fix: a startupProbe (or longer initialDelaySeconds) that gives slow starters a grace window. Probes must match the app's real startup time.", "difficulty": 3, "domain_id": "app-design", "id": "ckad-sim-1", "kind": "troubleshoot", "points": 15, "steps": [{"correct": 1, "evidence": [["pod", "Restart Count: 9, liveness probe failed"], ["logs", "2026-10-04 INFO server ready after 42s"], ["probe", "liveness: initialDelaySeconds: 5, periodSeconds: 5"]], "explain": "The app needs 42 seconds to start; the liveness probe starts killing it after 5. Add a startupProbe (or raise initialDelaySeconds past the startup time) so Kubernetes waits before judging liveness.", "options": ["Increase the replica count", "Add a startupProbe / raise initialDelaySeconds beyond the 42s startup", "Remove the liveness probe entirely", "Give the pod more CPU"], "symptom": "Healthy-but-slow app killed by its own liveness probe."}], "title": "The probe that cried wolf"}, {"brief": "The app needs a database password. Choose how it reaches the pod.", "debrief": "Secrets (not ConfigMaps, not env in the manifest, never in the image) hold credentials — mounted as files or env vars, base64-encoded at rest, and ideally encrypted. ConfigMaps are for non-sensitive config.", "difficulty": 2, "domain_id": "state-config", "id": "ckad-sim-2", "kind": "branching", "points": 15, "steps": [{"choices": [{"feedback": "Correct: Secrets exist for exactly this.", "label": "Store it in a Secret and mount it into the pod", "next": "END", "outcome": "good", "points": 2}, {"feedback": "ConfigMaps are plaintext and not access-controlled like Secrets — wrong tool for credentials.", "label": "Put it in a ConfigMap", "next": "END", "outcome": "bad", "points": 0}], "id": "s1", "text": "Database password for the pod. Where does it live?"}], "title": "Handle the secret"}, {"brief": "Put these deploy steps in order.", "debrief": "Build the image first (immutable artifact), then declare the deployment, verify the pods, expose via service, and confirm the endpoint serves. Artifacts before declarations, verification after each step.", "difficulty": 1, "domain_id": "deployment", "id": "ckad-sim-3", "kind": "ordering", "points": 10, "steps": {"context": "Deploying an application", "correct_order": [0, 1, 2, 3, 4], "items": ["Build and tag the container image", "Create the deployment", "Verify pods are Running and Ready", "Create the service", "Confirm the endpoint responds"]}, "title": "Deployment order"}, {"brief": "This container spec is headed for production. Click the misconfigured lines (2 issues to find).", "debrief": "Two app-design mistakes: the container runs as root (a compromise becomes a host compromise), and there is no resource limit (one pod can starve the node). Run as non-root; declare limits.", "difficulty": 2, "domain_id": "security", "id": "ckad-sim-4", "kind": "config-check", "points": 10, "steps": {"config": "containers:\n- name: app\n  image: myapp:1.4.2\n  securityContext:\n    runAsUser: 0", "find": 2, "issues": [{"description": "Container runs as root (runAsUser: 0) — a container escape becomes a host-root compromise.", "fix": "Run as a non-root user (e.g. runAsUser: 1000, runAsNonRoot: true).", "line": 5}, {"description": "No resource limits — the container can consume unbounded CPU/memory.", "fix": "Add resources.limits for CPU and memory.", "line": 3}]}, "title": "Review the container spec"}], "consoleSims": [{"brief": "A new release of the api app needs to roll out in the dashboard. Trigger the rollout and watch the ReplicaSets switch over.", "console": "k8s-dashboard", "debrief": "Rolling updates replace pods incrementally — new ReplicaSet scales up as the old scales down. The dashboard visualizes what kubectl rollout status reports: progress, then completion.", "difficulty": 2, "domain_id": "deployment", "id": "ckad-console-1", "tasks": [{"hint": "Deployments view.", "id": "ckad-console-1-t1", "instruction": "Open the api deployment detail page.", "validate": {"action": "click", "params": {"target": "deployment-api"}}}, {"hint": "New image version.", "id": "ckad-console-1-t2", "instruction": "Set the container image to myapp:1.5.0 to trigger a rollout.", "validate": {"action": "set-field", "params": {"field": "container-image", "value": "myapp:1.5.0"}}}, {"hint": "Watch it happen.", "id": "ckad-console-1-t3", "instruction": "Open the rollout progress view and wait for completion.", "validate": {"action": "click", "params": {"target": "rollout-progress"}}}], "title": "Roll out the new release"}, {"brief": "The api service is not reaching its pods. Inspect the service's selector and endpoints in the dashboard.", "console": "k8s-dashboard", "debrief": "A service with no endpoints is a selector mismatch — the labels on the pods do not match what the service selects. Endpoints are the proof: empty endpoints, broken service.", "difficulty": 3, "domain_id": "services-networking", "id": "ckad-console-2", "tasks": [{"hint": "Services view.", "id": "ckad-console-2-t1", "instruction": "Open the api-svc service detail page.", "validate": {"action": "click", "params": {"target": "service-detail"}}}, {"hint": "Compare with pod labels.", "id": "ckad-console-2-t2", "instruction": "Read the service's selector labels.", "validate": {"action": "set-field", "params": {"field": "selector-read", "value": "app=api"}}}, {"hint": "The proof.", "id": "ckad-console-2-t3", "instruction": "Open the Endpoints tab and check whether any pod IPs are listed.", "validate": {"action": "click", "params": {"target": "endpoints-tab"}}}], "title": "Debug the empty service"}], "terminalMissions": [{"brief": "List the deployments and their readiness.", "checks": [{"command_pattern": "kubectl get deployments", "expect_contains": "2/2", "hint": "Run `kubectl get deployments`."}], "difficulty": 1, "domain_id": "deployment", "id": "ckad-mission-1", "objectives": ["Show deployment readiness"], "success_message": "Mission complete — deployments listed.", "title": "Deployment list"}, {"brief": "Show the services and their types.", "checks": [{"command_pattern": "kubectl get services", "expect_contains": "NodePort", "hint": "Run `kubectl get services`."}], "difficulty": 1, "domain_id": "services-networking", "id": "ckad-mission-2", "objectives": ["Show service types"], "success_message": "Mission complete — services listed.", "title": "Service types"}, {"brief": "Read the web pod's logs.", "checks": [{"command_pattern": "kubectl logs web-5c4d8f2a1-q7rtx", "expect_contains": "listening on :8080", "hint": "Run `kubectl logs web-5c4d8f2a1-q7rtx`."}], "difficulty": 2, "domain_id": "observability", "id": "ckad-mission-3", "objectives": ["Show the pod's startup logs"], "success_message": "Mission complete — logs read.", "title": "Pod logs"}, {"brief": "List pods in the prod namespace.", "checks": [{"command_pattern": "kubectl get pods -n prod", "expect_contains": "api-9a1b2c3d4-e5f66", "hint": "Run `kubectl get pods -n prod`."}], "difficulty": 2, "domain_id": "app-design", "id": "ckad-mission-4", "objectives": ["Show prod's pods"], "success_message": "Mission complete — prod inspected.", "title": "Prod pods"}, {"brief": "Create a scratch deployment and verify it.", "checks": [{"command_pattern": "kubectl create deployment scratch --image=nginx:1.25", "expect_contains": "deployment.apps/scratch created", "hint": "Run `kubectl create deployment scratch --image=nginx:1.25`."}, {"command_pattern": "kubectl get deployments", "expect_contains": "scratch", "hint": "Run `kubectl get deployments`."}], "difficulty": 3, "domain_id": "deployment", "id": "ckad-mission-5", "objectives": ["Create the scratch deployment", "Verify it exists"], "success_message": "Mission complete — scratch deployed.", "title": "Scratch deploy"}, {"brief": "Delete the scratch deployment and verify.", "checks": [{"command_pattern": "kubectl delete deployment scratch", "expect_contains": "deleted", "hint": "Run `kubectl delete deployment scratch`."}], "difficulty": 3, "domain_id": "deployment", "id": "ckad-mission-6", "objectives": ["Remove the scratch deployment"], "success_message": "Mission complete — cleaned up. Developer-grade kubectl: confirmed.", "title": "Clean up"}], "media": [{"id": "ckad-app-design-diag", "kind": "diagram", "title": "Cloud-Native App Design", "svg": "assets/diagrams/ckad-app-design.svg", "lesson_ref": "c-app-design", "caption": "Design for failure and scale from day one.", "alt": "Cloud-Native App Design. Shows: livenessProbe, readinessProbe, startupProbe, 12-factor, Graceful shutdown."}, {"id": "ckad-deployment-diag", "kind": "diagram", "title": "Rolling Deployment", "svg": "assets/diagrams/ckad-deployment.svg", "lesson_ref": "c-deployment", "caption": "Zero-downtime updates, batch by batch.", "alt": "Rolling Deployment. Shows: v1 running, v2 rollout, Health checks, v1 scaled down."}, {"id": "ckad-observability-diag", "kind": "diagram", "title": "Observability for Apps", "svg": "assets/diagrams/ckad-observability.svg", "lesson_ref": "c-observability", "caption": "Instrument before you need it.", "alt": "Observability for Apps. Shows: RED: Rate / Errors / Duration, USE: Utilization / Saturation / Errors, MELT: Metrics, Events, Logs, Traces."}, {"id": "ckad-services-networking-diag", "kind": "diagram", "title": "Kubernetes Service Types", "svg": "assets/diagrams/ckad-services-networking.svg", "lesson_ref": "c-services-networking", "caption": "Expose pods the right way.", "alt": "Kubernetes Service Types. Table with 4 rows."}, {"id": "ckad-state-config-diag", "kind": "diagram", "title": "Configuration & State", "svg": "assets/diagrams/ckad-state-config.svg", "lesson_ref": "c-state-config", "caption": "Separate config from code.", "alt": "Configuration & State. Shows: ConfigMaps, Secrets, Volumes, Env vars."}, {"id": "ckad-security-diag", "kind": "diagram", "title": "Application Security on K8s", "svg": "assets/diagrams/ckad-security.svg", "lesson_ref": "c-security", "caption": "Secure defaults in every manifest.", "alt": "Application Security on K8s. Shows: RBAC, NetworkPolicies, Pod Security, Secrets."}], "resources": {"cheatsheet": {"title": "Certified Kubernetes App Developer — Cheat Sheet", "sections": [{"heading": "App Design", "items": ["Sidecar — mounting the same emptyDir at /var/log/app in both containers lets the sidecar 'tail -f' the file to stdout, where the cluster logging pipeline picks it up — no app changes needed.", "Init — Init containers run to completion before the app starts, so they can't tail ongoing logs. Init containers run sequentially to completion before any app container starts — ideal for 'wait for dependency' gates (e.g., sh -c 'until nc -z db 5432; do sleep 2; d…", "Probes — startupProbe gates the other probes: while it hasn't succeeded, liveness and readiness are disabled, so slow boots aren't killed.", "Common trap — init container: it runs first and converts the log file to stdout before the app starts.", "Common trap — ambassador: add a proxy container that rewrites the app's log format.", "Common trap — adapter: run the app twice so one copy handles logging.", "Common trap — store config in the image layers but document the differences."]}, {"heading": "Deployment", "items": ["Deployment strategies — the container name (not the Deployment name) goes before the '='.", "RollingUpdate's two knobs — maxSurge (how many extra Pods above desired) and maxUnavailable (how many may be down). maxUnavailable: 0 guarantees full capacity throughout; a positive maxSurge provides the extra Pods to make that possible.", "Revision history — this is why keeping revision history matters — without it there's nothing to roll back to. For history/rollback: 'rollout history' and 'rollout undo'.", "Common trap — kustomize requires converting YAML to JSON first.", "Common trap — kubectl scale deployment/api --replicas=0 then back up.", "Common trap — the Deployment will pull the new image automatically.", "Common trap — kubectl delete deployment/api and recreate v1 from memory.", "Read — Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."]}, {"heading": "Observability", "items": ["Multi-pod logs — structured JSON logs are machine-parseable: every line carries timestamp (ISO8601), level, logger, message, and correlation fields (request_id/trace_id).", "Metrics — if usage hugs the limit, raise it; if the node is pressured and usage exceeds requests, expect eviction. metrics-server is the in-cluster metrics pipeline (short-term); Prometheus is for history.", "Events are namespaced objects recording cluster decisions — 'FailedScheduling', 'FailedMount', 'Unhealthy' probe failures, image pull errors.", "Common trap — kubectl get logs -l app=api.", "Common trap — write logs to files instead of stdout.", "Common trap — tracing works with zero app changes.", "Common trap — metrics aren't available in Kubernetes."]}, {"heading": "Services & Networking", "items": ["Service + Ingress — the layering: Deployment → Pods; Service → stable virtual IP + DNS selecting Pods; Ingress → HTTP routing rules pointing at Services (service.name + port).", "Service discovery — kubernetes injects discovery two ways: DNS A records (<svc>.<ns>.svc.cluster.local, plus short names in-namespace) and legacy env vars (DB_SERVICE_HOST, DB_SERVICE_PORT — only for Services existing at Pod creation).", "DNS vs env — statefulSets pair naturally with headless Services for stable Pod DNS names. DNS is the modern, reliable path; SRV records give named ports.", "Common trap — use api.app.example.com instead, paths can't work.", "Common trap — an Ingress selecting the Pods directly.", "Common trap — ingress is only for external load balancers.", "Common trap — expose the Deployment with --type=Ingress."]}, {"heading": "State & Config", "items": ["ConfigMaps — per-environment ConfigMaps keep one Deployment portable.", "EnvFrom — configMapRef injects every ConfigMap key as an env var — clean for bulk config.", "Secret types — 'kubectl create secret tls/docker-registry' builds them correctly. Either way: RBAC-limit Secret access, enable etcd encryption at rest.", "Config updates — env injection is a creation-time snapshot — no live updates, hence the 'rollout restart' pattern (or Reloader/Stakater automation).", "Common trap — give the Pod a ServiceAccount with Pod read rights and query the API.", "Common trap — pods poll ConfigMaps every 30 seconds.", "Common trap — one env: entry per variable copied into each Deployment."]}, {"heading": "Security", "items": ["Non-root — defense in depth: the image should default to non-root (USER with numeric UID — name resolution isn't guaranteed), and the Pod spec enforces runAsNonRoot: true (kubelet rejects root containers).", "Capabilities — linux capabilities split root's powers: drop ALL then add back only what's needed (NET_BIND_SERVICE for sub-1024 ports). This pairs with allowPrivilegeEscalation: false and dropped capabilities for the standard hardened container profile.", "Principle — each app gets its own ServiceAccount ('kubectl create sa api-reader'), a Role with only needed verbs/resources, and a RoleBinding tying them in the namespace.", "Common trap — readOnlyRootFilesystem only works with privileged containers.", "Common trap — read-only filesystems break all apps.", "Common trap — pulling images is inherently safe."]}]}, "glossary": [{"term": "Pod", "def": "Jobs forbid restartPolicy: Always (it would loop forever on success). OnFailure restarts the container in place on failure — usually what you want for transient errors; Never lets the Job controller create a fresh Pod per retry (counted…"}, {"term": "kubectl", "def": "kubectl: 'kubectl apply -k' (or kustomize build) renders the final YAML. 'kubectl set image deployment/<name> <container>=<image>' updates the Pod template, triggering a rolling update; 'rollout status' watches it to completion."}, {"term": "DNS", "def": "DNS vs env: statefulSets pair naturally with headless Services for stable Pod DNS names. DNS is the modern, reliable path; SRV records give named ports."}, {"term": "JSON", "def": "Multi-pod logs: structured JSON logs are machine-parseable: every line carries timestamp (ISO8601), level, logger, message, and correlation fields (request_id/trace_id)."}, {"term": "Ingress", "def": "Service + Ingress: the layering: Deployment → Pods; Service → stable virtual IP + DNS selecting Pods; Ingress → HTTP routing rules pointing at Services (service.name + port)."}, {"term": "Services", "def": "DNS vs env: statefulSets pair naturally with headless Services for stable Pod DNS names. DNS is the modern, reliable path; SRV records give named ports."}, {"term": "Service", "def": "The layering: Deployment → Pods; Service → stable virtual IP + DNS selecting Pods; Ingress → HTTP routing rules pointing at Services (service.name + port). Ingress controllers implement the rules."}, {"term": "node", "def": "Metrics: if usage hugs the limit, raise it; if the node is pressured and usage exceeds requests, expect eviction. metrics-server is the in-cluster metrics pipeline (short-term); Prometheus is for history."}, {"term": "IP", "def": "clusterIP: None disables the virtual IP; DNS then returns A records for each backing Pod (pod-0.db.default.svc...), enabling client-side discovery/load-balancing — exactly what clustered datastores (Cassandra, Kafka, etcd) need. Stateful…"}, {"term": "Probes", "def": "Probes: startupProbe gates the other probes: while it hasn't succeeded, liveness and readiness are disabled, so slow boots aren't killed."}, {"term": "Events", "def": "Events are namespaced objects recording cluster decisions: 'FailedScheduling', 'FailedMount', 'Unhealthy' probe failures, image pull errors."}, {"term": "Egress", "def": "NetworkPolicy policyTypes: [Egress] with egress.to rules: DNS first (to: namespaceSelector/podSelector for kube-dns, port 53 — without it nothing resolves), then specific podSelectors/ports for api and DB. Once any egress policy selects…"}, {"term": "ConfigMaps", "def": "ConfigMaps: per-environment ConfigMaps keep one Deployment portable."}, {"term": "RBAC", "def": "Secret types: 'kubectl create secret tls/docker-registry' builds them correctly. Either way: RBAC-limit Secret access, enable etcd encryption at rest."}, {"term": "Either", "def": "Secret types: 'kubectl create secret tls/docker-registry' builds them correctly. Either way: RBAC-limit Secret access, enable etcd encryption at rest."}, {"term": "Pod DNS", "def": "DNS vs env: statefulSets pair naturally with headless Services for stable Pod DNS names. DNS is the modern, reliable path; SRV records give named ports."}, {"term": "Prometheus", "def": "Metrics: if usage hugs the limit, raise it; if the node is pressured and usage exceeds requests, expect eviction. metrics-server is the in-cluster metrics pipeline (short-term); Prometheus is for history."}, {"term": "RBAC-limit Secret", "def": "Secret types: 'kubectl create secret tls/docker-registry' builds them correctly. Either way: RBAC-limit Secret access, enable etcd encryption at rest."}, {"term": "Reloader/Stakater", "def": "Env injection is a creation-time snapshot — no live updates, hence the 'rollout restart' pattern (or Reloader/Stakater automation). Volume mounts ARE eventually consistent (kubelet syncs projected volumes)."}, {"term": "CI", "def": "What proves the image is the one your CI built?"}, {"term": "CPU", "def": "'kubectl top' reads the metrics-server (CPU/memory per Pod/node, --containers for per-container). Compare usage against requests (scheduling/eviction baseline) and limits (throttle/kill ceiling)."}, {"term": "DNS A", "def": "Kubernetes injects discovery two ways: DNS A records (<svc>.<ns>.svc.cluster.local, plus short names in-namespace) and legacy env vars (DB_SERVICE_HOST, DB_SERVICE_PORT — only for Services existing at Pod creation). DNS is the modern, re…"}, {"term": "Metrics", "def": "Metrics: if usage hugs the limit, raise it; if the node is pressured and usage exceeds requests, expect eviction. metrics-server is the in-cluster metrics pipeline (short-term); Prometheus is for history."}, {"term": "Env", "def": "Env injection is a creation-time snapshot — no live updates, hence the 'rollout restart' pattern (or Reloader/Stakater automation). Volume mounts ARE eventually consistent (kubelet syncs projected volumes)."}, {"term": "Secret", "def": "Secret types: 'kubectl create secret tls/docker-registry' builds them correctly. Either way: RBAC-limit Secret access, enable etcd encryption at rest."}], "links": [{"label": "CNCF / Linux Foundation — official site", "url": "https://training.linuxfoundation.org", "note": "Official vendor documentation and certification information"}, {"label": "Kubernetes documentation", "url": "https://kubernetes.io/docs/home/", "note": "Official Kubernetes docs"}, {"label": "Kubernetes API reference", "url": "https://kubernetes.io/docs/reference/", "note": "Official API reference"}, {"label": "Cloud Native Computing Foundation", "url": "https://www.cncf.io/", "note": "Cloud-native project home"}], "checklist": ["Get 7–8 hours of sleep the night before — fatigue destroys recall faster than any topic gap.", "Bring valid government-issued photo ID and arrive at the test center 30 minutes early.", "Eat a real meal beforehand; bring water and a light snack if the center allows them.", "Read every question twice before scanning the answer choices.", "Flag uncertain questions and move on — return with fresh eyes at the end.", "Eliminate the obviously wrong answers first, then compare the survivors.", "Budget your time: answer steadily and keep a 10–15 minute review buffer.", "Re-run your weakest-domain drill until mastery is at least 80%.", "For App Design: restate the 'why' behind each scenario answer in your own words — if you can't explain it, you don't own it.", "Redo one Deployment lab from scratch without looking at the steps.", "Recite the key Observability terms from the glossary aloud from memory."]}}
+{
+ "slug": "ckad",
+ "title": "Kubernetes Application Development",
+ "tagline": "Developer-side Kubernetes: multi-container pods, configuration, probes, Jobs, and packaging basics for shipping apps on clusters. Independent training content; this course confers no certificate.",
+ "vendor": {
+  "name": "Independent interview prep (not affiliated with ThreatLocker)",
+  "certs": "",
+  "docs": "https://www.threatlocker.com"
+ },
+ "disclaimer": "Independent interview-prep material by Interstitium Labs. Not affiliated with, endorsed by, or sponsored by ThreatLocker or any vendor mentioned. Confers no certificate. All scenarios are original practice content; no exam or vendor-training content is reproduced.",
+ "accent": "#e5484d",
+ "domains": [
+  {
+   "id": "ckad",
+   "name": "Kubernetes Application Development",
+   "summary": "Developer-side Kubernetes: multi-container pods, configuration, probes, Jobs, and packaging basics for shipping apps on clusters. Independent training content; this course confers no certificate.",
+   "scenarios": [
+    {
+     "id": "ckad-sc1",
+     "title": "Sidecar or Init Container?",
+     "situation": "Your app needs a config file fetched from a remote bucket before the main container starts, and a log shipper that runs alongside the app for its entire lifetime.",
+     "prompt": "Which pattern fits each requirement?",
+     "evidence": [],
+     "choices": [
+      "Use an init container to fetch the config (it runs to completion before the app starts), and a sidecar container in the same pod to ship logs for the pod's lifetime",
+      "Use two init containers: one for the config, one for log shipping",
+      "Run both as Jobs in the same namespace; pods should only ever hold one container",
+      "Put the config fetch in the app's `preStop` hook and the log shipper as a separate Deployment"
+     ],
+     "answer": 0,
+     "why": "Init containers run to completion before app containers start — ideal for setup tasks like fetching config. Sidecars run alongside the main container for the pod's whole life — ideal for log shipping, proxies, or watchers. Sharing the pod's network namespace and volumes makes this co-location simple and reliable.",
+     "hint": "One job happens once before startup; the other runs continuously. Which container type matches each lifecycle?",
+     "objectives": [
+      "multi-container pods",
+      "init containers",
+      "sidecars"
+     ],
+     "mins": 5,
+     "difficulty": 1
+    },
+    {
+     "id": "ckad-sc2",
+     "title": "Secret Exposed in Env Dump",
+     "situation": "A teammate debugged a pod with `kubectl exec ... env` and the database password printed in plaintext. The password is stored in a Secret and injected via `envFrom`.",
+     "prompt": "What is the correct lesson and remediation?",
+     "evidence": [
+      [
+       "kubectl get secret db -o yaml",
+       "data:\n  password: c2VjcmV0MTIz  # base64 of secret123"
+      ],
+      [
+       "kubectl describe pod web",
+       "Environment:\n  DB_PASSWORD:  <set to the key 'password' in secret 'db'>"
+      ]
+     ],
+     "choices": [
+      "Secrets are only base64-encoded, not encrypted by default — anyone who can read the pod or Secret can see the values. Limit RBAC on Secrets, prefer mounting as files (or using a secrets manager), and enable encryption at rest for etcd",
+      "Switch the Secret to a ConfigMap; ConfigMaps are encrypted at rest by default",
+      "Delete the Secret and hardcode the password in the Deployment YAML so it never appears in `env`",
+      "Secrets are fully safe; `kubectl exec env` only shows values to cluster-admins"
+     ],
+     "answer": 0,
+     "why": "Kubernetes Secrets are base64-encoded text, readable by anyone with `get secrets` or pod exec access. Defense in depth means: tight RBAC on Secrets, encryption at rest (KMS provider) for etcd, external secrets managers for real workloads, and avoiding `kubectl exec env` in shared sessions. Switching to a ConfigMap would make things worse.",
+     "hint": "What does base64 actually do — hide the value, or just change its shape?",
+     "objectives": [
+      "secrets",
+      "security basics",
+      "base64"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "ckad-sc3",
+     "title": "Readiness vs Liveness Mix-up",
+     "situation": "During deploys, users hit 500s for ~30 seconds while the new pods start. The Deployment has a livenessProbe on `/healthz` with `initialDelaySeconds: 5`, but no readinessProbe.",
+     "prompt": "What change fixes the deploy-time errors?",
+     "evidence": [
+      [
+       "kubectl describe deploy web",
+       "Liveness:   http-get http://:8080/healthz delay=5s\nReadiness:  <none>\nStrategy:   RollingUpdate (maxUnavailable: 25%, maxSurge: 25%)"
+      ]
+     ],
+     "choices": [
+      "Add a readinessProbe on an endpoint that returns 200 only when the app is truly ready — the Service stops sending traffic to not-ready pods, eliminating the 500s during rollout",
+      "Raise the livenessProbe `failureThreshold` to 30 so the pod is never killed during startup",
+      "Set `initialDelaySeconds: 60` on the liveness probe; the delay covers the startup window",
+      "Change the strategy to `Recreate` so old pods are fully gone before new ones start"
+     ],
+     "answer": 0,
+     "why": "Liveness restarts a broken container; readiness controls whether a pod receives Service traffic. Without a readiness probe, a starting pod is added to Endpoints immediately — even while it cannot serve — causing 500s. The fix is a readiness probe that reflects real application readiness, not a longer liveness delay.",
+     "hint": "Which probe decides whether the Service sends traffic to a pod?",
+     "objectives": [
+      "probes",
+      "rolling updates",
+      "service endpoints"
+     ],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "ckad-sc4",
+     "title": "CronJob Piling Up",
+     "situation": "A nightly report CronJob is creating dozens of pods each morning. `kubectl get jobs` shows many completed jobs from past days, and occasionally two report runs overlap and corrupt the output file.",
+     "prompt": "What combination fixes both the clutter and the overlap?",
+     "evidence": [
+      [
+       "kubectl get cronjob report",
+       "SCHEDULE   SUSPEND   ACTIVE   LAST SCHEDULE\n0 2 * * *  False      3        8h"
+      ],
+      [
+       "kubectl get job -l app=report | wc -l",
+       "47"
+      ]
+     ],
+     "choices": [
+      "Set `concurrencyPolicy: Forbid` to prevent overlapping runs and `successfulJobsHistoryLimit: 3` / `failedJobsHistoryLimit: 1` to cap retained job history",
+      "Set `backoffLimit: 0` so failed jobs are never retried; retries cause the pileup",
+      "Delete the CronJob each morning with a second CronJob; manual cleanup is the standard pattern",
+      "Increase the schedule to every 5 minutes so each run is smaller and overlap is harmless"
+     ],
+     "answer": 0,
+     "why": "`concurrencyPolicy: Forbid` skips a new run while the previous is still active, preventing the corrupt overlap. The history limits (`successfulJobsHistoryLimit`, default 3; `failedJobsHistoryLimit`, default 1) bound how many finished Jobs are kept — the current pileup suggests someone raised them or never set them. Both are one-line spec fields.",
+     "hint": "Two knobs: one controls what happens when a run is still going; the other controls how many finished jobs are kept.",
+     "objectives": [
+      "cronjobs",
+      "jobs",
+      "concurrency"
+     ],
+     "mins": 7,
+     "difficulty": 2
+    },
+    {
+     "id": "ckad-sc5",
+     "title": "Helm Values Override Gone Wrong",
+     "situation": "You deployed a Helm chart with `helm install app ./chart --set image.tag=v2.1.0`, but the pods still run `v2.0.0`. The template uses `image: \"{{ .Values.image.repository }}:{{ .Values.image.tag }}\"`.",
+     "prompt": "What is the most likely cause?",
+     "evidence": [
+      [
+       "helm get values app",
+       "image:\n  tag: v2.1.0\n  repository: registry.example.com/app"
+      ],
+      [
+       "kubectl get deploy app -o jsonpath='{.spec.template.spec.containers[0].image}'",
+       "registry.example.com/app:v2.0.0"
+      ]
+     ],
+     "choices": [
+      "The Deployment was modified out-of-band (e.g., `kubectl set image` or an edit) after the Helm release, or the release was upgraded without the new values — run `helm upgrade app ./chart --set image.tag=v2.1.0` (or `helm rollback`) so Helm's desired state matches, since Helm only manages what its releases declare",
+      "Helm `--set` only works for string values; tags must go in a values file",
+      "The chart needs `helm template` run first; `helm install` ignores templates",
+      "Kubernetes caches the old image digest; you must change the repository name to force a pull"
+     ],
+     "answer": 0,
+     "why": "Helm tracks desired state in releases; `helm get values` shows the release thinks tag v2.1.0 is set, but the live Deployment shows v2.0.0 — meaning the cluster state diverged from the release (out-of-band edit) or the values never got applied to a release. The fix is to converge: `helm upgrade` re-renders and applies the templates. `helm diff` (plugin) would show the drift.",
+     "hint": "The release record says v2.1.0 but the cluster says v2.0.0. Who is the source of truth for the cluster state, and how do you make it match the release?",
+     "objectives": [
+      "helm",
+      "release management",
+      "drift"
+     ],
+     "mins": 8,
+     "difficulty": 3
+    },
+    {
+     "id": "ckad-sc6",
+     "title": "Resource Limits Kill the App",
+     "situation": "After adding `resources.limits.memory: 256Mi` to match the team's quota policy, the app's pods get OOMKilled under load. Without limits, the app uses ~400Mi at peak. The node has 8Gi free.",
+     "prompt": "What is the right sizing decision here?",
+     "evidence": [
+      [
+       "kubectl describe pod web-0",
+       "State:          Waiting\nReason:       CrashLoopBackOff\nLast State:     Terminated\nReason:       OOMKilled"
+      ],
+      [
+       "kubectl top pod web-0 --containers",
+       "NAME   CPU(cores)   MEMORY(bytes)\napp    120m         412Mi"
+      ]
+     ],
+     "choices": [
+      "Raise the memory limit to cover the observed peak plus headroom (e.g., 512Mi) and set the request near typical usage (~256-300Mi) — limits must reflect real workload peaks, not an arbitrary policy number",
+      "Remove requests entirely and keep the 256Mi limit; requests are what cause OOMKills",
+      "Set both request and limit to 256Mi so the pod gets Guaranteed QoS and the kernel stops killing it",
+      "Add a second container to the pod so the memory is split across two cgroups"
+     ],
+     "answer": 0,
+     "why": "OOMKill happens when a container exceeds its memory *limit* — the kernel kills it regardless of free node memory. The 256Mi limit was set from policy, not from measurement (`kubectl top` shows 412Mi peak). Requests affect scheduling; limits affect survival. Size limits from observed peaks plus headroom, and never set a limit below what the app demonstrably needs.",
+     "hint": "Which number did the kernel enforce, and which number reflects what the app actually uses?",
+     "objectives": [
+      "resource requests/limits",
+      "OOMKilled",
+      "kubectl top"
+     ],
+     "mins": 8,
+     "difficulty": 3
+    }
+   ]
+  },
+  {
+   "id": "ckad-d2",
+   "name": "Application Design & Observability",
+   "scenarios": [
+    {
+     "answer": 0,
+     "choices": [
+      "The Job's `backoffLimit` and `activeDeadlineSeconds` are unset, so failed pods retry forever — set `backoffLimit` to a small number, `activeDeadlineSeconds` to bound total runtime, and alert on Job failure instead of letting it pile up",
+      "Increase `parallelism` so the backlog drains faster; the retries are the job making progress",
+      "Delete the CronJob; Jobs and CronJobs can't be used for migrations",
+      "Set `restartPolicy: Never` on the Job template; that stops all retries"
+     ],
+     "difficulty": 1,
+     "evidence": [
+      [
+       "kubectl get jobs",
+       "NAME              COMPLETIONS   DURATION   AGE\nmigration-9f2k1   0/1           14h        14h"
+      ],
+      [
+       "job spec",
+       "spec:\n  parallelism: 1\n  completions: 1\n  # backoffLimit: not set\n  # activeDeadlineSeconds: not set\n  template:\n    spec:\n      restartPolicy: OnFailure"
+      ]
+     ],
+     "hint": "What are the defaults when backoffLimit and activeDeadlineSeconds are absent?",
+     "id": "ckad-d2-sc1",
+     "mins": 6,
+     "objectives": [
+      "Jobs",
+      "backoffLimit",
+      "batch workloads"
+     ],
+     "prompt": "What is the correct fix for the retry storm?",
+     "situation": "A one-shot database migration Job has been CrashLooping for 14 hours, spawning hundreds of failed pods. The Job was supposed to run once: `completions: 1, parallelism: 1`.",
+     "title": "The Job That Never Gives Up",
+     "why": "A Job's default backoffLimit is 6 but the backoff delay grows exponentially (10s, 20s, 40s...) and OnFailure keeps rescheduling indefinitely within those limits — with a poison message, it retries for hours. Bounding with activeDeadlineSeconds plus alerting on job failure is the production pattern. Raising parallelism multiplies the damage."
+    },
+    {
+     "answer": 0,
+     "choices": [
+      "ConfigMaps mounted as volumes update eventually (kubelet sync period), but env-var injection never refreshes — the app reads env, so trigger a rollout restart (or use a checksum annotation / Reloader) after the ConfigMap change",
+      "ConfigMaps are immutable; you must delete and recreate the Deployment to change them",
+      "Edit the ConfigMap in place again; the first edit silently failed",
+      "Switch the ConfigMap to a Secret; Secrets propagate to env vars automatically"
+     ],
+     "difficulty": 1,
+     "evidence": [
+      [
+       "deployment snippet",
+       "env:\n- name: FEATURE_FLAG\n  valueFrom:\n    configMapKeyRef:\n      name: app-config\n      key: feature.flag"
+      ],
+      [
+       "kubectl get cm app-config",
+       "FEATURE_FLAG=on   (updated 2h ago)"
+      ],
+      [
+       "pod env",
+       "FEATURE_FLAG=off  (pod started 3 days ago)"
+      ]
+     ],
+     "hint": "When is an environment variable's value fixed for a process?",
+     "id": "ckad-d2-sc2",
+     "mins": 6,
+     "objectives": [
+      "ConfigMaps",
+      "env vars",
+      "rollouts"
+     ],
+     "prompt": "Why didn't the pods pick up the change, and what is the fix?",
+     "situation": "Ops updated the `app-config` ConfigMap two hours ago, but the app still behaves per the old value. The value is injected via `configMapKeyRef` as an environment variable.",
+     "title": "ConfigMap Change Nobody Sees",
+     "why": "Environment variables are resolved once at container start — no ConfigMap update will ever reach a running process via env. Volume mounts do refresh on the kubelet sync loop (~1 min + cache TTL). The standard fixes: `kubectl rollout restart`, or automate it with a checksum annotation / Reloader. Secrets behave identically here."
+    },
+    {
+     "answer": 0,
+     "choices": [
+      "The container is hitting its memory *limit* (OOMKilled, exit 137) while requests are fine — raise the limit (after profiling actual usage), not the request; requests affect scheduling, limits affect killing",
+      "Raise the CPU request; OOMKilled is caused by CPU starvation",
+      "Set requests equal to limits for Guaranteed QoS; that prevents OOM kills",
+      "The node is out of memory; add more nodes"
+     ],
+     "difficulty": 2,
+     "evidence": [
+      [
+       "kubectl describe pod",
+       "State: Waiting, Reason: CrashLoopBackOff\nLast State: Terminated, Reason: OOMKilled, Exit Code: 137"
+      ],
+      [
+       "resources",
+       "requests:\n  memory: 256Mi\n  cpu: 250m\nlimits:\n  memory: 256Mi\n  cpu: 1000m"
+      ]
+     ],
+     "hint": "Exit 137 is the signature of one specific killer. Which knob controls it: request or limit?",
+     "id": "ckad-d2-sc3",
+     "mins": 7,
+     "objectives": [
+      "resources",
+      "OOMKilled",
+      "limits vs requests"
+     ],
+     "prompt": "What is the correct diagnosis and fix?",
+     "situation": "A Java app CrashLoops with `Reason: OOMKilled, Exit Code: 137`. Its requests and limits are both set to 256Mi memory. The node has 8 GiB free.",
+     "title": "OOMKilled at 137",
+     "why": "Exit 137 = SIGKILL from the OOM killer = the container exceeded its memory *limit*. Requests only influence scheduling; limits are the hard ceiling. The fix is profiling real usage (metrics-server / VPA recommendations) and raising the limit. Guaranteed QoS doesn't prevent OOM kills — it only affects eviction priority."
+    },
+    {
+     "answer": 0,
+     "choices": [
+      "Create one Ingress with host `shop.example.com` and two path rules (`/api` → api-svc, `/` → web-svc) using the `nginx.ingress.kubernetes.io/rewrite-target` annotation so `/api/users` reaches the API as `/users`",
+      "Create two Ingress objects with the same host; the controller merges them automatically",
+      "Use a NodePort Service for each backend; Ingress can't do path routing",
+      "Point both paths at one Service and let the app route internally"
+     ],
+     "difficulty": 2,
+     "evidence": [
+      [
+       "requirement",
+       "shop.example.com/api/* -> api-svc (strip /api prefix)\nshop.example.com/*     -> web-svc"
+      ],
+      [
+       "ingress attempt",
+       "rules:\n- host: shop.example.com\n  http:\n    paths:\n    - path: /api\n      backend: {service: {name: api-svc}}"
+      ]
+     ],
+     "hint": "The API expects /users but receives /api/users. Which layer should strip the prefix?",
+     "id": "ckad-d2-sc4",
+     "mins": 7,
+     "objectives": [
+      "Ingress",
+      "path routing",
+      "rewrite-target"
+     ],
+     "prompt": "What is the correct Ingress design?",
+     "situation": "You must expose `shop.example.com/api/*` to `api-svc` (which expects paths *without* the `/api` prefix) and everything else to `web-svc`, on one host with TLS.",
+     "title": "One Host, Two Backends",
+     "why": "Ingress supports path-based routing in a single object, and the NGINX controller's rewrite-target annotation strips the prefix before proxying. Two Ingresses on the same host create conflicts (last-write-wins per controller implementation); NodePorts bypass the L7 routing entirely."
+    },
+    {
+     "answer": 0,
+     "choices": [
+      "Use an `emptyDir` volume shared between the containers — it lives as long as the Pod and is the standard pattern for sidecar hand-off; a PVC would need a StorageClass and survives the Pod, which you don't want for scratch space",
+      "Use a hostPath volume so both containers see the same node directory",
+      "Use a ConfigMap volume; ConfigMaps are writable from inside the pod",
+      "Have the sidecar POST the files to the main container over localhost HTTP"
+     ],
+     "difficulty": 3,
+     "evidence": [
+      [
+       "pod spec (broken)",
+       "containers:\n- name: app\n  volumeMounts: [{name: work, mountPath: /work}]\n- name: fetcher\n  volumeMounts: [{name: work, mountPath: /work}]\nvolumes:\n- name: work\n  persistentVolumeClaim: {claimName: data-pvc}  # Stuck Pending: no StorageClass"
+      ]
+     ],
+     "hint": "How long does the data need to live: as long as the Pod, or longer?",
+     "id": "ckad-d2-sc5",
+     "mins": 8,
+     "objectives": [
+      "volumes",
+      "emptyDir",
+      "multi-container pods"
+     ],
+     "prompt": "What is the correct volume choice?",
+     "situation": "A Pod runs a fetcher sidecar that downloads model weights into a shared directory for the main app container. The author used a PVC, but it stays Pending — the cluster has no dynamic provisioner.",
+     "title": "Sharing Files Between Containers",
+     "why": "emptyDir is purpose-built for this: shared, Pod-scoped scratch space with no storage backend required. A PVC is for data that outlives the Pod and needs real storage. hostPath couples the Pod to a node; ConfigMap volumes are read-only."
+    },
+    {
+     "answer": 0,
+     "choices": [
+      "Use the Downward API (`fieldRef: metadata.name`, `resourceFieldRef` for limits) to inject the pod name and resource limits as env vars — no code change needed and values stay accurate across reschedules",
+      "Hardcode the pod name in the Deployment manifest; pod names are stable",
+      "Run `kubectl exec` in an init container to write the pod name into a shared file",
+      "Query the API server from the app with a cluster-admin token"
+     ],
+     "difficulty": 3,
+     "evidence": [
+      [
+       "app code",
+       "hostname = os.environ.get('POD_NAME', 'unknown')\nmem_limit = os.environ.get('MEM_LIMIT', 'unknown')"
+      ],
+      [
+       "deployment env",
+       "env: []  # nothing injected"
+      ]
+     ],
+     "hint": "Kubernetes can project pod metadata into the container without the app calling the API. Which API is that?",
+     "id": "ckad-d2-sc6",
+     "mins": 8,
+     "objectives": [
+      "Downward API",
+      "env vars",
+      "observability"
+     ],
+     "prompt": "What is the cleanest way to provide this metadata?",
+     "situation": "An app wants to log its own pod name and memory limit at startup for tracing, reading `POD_NAME` and `MEM_LIMIT` from the environment. Currently both are `unknown`.",
+     "title": "The App That Names Itself",
+     "why": "The Downward API exposes pod metadata (name, namespace, labels, resource requests/limits via resourceFieldRef) as env vars or files — accurate, no RBAC needed, no code changes. Hardcoding breaks on every reschedule; giving the app API access violates least privilege."
+    }
+   ],
+   "summary": "The developer-focused companion to core CKAD prep: Jobs and batch patterns, ConfigMap propagation, resource triage, Ingress routing, multi-container volumes, and the Downward API. Independent training content; this course confers no certificate."
+  }
+ ],
+ "lessons": [
+  {
+   "domain_id": "ckad",
+   "title": "Kubernetes Application Development — Core concepts",
+   "concepts": [
+    "Multi-container pods share a network namespace and volumes. Init containers run to completion before app start (setup tasks); sidecars run for the pod's lifetime (log shipping, proxies).",
+    "Probes serve different masters: liveness restarts a stuck container, readiness gates Service traffic, startup gives slow-starting apps a grace window. Missing readiness probes cause deploy-time 500s.",
+    "Jobs run work to completion; CronJobs schedule them. `concurrencyPolicy: Forbid` prevents overlapping runs, and history limits bound retained job objects.",
+    "Resource requests drive scheduling; limits drive survival. Exceeding a memory limit gets the container OOMKilled regardless of free node memory — size limits from measured peaks, not policy numbers.",
+    "Helm renders templates into a release that tracks desired state. `helm upgrade` converges the cluster to the release; out-of-band `kubectl` edits create drift Helm will overwrite."
+   ],
+   "example": {
+    "lang": "shell",
+    "code": "kubectl create deploy web --image=registry.example.com/app:v1\nkubectl set image deploy/web app=registry.example.com/app:v2\nkubectl rollout status deploy/web\nkubectl rollout undo deploy/web",
+    "walkthrough": "The standard deploy cycle: create, update the image, watch the rollout, and roll back if the new version misbehaves. Rollouts are the developer's safety net — learn them before you need them."
+   },
+   "pitfalls": [
+    "Common trap: using `latest` tag without imagePullPolicy — nodes cache `latest` and may not pull the new image.",
+    "Common trap: putting secrets in env vars and then sharing `kubectl exec env` output in chat.",
+    "Common trap: liveness probes that check dependencies — a down database then restarts all your app pods in a cascade.",
+    "Common trap: CronJob schedules in the container's timezone assumption — CronJob schedules are UTC unless `timeZone` is set."
+   ],
+   "try_it": "Work through this in the Labs tab."
+  }
+ ],
+ "labs": [
+  {
+   "id": "ckad-lab1",
+   "domain_id": "ckad",
+   "title": "Probes That Actually Protect Deploys",
+   "objective": "Add liveness and readiness probes to a deployment and observe how a readiness failure removes a pod from Service endpoints.",
+   "steps": [
+    "Deploy the sample app without probes and note that `kubectl get endpoints web` lists pods immediately.",
+    "Add a readinessProbe hitting `/ready` (returns 200 only after 20s of startup) and re-apply.",
+    "Roll out a new revision and watch endpoints: the new pod must NOT appear until it passes readiness.",
+    "Add a livenessProbe on `/healthz`; then break the app (bad env var) and watch Kubernetes restart it.",
+    "Restore the env var and confirm the rollout completes cleanly."
+   ],
+   "checks": [
+    {
+     "command_pattern": "^kubectl\\s+get\\s+endpoints",
+     "expect_contains": "<none>",
+     "hint": "During the startup window, endpoints for the new pod should be empty."
+    },
+    {
+     "command_pattern": "^kubectl\\s+describe\\s+pod",
+     "expect_contains": "Readiness probe",
+     "hint": "Describe the pod and confirm the readiness probe is configured."
+    }
+   ]
+  },
+  {
+   "id": "ckad-lab2",
+   "domain_id": "ckad",
+   "title": "ConfigMap-Driven Configuration",
+   "objective": "Externalize app config into a ConfigMap and a Secret, wire them into a pod, and rotate a value safely.",
+   "steps": [
+    "Create a ConfigMap `app-config` with `LOG_LEVEL` and `FEATURE_FLAG` literals.",
+    "Create a Secret `app-secret` with the database password (from a file or `--from-literal`).",
+    "Deploy a pod consuming the ConfigMap via `envFrom` and the Secret via a single `env.valueFrom.secretKeyRef`.",
+    "Exec into the pod and confirm the variables are present with `env | grep -E 'LOG_LEVEL|DB_'`.",
+    "Update the ConfigMap, run `kubectl rollout restart`, and confirm the new value is live."
+   ],
+   "checks": [
+    {
+     "command_pattern": "^kubectl\\s+exec",
+     "expect_contains": "LOG_LEVEL",
+     "hint": "Exec into the pod and print the environment."
+    },
+    {
+     "command_pattern": "^kubectl\\s+get\\s+secret",
+     "expect_contains": "Opaque",
+     "hint": "Confirm the Secret exists with type Opaque."
+    }
+   ]
+  }
+ ],
+ "simulations": [],
+ "consoleSims": [],
+ "terminalMissions": [],
+ "sections": [
+  {
+   "id": "sec-full-spectrum",
+   "title": "Full Spectrum Dominance — core path",
+   "kind": "core",
+   "lectures": [],
+   "lab_ids": [
+    "fsd-tl-lab-1",
+    "fsd-tl-lab-2",
+    "fsd-tl-lab-3",
+    "fsd-sg-lab-1",
+    "fsd-sg-lab-2",
+    "fsd-sg-lab-3",
+    "fsd-ai-lab-1",
+    "fsd-ai-lab-2",
+    "fsd-ai-lab-3"
+   ],
+   "drill_domain_ids": [
+    "tl-interview",
+    "tl-endpoint-ops",
+    "sec-graphs",
+    "graph-defense",
+    "ml-defense",
+    "ai-agent-sec"
+   ]
+  }
+ ],
+ "behavioral": [
+  {
+   "prompt": "Tell me about the most technically difficult problem you have run into — a homelab, a broken environment, anything — and how you solved it.",
+   "framework": "STAR",
+   "points": [
+    "Pick ONE problem with a real evidence trail: the symptom, what you measured, the hypothesis you tested",
+    "Show the loop: scope, observe, hypothesize, smallest safe change, validate — interviewers score the method, not just the fix",
+    "Name the tools (VM build, networking, logs) and the lesson it taught you",
+    "Close with the result in concrete terms: what works now that did not before"
+   ],
+   "pitfalls": [
+    "Choosing a story with no real obstacle (“I Googled it” is not a story)",
+    "Skipping validation — saying it worked without proving it",
+    "Rambling past two minutes without reaching the result"
+   ]
+  },
+  {
+   "prompt": "Tell me about a time you dealt with a frustrated customer or user while something was broken.",
+   "framework": "STAR",
+   "points": [
+    "Lead with empathy and ownership: acknowledge the impact before the technical detail",
+    "Show translation: what you told them, in their language, plus the timeline you committed to",
+    "Show judgment: the narrow fix you chose and what you refused to do (e.g., disabling the control to clear the symptom)",
+    "Close with the relationship outcome, not just the technical one"
+   ],
+   "pitfalls": [
+    "Badmouthing the customer to sound decisive",
+    "Promising a timeline you could not keep",
+    "Framing the user as the problem rather than the situation"
+   ]
+  },
+  {
+   "prompt": "Why ThreatLocker, and why cybersecurity?",
+   "framework": "STAR",
+   "points": [
+    "Connect prevention to something concrete: a moment you saw detection arrive too late, or a system you hardened",
+    "Tie their model to your instincts: deny-by-default matches how you already think about trust",
+    "Show service orientation: the Cyber Hero culture rewards the 2 a.m. helper — give an example of being one",
+    "Name one forward-looking reason: Zero Trust, the MSP mission, or the bootcamp community investment"
+   ],
+   "pitfalls": [
+    "Generic flattery with no specifics about the company",
+    "Leading with compensation, title, or location convenience",
+    "Claiming expertise in products you have only read about — frame it as studied, not mastered"
+   ]
+  },
+  {
+   "framework": "STAR",
+   "pitfalls": [
+    "Staying vague ('I analyzed the data') instead of naming what you connected.",
+    "Skipping your own role: what did YOU see that others missed?",
+    "No outcome: what changed because you joined the dots?"
+   ],
+   "points": [
+    "The scattered signals and why nobody had connected them yet",
+    "The specific links you drew between them (shared host, time, infrastructure)",
+    "What the bigger picture turned out to be and what action it drove",
+    "What the experience taught you about investigating"
+   ],
+   "prompt": "Tell me about a time you connected scattered clues into a bigger picture that others had missed."
+  },
+  {
+   "framework": "STAR",
+   "pitfalls": [
+    "Claiming you fixed everything: credibility comes from trade-offs, not heroics.",
+    "Hiding the constraint: the limitation is what makes the prioritization story real.",
+    "No metric: 'better' needs a before-and-after."
+   ],
+   "points": [
+    "The constraint (time, budget, staff) and the size of the backlog",
+    "How you decided what mattered most (what was reachable, what was critical)",
+    "What you did first and what you deliberately deferred",
+    "The measurable result of the prioritization"
+   ],
+   "prompt": "Describe a time you had to prioritize risks or fixes with limited time or resources. How did you decide what came first?"
+  },
+  {
+   "framework": "STAR",
+   "pitfalls": [
+    "Reciting jargon to a non-technical audience and calling it communication.",
+    "Skipping the audience's reaction: did they actually understand and act?",
+    "Making yourself the hero instead of the translator."
+   ],
+   "points": [
+    "The technical finding and why it mattered",
+    "Who the audience was and what they cared about",
+    "How you reframed it (a picture, an analogy, a story)",
+    "What decision or action the audience took because they understood"
+   ],
+   "prompt": "Tell me about a time you explained a complex technical finding to a non-technical audience and it changed a decision."
+  },
+  {
+   "prompt": "Tell me about a time you used automation or AI to solve a security problem.",
+   "framework": "STAR",
+   "points": [
+    "The repetitive security task and what it cost in analyst time",
+    "The automation or AI approach you built and how you validated it",
+    "Measured outcome: time saved, detection gained, false positives changed"
+   ],
+   "pitfalls": [
+    "Describing the tool but never the validation",
+    "No measurable outcome"
+   ]
+  },
+  {
+   "prompt": "Describe a time you had to decide whether to trust an automated security decision.",
+   "framework": "STAR",
+   "points": [
+    "The stakes of the automated action and its blast radius",
+    "How you verified before acting (or the gate you built)",
+    "What happened and what you would automate differently next time"
+   ],
+   "pitfalls": [
+    "Saying you always trust the tool",
+    "No mention of blast radius or reversibility"
+   ]
+  }
+ ],
+ "resources": {
+  "cheatsheet": {
+   "title": "Full Spectrum Dominance — field reference",
+   "sections": [
+    {
+     "heading": "Company facts (verified)",
+     "items": [
+      "Founded 2017 in Orlando, FL — Danny Jenkins (CEO), Sami Jenkins (COO), John Carolan (QA)",
+      "Philosophy: deny-by-default / default-deny — approve known-good, deny the rest",
+      "Customers: 70,000+ organizations, sold heavily through the MSP channel",
+      "Funding: $190M Series F, July 2026 (Elephant-led); ~730 employees",
+      "Interview address: 1901 Summit Tower Blvd, Orlando, FL 32810",
+      "Culture: in-office 5 days/week; free lunch; post-offer background + drug screening"
+     ]
+    },
+    {
+     "heading": "Product stack",
+     "items": [
+      "Allowlisting — default-deny execution control for apps, DLLs, scripts, installers",
+      "Ringfencing — constrains allowed apps: app-to-app, file, registry, network",
+      "Storage Control — USB/device policy by serial, user, file type, encryption",
+      "Elevation Control — just-in-time per-app admin, no standing rights",
+      "Network Control — host firewall; port/IP/dynamic-ACL rules; ZTNA foundation",
+      "Web Control — agent-based DNS/URL category filtering, works off-network",
+      "Cyber Hero MDR — 24/7/365 US-based response, ~60-second average",
+      "Testing Environment — one-button VDI sandbox; checks AV flags, canary files, registry changes"
+     ]
+    },
+    {
+     "heading": "Rule strength (strongest to weakest)",
+     "items": [
+      "Certificate/publisher rules — survive version updates",
+      "Hash rules — precise but break on every new version",
+      "Path rules — weakest; never in user-writable locations",
+      "Learning Mode catalogs before enforcement; Installation Mode pauses blocking — scope and time-box both"
+     ]
+    },
+    {
+     "heading": "Terminal evidence commands",
+     "items": [
+      "nmap <host> — which ports answer (22/80/443 open)",
+      "dig <name> — ANSWER SECTION with the A record",
+      "ss — listening sockets",
+      "systemctl status <svc> — unit state",
+      "journalctl -u <svc> — service logs",
+      "sha256sum <file> — real SHA-256 identity",
+      "grep <pattern> <file> — search the record",
+      "ps — what is actually running"
+     ]
+    },
+    {
+     "heading": "Graph vocabulary",
+     "items": [
+      "node — any entity tracked in the model (user, host, IP, domain, file hash, vulnerability)",
+      "edge — a labeled relationship between two nodes (logged into, resolved to, downloaded)",
+      "degree — number of edges on a node; high-degree nodes are attacker highways",
+      "centrality — how much traffic or how many paths flow through a node",
+      "directed edge — a relationship with a direction (A downloaded FROM B)",
+      "security graph — the living model of your whole environment as nodes and edges",
+      "attack graph — the subgraph of exploitable paths to your targets",
+      "knowledge graph — threat-intel indicators linked to campaigns and actors"
+     ]
+    },
+    {
+     "heading": "Attack-graph playbook",
+     "items": [
+      "inventory first — you cannot graph what you have not discovered",
+      "model flaws AND misconfigs as exploit edges",
+      "compute shortest paths to the crown jewels",
+      "find the choke point (highest betweenness on those paths)",
+      "break the path: patch, segment, or remove the edge",
+      "re-scan and re-run the graph to prove the path is gone",
+      "never trust yesterday's graph — redeployments redraw the map"
+     ]
+    },
+    {
+     "heading": "Zero Trust + graphs",
+     "items": [
+      "never trust, always verify — re-evaluate every access decision",
+      "assume breach — treat unexpected edges as hostile until proven otherwise",
+      "microsegmentation — allow-list approved edges, alert on new ones",
+      "ReBAC — policies are path queries on the identity graph",
+      "continuous verification — device/location/behavior edges change, trust follows",
+      "anomalous edge — a first-seen connection between strangers is the classic signal"
+     ]
+    },
+    {
+     "heading": "ML detection vocabulary",
+     "items": [
+      "Supervised learning — learns from labeled examples; strong on known threats, blind to novel ones",
+      "Unsupervised learning — finds structure without labels; clustering and dimensionality reduction",
+      "Anomaly detection — models 'normal' and flags deviations; the workhorse for novel threats",
+      "UEBA — user and entity behavior analytics: per-user baselines plus peer-group comparison",
+      "Feature engineering — encoding raw logs into model inputs (login velocity, rare processes, domain entropy)",
+      "Concept drift — model decay as attacker behavior and legitimate traffic shift over time"
+     ]
+    },
+    {
+     "heading": "Detection metrics",
+     "items": [
+      "Precision — of all flagged alerts, how many were real",
+      "Recall — of all real attacks, how many were flagged",
+      "Threshold tuning — sliding the decision cutoff trades precision against recall",
+      "Alert fatigue — when false positives train analysts to ignore the queue",
+      "DGA — domain generation algorithm; detected via character entropy of domain names"
+     ]
+    },
+    {
+     "heading": "Agent and LLM security",
+     "items": [
+      "Direct prompt injection — attacker input overrides app instructions (OWASP LLM01:2025, the #1 LLM risk)",
+      "Indirect prompt injection — hidden instructions inside retrieved data (email, web, docs)",
+      "Jailbreak — defeating the model's own safety policy; distinct from hijacking app behavior",
+      "Tool poisoning — malicious tool descriptions or metadata steer an agent to misuse its tools (MCP ecosystem risk)",
+      "Insecure output handling — executing or trusting model output without validation",
+      "Least-privilege tools — grant each tool only the scope its task requires"
+     ]
+    },
+    {
+     "heading": "Adversarial ML and governance",
+     "items": [
+      "Evasion — perturbing inputs at inference time to dodge a classifier",
+      "Poisoning — corrupting training data to corrupt the model",
+      "Extraction — querying a model to steal its behavior or parameters",
+      "MITRE ATLAS — knowledge base of adversarial ML tactics and techniques",
+      "Red-teaming and evals — adversarial testing of AI systems before deployment",
+      "Human-in-the-loop — required approval for high-impact or irreversible agent actions",
+      "SOAR — security orchestration, automation and response; automate enrichment, gate containment"
+     ]
+    }
+   ]
+  },
+  "glossary": [
+   {
+    "term": "Allowlisting",
+    "def": "Default-deny execution control: only explicitly approved applications, scripts, and installers may run."
+   },
+   {
+    "term": "Blocklisting",
+    "def": "Default-allow model: everything runs except recognized-bad items — the window zero-days live in."
+   },
+   {
+    "term": "Default-deny",
+    "def": "Deny-by-default posture: unknown code, devices, or connections are refused unless explicitly approved."
+   },
+   {
+    "term": "Ringfencing",
+    "def": "Containment applied on top of allowlisting; restricts what a permitted app may do across app-to-app, file, registry, and network dimensions."
+   },
+   {
+    "term": "Learning Mode",
+    "def": "Agent mode that catalogs applications and dependencies and auto-builds policies before enforcement; temporarily disables file blocking."
+   },
+   {
+    "term": "Installation Mode",
+    "def": "Temporary mode that pauses file blocking for installs — must be tightly scoped and time-boxed."
+   },
+   {
+    "term": "Elevation Control",
+    "def": "Grants specific approved applications admin rights for standard users — just-in-time, per-app, time-boxed — without standing admin rights."
+   },
+   {
+    "term": "Application hopping",
+    "def": "An elevated or trusted process spawning another tool (e.g., PowerShell) to inherit its privileges — countered by ringfencing the elevated process."
+   },
+   {
+    "term": "Storage Control",
+    "def": "Device and path policy: USB approved by serial, user, file type, time, and encryption; unapproved devices do not connect."
+   },
+   {
+    "term": "Network Control",
+    "def": "Centrally managed host firewall; rules by port, source IP, and dynamic ACLs; egress allowlisting pins apps to approved destinations."
+   },
+   {
+    "term": "ZTNA",
+    "def": "Zero Trust Network Access: per-session, per-application brokered connections (commonly over port 443) with no open inbound ports — deny-by-default for network access."
+   },
+   {
+    "term": "Approval Center",
+    "def": "Portal queue where end-user software requests arrive for admin review and decision."
+   },
+   {
+    "term": "Unified Audit",
+    "def": "Real-time audit showing what was allowed or denied across endpoints — and why; the evidence layer for triage."
+   },
+   {
+    "term": "Testing Environment",
+    "def": "One-button cloud VDI sandbox launched from an approval request; logs AV flags, canary-file access, and registry/system changes."
+   },
+   {
+    "term": "Cyber Hero MDR",
+    "def": "24/7/365 US-based managed detection and response team; validates alerts, isolates hosts, acts on customer runbooks; ~60-second average response."
+   },
+   {
+    "term": "Assume breach",
+    "def": "Design and operate as if the attacker already has a foothold — least privilege, containment, and monitoring everywhere."
+   },
+   {
+    "term": "Living off the land",
+    "def": "Attacks that hijack trusted built-in tools (Word, PowerShell) instead of dropping malware — defeated by behavior containment, not signatures."
+   },
+   {
+    "term": "Change control",
+    "def": "Scoped, ticketed, tested changes with validation and rollback — emergency speed never cancels the process."
+   },
+   {
+    "def": "A node in an attack graph representing a system or weakness, connected by edges that represent steps an attacker could take between them.",
+    "term": "attack graph"
+   },
+   {
+    "def": "How central a node is to paths through the graph (for example, betweenness: how many shortest paths cross it).",
+    "term": "centrality"
+   },
+   {
+    "def": "The most valuable assets in the environment (customer data, finance systems, source code): what attack paths are measured against.",
+    "term": "crown jewels"
+   },
+   {
+    "def": "A labeled connection between two nodes, representing a relationship such as 'logged into' or 'resolved to'.",
+    "term": "edge"
+   },
+   {
+    "def": "A graph of threat indicators (IPs, domains, hashes) linked to campaigns, actors, and each other through shared infrastructure.",
+    "term": "knowledge graph"
+   },
+   {
+    "def": "The practice of mapping relationships in data to reveal hidden associations; rooted in Euler's 1736 graph theory, 1970s paper link charts, and post-2001 intelligence work.",
+    "term": "link analysis"
+   },
+   {
+    "def": "A segment of the network so small that its allowed communications can be enumerated as a graph of approved edges.",
+    "term": "microsegmentation"
+   },
+   {
+    "def": "An entity in the graph: a user, host, IP address, domain, file, or vulnerability.",
+    "term": "node"
+   },
+   {
+    "def": "Access control where policy is evaluated by traversing relationships on a graph (for example: user reports_to manager who owns the resource's project).",
+    "term": "ReBAC"
+   },
+   {
+    "def": "A machine-learning model that operates directly on graph structure to classify nodes or subgraphs, for example labeling attack vs normal behavior.",
+    "term": "graph neural network (GNN)"
+   },
+   {
+    "def": "Monitoring user and entity behavior by modeling their normal relationship patterns and flagging structural anomalies.",
+    "term": "UEBA"
+   },
+   {
+    "term": "Supervised learning",
+    "def": "ML trained on labeled examples; classifies new inputs into known categories."
+   },
+   {
+    "term": "Anomaly detection",
+    "def": "ML approach that models normal behavior and flags statistically rare deviations."
+   },
+   {
+    "term": "Feature engineering",
+    "def": "Turning raw telemetry into numeric model inputs, e.g. login velocity or domain entropy."
+   },
+   {
+    "term": "Precision",
+    "def": "Share of flagged alerts that were real; the false-positive economics of the queue."
+   },
+   {
+    "term": "Recall",
+    "def": "Share of real attacks the detector flagged; the miss rate's complement."
+   },
+   {
+    "term": "Concept drift",
+    "def": "Decay of model performance as the data distribution shifts over time."
+   },
+   {
+    "term": "Prompt injection",
+    "def": "Attacker-crafted instructions that override an LLM application's intended behavior; direct (user input) or indirect (retrieved data)."
+   },
+   {
+    "term": "Jailbreak",
+    "def": "Crafted input that defeats an LLM's own safety policy or refusal behavior."
+   },
+   {
+    "term": "Tool poisoning",
+    "def": "Malicious tool descriptions or metadata that manipulate an AI agent into misusing its tools."
+   },
+   {
+    "term": "Insecure output handling",
+    "def": "Failing to validate LLM output before acting on it, e.g. executing generated commands."
+   },
+   {
+    "term": "Evasion attack",
+    "def": "Adversarial ML technique: perturbing inputs to cross a classifier's decision boundary."
+   },
+   {
+    "term": "MITRE ATLAS",
+    "def": "Adversarial Threat Landscape for AI Systems; MITRE's knowledge base of AI attack tactics."
+   },
+   {
+    "term": "SOAR",
+    "def": "Security orchestration, automation and response; playbooks that enrich automatically and gate containment on humans."
+   },
+   {
+    "term": "Human-in-the-loop",
+    "def": "Required human approval before high-impact or irreversible automated actions."
+   }
+  ],
+  "links": [
+   {
+    "label": "ThreatLocker Zero Trust platform explainer (official)",
+    "url": "https://www.threatlocker.com/blog/edr-xdr-vs-zero-trust-prevention",
+    "note": "EDR/XDR vs Zero Trust prevention — the deny-by-default argument in their own words."
+   },
+   {
+    "label": "ThreatLocker Bootcamp page (official)",
+    "url": "https://www.threatlocker.com/bootcamp",
+    "note": "Free six-week program: phases, format, and what completion leads to."
+   },
+   {
+    "label": "ThreatLocker Careers (official)",
+    "url": "https://www.threatlocker.com/company/careers",
+    "note": "Open roles and the hiring-event listing; roles are in-office in Orlando."
+   },
+   {
+    "label": "Elevation Control (official)",
+    "url": "https://www.threatlocker.com/secure-privileges-without-sacrificing-agility",
+    "note": "Just-in-time privilege without standing admin."
+   },
+   {
+    "label": "Storage Control (official)",
+    "url": "https://www.threatlocker.com/capabilities/external-storage-device-control",
+    "note": "USB/device policy by serial, user, file type, encryption."
+   },
+   {
+    "label": "Web Control (official)",
+    "url": "https://www.threatlocker.com/capabilities/web-content-control",
+    "note": "Agent-based DNS/URL filtering, including off-network."
+   },
+   {
+    "label": "Cyber Hero MDR (official)",
+    "url": "https://www.threatlocker.com/get-threat-response-in-minutes",
+    "note": "24/7/365 managed response positioning."
+   },
+   {
+    "label": "MDR capabilities (official)",
+    "url": "https://www.threatlocker.com/capabilities/managed-detection-and-response",
+    "note": "Detection and response capability detail."
+   },
+   {
+    "label": "NIST SP 800-207 — Zero Trust Architecture",
+    "url": "https://csrc.nist.gov/pubs/sp/800/207/final",
+    "note": "The canonical Zero Trust reference: tenets, deployment models, policy engine trust algorithm."
+   },
+   {
+    "label": "CISA Zero Trust Maturity Model",
+    "url": "https://www.cisa.gov/zero-trust-maturity-model",
+    "note": "Federal maturity steps across identity, devices, networks, applications, and data."
+   },
+   {
+    "label": "MITRE ATT&CK",
+    "note": "The adversary-tactics framework; codify its tactic chains as subgraphs to hunt for in your security graph.",
+    "url": "https://attack.mitre.org/"
+   },
+   {
+    "label": "CISA — Cybersecurity and Infrastructure Security Agency",
+    "note": "US government advisories, alerts, and guidance frequently referenced in threat-intel work.",
+    "url": "https://www.cisa.gov/"
+   },
+   {
+    "label": "Neo4j getting started",
+    "note": "A widely used graph database; the book's call to action suggests piloting graph queries on exported security data with tools like this.",
+    "url": "https://neo4j.com/docs/getting-started/"
+   },
+   {
+    "label": "OWASP GenAI Security Project",
+    "url": "https://genai.owasp.org/",
+    "note": "Home of the LLM Top 10 and GenAI security guidance"
+   },
+   {
+    "label": "OWASP Top 10 for LLM Applications",
+    "url": "https://genai.owasp.org/llm-top-10/",
+    "note": "The ranked LLM risk list — prompt injection is #1"
+   },
+   {
+    "label": "NIST AI Risk Management Framework",
+    "url": "https://www.nist.gov/itl/ai-risk-management-framework",
+    "note": "The standard governance framework for managing AI risk"
+   },
+   {
+    "label": "MITRE ATLAS",
+    "url": "https://atlas.mitre.org/",
+    "note": "Adversarial Threat Landscape for AI Systems — tactics and techniques"
+   },
+   {
+    "label": "CISA AI guidance",
+    "url": "https://www.cisa.gov/ai",
+    "note": "CISA's AI security resources and guidance"
+   }
+  ],
+  "checklist": [
+   "Sixty-second company brief rehearsed out loud: year, city, philosophy, three products, one milestone",
+   "Two STAR stories ready: hardest technical problem; a frustrated customer or user",
+   "“Why ThreatLocker / why cybersecurity” answer tied to prevention and service, not slogans",
+   "Ringfencing explained in one plain-English sentence (the Word-on-a-leash version)",
+   "Elevation Control answer ready: just-in-time, per-app, time-boxed, ringfenced, logged",
+   "Triage loop memorized: scope → observe → hypothesize → smallest safe change → validate → explain",
+   "Three questions to ask them: team on-call shape, approval SLA expectations, what “most helpful” looks like on the team",
+   "Logistics: 1901 Summit Tower Blvd, Orlando FL; in-office role; ID and references ready",
+   "Define your crown jewels before you model anything.",
+   "Build the asset-and-access graph from live sources (scans, configs, identity), not from the CMDB alone.",
+   "Model vulnerabilities AND misconfigurations as exploit edges.",
+   "Compute shortest attack paths to each crown jewel; name the choke points.",
+   "Prioritize remediation by path risk, not by raw severity score.",
+   "Express at least one access policy as a relationship path (ReBAC pilot).",
+   "Baseline approved communication edges per segment; alert on first-seen edges.",
+   "Brief the next incident or risk review with the graph, not a spreadsheet.",
+   "Can you explain supervised vs unsupervised vs anomaly detection with a security example for each?",
+   "Can you name three log features you would engineer for a C2 detector and why?",
+   "Can you walk through a UEBA alert (baseline, deviation, verification) end to end?",
+   "Can you explain the precision/recall tradeoff and how you would set a threshold for a fatigued SOC?",
+   "Can you define concept drift and describe a retraining process?",
+   "Can you distinguish direct vs indirect prompt injection and jailbreaking?",
+   "Can you explain tool poisoning in the MCP ecosystem and three controls against it?",
+   "Can you describe insecure output handling and how you would validate agent output?",
+   "Can you name the three adversarial ML attack classes and one defense for evasion?",
+   "Can you design a SOAR playbook gate: what automates freely, what needs human approval?"
+  ]
+ },
+ "chat": {
+  "persona": "You are a rigorous but encouraging interviewer preparing a candidate for a Zero Trust endpoint security role. Probe with 'why' and 'how would you explain that' follow-ups. Stay on topic: ThreatLocker-style endpoint defense, security graphs, and AI-powered security. All practice is original; never reproduce vendor material.",
+  "topics": [
+   {
+    "id": "tl-interview",
+    "name": "ThreatLocker Interview Prep",
+    "key_points": [
+     "allowlisting",
+     "ringfencing",
+     "default-deny",
+     "cyber hero",
+     "zero trust tenets",
+     "STAR stories"
+    ],
+    "followups": [
+     "Can you give an example?",
+     "How would you explain that to a CFO?"
+    ]
+   },
+   {
+    "id": "tl-endpoint-ops",
+    "name": "Zero Trust Endpoint Operations",
+    "key_points": [
+     "default-deny",
+     "ringfencing dimensions",
+     "elevation control",
+     "storage control",
+     "network control",
+     "change control"
+    ],
+    "followups": [
+     "Walk me through the triage order.",
+     "When would you deny outright?"
+    ]
+   },
+   {
+    "followups": [
+     "Can you walk through an example?",
+     "How does this change patch prioritization?",
+     "What is the difference between a security graph and an attack graph?"
+    ],
+    "id": "sec-graphs",
+    "key_points": [
+     "nodes",
+     "edges",
+     "attack graphs",
+     "kill chain",
+     "link analysis",
+     "threat intel graphs"
+    ],
+    "name": "Security Graphs: Think Like an Attacker"
+   },
+   {
+    "followups": [
+     "How do graphs change patch prioritization?",
+     "What is ReBAC and how is it different from RBAC?",
+     "How would a small team start with graphs?"
+    ],
+    "id": "graph-defense",
+    "key_points": [
+     "attack-path analysis",
+     "insider threat",
+     "vulnerability graphs",
+     "Zero Trust",
+     "microsegmentation",
+     "blast radius"
+    ],
+    "name": "Graph-Powered Defense Operations"
+   },
+   {
+    "id": "ml-defense",
+    "name": "ML-Powered Threat Defense",
+    "key_points": [
+     "anomaly detection",
+     "UEBA",
+     "alert fatigue",
+     "concept drift",
+     "threat hunting",
+     "precision recall"
+    ],
+    "followups": [
+     "Walk me through an example.",
+     "How do you handle false positives?"
+    ]
+   },
+   {
+    "id": "ai-agent-sec",
+    "name": "Securing AI Systems & Agents",
+    "key_points": [
+     "prompt injection",
+     "tool poisoning",
+     "MCP risks",
+     "insecure output handling",
+     "SOAR gates",
+     "adversarial ML"
+    ],
+    "followups": [
+     "Walk me through an example.",
+     "How do you secure an AI agent end to end?"
+    ]
+   }
+  ]
+ },
+ "simulation": {
+  "items": 12,
+  "minutes": 180,
+  "evidence_cost_mins": 2
+ },
+ "media": [
+  {
+   "id": "tl-allowlist-vs-blocklist",
+   "kind": "diagram",
+   "title": "Allowlisting vs blocklisting: default-deny vs default-allow",
+   "svg": "assets/diagrams/tl-allowlist-vs-blocklist.svg",
+   "lesson_ref": "c-tl-endpoint-ops",
+   "caption": "Default-deny stops unknown code without a signature; default-allow runs it until one exists.",
+   "alt": "Side-by-side comparison: on the left, a default-deny gate runs known-good payroll software and denies unknown ransomware with no signature needed; on the right, a default-allow gate runs both until the ransomware is recognized as bad."
+  },
+  {
+   "id": "tl-ringfencing",
+   "kind": "diagram",
+   "title": "Ringfencing: four leashes on an allowed application",
+   "svg": "assets/diagrams/tl-ringfencing.svg",
+   "lesson_ref": "c-tl-endpoint-ops",
+   "caption": "Word stays approved, but it cannot spawn PowerShell, read the credential store, or reach the internet — while opening its document is allowed.",
+   "alt": "An approved Word application inside a dashed containment ring: arrows show PowerShell launch denied, credential-store registry access denied, external network denied, and document file access allowed."
+  },
+  {
+   "id": "tl-zero-trust-stack",
+   "kind": "diagram",
+   "title": "The Zero Trust endpoint stack",
+   "svg": "assets/diagrams/tl-zero-trust-stack.svg",
+   "lesson_ref": "c-tl-interview",
+   "caption": "Five deny-by-default layers — Allowlisting, Ringfencing, Elevation, Storage, Network — watched by Web Control, the Testing Environment, Unified Audit, and the Cyber Hero MDR team.",
+   "alt": "A vertical stack of five layers from Allowlisting at the foundation up through Ringfencing, Elevation Control, Storage Control, and Network Control, with side boxes for Web Control, Testing Environment, Unified Audit, and Cyber Hero MDR."
+  },
+  {
+   "id": "tl-triage-flow",
+   "kind": "diagram",
+   "title": "Application-request triage flow",
+   "svg": "assets/diagrams/tl-triage-flow.svg",
+   "lesson_ref": "c-tl-endpoint-ops",
+   "caption": "Gather evidence first, then branch: trusted gets a scoped rule, unknown goes to the sandbox, malicious gets a documented deny.",
+   "alt": "Flowchart from request arrival through evidence gathering to a decision diamond branching into three outcomes: approve with a scoped rule, detonate in the Testing Environment then ringfence, or deny with documented evidence."
+  },
+  {
+   "alt": "Diagram of four labeled nodes (user, host, file, domain, IP) joined by labeled directed edges such as logged into, downloaded, and resolved to, illustrating graph vocabulary.",
+   "caption": "Nodes are the things; edges are the relationships. Attackers move along the edges.",
+   "id": "sg-graph-vocabulary",
+   "kind": "diagram",
+   "lesson_ref": "c-sec-graphs",
+   "svg": "assets/diagrams/sg-graph-vocabulary.svg",
+   "title": "Graph vocabulary: nodes and edges"
+  },
+  {
+   "alt": "Attack graph with four nodes in a chain: external attacker to VPN gateway to file server to customer database, with a dead-end branch to a printer, showing the shortest path to the crown jewel.",
+   "caption": "The shortest path to the crown jewel is length 3. Break the choke point and the campaign dies.",
+   "id": "sg-attack-path",
+   "kind": "diagram",
+   "lesson_ref": "c-sec-graphs",
+   "svg": "assets/diagrams/sg-attack-path.svg",
+   "title": "Attack graph: shortest path to the crown jewels"
+  },
+  {
+   "alt": "Seven kill-chain stages as connected graph nodes: reconnaissance, weaponization, delivery, exploitation, installation, command and control, actions. Three alerts are annotated at delivery, installation, and command and control.",
+   "caption": "Three 'unrelated' alerts, one kill-chain subgraph. Correlate by shared entities, not by severity.",
+   "id": "sg-kill-chain",
+   "kind": "diagram",
+   "lesson_ref": "c-sec-graphs",
+   "svg": "assets/diagrams/sg-kill-chain.svg",
+   "title": "Kill chain as a graph"
+  },
+  {
+   "alt": "A policy engine at the center of a small graph evaluates an access request from a finance user on an untrusted laptop to an R and D code server. The request is denied because there is no prior relationship edge and the device is untrusted.",
+   "caption": "Valid credentials are not enough. The graph checks device trust, history, and relationships on every request.",
+   "id": "sg-zero-trust",
+   "kind": "diagram",
+   "lesson_ref": "c-graph-defense",
+   "svg": "assets/diagrams/sg-zero-trust.svg",
+   "title": "Zero Trust runs on relationships"
+  },
+  {
+   "id": "ai-ml-pipeline",
+   "kind": "diagram",
+   "title": "ML detection pipeline: telemetry to triage",
+   "svg": "assets/diagrams/ai-ml-pipeline.svg",
+   "lesson_ref": "c-ml-defense",
+   "caption": "How raw telemetry becomes scored alerts: features feed the model, the model scores, analysts triage top-down — and analyst verdicts feed retraining.",
+   "alt": "Flow diagram: telemetry sources feed feature extraction, which feeds an ML model, which outputs scored alerts into an analyst triage queue, with a feedback arrow for retraining."
+  },
+  {
+   "id": "ai-ueba-baseline-diagram",
+   "kind": "diagram",
+   "title": "UEBA: baseline vs deviation",
+   "svg": "assets/diagrams/ai-ueba-baseline.svg",
+   "lesson_ref": "c-ml-defense",
+   "caption": "UEBA learns each user's normal hours, locations, and volumes, then scores deviations from that baseline.",
+   "alt": "24-hour timeline showing a shaded normal login window from 8 AM to 6 PM with normal logins inside it, and a red anomaly marker at 2:47 AM for a foreign login scoring 97 out of 100."
+  },
+  {
+   "id": "ai-injection-flow",
+   "kind": "diagram",
+   "title": "Indirect prompt injection attack flow",
+   "svg": "assets/diagrams/ai-injection-flow.svg",
+   "lesson_ref": "c-ai-agent-sec",
+   "caption": "An attacker hides instructions in data the agent retrieves; the agent mistakes data for instructions and misuses its tools.",
+   "alt": "Attack flow diagram: hidden instruction in an email is read by an AI agent, which mistakes it for a command and calls a privileged tool, causing fraud; three defense boxes below: sanitize content, least-privilege tools, human approval."
+  }
+ ],
+ "foundations": [
+  {
+   "track": "linux-cli",
+   "why_needed": "Terminal labs and missions run in a simulated Linux shell; command-line fluency is required to complete them."
+  },
+  {
+   "track": "security-basics",
+   "why_needed": "Security-graph and ML-detection lessons assume baseline vocabulary (CIA triad, malware types, incident response phases)."
+  }
+ ],
+ "math": [
+  "stats",
+  "probability"
+ ]
+}

@@ -1,1 +1,1071 @@
-{"slug": "comptia-cyber", "title": "CompTIA Cyber: CySA+ / PenTest+ / SecurityX", "tagline": "Intermediate-to-expert security analyst track", "vendor": {"name": "CompTIA", "certs": "CySA+ (CS0-003), PenTest+ (PT0-003), SecurityX", "docs": "https://www.comptia.org"}, "disclaimer": "Independent practice material by Interstitium Labs. Not affiliated with, endorsed by, or sponsored by CompTIA. Confers no certificate. All scenarios are original; no exam content is reproduced.", "domains": [{"id": "threat-intel", "name": "Threat Intel & Hunting", "scenarios": [{"id": "cyber-ti-ioc", "title": "The hash on one host", "situation": "Your EDR flags a known-malicious file hash on a single workstation. The hash is already in every threat feed you subscribe to.", "prompt": "What is the most valuable NEXT step for the security team?", "choices": ["Hunt across the fleet for the attacker's behaviors and techniques (TTPs), since hashes are trivially changed", "Block the hash everywhere and close the ticket", "Reimage the workstation and move on", "Email the hash to the whole company as a warning"], "answer": 0, "why": "Atomic IOCs like hashes are brittle — attackers recompile in minutes. Hunting for TTPs (persistence mechanisms, C2 patterns, tooling) finds the other compromised hosts the hash would miss. Blocking the hash is still worth doing, but it is containment, not investigation.", "hint": "What changes faster — a file hash or an attacker's technique?", "objectives": ["IOCs vs TTPs", "Threat hunting"], "mins": 6}, {"id": "cyber-ti-stix", "title": "Sharing intel with a partner", "situation": "A partner organization wants your team's latest phishing indicators in a form their tools can ingest automatically every hour.", "prompt": "Which approach fits?", "choices": ["Publish STIX objects over a TAXII feed", "Email screenshots of the phishing pages", "Describe the campaign over a phone call", "Send a spreadsheet of IPs once a quarter"], "answer": 0, "why": "STIX is the structured language for threat intel and TAXII is the transport for sharing it — together they let machines consume indicators automatically. Screenshots, calls, and static spreadsheets cannot drive automated detection.", "hint": "What lets machines consume threat intel without a human retyping it?", "objectives": ["STIX/TAXII", "Intel sharing"], "mins": 5}, {"id": "cyber-ti-killchain", "title": "Naming the stage", "situation": "Timeline of an intrusion: a spear-phishing email was delivered, the user clicked, malware installed, and the host is now beaconing to an external server every 60 seconds.", "prompt": "Which kill-chain stage does the beaconing represent?", "choices": ["Command and control", "Reconnaissance", "Weaponization", "Delivery"], "answer": 0, "why": "Delivery was the email, installation was the malware drop; the periodic beacon is the compromised host checking in for instructions — command and control. Naming the stage correctly drives the response: C2 means blocking the channel and hunting for lateral movement.", "hint": "The attacker already has a foothold — what are they doing with it now?", "objectives": ["Cyber kill chain", "Intrusion stages"], "mins": 5}, {"id": "cyber-ti-relevance", "title": "The wrong feed for your industry", "situation": "Your threat feed is full of ICS/SCADA threats, but you work at a cloud SaaS company with no operational technology.", "prompt": "How should you handle the feed?", "choices": ["Prioritize intelligence matching your industry and technology stack; tune out the rest", "Ingest and alert on everything equally", "Ignore threat intelligence entirely", "Buy three more feeds to be safe"], "answer": 0, "why": "Threat intel is only useful when it is relevant: an ICS exploit is noise to a SaaS shop and generates alert fatigue. Prioritize by your attack surface and adversary profile, and keep collection focused where it can drive action.", "hint": "Whose threats should you care about most?", "objectives": ["Intel prioritization", "Relevance"], "mins": 4}, {"id": "cyber-ti-hunt", "title": "Hunting with a hypothesis", "situation": "Leadership asks the SOC to 'do some threat hunting' this quarter. An analyst proposes starting from the hypothesis: 'attackers are abusing our remote-management tool for persistence.'", "prompt": "Why is this the right way to start a hunt?", "choices": ["A hypothesis focuses the hunt on testable attacker behavior instead of random log diving", "Hypotheses are required by compliance", "It guarantees finding an intrusion", "It is faster than waiting for alerts"], "answer": 0, "why": "Hypothesis-driven hunting starts from knowledge of adversary TTPs and your environment, then tests the hypothesis against data. Random searching wastes analyst time; alert-only waiting misses what your detections do not cover.", "hint": "What question guides where you look?", "objectives": ["Hunt methodology", "Hypothesis-driven hunting"], "mins": 6}, {"id": "cyber-ti-confidence", "title": "The low-confidence block", "situation": "A low-confidence feed item suggests blocking an IP that reverse-resolves to a major CDN. An analyst wants to push the block to the perimeter firewall immediately.", "prompt": "What is the right call?", "choices": ["Validate first — low confidence plus a CDN's blast radius makes an immediate block reckless", "Block it immediately; feeds are always right", "Delete the feed for being unhelpful", "Block the entire ASN to be thorough"], "answer": 0, "why": "Confidence ratings exist to calibrate action: blocking a shared CDN IP can break hundreds of legitimate services. Low-confidence indicators get investigated and monitored, not auto-blocked at the perimeter.", "hint": "What breaks if that IP serves half the internet?", "objectives": ["Confidence levels", "Indicator handling"], "mins": 5}]}, {"id": "vuln-mgmt", "name": "Vulnerability Management", "scenarios": [{"id": "cyber-vm-cvss", "title": "The 9.8 that can wait", "situation": "Two findings: a CVSS 9.8 vulnerability on an isolated lab VM with no sensitive data, and a CVSS 7.5 on an internet-facing production web server.", "prompt": "Which do you remediate first, and why?", "choices": ["The 7.5 — environmental context (exposure, asset value) outweighs the raw base score", "The 9.8 — always fix the highest score first", "Whichever is alphabetically first in the report", "Neither — wait for the next scan"], "answer": 0, "why": "CVSS base scores describe the vulnerability in isolation, not your risk. An internet-facing production system with a 7.5 is exploitable now; a 9.8 on an air-gapped lab is theoretical. Mature programs re-score with temporal and environmental metrics.", "hint": "Does the CVSS score know your network?", "objectives": ["CVSS", "Risk-based prioritization"], "mins": 6}, {"id": "cyber-vm-creds", "title": "The shallow scan", "situation": "A non-credentialed vulnerability scan of your servers reports far fewer missing patches than you expect.", "prompt": "What is the most likely explanation and fix?", "choices": ["Without credentials the scanner only sees exposed services — run credentialed scans for depth", "Scanners are useless; stop scanning", "Scan more frequently the same way", "Disable the host firewall during scans"], "answer": 0, "why": "Non-credentialed scans infer from banners and behavior; credentialed scans log in and read actual patch levels, installed software, and configs. For internal assets, credentialed scanning is the standard for accurate results.", "hint": "What can a scanner see without logging in?", "objectives": ["Credentialed scanning", "Scan types"], "mins": 5}, {"id": "cyber-vm-fp", "title": "The 'critical' that is not", "situation": "The scanner flags a critical OpenSSL vulnerability on a server whose package changelog shows the fix was backported by the vendor last month.", "prompt": "How do you handle it?", "choices": ["Verify the backport, document it as a false positive, and tune the scan", "Emergency-patch the server tonight", "Shut the service down immediately", "Ignore all future findings from that scanner"], "answer": 0, "why": "Vendors backport security fixes without bumping version numbers, so banner-based checks false-positive. Verification (changelog, package version metadata) plus documentation keeps the finding from recurring without a pointless emergency change.", "hint": "Do scanners know about backported patches?", "objectives": ["False positives", "Verification"], "mins": 5}, {"id": "cyber-vm-sla", "title": "No patch yet", "situation": "A critical internet-facing vulnerability has no vendor patch yet, and your SLA says criticals must be remediated in 15 days.", "prompt": "What is the best course of action?", "choices": ["Deploy a compensating control now (WAF rule, network segmentation, disable the feature) and track to the SLA", "Do nothing until the patch ships", "Take the system offline for 15 days", "Mark it remediated and move on"], "answer": 0, "why": "Remediation is not only patching: compensating controls reduce exposure while you wait. Document the control, the residual risk, and the re-check date — the SLA tracks risk reduction, and 'waiting' is not a control.", "hint": "What reduces exposure before the patch exists?", "objectives": ["Compensating controls", "Remediation SLAs"], "mins": 6}, {"id": "cyber-vm-window", "title": "The scan that crashed production", "situation": "An aggressive midday vulnerability scan crashed a fragile legacy system.", "prompt": "What changes for future scans?", "choices": ["Schedule intrusive scans in maintenance windows and profile scan intensity per asset", "Stop scanning the legacy system forever", "Scan it harder to find the weakness", "Only scan from the internet from now on"], "answer": 0, "why": "Scanning is authorized testing with real side effects on fragile systems. Maintenance windows plus scan policies (safe checks vs. full intrusive) protect availability while keeping coverage — abandoning scans abandons visibility.", "hint": "When is it safe to be aggressive?", "objectives": ["Scan scheduling", "Operational safety"], "mins": 5}, {"id": "cyber-vm-inventory", "title": "The mystery host", "situation": "A scan finds a critically vulnerable host, but nobody can name its owner or purpose.", "prompt": "What is the foundational fix?", "choices": ["Build and maintain an authoritative asset inventory — you cannot secure what you cannot identify", "Patch it blindly and hope", "Decommission it immediately", "Exclude it from future scans"], "answer": 0, "why": "Every vulnerability program rests on asset inventory: ownership, criticality, and lifecycle. Without it you cannot prioritize, assign, or verify remediation. Discovery scanning plus a CMDB process closes the gap permanently.", "hint": "Can you protect what you cannot name?", "objectives": ["Asset inventory", "Program foundations"], "mins": 4}]}, {"id": "siem", "name": "SIEM & Log Analysis", "scenarios": [{"id": "cyber-siem-bruteforce", "title": "Five fails, then success", "situation": "The SIEM fires: five failed logins for a finance user in two minutes, then a successful login — from an IP in a country where the company has no offices.", "prompt": "What is the right interpretation and next step?", "choices": ["Treat as a possible brute-force success — investigate the session: what the account touched, and contain if malicious", "Normal user typos — close the alert", "Disable the account silently with no investigation", "Ignore it; the user eventually got in"], "answer": 0, "why": "Failed-then-success from an unusual geography is the textbook brute-force pattern. The success is what matters: check session activity, force a password reset, and review for lateral movement before deciding it was benign.", "hint": "What pattern do failed-then-success logins make?", "objectives": ["Correlation rules", "Brute-force detection"], "mins": 6}, {"id": "cyber-siem-correlate", "title": "Two alerts, one host", "situation": "Within ten minutes, the firewall logs repeated denied outbound connections from a workstation, and the IDS flags suspicious DNS queries from the same host.", "prompt": "What should the analyst do?", "choices": ["Correlate them into a single incident and investigate the host as potentially compromised", "Work each alert as a separate low-priority ticket", "Close both — the firewall blocked it", "Email the user asking if they clicked something"], "answer": 0, "why": "Two independent sensors agreeing on one host is a high-fidelity signal: denied egress plus suspicious DNS suggests C2 attempts. Correlation turns two weak alerts into one strong case and triggers the incident workflow.", "hint": "What story do two alerts about one host tell?", "objectives": ["Alert correlation", "C2 detection"], "mins": 6}, {"id": "cyber-siem-ntp", "title": "Logs out of order", "situation": "During an investigation, firewall logs show events happening 'before' the IDS alerts that supposedly triggered them, across different systems.", "prompt": "What is the root cause to fix?", "choices": ["Clock drift — enforce NTP on all systems so timestamps are trustworthy", "Buy a bigger SIEM", "Delete the older logs", "Increase log retention"], "answer": 0, "why": "Correlation depends on trustworthy timestamps; even seconds of drift scramble event ordering across systems. NTP everywhere (and monitoring for drift) is the unglamorous foundation of every timeline reconstruction.", "hint": "What lets you trust a timestamp?", "objectives": ["Time synchronization", "Log integrity"], "mins": 5}, {"id": "cyber-siem-4625", "title": "Reading Windows logons", "situation": "A server's Security log shows a burst of Event ID 4625 for the Administrator account, followed by one Event ID 4624 from an external IP.", "prompt": "What happened?", "choices": ["A brute-force attack succeeded — contain the host and investigate the session", "Routine backup activity", "A printer driver installing", "Normal user login behavior"], "answer": 0, "why": "4625 is a failed logon and 4624 is a successful logon. A burst of failures followed by success from an external IP is the signature of a guessed password. The 4624 is the critical event: assume compromise until the session is cleared.", "hint": "What do 4625-then-4624 mean in sequence?", "objectives": ["Windows Event IDs", "Log analysis"], "mins": 6, "evidence": [["Security log excerpt", "02:14:03  Event 4625  TargetUser: Administrator  Source: 203.0.113.44\n02:14:11  Event 4625  TargetUser: Administrator  Source: 203.0.113.44\n02:14:19  Event 4625  TargetUser: Administrator  Source: 203.0.113.44\n02:14:27  Event 4624  TargetUser: Administrator  Source: 203.0.113.44"]]}, {"id": "cyber-siem-baseline", "title": "The 3 AM spike", "situation": "A file server that is idle overnight suddenly pushes 40 GB to an external IP in a new country at 3 AM. No backup job is scheduled.", "prompt": "What is the correct response?", "choices": ["Investigate as a baseline deviation — possible data exfiltration; isolate and preserve logs", "Assume it is a delayed backup", "Ignore one-off spikes", "Block the destination country at the firewall and close the ticket"], "answer": 0, "why": "Baselining makes the abnormal visible: this host never does this, at this hour, to this destination. Large off-hours egress to a new geo is a classic exfiltration indicator — investigate before assuming benign, and preserve evidence.", "hint": "What is normal for this host at 3 AM?", "objectives": ["Baselining", "Exfiltration detection"], "mins": 6}, {"id": "cyber-siem-retention", "title": "The logs are gone", "situation": "An incident from 90 days ago needs investigation, but the SIEM only retains 30 days of hot logs.", "prompt": "What is the systemic fix?", "choices": ["Align retention with investigation and compliance needs — tiered hot/warm/cold storage for the required window", "Accept the blindness", "Log everything forever with no budget", "Disable logging to save disk"], "answer": 0, "why": "Retention is a risk decision: too short and you cannot investigate; infinite and you drown in cost. Define the window from incident-response needs and regulatory requirements, then tier storage so the window is affordable.", "hint": "How far back do investigations need to see?", "objectives": ["Log retention", "SIEM architecture"], "mins": 5}]}, {"id": "pentest-method", "name": "Pen Test Methodology", "scenarios": [{"id": "cyber-pt-roe", "title": "No signature, no test", "situation": "A new client is eager for you to start penetration testing 'right away' and says the contract 'is basically done' — but nothing is signed.", "prompt": "What do you do?", "choices": ["Refuse to start until written authorization and rules of engagement are signed — no exceptions", "Run a few 'safe' scans to get a head start", "A verbal OK from the CTO is enough", "Test first and get the signature later"], "answer": 0, "why": "Unauthorized access is a crime regardless of good intentions; the signed ROE is what separates a pen test from an attack. It defines scope, timing, allowed techniques, and emergency contacts. Verbal agreements evaporate when something breaks.", "hint": "What separates a penetration test from a crime?", "objectives": ["Rules of engagement", "Legal authorization"], "mins": 5}, {"id": "cyber-pt-scope", "title": "The mid-test expansion", "situation": "Mid-engagement, the client contact asks you to 'also take a quick look' at a subsidiary's system that was never in scope.", "prompt": "What is the correct response?", "choices": ["Stop, document the request, and get an amended signed ROE before touching the new system", "Test it — the client asked, so it is authorized", "Test it quietly and mention it in the report", "Expand the scope on your own authority"], "answer": 0, "why": "Scope is a legal boundary, not a suggestion: the subsidiary may have different ownership, data, and regulators. Even a friendly verbal request needs to become a written amendment — 'the client said so' does not hold up if you break something.", "hint": "Whose permission actually covers that system?", "objectives": ["Scope control", "ROE amendments"], "mins": 5}, {"id": "cyber-pt-recon", "title": "Footprints first", "situation": "You are planning reconnaissance for an external pen test next week.", "prompt": "What is the correct sequencing?", "choices": ["Start with passive recon (OSINT, DNS records, breach data) that never touches the target, then move to active", "Open with a full port scan of everything", "Skip recon — exploitation is the real work", "Start with social engineering calls"], "answer": 0, "why": "Passive recon gathers domains, emails, technologies, and leaked credentials without alerting the target or risking disruption. Active scanning comes later, within agreed windows. Good recon focuses the whole test; skipping it wastes the engagement.", "hint": "Which kind of recon leaves no trace on the target?", "objectives": ["Reconnaissance", "OSINT"], "mins": 5}, {"id": "cyber-pt-nmap", "title": "Choosing the scan", "situation": "During an approved window you need a fast, low-noise TCP port scan of a target range before deeper enumeration.", "prompt": "Which Nmap approach fits?", "choices": ["A SYN scan (-sS): fast and never completes the handshake, so it is quieter", "A connect scan (-sT): completes every handshake for maximum noise", "A UDP scan (-sU): for TCP ports", "A ping-only scan (-sn): it finds open ports"], "answer": 0, "why": "SYN scanning sends SYN and reads the SYN/ACK or RST reply without completing the TCP handshake — faster and less logged than full connects. -sT is noisier, -sU targets UDP, and -sn only checks host liveness, not ports.", "hint": "Which scan never completes the handshake?", "objectives": ["Nmap", "Scanning techniques"], "mins": 6}, {"id": "cyber-pt-pivot", "title": "The tempting pivot", "situation": "You have compromised a workstation in scope, and it can reach a segmented database network that was explicitly excluded from the ROE.", "prompt": "What do you do?", "choices": ["Do not pivot — document the reachable path as a finding and stay within scope", "Pivot freely; you are already inside", "Stop the entire test immediately", "Pivot but delete the logs"], "answer": 0, "why": "The ROE's exclusions are hard limits: pivoting into excluded systems exceeds authorization even from a compromised in-scope host. The valuable deliverable is the finding itself — 'an attacker here could reach the DB segment' — reported, not exploited.", "hint": "What does the ROE say about lateral movement?", "objectives": ["Pivoting", "Scope boundaries"], "mins": 6}, {"id": "cyber-pt-cleanup", "title": "Leaving no trace", "situation": "The engagement is over. Your shells, test accounts, and uploaded tools are still on client systems.", "prompt": "What is required?", "choices": ["Remove every artifact you created and verify the systems are back to their prior state", "Leave them for the client to discover", "Leave one backdoor 'for the retest'", "Document them but leave them in place"], "answer": 0, "why": "Cleanup is a contractual obligation: leftover shells and accounts are live vulnerabilities you introduced. Verify removal with the client — a forgotten test account becomes the attacker's account.", "hint": "What did you promise in the ROE about the client's systems?", "objectives": ["Post-engagement cleanup", "Professionalism"], "mins": 4}]}, {"id": "exploitation", "name": "Exploitation Basics", "scenarios": [{"id": "cyber-ex-pass", "title": "The leaked hashes", "situation": "During a test you crack 60% of the domain's password hashes in a day using dictionary attacks.", "prompt": "What is the core defensive recommendation?", "choices": ["Enforce MFA everywhere plus unique, strong passwords — and ensure hashes are salted so precomputation fails", "Make passwords expire every 30 days", "Add password hints to the login page", "Use one strong shared admin password"], "answer": 0, "why": "Fast cracking proves the passwords were weak and unsalted hashes allow rainbow-table precomputation. Salting defeats precomputed tables, strong unique passwords resist dictionaries, and MFA makes stolen passwords insufficient alone.", "hint": "What defeats a rainbow table?", "objectives": ["Password attacks", "Hashing defenses"], "mins": 6}, {"id": "cyber-ex-sqli", "title": "The login bypass", "situation": "Entering ' OR '1'='1 in a login form logs you in as the first user in the database.", "prompt": "What is the correct fix?", "choices": ["Use parameterized queries / prepared statements so input is never treated as SQL", "Block apostrophes in a web-application firewall only", "Hide database error messages", "Require longer passwords"], "answer": 0, "why": "The input became part of the SQL command because it was concatenated into the query string. Parameterized queries separate code from data at the driver level — the canonical fix. WAF rules and error hiding are defense-in-depth, not the cure.", "hint": "Who should build the SQL — your code or the user's input?", "objectives": ["SQL injection", "Secure coding"], "mins": 6, "evidence": [["login request", "POST /login\nusername=' OR '1'='1' --\npassword=anything\n=> logged in as first database user"]]}, {"id": "cyber-ex-xss", "title": "The search box script", "situation": "Searching for <script>alert(1)</script> on the site's search page pops an alert box in your browser.", "prompt": "What is the correct remediation?", "choices": ["Output-encode user data in HTML responses and validate input on the server", "Tell users to disable JavaScript", "Deploy a WAF and change nothing else", "Rename the search field"], "answer": 0, "why": "Reflected XSS happens when untrusted input is rendered as markup in the victim's browser. Context-appropriate output encoding neutralizes it at the sink; server-side validation constrains it at the source. A WAF alone is a bypassable bandage.", "hint": "Where does the attacker's script actually run?", "objectives": ["Cross-site scripting", "Output encoding"], "mins": 6}, {"id": "cyber-ex-privesc", "title": "The SYSTEM service", "situation": "You find a third-party sync service running as SYSTEM with a writable executable — a clear path to privilege escalation.", "prompt": "How do you handle it as a tester?", "choices": ["Demonstrate carefully within ROE, then recommend the service run as a least-privilege account with a protected binary", "Fully exploit it and pivot to the domain", "Ignore it — services are out of scope by default", "Restart the service and move on"], "answer": 0, "why": "The finding is the misconfiguration, not the trophy: services should run with only the privileges they need and binaries should not be writable by lower-privileged users. Demonstrate impact proportionate to the ROE, then report the hardening fix.", "hint": "Why does a file-sync service need SYSTEM?", "objectives": ["Privilege escalation", "Least privilege"], "mins": 6}, {"id": "cyber-ex-pth", "title": "One password to rule them all", "situation": "The same local administrator password is deployed on every workstation. You crack it on one host.", "prompt": "What is the defensive fix?", "choices": ["Unique randomized local admin passwords per host (e.g., LAPS) so one crack does not equal domain-wide lateral movement", "Make the shared password longer", "Disable the administrator account everywhere with no replacement", "Rename the administrator account"], "answer": 0, "why": "Pass-the-hash turns one cracked local credential into a skeleton key for every machine sharing it. Per-host unique passwords contain the blast radius to a single box; renaming the account is obscurity, not a fix.", "hint": "What makes one cracked hash a skeleton key?", "objectives": ["Pass-the-hash", "Credential hygiene"], "mins": 6}, {"id": "cyber-ex-se", "title": "The helpful employee", "situation": "Within the ROE's social-engineering allowance, you pretext an employee who hands over their credentials.", "prompt": "How do you report it?", "choices": ["Report the control failure with a recommendation for targeted training — no shaming or naming of the individual", "Publish the employee's name in the report", "Keep testing that person until they fail again", "Exclude it to spare feelings"], "answer": 0, "why": "Social-engineering findings test processes and training, not people: naming and shaming destroys trust and future reporting. Report the gap (verification procedures, training coverage) and recommend measurable awareness improvements.", "hint": "Is the finding the person or the process?", "objectives": ["Social engineering", "Reporting ethics"], "mins": 5}]}, {"id": "reporting", "name": "Reporting & Governance", "scenarios": [{"id": "cyber-rep-structure", "title": "Two audiences, one report", "situation": "Your pen test is done. The CISO wants the risk picture; the engineers want exactly what to fix.", "prompt": "How do you structure the report?", "choices": ["Executive summary in business-risk language, then technical findings each with evidence, impact, and remediation steps", "A 200-page dump of raw tool output", "A single pass/fail grade", "A verbal debrief with no written report"], "answer": 0, "why": "Reports serve two readers: executives decide on risk and budget, engineers implement fixes. The summary translates findings into business impact; each technical finding needs proof, severity rationale, and concrete remediation so it is actionable.", "hint": "Who reads which part of the report?", "objectives": ["Report writing", "Audience"], "mins": 5}, {"id": "cyber-rep-risk", "title": "Rating the finding", "situation": "You found an unauthenticated admin panel on an internal app.", "prompt": "How do you rate its severity?", "choices": ["Assess likelihood and business impact with evidence — e.g., network position, data at risk — not gut feel", "Copy the scanner's score blindly", "Mark everything critical to be safe", "Let the client decide the rating alone"], "answer": 0, "why": "Severity is likelihood times impact, grounded in evidence: who can reach it, what data it guards, how trivially it exploits. Scanner scores ignore your context; inflating everything to critical trains clients to ignore you.", "hint": "What two factors make a risk?", "objectives": ["Risk rating", "Findings analysis"], "mins": 5}, {"id": "cyber-rep-retest", "title": "Trust, but verify", "situation": "The client emails: 'We fixed all five criticals.'", "prompt": "What do you do?", "choices": ["Retest each finding to verify the remediation actually holds", "Take their word and close the engagement", "Charge extra without asking", "Ignore the email"], "answer": 0, "why": "Fixes fail: patches get reverted, configs drift, and 'fixed' sometimes means 'we think so.' Retesting closes the loop with evidence and protects both sides — it is usually a contracted phase, not a favor.", "hint": "How do you know the fix worked?", "objectives": ["Retesting", "Remediation validation"], "mins": 4}, {"id": "cyber-rep-metrics", "title": "The board slide", "situation": "The board wants a quarterly view of whether security is getting better or worse.", "prompt": "Which metrics belong on the slide?", "choices": ["Trends: MTTD/MTTR, repeat findings, control coverage, mean time to remediate by severity", "Raw alert counts from the SIEM", "Tool license utilization", "Number of scans run"], "answer": 0, "why": "Boards need outcome trends, not activity counts: are we detecting faster, fixing faster, and staying fixed? Raw alert volume measures noise; MTTD/MTTR and repeat-finding rates measure capability.", "hint": "Which numbers show getting better or worse?", "objectives": ["Security metrics", "Board reporting"], "mins": 6}, {"id": "cyber-rep-framework", "title": "Speaking the same language", "situation": "Leadership asks how the assessment findings map to the company's NIST Cybersecurity Framework program.", "prompt": "What do you do?", "choices": ["Map each finding to CSF functions — Govern, Identify, Protect, Detect, Respond, Recover — to drive prioritized remediation", "Skip frameworks; they are just paperwork", "Invent your own categories", "List findings alphabetically"], "answer": 0, "why": "Mapping to CSF (v2.0 added the Govern function) translates technical findings into the governance language leadership funds and tracks. It also reveals systemic gaps — ten findings in Protect means an architecture problem, not ten bugs.", "hint": "What common language does leadership already use?", "objectives": ["NIST CSF", "Governance mapping"], "mins": 6}, {"id": "cyber-rep-arch", "title": "Beyond the firewall", "situation": "You are asked to review the security architecture of a new customer-facing app. It sits behind a single firewall — and nothing else.", "prompt": "What is your headline recommendation?", "choices": ["Defense in depth: add WAF, network segmentation, centralized logging, and MFA so no single control is fatal", "The firewall is enough", "Air-gap the application entirely", "Recommend nothing; architecture is out of scope"], "answer": 0, "why": "Single-control designs fail completely when that control fails — and firewalls do not stop application-layer attacks. Layered, overlapping controls (each covering the others' blind spots) are the SecurityX-level answer for internet-facing systems.", "hint": "What happens when the one control fails?", "objectives": ["Defense in depth", "Security architecture"], "mins": 6}]}], "lessons": [{"domain_id": "threat-intel", "title": "Threat Intel & Hunting — Core concepts", "concepts": ["IOCs vs TTPs: hypothesis-driven hunting starts from knowledge of adversary TTPs and your environment, then tests the hypothesis against data. Hunting for TTPs (persistence mechanisms, C2 patterns, tooling) finds the other compromised hosts the hash would miss.", "Threat hunting: STIX is the structured language for threat intel and TAXII is the transport for sharing it — together they let machines consume indicators automatically. Threat intel is only useful when it is relevant: an ICS exploit is noise to a SaaS shop and generates alert fatigue.", "Principle: atomic IOCs like hashes are brittle — attackers recompile in minutes."], "example": {"lang": "text", "code": "Worked example — iocs vs ttps\nSetup: STIX is the structured language for threat intel and TAXII is the transport for sharing it — together they let machines consume indicators…\nReasoning: Naming the stage correctly drives the response: C2 means blocking the channel and hunting for lateral movement.\nTakeaway: Hypothesis-driven hunting starts from knowledge of adversary TTPs and your environment, then tests the hypothesis against data.", "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."}, "pitfalls": ["Common trap: ignore threat intelligence entirely.", "Common trap: block the hash everywhere and close the ticket.", "Common trap: email the hash to the whole company as a warning.", "Common trap: email screenshots of the phishing pages."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "vuln-mgmt", "title": "Vulnerability Management — Core concepts", "concepts": ["CVSS base scores describe the vulnerability in isolation, not your risk.", "Credentialed scanning: for internal assets, credentialed scanning is the standard for accurate results. Scanning is authorized testing with real side effects on fragile systems.", "Scan types: maintenance windows plus scan policies (safe checks vs. full intrusive) protect availability while keeping coverage — abandoning scans abandons visibility.", "Verification (changelog, package version metadata) plus documentation keeps the finding from recurring without a pointless emergency change."], "example": {"lang": "text", "code": "Worked example — cvss\nSetup: Every vulnerability program rests on asset inventory: ownership, criticality, and lifecycle.\nReasoning: Remediation is not only patching: compensating controls reduce exposure while you wait.\nTakeaway: CVSS base scores describe the vulnerability in isolation, not your risk.", "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."}, "pitfalls": ["Common trap: stop scanning the legacy system forever.", "Common trap: scanners are useless; stop scanning.", "Common trap: scan it harder to find the weakness.", "Common trap: always fix the highest score first."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "siem", "title": "SIEM & Log Analysis — Core concepts", "concepts": ["Correlation depends on trustworthy timestamps; even seconds of drift scramble event ordering across systems. Correlation turns two weak alerts into one strong case and triggers the incident workflow.", "Brute-force detection: failed-then-success from an unusual geography is the textbook brute-force pattern.", "Principle: the success is what matters: check session activity, force a password reset, and review for lateral movement before deciding it was benign."], "example": {"lang": "text", "code": "02:14:03  Event 4625  TargetUser: Administrator  Source: 203.0.113.44\n02:14:11  Event 4625  TargetUser: Administrator  Source: 203.0.113.44\n02:14:19  Event 4625  TargetUser: Administrator  Source: 203.0.113.44\n02:14:27  Event 4624  TargetUser: Administrator  Source: 203.0.113.44", "walkthrough": "4625 is a failed logon and 4624 is a successful logon. A burst of failures followed by success from an external IP is the signature of a guessed password. The 4624 is the critical event: assume compromise until the session is cleared."}, "pitfalls": ["Common trap: work each alert as a separate low-priority ticket.", "Common trap: log everything forever with no budget.", "Common trap: block the destination country at the firewall and close the ticket.", "Common trap: email the user asking if they clicked something."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "pentest-method", "title": "Pen Test Methodology — Core concepts", "concepts": ["Legal authorization: the ROE's exclusions are hard limits: pivoting into excluded systems exceeds authorization even from a compromised in-scope host. Scope is a legal boundary, not a suggestion: the subsidiary may have different ownership, data, and regulators.", "Scope control: it defines scope, timing, allowed techniques, and emergency contacts.", "ROE amendments: unauthorized access is a crime regardless of good intentions; the signed ROE is what separates a pen test from an attack."], "example": {"lang": "text", "code": "Worked example — rules of engagement\nSetup: Unauthorized access is a crime regardless of good intentions; the signed ROE is what separates a pen test from an attack.\nReasoning: The ROE's exclusions are hard limits: pivoting into excluded systems exceeds authorization even from a compromised in-scope host.\nTakeaway: It defines scope, timing, allowed techniques, and emergency contacts.", "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."}, "pitfalls": ["Common trap: test first and get the signature later.", "Common trap: test it quietly and mention it in the report.", "Common trap: stop the entire test immediately.", "Common trap: a connect scan (-sT): completes every handshake for maximum noise."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "exploitation", "title": "Exploitation Basics — Core concepts", "concepts": ["SQL injection: the input became part of the SQL command because it was concatenated into the query string.", "Output encoding: context-appropriate output encoding neutralizes it at the sink; server-side validation constrains it at the source.", "Principle: fast cracking proves the passwords were weak and unsalted hashes allow rainbow-table precomputation."], "example": {"lang": "text", "code": "POST /login\nusername=' OR '1'='1' --\npassword=anything\n=> logged in as first database user", "walkthrough": "The input became part of the SQL command because it was concatenated into the query string. Parameterized queries separate code from data at the driver level — the canonical fix. WAF rules and error hiding are defense-in-depth, not the cure."}, "pitfalls": ["Common trap: use one strong shared admin password.", "Common trap: add password hints to the login page.", "Common trap: make the shared password longer.", "Common trap: make passwords expire every 30 days."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "reporting", "title": "Reporting & Governance — Core concepts", "concepts": ["Risk rating: reports serve two readers: executives decide on risk and budget, engineers implement fixes.", "Findings analysis: mapping to CSF (v2.0 added the Govern function) translates technical findings into the governance language leadership funds and tracks. The summary translates findings into business impact; each technical finding needs proof, severity rationale, and concrete remediation so it is actionable.", "Retesting: fixes fail: patches get reverted, configs drift, and 'fixed' sometimes means 'we think so.' Retesting closes the loop with evidence and protects both sides — it is usually a contracted phase, not a favor."], "example": {"lang": "text", "code": "Worked example — report writing\nSetup: Mapping to CSF (v2.0 added the Govern function) translates technical findings into the governance language leadership funds and tracks.\nReasoning: It also reveals systemic gaps — ten findings in Protect means an architecture problem, not ten bugs.\nTakeaway: Fixes fail: patches get reverted, configs drift, and 'fixed' sometimes means 'we think so.' Retesting closes the loop with evidence and protects both…", "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."}, "pitfalls": ["Common trap: let the client decide the rating alone.", "Common trap: a verbal debrief with no written report.", "Common trap: recommend nothing; architecture is out of scope.", "Common trap: a 200-page dump of raw tool output."], "try_it": "Work through this in the Terminal tab →"}], "sections": [{"id": "foundations", "title": "Foundations", "kind": "foundation", "lectures": ["m-binary", "m-logic", "f-networking-0", "f-networking-1", "f-networking-2", "f-networking-3", "f-linux-cli-0", "f-linux-cli-1", "f-linux-cli-2"], "lab_ids": [], "drill_domain_ids": []}, {"id": "core", "title": "Core", "kind": "core", "lectures": ["c-vuln-mgmt", "c-siem", "c-pentest-method", "c-exploitation"], "lab_ids": ["comptia-cyber-lab-1", "comptia-cyber-lab-2"], "drill_domain_ids": ["vuln-mgmt", "siem", "pentest-method", "exploitation"]}, {"id": "advanced", "title": "Advanced", "kind": "advanced", "lectures": ["c-threat-intel", "c-reporting"], "lab_ids": ["comptia-cyber-lab-3", "comptia-cyber-lab-4"], "drill_domain_ids": ["threat-intel", "reporting"]}, {"id": "exam-prep", "title": "Exam Prep", "kind": "exam-prep", "lectures": [], "lab_ids": [], "drill_domain_ids": ["threat-intel", "vuln-mgmt", "siem", "pentest-method", "exploitation", "reporting"]}], "behavioral": [{"prompt": "Tell me about a security incident you helped contain. What was your role?", "framework": "STAR", "points": ["Your specific actions in the response", "How you balanced speed with evidence preservation", "The lessons-learned outcome"], "pitfalls": ["Skipping the timeline", "No mention of communication"]}, {"prompt": "Describe a time you tuned out false positives without blinding the team to real threats.", "framework": "STAR", "points": ["How you measured the noise", "The tuning change and its validation", "The effect on detection quality"], "pitfalls": ["Disabling rules instead of tuning them", "No before/after metrics"]}, {"prompt": "Tell me about a time you had to explain a security risk to non-technical executives.", "framework": "STAR", "points": ["The business language you used", "The decision it drove", "How you handled pushback on cost or timelines"], "pitfalls": ["Fear-mongering", "Drowning them in technical detail"]}, {"prompt": "Describe a disagreement over scope or rules of engagement during an assessment.", "framework": "STAR", "points": ["Both positions fairly stated", "How authorization and safety were protected", "The resolution"], "pitfalls": ["Testing outside authorization", "Caving on safety to please the client"]}, {"prompt": "Tell me about a vulnerability or threat you initially missed. What happened?", "framework": "STAR", "points": ["Owning the miss plainly", "How it was eventually found", "The process change that followed"], "pitfalls": ["Blaming the tools", "Claiming a perfect record"]}, {"prompt": "Describe a time you had to learn a new security tool or technique under deadline.", "framework": "STAR", "points": ["What you needed and why", "Your learning approach", "How you validated you were using it correctly"], "pitfalls": ["Running tools you do not understand in production", "No validation step"]}, {"prompt": "Tell me about a time you mentored a junior analyst or engineer.", "framework": "STAR", "points": ["What they struggled with", "How you coached without just doing it for them", "Their growth afterward"], "pitfalls": ["Taking credit for their work", "No concrete example"]}, {"prompt": "Describe a high-pressure triage situation with multiple alerts firing at once.", "framework": "STAR", "points": ["Your triage criteria", "How you communicated status", "What got fixed first and why"], "pitfalls": ["Working alerts in random order", "Going silent during the incident"]}], "chat": {"persona": "You are a friendly but rigorous security interviewer running a mock CySA+/PenTest+/SecurityX assessment. Push on methodology, evidence, and risk reasoning; stay Socratic and never hand over answers.", "topics": [{"id": "threat-intel", "name": "Threat Intel & Hunting", "key_points": ["IOCs vs TTPs", "STIX and TAXII", "kill chain stages", "hunt hypotheses", "intel confidence", "relevance filtering"], "followups": ["What is the difference between an IOC and a TTP?", "Walk me through writing a hunt hypothesis.", "When would you act on low-confidence intel?"]}, {"id": "vuln-mgmt", "name": "Vulnerability Management", "key_points": ["CVSS base vs environmental", "credentialed scanning", "false positives", "compensating controls", "scan windows", "asset inventory"], "followups": ["Why might you patch a 7.5 before a 9.8?", "What does a credentialed scan see that others miss?", "How do you handle a vulnerability with no patch?"]}, {"id": "siem", "name": "SIEM & Log Analysis", "key_points": ["correlation rules", "Windows Event IDs 4624/4625", "NTP and timelines", "baselining", "exfiltration signs", "retention tiers"], "followups": ["Talk me through a failed-then-success login pattern.", "Why does clock sync matter for investigations?", "What does 3 AM egress suggest?"]}, {"id": "pentest-method", "name": "Pen Test Methodology", "key_points": ["rules of engagement", "scope control", "passive vs active recon", "Nmap scan types", "pivoting ethics", "cleanup obligations"], "followups": ["What must be signed before any testing?", "How do you handle an out-of-scope request mid-test?", "Why start recon passively?"]}, {"id": "exploitation", "name": "Exploitation Basics", "key_points": ["password attacks and salting", "SQL injection fixes", "XSS and output encoding", "privilege escalation", "pass-the-hash", "reporting SE findings"], "followups": ["What defeats a rainbow table?", "Why are parameterized queries the fix for SQLi?", "How do you report a successful pretext kindly?"]}, {"id": "reporting", "name": "Reporting & Governance", "key_points": ["report structure", "likelihood x impact", "retesting", "MTTD/MTTR trends", "NIST CSF mapping", "defense in depth"], "followups": ["How do you rate a finding's severity?", "What belongs on a board slide?", "Why map findings to a framework?"]}]}, "labs": [{"id": "comptia-cyber-lab-1", "title": "IOCs vs TTPs — shell drill", "objective": "Run a short sequence of lab shell commands that demonstrates IOCs vs TTPs, then verify each result against the expected output.", "steps": ["This lab reworks the Threat Intel & Hunting practice scenario \"The hash on one host\" into commands you run yourself — same concept, hands-on instead of multiple choice.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: whoami — the shell reports the lab identity 'candidate'", "Type exactly: pwd — the output is an absolute path starting with /", "Type exactly: uname — the kernel name reported is Linux", "In your own words, say what each command's output taught you about IOCs vs TTPs."], "checks": [{"command_pattern": "whoami", "expect_contains": "candidate", "hint": "In the Terminal tab, run `whoami`. If the check fails, confirm you typed it exactly and that the output contains \"candidate\"."}, {"command_pattern": "pwd", "expect_contains": "/", "hint": "In the Terminal tab, run `pwd`. If the check fails, confirm you typed it exactly and that the output contains \"/\"."}, {"command_pattern": "uname", "expect_contains": "Linux", "hint": "In the Terminal tab, run `uname`. If the check fails, confirm you typed it exactly and that the output contains \"Linux\"."}], "success_message": "Lab complete — IOCs vs TTPs practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"id": "comptia-cyber-lab-2", "title": "CVSS — shell drill", "objective": "Use the lab shell to explore CVSS hands-on: type each command, read what comes back, and connect the output to the concept.", "steps": ["Inspired by the Vulnerability Management scenario \"The 9.8 that can wait\": take its core idea and prove it live in the terminal instead of answering on paper.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: uname — the kernel name reported is Linux", "Type exactly: echo cvss ready — echo prints your concept token back verbatim", "Type exactly: ls — the listing shows lab-notes (run 'mkdir lab-notes' first if it is missing)", "In your own words, say what each command's output taught you about CVSS."], "checks": [{"command_pattern": "uname", "expect_contains": "Linux", "hint": "In the Terminal tab, run `uname`. If the check fails, confirm you typed it exactly and that the output contains \"Linux\"."}, {"command_pattern": "echo", "expect_contains": "cvss", "hint": "In the Terminal tab, run `echo cvss ready`. If the check fails, confirm you typed it exactly and that the output contains \"cvss\"."}, {"command_pattern": "^ls$|^ls\\s", "expect_contains": "lab-notes", "hint": "In the Terminal tab, run `ls`. If the check fails, confirm you typed it exactly and that the output contains \"lab-notes\"."}], "success_message": "Lab complete — CVSS practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"id": "comptia-cyber-lab-3", "title": "Correlation rules — shell drill", "objective": "Prove you can apply correlation rules in the lab shell — follow the steps, watch the output, and confirm every check passes.", "steps": ["The SIEM & Log Analysis scenario \"Five fails, then success\" tests this concept as a question. This lab makes you demonstrate it with real commands.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: ls — the listing shows lab-notes (run 'mkdir lab-notes' first if it is missing)", "Type exactly: ps — the process table header names the PID column", "Type exactly: echo hello world | grep hello — grep passes through the line containing hello", "In your own words, say what each command's output taught you about correlation rules."], "checks": [{"command_pattern": "^ls$|^ls\\s", "expect_contains": "lab-notes", "hint": "In the Terminal tab, run `ls`. If the check fails, confirm you typed it exactly and that the output contains \"lab-notes\"."}, {"command_pattern": "^ps$|^ps\\s", "expect_contains": "PID", "hint": "In the Terminal tab, run `ps`. If the check fails, confirm you typed it exactly and that the output contains \"PID\"."}, {"command_pattern": "grep", "expect_contains": "hello", "hint": "In the Terminal tab, run `echo hello world | grep hello`. If the check fails, confirm you typed it exactly and that the output contains \"hello\"."}], "success_message": "Lab complete — correlation rules practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"id": "comptia-cyber-lab-4", "title": "Rules of engagement — shell drill", "objective": "Run a short sequence of lab shell commands that demonstrates rules of engagement, then verify each result against the expected output.", "steps": ["This lab reworks the Pen Test Methodology practice scenario \"No signature, no test\" into commands you run yourself — same concept, hands-on instead of multiple choice.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: echo hello world | grep hello — grep passes through the line containing hello", "Type exactly: whoami — the shell reports the lab identity 'candidate'", "Type exactly: pwd — the output is an absolute path starting with /", "In your own words, say what each command's output taught you about rules of engagement."], "checks": [{"command_pattern": "grep", "expect_contains": "hello", "hint": "In the Terminal tab, run `echo hello world | grep hello`. If the check fails, confirm you typed it exactly and that the output contains \"hello\"."}, {"command_pattern": "whoami", "expect_contains": "candidate", "hint": "In the Terminal tab, run `whoami`. If the check fails, confirm you typed it exactly and that the output contains \"candidate\"."}, {"command_pattern": "pwd", "expect_contains": "/", "hint": "In the Terminal tab, run `pwd`. If the check fails, confirm you typed it exactly and that the output contains \"/\"."}], "success_message": "Lab complete — rules of engagement practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"id": "comptia-cyber-lab-5", "title": "Read the access log", "difficulty": 1, "objective": "Spot the failed request in the web access log.", "steps": ["Open the Terminal view for this bootcamp.", "Type ls logs/ — confirm the log files.", "Type cat logs/access.log — read every line.", "Find the 504: a POST to /api/report timed out."], "checks": [{"command_pattern": "^ls logs/$", "expect_contains": "access.log", "hint": "Type exactly: ls logs/"}, {"command_pattern": "^cat logs/access\\.log$", "expect_contains": "504", "hint": "Type exactly: cat logs/access.log"}], "success_message": "Log read — the 504 stands out from the 200s."}, {"id": "comptia-cyber-lab-6", "title": "Hunt the errors", "difficulty": 1, "objective": "Use grep to extract every ERROR line from the app log.", "steps": ["Type grep -n ERROR logs/app.log — list errors with line numbers.", "Read line 3: connection refused to the cache.", "Read line 6: timeout on /api/report.", "Two errors, two attack surfaces to investigate."], "checks": [{"command_pattern": "^grep -n ERROR logs/app\\.log$", "expect_contains": "cache:6379", "hint": "Type exactly: grep -n ERROR logs/app.log"}, {"command_pattern": "^grep ERROR logs/app\\.log$", "expect_contains": "timeout after 30s", "hint": "Type exactly: grep ERROR logs/app.log"}], "success_message": "Errors extracted — the incident has a timeline."}, {"id": "comptia-cyber-lab-7", "title": "Process audit", "difficulty": 2, "objective": "List running processes and identify what's listening.", "steps": ["Type ps — list the running processes.", "Confirm python3 app.py and node server.js are running.", "Type whoami — record which user runs this shell.", "Unknown processes are findings until proven otherwise."], "checks": [{"command_pattern": "^ps$", "expect_contains": "node server.js", "hint": "Type exactly: ps"}, {"command_pattern": "^whoami$", "expect_contains": "candidate", "hint": "Type exactly: whoami"}], "success_message": "Audit done — every process accounted for."}, {"id": "comptia-cyber-lab-8", "title": "Host identity sweep", "difficulty": 3, "objective": "Confirm host identity, platform, disk, and date in one sweep.", "steps": ["Type cat /etc/hosts — confirm this machine's name and IP.", "Type uname -a — confirm the platform.", "Type df — confirm disk usage.", "Type date — stamp the sweep."], "checks": [{"command_pattern": "^cat /etc/hosts$", "expect_contains": "10.0.0.8", "hint": "Type exactly: cat /etc/hosts"}, {"command_pattern": "^uname -a$", "expect_contains": "x86_64", "hint": "Type exactly: uname -a"}, {"command_pattern": "^date$", "expect_contains": "2026", "hint": "Type exactly: date"}], "success_message": "Sweep complete — identity, platform, disk, and time on record."}], "foundations": [{"track": "networking", "why_needed": "Threat hunting and log analysis assume you read networks fluently: addresses, DNS, ports, and HTTP conversations."}, {"track": "linux-cli", "why_needed": "Security tooling lives on Linux. Learn to navigate files, search logs, and chain commands before the analyst workflows begin."}], "math": ["binary", "logic"], "simulations": [{"id": "cyber-sim-1", "title": "The 3 AM alert", "kind": "troubleshoot", "domain_id": "siem", "difficulty": 2, "brief": "The SIEM fires at 03:12: repeated 401s on /admin from one external IP, then silence.", "steps": [{"symptom": "SIEM alert: 400 failed logins to /admin from 203.0.113.9 in 10 minutes, then the IP goes quiet.", "evidence": [["siem", "03:12:04 401 /admin ← 203.0.113.9 (x400)\n03:22:31 no further traffic from 203.0.113.9"]], "options": ["Classify as a brute-force attempt: contain the source IP and check whether any login succeeded", "Ignore it — the logins failed", "Reset all user passwords immediately", "Shut down the /admin endpoint"], "correct": 0, "explain": "400 failures then silence is the brute-force signature. First contain the source, then verify no login succeeded — the failure count alone doesn't prove the account held."}, {"symptom": "No successful login found. The IP is blocked at the firewall.", "evidence": [["auth log", "03:12–03:22: 400 x 401, 0 x 200 for /admin"]], "options": ["Verify the block took effect and document the incident with the full timeline", "Unblock the IP — it gave up", "Force a company-wide password reset", "Rebuild the server"], "correct": 0, "explain": "Zero successes plus an effective block closes the incident. The timeline is the deliverable — it proves what happened and what stopped it."}, {"symptom": "Incident documented. Harden against the next attempt.", "evidence": [["config", "/admin: no rate limiting, no MFA, no allowlist"]], "options": ["Recommend rate limiting, MFA, and IP allowlisting on /admin — defense in depth, not one control", "Recommend hiding the /admin URL", "Recommend longer passwords only", "Recommend nothing — the block worked"], "correct": 0, "explain": "One block stops one IP. Rate limiting, MFA, and allowlisting raise the cost of the next attempt regardless of source."}], "debrief": "Brute force has a signature: many failures, then silence. Contain, verify no success, document the timeline, then harden the endpoint with layered controls.", "points": 15}, {"id": "cyber-sim-2", "title": "Incident response order", "kind": "ordering", "domain_id": "siem", "difficulty": 1, "brief": "Restore the order of the incident response lifecycle.", "steps": {"context": "Arrange the incident response phases in execution order.", "items": ["Preparation: playbooks and tooling ready", "Detection and analysis: confirm the incident", "Containment: stop the spread", "Eradication and recovery: remove cause, restore", "Post-incident: lessons learned"], "correct_order": [0, 1, 2, 3, 4]}, "debrief": "Prepare → detect → contain → eradicate/recover → learn. Skipping containment to 'fix it fast' is how incidents become breaches.", "points": 10}, {"id": "cyber-sim-3", "title": "Block or monitor?", "kind": "branching", "domain_id": "siem", "difficulty": 2, "brief": "Two alerts arrive. One gets blocked immediately; one gets watched. Choose correctly.", "steps": [{"id": "s1", "text": "Alert 1: known-malicious hash beaconing from a workstation to an external host. Action?", "choices": [{"label": "Block and isolate: known-bad with active C2-style beaconing is contain-first", "next": "s2", "points": 2, "feedback": "Right: known-malicious plus active beaconing meets the contain-first bar."}, {"label": "Monitor for a week to learn its pattern", "next": "END", "points": 0, "feedback": "Monitoring known-malicious beaconing for a week gives the adversary a week.", "outcome": "bad"}, {"label": "Email the user asking them to stop", "next": "END", "points": 0, "feedback": "User outreach doesn't stop beaconing; containment does.", "outcome": "bad"}]}, {"id": "s2", "text": "Alert 2: an unusual but unsigned PowerShell one-liner ran on an admin's workstation during a change window. Action?", "choices": [{"label": "Monitor and enrich: correlate with the change ticket before disrupting an admin mid-window", "next": "END", "points": 2, "feedback": "Right: ambiguous activity during an authorized window gets enriched first — containment has a cost too.", "outcome": "good"}, {"label": "Isolate the admin's workstation immediately", "next": "END", "points": 0, "feedback": "Isolating on ambiguity during a change window disrupts legitimate work; enrich first.", "outcome": "bad"}, {"label": "Ignore it — admins run PowerShell", "next": "END", "points": 0, "feedback": "'Admins run PowerShell' is how living-off-the-land attacks hide. Enrich, don't ignore.", "outcome": "bad"}]}], "debrief": "Known-bad plus active harm → contain first. Ambiguous during authorized work → enrich first. The certainty of the evidence sets the response.", "points": 12}, {"id": "cyber-sim-4", "title": "The firewall rule that allows everything", "kind": "config-check", "domain_id": "vuln-mgmt", "difficulty": 3, "brief": "A firewall ruleset review finds the rules technically valid but the policy broken. 2 bugs in 8 lines.", "steps": {"config": "1 ALLOW tcp 10.0.0.0/8 -> any :443\n2 ALLOW tcp any -> 10.0.1.10 :22\n3 ALLOW tcp any -> 10.0.1.10 :3389\n4 ALLOW udp any -> any :53\n5 DENY ip any -> any\n# review: quarterly\n# owner: netsec", "find": 2, "issues": [{"line": 3, "description": "RDP (3389) open to the entire internet on a server — brute-force and exploit target with no allowlist.", "fix": "Restrict 3389 to the admin jump-host range or require VPN."}, {"line": 2, "description": "SSH (22) open to any source on 10.0.1.10 — management access needs a source allowlist, not the world.", "fix": "Allow 22 only from the admin subnet/jump hosts."}]}, "debrief": "Firewall reviews check sources, not just ports: management protocols (22, 3389) open to 'any' are findings. Allowlist the admins, deny the world.", "points": 10}], "consoleSims": [{"id": "cyber-console-1", "title": "Block the brute-force source", "console": "firewall", "domain_id": "siem", "difficulty": 2, "brief": "The SIEM flagged 203.0.113.9 brute-forcing /admin. Block it at the firewall.", "tasks": [{"id": "t1", "instruction": "Open the firewall ruleset.", "validate": {"action": "click", "params": {"target": "firewall:rules"}}, "hint": "Use the firewall's rules view."}, {"id": "t2", "instruction": "Create a DENY rule for source 203.0.113.9 on all ports, placed before the ALLOW rules.", "validate": {"action": "create", "params": {"type": "firewall-rule", "name": "deny-203.0.113.9"}}, "hint": "DENY rules must precede the ALLOWs they override."}, {"id": "t3", "instruction": "Verify the new rule is active and logging hits.", "validate": {"action": "click", "params": {"target": "firewall:rules:verify"}}, "hint": "Check the rule's hit counter."}], "debrief": "Containment at the firewall is fast and reversible: DENY the source, place it above the allows, verify with the hit counter."}, {"id": "cyber-console-2", "title": "Quarantine the workstation", "console": "siem-dashboard", "domain_id": "siem", "difficulty": 3, "brief": "A workstation is beaconing to a known-malicious host. Quarantine it from the SIEM.", "tasks": [{"id": "t1", "instruction": "Open the alert for the beaconing workstation in the SIEM.", "validate": {"action": "click", "params": {"target": "siem:alerts:beaconing"}}, "hint": "Find the beaconing alert in the queue."}, {"id": "t2", "instruction": "Select the workstation asset from the alert.", "validate": {"action": "click", "params": {"target": "siem:alert:asset"}}, "hint": "Open the asset tied to the alert."}, {"id": "t3", "instruction": "Trigger network quarantine on the workstation.", "validate": {"action": "click", "params": {"target": "siem:asset:quarantine"}}, "hint": "Quarantine cuts the host off while preserving it for forensics."}], "debrief": "Quarantine contains without destroying: the host is cut off from the network but preserved for forensic imaging."}], "terminalMissions": [{"id": "cyber-mission-1", "title": "Log recon", "domain_id": "siem", "difficulty": 1, "brief": "List the logs and read the access log.", "objectives": ["List the logs directory", "Read the access log"], "checks": [{"command_pattern": "^ls logs/$", "expect_contains": "access.log", "hint": "Type exactly: ls logs/"}, {"command_pattern": "^cat logs/access\\.log$", "expect_contains": "GET /health", "hint": "Type exactly: cat logs/access.log"}], "success_message": "Recon complete — the access log is mapped."}, {"id": "cyber-mission-2", "title": "Error hunt", "domain_id": "siem", "difficulty": 1, "brief": "Extract every ERROR line with numbers.", "objectives": ["Grep ERROR lines with line numbers"], "checks": [{"command_pattern": "^grep -n ERROR logs/app\\.log$", "expect_contains": "connection refused", "hint": "Type exactly: grep -n ERROR logs/app.log"}], "success_message": "Hunt complete — two errors, both numbered."}, {"id": "cyber-mission-3", "title": "Process check", "domain_id": "threat-intel", "difficulty": 2, "brief": "List processes and confirm the app is running.", "objectives": ["List processes"], "checks": [{"command_pattern": "^ps$", "expect_contains": "python3 app.py", "hint": "Type exactly: ps"}], "success_message": "Process check done — the app is running."}, {"id": "cyber-mission-4", "title": "Identity confirmation", "domain_id": "siem", "difficulty": 2, "brief": "Confirm host identity from the system files.", "objectives": ["Read the hosts file", "Print your username"], "checks": [{"command_pattern": "^cat /etc/hosts$", "expect_contains": "interstitium", "hint": "Type exactly: cat /etc/hosts"}, {"command_pattern": "^whoami$", "expect_contains": "candidate", "hint": "Type exactly: whoami"}], "success_message": "Identity confirmed — host and user on record."}, {"id": "cyber-mission-5", "title": "Platform sweep", "domain_id": "reporting", "difficulty": 3, "brief": "Record the platform and the date.", "objectives": ["Print full system info", "Print the date"], "checks": [{"command_pattern": "^uname -a$", "expect_contains": "x86_64", "hint": "Type exactly: uname -a"}, {"command_pattern": "^date$", "expect_contains": "2026", "hint": "Type exactly: date"}], "success_message": "Sweep complete — platform and time stamped."}, {"id": "cyber-mission-6", "title": "Disk and detail", "domain_id": "siem", "difficulty": 3, "brief": "Check disk usage and count the bytes of app.py.", "objectives": ["Check disk usage", "Count bytes of app.py"], "checks": [{"command_pattern": "^df$", "expect_contains": "57%", "hint": "Type exactly: df"}, {"command_pattern": "^wc -c app\\.py$", "expect_contains": "98 app.py", "hint": "Type exactly: wc -c app.py"}], "success_message": "Closed out — disk healthy, file measured."}], "media": [{"id": "comptia-cyber-threat-intel-diag", "kind": "diagram", "title": "Threat Intelligence Levels", "svg": "assets/diagrams/comptia-cyber-threat-intel.svg", "lesson_ref": "c-threat-intel", "caption": "Different consumers need different intel.", "alt": "Threat Intelligence Levels. Shows: Tactical, Operational, Strategic, IOCs vs TTPs."}, {"id": "comptia-cyber-vuln-mgmt-diag", "kind": "diagram", "title": "Vulnerability Management Lifecycle", "svg": "assets/diagrams/comptia-cyber-vuln-mgmt.svg", "lesson_ref": "c-vuln-mgmt", "caption": "A loop, not a project.", "alt": "Vulnerability Management Lifecycle. Shows: Identify, Assess, Prioritize, Remediate, Verify."}, {"id": "comptia-cyber-siem-diag", "kind": "diagram", "title": "SIEM Data Pipeline", "svg": "assets/diagrams/comptia-cyber-siem.svg", "lesson_ref": "c-siem", "caption": "From raw logs to analyst-ready alerts.", "alt": "SIEM Data Pipeline. Shows: Collect, Normalize, Correlate, Alert, Investigate."}, {"id": "comptia-cyber-pentest-method-diag", "kind": "diagram", "title": "Penetration Testing Methodology", "svg": "assets/diagrams/comptia-cyber-pentest-method.svg", "lesson_ref": "c-pentest-method", "caption": "The PTES phases in order.", "alt": "Penetration Testing Methodology. Shows: Pre-engagement, Intel gathering, Threat modeling, Vuln analysis, Exploitation, Post-exploitation."}, {"id": "comptia-cyber-exploitation-diag", "kind": "diagram", "title": "Exploitation Basics", "svg": "assets/diagrams/comptia-cyber-exploitation.svg", "lesson_ref": "c-exploitation", "caption": "Understand the classes to defend against them.", "alt": "Exploitation Basics. Shows: Buffer overflows, Injection, Password attacks, Social engineering."}, {"id": "comptia-cyber-reporting-diag", "kind": "diagram", "title": "Security Reporting", "svg": "assets/diagrams/comptia-cyber-reporting.svg", "lesson_ref": "c-reporting", "caption": "Communicate risk so it gets fixed.", "alt": "Security Reporting. Shows: Severity ratings, Evidence, Remediation, Trends."}], "resources": {"cheatsheet": {"title": "CompTIA Cyber: CySA+ / PenTest+ / SecurityX — Cheat Sheet", "sections": [{"heading": "Threat Intel & Hunting", "items": ["IOCs vs TTPs — hypothesis-driven hunting starts from knowledge of adversary TTPs and your environment, then tests the hypothesis against data. Hunting for TTPs (persistence mechanisms, C2 patterns, tooling) finds the other compromised hosts the hash would miss.", "Threat hunting — STIX is the structured language for threat intel and TAXII is the transport for sharing it — together they let machines consume indicators automatically. Threat intel is only useful when it is relevant: an ICS exploit is noise to a SaaS shop and generates a…", "Principle — atomic IOCs like hashes are brittle — attackers recompile in minutes.", "Common trap — ignore threat intelligence entirely.", "Common trap — block the hash everywhere and close the ticket.", "Common trap — email the hash to the whole company as a warning.", "Common trap — email screenshots of the phishing pages.", "Read — Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."]}, {"heading": "Vulnerability Management", "items": ["CVSS — CVSS base scores describe the vulnerability in isolation, not your risk.", "Credentialed scanning — for internal assets, credentialed scanning is the standard for accurate results. Scanning is authorized testing with real side effects on fragile systems.", "Scan types — maintenance windows plus scan policies (safe checks vs. full intrusive) protect availability while keeping coverage — abandoning scans abandons visibility.", "Verification — Verification (changelog, package version metadata) plus documentation keeps the finding from recurring without a pointless emergency change.", "Common trap — stop scanning the legacy system forever.", "Common trap — scanners are useless; stop scanning.", "Common trap — scan it harder to find the weakness.", "Common trap — always fix the highest score first."]}, {"heading": "SIEM & Log Analysis", "items": ["Correlation — Correlation depends on trustworthy timestamps; even seconds of drift scramble event ordering across systems. Correlation turns two weak alerts into one strong case and triggers the incident workflow.", "Brute-force detection — failed-then-success from an unusual geography is the textbook brute-force pattern.", "Principle — the success is what matters: check session activity, force a password reset, and review for lateral movement before deciding it was benign.", "Common trap — work each alert as a separate low-priority ticket.", "Common trap — log everything forever with no budget.", "Common trap — block the destination country at the firewall and close the ticket.", "Common trap — email the user asking if they clicked something.", "Key point — 4625 is a failed logon and 4624 is a successful logon. A burst of failures followed by success from an external IP is the signature of a guessed password. The 4624 is the critical event: assume compromise until the session is cleared."]}, {"heading": "Pen Test Methodology", "items": ["Legal authorization — the ROE's exclusions are hard limits: pivoting into excluded systems exceeds authorization even from a compromised in-scope host. Scope is a legal boundary, not a suggestion: the subsidiary may have different ownership, data, and regulators.", "Scope control — it defines scope, timing, allowed techniques, and emergency contacts.", "ROE amendments — unauthorized access is a crime regardless of good intentions; the signed ROE is what separates a pen test from an attack.", "Common trap — test first and get the signature later.", "Common trap — test it quietly and mention it in the report.", "Common trap — stop the entire test immediately.", "Common trap — a connect scan (-sT): completes every handshake for maximum noise."]}, {"heading": "Exploitation Basics", "items": ["SQL injection — the input became part of the SQL command because it was concatenated into the query string.", "Output encoding — context-appropriate output encoding neutralizes it at the sink; server-side validation constrains it at the source.", "Principle — fast cracking proves the passwords were weak and unsalted hashes allow rainbow-table precomputation.", "Common trap — use one strong shared admin password.", "Common trap — add password hints to the login page.", "Common trap — make the shared password longer.", "Common trap — make passwords expire every 30 days.", "The — The input became part of the SQL command because it was concatenated into the query string. Parameterized queries separate code from data at the driver level — the canonical fix. WAF rules and error hiding are defense-in-depth, not the cure."]}, {"heading": "Reporting & Governance", "items": ["Risk rating — reports serve two readers: executives decide on risk and budget, engineers implement fixes.", "Findings analysis — mapping to CSF (v2.0 added the Govern function) translates technical findings into the governance language leadership funds and tracks. The summary translates findings into business impact; each technical finding needs proof, severity rationale, and concret…", "Retesting — fixes fail: patches get reverted, configs drift, and 'fixed' sometimes means 'we think so.' Retesting closes the loop with evidence and protects both sides — it is usually a contracted phase, not a favor.", "Common trap — let the client decide the rating alone.", "Common trap — a verbal debrief with no written report.", "Common trap — recommend nothing; architecture is out of scope.", "Common trap — a 200-page dump of raw tool output."]}]}, "glossary": [{"term": "ROE", "def": "Legal authorization: the ROE's exclusions are hard limits: pivoting into excluded systems exceeds authorization even from a compromised in-scope host. Scope is a legal boundary, not a suggestion: the subsidiary may have different ownersh…"}, {"term": "STIX", "def": "Threat hunting: STIX is the structured language for threat intel and TAXII is the transport for sharing it — together they let machines consume indicators automatically. Threat intel is only useful when it is relevant: an ICS exploit is…"}, {"term": "ICS", "def": "Threat hunting: STIX is the structured language for threat intel and TAXII is the transport for sharing it — together they let machines consume indicators automatically. Threat intel is only useful when it is relevant: an ICS exploit is…"}, {"term": "TAXII", "def": "Threat hunting: STIX is the structured language for threat intel and TAXII is the transport for sharing it — together they let machines consume indicators automatically. Threat intel is only useful when it is relevant: an ICS exploit is…"}, {"term": "Principle", "def": "Principle: atomic IOCs like hashes are brittle — attackers recompile in minutes."}, {"term": "TTPs", "def": "IOCs vs TTPs: hypothesis-driven hunting starts from knowledge of adversary TTPs and your environment, then tests the hypothesis against data. Hunting for TTPs (persistence mechanisms, C2 patterns, tooling) finds the other compromised hos…"}, {"term": "Scope", "def": "Scope control: it defines scope, timing, allowed techniques, and emergency contacts."}, {"term": "IP", "def": "4625 is a failed logon and 4624 is a successful logon. A burst of failures followed by success from an external IP is the signature of a guessed password."}, {"term": "WAF", "def": "The input became part of the SQL command because it was concatenated into the query string. Parameterized queries separate code from data at the driver level — the canonical fix."}, {"term": "IOCs", "def": "Principle: atomic IOCs like hashes are brittle — attackers recompile in minutes."}, {"term": "Threat", "def": "Threat hunting: STIX is the structured language for threat intel and TAXII is the transport for sharing it — together they let machines consume indicators automatically. Threat intel is only useful when it is relevant: an ICS exploit is…"}, {"term": "Scanning", "def": "Credentialed scanning: for internal assets, credentialed scanning is the standard for accurate results. Scanning is authorized testing with real side effects on fragile systems."}, {"term": "Retesting", "def": "Retesting: fixes fail: patches get reverted, configs drift, and 'fixed' sometimes means 'we think so.' Retesting closes the loop with evidence and protects both sides — it is usually a contracted phase, not a favor."}, {"term": "SLA", "def": "Remediation is not only patching: compensating controls reduce exposure while you wait. Document the control, the residual risk, and the re-check date — the SLA tracks risk reduction, and 'waiting' is not a control."}, {"term": "NTP", "def": "Correlation depends on trustworthy timestamps; even seconds of drift scramble event ordering across systems. NTP everywhere (and monitoring for drift) is the unglamorous foundation of every timeline reconstruction."}, {"term": "SYSTEM", "def": "Why does a file-sync service need SYSTEM?"}, {"term": "XSS", "def": "Reflected XSS happens when untrusted input is rendered as markup in the victim's browser. Context-appropriate output encoding neutralizes it at the sink; server-side validation constrains it at the source."}, {"term": "Legal", "def": "Legal authorization: the ROE's exclusions are hard limits: pivoting into excluded systems exceeds authorization even from a compromised in-scope host. Scope is a legal boundary, not a suggestion: the subsidiary may have different ownersh…"}, {"term": "Boards", "def": "Boards need outcome trends, not activity counts: are we detecting faster, fixing faster, and staying fixed? Raw alert volume measures noise; MTTD/MTTR and repeat-finding rates measure capability."}, {"term": "Cleanup", "def": "Cleanup is a contractual obligation: leftover shells and accounts are live vulnerabilities you introduced. Verify removal with the client — a forgotten test account becomes the attacker's account."}, {"term": "Severity", "def": "Severity is likelihood times impact, grounded in evidence: who can reach it, what data it guards, how trivially it exploits. Scanner scores ignore your context; inflating everything to critical trains clients to ignore you."}, {"term": "Retention", "def": "Retention is a risk decision: too short and you cannot investigate; infinite and you drown in cost. Define the window from incident-response needs and regulatory requirements, then tier storage so the window is affordable."}, {"term": "Atomic IOCs", "def": "Atomic IOCs like hashes are brittle — attackers recompile in minutes. Hunting for TTPs (persistence mechanisms, C2 patterns, tooling) finds the other compromised hosts the hash would miss."}, {"term": "Remediation", "def": "Remediation is not only patching: compensating controls reduce exposure while you wait. Document the control, the residual risk, and the re-check date — the SLA tracks risk reduction, and 'waiting' is not a control."}, {"term": "Credentialed", "def": "Credentialed scanning: for internal assets, credentialed scanning is the standard for accurate results. Scanning is authorized testing with real side effects on fragile systems."}], "links": [{"label": "CompTIA — official site", "url": "https://www.comptia.org", "note": "Official vendor documentation and certification information"}, {"label": "NIST SP 800-53 Rev. 5", "url": "https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final", "note": "Official NIST security controls catalog"}, {"label": "NIST Cybersecurity Framework", "url": "https://www.nist.gov/cyberframework", "note": "Official NIST CSF"}, {"label": "OWASP Top Ten", "url": "https://owasp.org/www-project-top-ten/", "note": "OWASP's top web application risks"}, {"label": "MITRE ATT&CK", "url": "https://attack.mitre.org/", "note": "MITRE's adversary tactics knowledge base"}, {"label": "FIPS 197 — Advanced Encryption Standard", "url": "https://csrc.nist.gov/pubs/fips/197/final", "note": "Official NIST AES standard"}, {"label": "CISA", "url": "https://www.cisa.gov/", "note": "Cybersecurity and Infrastructure Security Agency"}, {"label": "ISACA", "url": "https://www.isaca.org", "note": "Official ISACA certification home"}], "checklist": ["Get 7–8 hours of sleep the night before — fatigue destroys recall faster than any topic gap.", "Bring valid government-issued photo ID and arrive at the test center 30 minutes early.", "Eat a real meal beforehand; bring water and a light snack if the center allows them.", "Read every question twice before scanning the answer choices.", "Flag uncertain questions and move on — return with fresh eyes at the end.", "Eliminate the obviously wrong answers first, then compare the survivors.", "Budget your time: answer steadily and keep a 10–15 minute review buffer.", "Re-run your weakest-domain drill until mastery is at least 80%.", "For Threat Intel & Hunting: restate the 'why' behind each scenario answer in your own words — if you can't explain it, you don't own it.", "Redo one Vulnerability Management lab from scratch without looking at the steps.", "Recite the key SIEM & Log Analysis terms from the glossary aloud from memory."]}}
+{
+ "slug": "comptia-cyber",
+ "title": "CompTIA Cyber (Security+/CySA+ Track)",
+ "tagline": "Threats and vulnerabilities, SOC operations, the incident response lifecycle, and forensics fundamentals \u2014 how defenders detect, contain, and learn from attacks. Independent study material; no certifi",
+ "vendor": {
+  "name": "Independent interview prep (not affiliated with ThreatLocker)",
+  "certs": "",
+  "docs": "https://www.threatlocker.com"
+ },
+ "disclaimer": "Independent interview-prep material by Interstitium Labs. Not affiliated with, endorsed by, or sponsored by ThreatLocker or any vendor mentioned. Confers no certificate. All scenarios are original practice content; no exam or vendor-training content is reproduced.",
+ "accent": "#e5484d",
+ "domains": [
+  {
+   "id": "comptia-cyber",
+   "name": "CompTIA Cyber (Security+/CySA+ Track)",
+   "summary": "Threats and vulnerabilities, SOC operations, the incident response lifecycle, and forensics fundamentals \u2014 how defenders detect, contain, and learn from attacks. Independent study material; no certification is conferred and no vendor endorsement is implied.",
+   "scenarios": [
+    {
+     "id": "comptia-cyber-sc1",
+     "title": "The Urgent Invoice",
+     "situation": "Finance receives an 'urgent overdue invoice' email that looks like it comes from a known vendor. The message pressures immediate payment via a link.",
+     "prompt": "What should the recipient do?",
+     "evidence": [
+      [
+       "headers",
+       "Return-Path: billing@invoices-secure-pay.example \u2014 the real vendor uses vendor.example-corp.com"
+      ],
+      [
+       "link",
+       "Hovering shows https://example-corp-billing.verify-login.ru/invoice"
+      ]
+     ],
+     "choices": [
+      "Do not click \u2014 verify through a known phone number and report it to security",
+      "Reply asking whether the invoice is legitimate",
+      "Click the link to preview the invoice before deciding",
+      "Forward it to the whole team as a warning"
+     ],
+     "answer": 0,
+     "why": "A mismatched sender domain plus a lookalike URL on an unrelated domain is classic credential phishing. The safe move is out-of-band verification and reporting; replying or clicking confirms you are a live target and risks credential theft.",
+     "hint": "What do the actual sender domain and the link destination tell you?",
+     "objectives": [
+      "Phishing",
+      "Social engineering"
+     ],
+     "mins": 5,
+     "difficulty": 1
+    },
+    {
+     "id": "comptia-cyber-sc2",
+     "title": "Contain First",
+     "situation": "The help desk finds ransom notes on three workstations. More reports are arriving \u2014 three hosts became seven in twenty minutes. The last verified backup is six hours old.",
+     "prompt": "What is the first priority?",
+     "evidence": [
+      [
+       "spread",
+       "Infected host count is growing: 3 to 7 in 20 minutes"
+      ],
+      [
+       "backups",
+       "Last verified backup completed 6 hours ago"
+      ]
+     ],
+     "choices": [
+      "Isolate affected hosts from the network to stop lateral spread",
+      "Restore everything from backup immediately",
+      "Run antivirus scans on all endpoints",
+      "Email all staff telling them not to open attachments"
+     ],
+     "answer": 0,
+     "why": "Active spread means containment comes first: disconnect affected hosts (unplug, disable switch ports, kill Wi-Fi) before eradication or recovery, or restored and cleaned machines get re-encrypted. Follow the lifecycle order \u2014 contain, then eradicate, then recover.",
+     "hint": "What is getting worse every minute?",
+     "objectives": [
+      "Incident response",
+      "Containment"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "comptia-cyber-sc3",
+     "title": "Scan or Pentest?",
+     "situation": "A new customer-facing web app handling PII launches in six weeks. Compliance requires a vulnerability assessment, and the dev team wants proof of what is actually exploitable.",
+     "prompt": "What is the best approach?",
+     "evidence": [
+      [
+       "timeline",
+       "Six weeks to launch \u2014 time to fix findings"
+      ],
+      [
+       "scope",
+       "Internet-facing application handling customer PII"
+      ]
+     ],
+     "choices": [
+      "Run credentialed vulnerability scans now for breadth, then a scoped penetration test before launch to validate exploitability",
+      "Penetration test only \u2014 scans are redundant",
+      "Run one scan at launch and ship",
+      "Skip both; the web application firewall handles it"
+     ],
+     "answer": 0,
+     "why": "Scans give breadth quickly and early, when fixes are cheap; a pentest gives depth by proving which findings are truly exploitable. They are complementary, not substitutes \u2014 and a WAF mitigates but never replaces testing.",
+     "hint": "Which finds more issues quickly, and which proves they are real?",
+     "objectives": [
+      "Vulnerability management",
+      "Penetration testing"
+     ],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "comptia-cyber-sc4",
+     "title": "The 3 AM Alert",
+     "situation": "The SIEM fires: 40 failed logins against svc-backup between 03:00 and 03:20, then a success from an IP in a country where the company has no presence. The account has zero interactive logins in 90 days.",
+     "prompt": "What is the right triage conclusion and action?",
+     "evidence": [
+      [
+       "baseline",
+       "svc-backup: 0 interactive logins in 90 days; failures cluster 03:00-03:20"
+      ],
+      [
+       "geo",
+       "Successful login from an IP in a country with no company presence"
+      ]
+     ],
+     "choices": [
+      "Likely credential compromise \u2014 disable the account, isolate the source, and escalate to incident response",
+      "False positive \u2014 service accounts fail logins all the time",
+      "Wait for more alerts before acting",
+      "Reset the password and move on"
+     ],
+     "answer": 0,
+     "why": "Failed-then-success plus off-hours timing, a foreign IP, and a service account breaking its baseline adds up to compromised credentials until proven otherwise. Disable, contain, escalate \u2014 a lone password reset leaves the attacker's session in place.",
+     "hint": "How does this compare to the account's normal behavior?",
+     "objectives": [
+      "SOC operations",
+      "Alert triage"
+     ],
+     "mins": 7,
+     "difficulty": 2
+    },
+    {
+     "id": "comptia-cyber-sc5",
+     "title": "What Do You Grab First?",
+     "situation": "A workstation suspected of data theft is still powered on with an active user session. You are on site and the priority is encryption keys and command-and-control sessions that live in memory.",
+     "prompt": "In what order do you collect evidence?",
+     "evidence": [
+      [
+       "state",
+       "Machine powered on; user session active"
+      ],
+      [
+       "priority",
+       "Encryption keys and C2 sessions live in volatile memory"
+      ]
+     ],
+     "choices": [
+      "Capture RAM first, then network connections and process lists, then a disk image \u2014 most volatile first",
+      "Pull the plug and image the disk",
+      "Copy the suspicious files to a USB drive",
+      "Run antivirus, then image the disk"
+     ],
+     "answer": 0,
+     "why": "The order of volatility rules: CPU registers and cache, then RAM, then network state, then disk. Pulling the plug destroys memory-resident evidence \u2014 keys, injected processes, C2 sessions. Capture volatile data first and image the disk through a write blocker, never analyzing the original.",
+     "hint": "What disappears the moment power is cut?",
+     "objectives": [
+      "Digital forensics",
+      "Order of volatility"
+     ],
+     "mins": 7,
+     "difficulty": 3
+    },
+    {
+     "id": "comptia-cyber-sc6",
+     "title": "To Pay or Not",
+     "situation": "Ransomware encrypted the file server. Offline, immutable backups were verified four hours before encryption. The attacker demands payment within 48 hours and threatens to leak HR data.",
+     "prompt": "What is the best decision?",
+     "evidence": [
+      [
+       "backups",
+       "Offline immutable backups verified 4 hours before encryption"
+      ],
+      [
+       "threat",
+       "Attacker claims to have exfiltrated HR data"
+      ]
+     ],
+     "choices": [
+      "Do not pay \u2014 contain, eradicate, and restore from the verified offline backups; handle the leak claim as a separate breach-notification decision",
+      "Pay immediately to stop the leak threat",
+      "Pay the ransom, then restore from backup anyway",
+      "Negotiate for more time while systems stay encrypted"
+     ],
+     "answer": 0,
+     "why": "Payment funds crime, guarantees neither decryption nor data deletion, and marks you as a payer for the next attack. With verified offline backups, recovery is assured; the extortion claim is a separate incident requiring its own legal and notification handling.",
+     "hint": "What does payment actually buy you, given the backups?",
+     "objectives": [
+      "Ransomware response",
+      "Risk decisions"
+     ],
+     "mins": 7,
+     "difficulty": 3
+    }
+   ]
+  }
+ ],
+ "lessons": [
+  {
+   "domain_id": "comptia-cyber",
+   "title": "CompTIA Cyber (Security+/CySA+ Track) \u2014 Core concepts",
+   "concepts": [
+    "Think in kill chains: attacks progress through stages \u2014 recon, weaponize, deliver, exploit, install, command-and-control, act. Defenders win by breaking the chain early, for example blocking delivery (phishing) or C2 egress.",
+    "Vulnerability management is a cycle: scan, prioritize by exploitability and asset criticality rather than raw severity scores alone, remediate, rescan. A scan without remediation is just a report.",
+    "SOC triage runs on context: an alert is noise until correlated with asset value, user behavior baselines, and threat intel. Tune rules to cut false positives without blinding true positives.",
+    "Incident response order matters: preparation, detection and analysis, containment, eradication, recovery, lessons learned. Contain before you eradicate, or the attacker re-infects from a foothold you never isolated.",
+    "Forensics preserves the order of volatility: capture the most ephemeral evidence first \u2014 registers and cache, RAM, network state, then disk \u2014 and never analyze the original; work from a write-blocked image.",
+    "Least privilege plus segmentation limits blast radius: prevention eventually fails, so design so that one compromised host cannot reach everything."
+   ],
+   "example": {
+    "lang": "shell",
+    "code": "sha256sum firmware.bin\nsha256sum -c firmware.sha256",
+    "walkthrough": "sha256sum computes the file's cryptographic hash; the -c flag compares it against the vendor's published checksum file. A mismatch means the download was corrupted or tampered with \u2014 do not install it."
+   },
+   "pitfalls": [
+    "Common trap: pulling the plug on a compromised host before capturing RAM \u2014 you destroy volatile evidence and in-memory attacker artifacts.",
+    "Common trap: treating a vulnerability scan as a penetration test \u2014 scans find known issues; pentests validate exploitability.",
+    "Common trap: eradicating malware before containment \u2014 the infection spreads from hosts you have not isolated yet.",
+    "Common trap: paying a ransom as the recovery plan \u2014 no guarantee of decryption, and it marks you as a payer."
+   ],
+   "try_it": "Work through this in the Labs tab."
+  }
+ ],
+ "labs": [
+  {
+   "id": "comptia-cyber-lab1",
+   "domain_id": "comptia-cyber",
+   "title": "Verify a Download",
+   "objective": "Use cryptographic hashes in the simulated terminal to verify a downloaded file has not been corrupted or tampered with.",
+   "steps": [
+    "Compute the file's hash with sha256sum firmware.bin and record it.",
+    "Compare it against the vendor's published value using sha256sum -c firmware.sha256.",
+    "Deliberately flip one byte in a copy (printf 'x' >> firmware-copy.bin) and re-run the check to see it fail.",
+    "State the rule: what do you do when a checksum fails?"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^sha256sum\\s",
+     "expect_contains": "OK",
+     "hint": "Run: sha256sum -c firmware.sha256"
+    }
+   ]
+  },
+  {
+   "id": "comptia-cyber-lab2",
+   "domain_id": "comptia-cyber",
+   "title": "Spot the Brute Force",
+   "objective": "Hunt through authentication logs for a password-spraying pattern using classic text-processing tools.",
+   "steps": [
+    "Search the auth log with grep 'Failed password' /var/log/auth.log and note the volume.",
+    "Extract source IPs and count attempts per IP: pipe through awk, sort, uniq -c, sort -nr.",
+    "Take the top offender with head and check whether any success followed the failures.",
+    "Write a one-line triage verdict: benign noise or escalation-worthy?"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^grep\\s",
+     "expect_contains": "Failed",
+     "hint": "Run: grep 'Failed password' /var/log/auth.log | head"
+    }
+   ]
+  }
+ ],
+ "simulations": [],
+ "consoleSims": [],
+ "terminalMissions": [],
+ "sections": [
+  {
+   "id": "sec-full-spectrum",
+   "title": "Full Spectrum Dominance \u2014 core path",
+   "kind": "core",
+   "lectures": [],
+   "lab_ids": [
+    "fsd-tl-lab-1",
+    "fsd-tl-lab-2",
+    "fsd-tl-lab-3",
+    "fsd-sg-lab-1",
+    "fsd-sg-lab-2",
+    "fsd-sg-lab-3",
+    "fsd-ai-lab-1",
+    "fsd-ai-lab-2",
+    "fsd-ai-lab-3"
+   ],
+   "drill_domain_ids": [
+    "tl-interview",
+    "tl-endpoint-ops",
+    "sec-graphs",
+    "graph-defense",
+    "ml-defense",
+    "ai-agent-sec"
+   ]
+  }
+ ],
+ "behavioral": [
+  {
+   "prompt": "Tell me about the most technically difficult problem you have run into \u2014 a homelab, a broken environment, anything \u2014 and how you solved it.",
+   "framework": "STAR",
+   "points": [
+    "Pick ONE problem with a real evidence trail: the symptom, what you measured, the hypothesis you tested",
+    "Show the loop: scope, observe, hypothesize, smallest safe change, validate \u2014 interviewers score the method, not just the fix",
+    "Name the tools (VM build, networking, logs) and the lesson it taught you",
+    "Close with the result in concrete terms: what works now that did not before"
+   ],
+   "pitfalls": [
+    "Choosing a story with no real obstacle (\u201cI Googled it\u201d is not a story)",
+    "Skipping validation \u2014 saying it worked without proving it",
+    "Rambling past two minutes without reaching the result"
+   ]
+  },
+  {
+   "prompt": "Tell me about a time you dealt with a frustrated customer or user while something was broken.",
+   "framework": "STAR",
+   "points": [
+    "Lead with empathy and ownership: acknowledge the impact before the technical detail",
+    "Show translation: what you told them, in their language, plus the timeline you committed to",
+    "Show judgment: the narrow fix you chose and what you refused to do (e.g., disabling the control to clear the symptom)",
+    "Close with the relationship outcome, not just the technical one"
+   ],
+   "pitfalls": [
+    "Badmouthing the customer to sound decisive",
+    "Promising a timeline you could not keep",
+    "Framing the user as the problem rather than the situation"
+   ]
+  },
+  {
+   "prompt": "Why ThreatLocker, and why cybersecurity?",
+   "framework": "STAR",
+   "points": [
+    "Connect prevention to something concrete: a moment you saw detection arrive too late, or a system you hardened",
+    "Tie their model to your instincts: deny-by-default matches how you already think about trust",
+    "Show service orientation: the Cyber Hero culture rewards the 2 a.m. helper \u2014 give an example of being one",
+    "Name one forward-looking reason: Zero Trust, the MSP mission, or the bootcamp community investment"
+   ],
+   "pitfalls": [
+    "Generic flattery with no specifics about the company",
+    "Leading with compensation, title, or location convenience",
+    "Claiming expertise in products you have only read about \u2014 frame it as studied, not mastered"
+   ]
+  },
+  {
+   "framework": "STAR",
+   "pitfalls": [
+    "Staying vague ('I analyzed the data') instead of naming what you connected.",
+    "Skipping your own role: what did YOU see that others missed?",
+    "No outcome: what changed because you joined the dots?"
+   ],
+   "points": [
+    "The scattered signals and why nobody had connected them yet",
+    "The specific links you drew between them (shared host, time, infrastructure)",
+    "What the bigger picture turned out to be and what action it drove",
+    "What the experience taught you about investigating"
+   ],
+   "prompt": "Tell me about a time you connected scattered clues into a bigger picture that others had missed."
+  },
+  {
+   "framework": "STAR",
+   "pitfalls": [
+    "Claiming you fixed everything: credibility comes from trade-offs, not heroics.",
+    "Hiding the constraint: the limitation is what makes the prioritization story real.",
+    "No metric: 'better' needs a before-and-after."
+   ],
+   "points": [
+    "The constraint (time, budget, staff) and the size of the backlog",
+    "How you decided what mattered most (what was reachable, what was critical)",
+    "What you did first and what you deliberately deferred",
+    "The measurable result of the prioritization"
+   ],
+   "prompt": "Describe a time you had to prioritize risks or fixes with limited time or resources. How did you decide what came first?"
+  },
+  {
+   "framework": "STAR",
+   "pitfalls": [
+    "Reciting jargon to a non-technical audience and calling it communication.",
+    "Skipping the audience's reaction: did they actually understand and act?",
+    "Making yourself the hero instead of the translator."
+   ],
+   "points": [
+    "The technical finding and why it mattered",
+    "Who the audience was and what they cared about",
+    "How you reframed it (a picture, an analogy, a story)",
+    "What decision or action the audience took because they understood"
+   ],
+   "prompt": "Tell me about a time you explained a complex technical finding to a non-technical audience and it changed a decision."
+  },
+  {
+   "prompt": "Tell me about a time you used automation or AI to solve a security problem.",
+   "framework": "STAR",
+   "points": [
+    "The repetitive security task and what it cost in analyst time",
+    "The automation or AI approach you built and how you validated it",
+    "Measured outcome: time saved, detection gained, false positives changed"
+   ],
+   "pitfalls": [
+    "Describing the tool but never the validation",
+    "No measurable outcome"
+   ]
+  },
+  {
+   "prompt": "Describe a time you had to decide whether to trust an automated security decision.",
+   "framework": "STAR",
+   "points": [
+    "The stakes of the automated action and its blast radius",
+    "How you verified before acting (or the gate you built)",
+    "What happened and what you would automate differently next time"
+   ],
+   "pitfalls": [
+    "Saying you always trust the tool",
+    "No mention of blast radius or reversibility"
+   ]
+  }
+ ],
+ "resources": {
+  "cheatsheet": {
+   "title": "Full Spectrum Dominance \u2014 field reference",
+   "sections": [
+    {
+     "heading": "Company facts (verified)",
+     "items": [
+      "Founded 2017 in Orlando, FL \u2014 Danny Jenkins (CEO), Sami Jenkins (COO), John Carolan (QA)",
+      "Philosophy: deny-by-default / default-deny \u2014 approve known-good, deny the rest",
+      "Customers: 70,000+ organizations, sold heavily through the MSP channel",
+      "Funding: $190M Series F, July 2026 (Elephant-led); ~730 employees",
+      "Interview address: 1901 Summit Tower Blvd, Orlando, FL 32810",
+      "Culture: in-office 5 days/week; free lunch; post-offer background + drug screening"
+     ]
+    },
+    {
+     "heading": "Product stack",
+     "items": [
+      "Allowlisting \u2014 default-deny execution control for apps, DLLs, scripts, installers",
+      "Ringfencing \u2014 constrains allowed apps: app-to-app, file, registry, network",
+      "Storage Control \u2014 USB/device policy by serial, user, file type, encryption",
+      "Elevation Control \u2014 just-in-time per-app admin, no standing rights",
+      "Network Control \u2014 host firewall; port/IP/dynamic-ACL rules; ZTNA foundation",
+      "Web Control \u2014 agent-based DNS/URL category filtering, works off-network",
+      "Cyber Hero MDR \u2014 24/7/365 US-based response, ~60-second average",
+      "Testing Environment \u2014 one-button VDI sandbox; checks AV flags, canary files, registry changes"
+     ]
+    },
+    {
+     "heading": "Rule strength (strongest to weakest)",
+     "items": [
+      "Certificate/publisher rules \u2014 survive version updates",
+      "Hash rules \u2014 precise but break on every new version",
+      "Path rules \u2014 weakest; never in user-writable locations",
+      "Learning Mode catalogs before enforcement; Installation Mode pauses blocking \u2014 scope and time-box both"
+     ]
+    },
+    {
+     "heading": "Terminal evidence commands",
+     "items": [
+      "nmap <host> \u2014 which ports answer (22/80/443 open)",
+      "dig <name> \u2014 ANSWER SECTION with the A record",
+      "ss \u2014 listening sockets",
+      "systemctl status <svc> \u2014 unit state",
+      "journalctl -u <svc> \u2014 service logs",
+      "sha256sum <file> \u2014 real SHA-256 identity",
+      "grep <pattern> <file> \u2014 search the record",
+      "ps \u2014 what is actually running"
+     ]
+    },
+    {
+     "heading": "Graph vocabulary",
+     "items": [
+      "node \u2014 any entity tracked in the model (user, host, IP, domain, file hash, vulnerability)",
+      "edge \u2014 a labeled relationship between two nodes (logged into, resolved to, downloaded)",
+      "degree \u2014 number of edges on a node; high-degree nodes are attacker highways",
+      "centrality \u2014 how much traffic or how many paths flow through a node",
+      "directed edge \u2014 a relationship with a direction (A downloaded FROM B)",
+      "security graph \u2014 the living model of your whole environment as nodes and edges",
+      "attack graph \u2014 the subgraph of exploitable paths to your targets",
+      "knowledge graph \u2014 threat-intel indicators linked to campaigns and actors"
+     ]
+    },
+    {
+     "heading": "Attack-graph playbook",
+     "items": [
+      "inventory first \u2014 you cannot graph what you have not discovered",
+      "model flaws AND misconfigs as exploit edges",
+      "compute shortest paths to the crown jewels",
+      "find the choke point (highest betweenness on those paths)",
+      "break the path: patch, segment, or remove the edge",
+      "re-scan and re-run the graph to prove the path is gone",
+      "never trust yesterday's graph \u2014 redeployments redraw the map"
+     ]
+    },
+    {
+     "heading": "Zero Trust + graphs",
+     "items": [
+      "never trust, always verify \u2014 re-evaluate every access decision",
+      "assume breach \u2014 treat unexpected edges as hostile until proven otherwise",
+      "microsegmentation \u2014 allow-list approved edges, alert on new ones",
+      "ReBAC \u2014 policies are path queries on the identity graph",
+      "continuous verification \u2014 device/location/behavior edges change, trust follows",
+      "anomalous edge \u2014 a first-seen connection between strangers is the classic signal"
+     ]
+    },
+    {
+     "heading": "ML detection vocabulary",
+     "items": [
+      "Supervised learning \u2014 learns from labeled examples; strong on known threats, blind to novel ones",
+      "Unsupervised learning \u2014 finds structure without labels; clustering and dimensionality reduction",
+      "Anomaly detection \u2014 models 'normal' and flags deviations; the workhorse for novel threats",
+      "UEBA \u2014 user and entity behavior analytics: per-user baselines plus peer-group comparison",
+      "Feature engineering \u2014 encoding raw logs into model inputs (login velocity, rare processes, domain entropy)",
+      "Concept drift \u2014 model decay as attacker behavior and legitimate traffic shift over time"
+     ]
+    },
+    {
+     "heading": "Detection metrics",
+     "items": [
+      "Precision \u2014 of all flagged alerts, how many were real",
+      "Recall \u2014 of all real attacks, how many were flagged",
+      "Threshold tuning \u2014 sliding the decision cutoff trades precision against recall",
+      "Alert fatigue \u2014 when false positives train analysts to ignore the queue",
+      "DGA \u2014 domain generation algorithm; detected via character entropy of domain names"
+     ]
+    },
+    {
+     "heading": "Agent and LLM security",
+     "items": [
+      "Direct prompt injection \u2014 attacker input overrides app instructions (OWASP LLM01:2025, the #1 LLM risk)",
+      "Indirect prompt injection \u2014 hidden instructions inside retrieved data (email, web, docs)",
+      "Jailbreak \u2014 defeating the model's own safety policy; distinct from hijacking app behavior",
+      "Tool poisoning \u2014 malicious tool descriptions or metadata steer an agent to misuse its tools (MCP ecosystem risk)",
+      "Insecure output handling \u2014 executing or trusting model output without validation",
+      "Least-privilege tools \u2014 grant each tool only the scope its task requires"
+     ]
+    },
+    {
+     "heading": "Adversarial ML and governance",
+     "items": [
+      "Evasion \u2014 perturbing inputs at inference time to dodge a classifier",
+      "Poisoning \u2014 corrupting training data to corrupt the model",
+      "Extraction \u2014 querying a model to steal its behavior or parameters",
+      "MITRE ATLAS \u2014 knowledge base of adversarial ML tactics and techniques",
+      "Red-teaming and evals \u2014 adversarial testing of AI systems before deployment",
+      "Human-in-the-loop \u2014 required approval for high-impact or irreversible agent actions",
+      "SOAR \u2014 security orchestration, automation and response; automate enrichment, gate containment"
+     ]
+    }
+   ]
+  },
+  "glossary": [
+   {
+    "term": "Allowlisting",
+    "def": "Default-deny execution control: only explicitly approved applications, scripts, and installers may run."
+   },
+   {
+    "term": "Blocklisting",
+    "def": "Default-allow model: everything runs except recognized-bad items \u2014 the window zero-days live in."
+   },
+   {
+    "term": "Default-deny",
+    "def": "Deny-by-default posture: unknown code, devices, or connections are refused unless explicitly approved."
+   },
+   {
+    "term": "Ringfencing",
+    "def": "Containment applied on top of allowlisting; restricts what a permitted app may do across app-to-app, file, registry, and network dimensions."
+   },
+   {
+    "term": "Learning Mode",
+    "def": "Agent mode that catalogs applications and dependencies and auto-builds policies before enforcement; temporarily disables file blocking."
+   },
+   {
+    "term": "Installation Mode",
+    "def": "Temporary mode that pauses file blocking for installs \u2014 must be tightly scoped and time-boxed."
+   },
+   {
+    "term": "Elevation Control",
+    "def": "Grants specific approved applications admin rights for standard users \u2014 just-in-time, per-app, time-boxed \u2014 without standing admin rights."
+   },
+   {
+    "term": "Application hopping",
+    "def": "An elevated or trusted process spawning another tool (e.g., PowerShell) to inherit its privileges \u2014 countered by ringfencing the elevated process."
+   },
+   {
+    "term": "Storage Control",
+    "def": "Device and path policy: USB approved by serial, user, file type, time, and encryption; unapproved devices do not connect."
+   },
+   {
+    "term": "Network Control",
+    "def": "Centrally managed host firewall; rules by port, source IP, and dynamic ACLs; egress allowlisting pins apps to approved destinations."
+   },
+   {
+    "term": "ZTNA",
+    "def": "Zero Trust Network Access: per-session, per-application brokered connections (commonly over port 443) with no open inbound ports \u2014 deny-by-default for network access."
+   },
+   {
+    "term": "Approval Center",
+    "def": "Portal queue where end-user software requests arrive for admin review and decision."
+   },
+   {
+    "term": "Unified Audit",
+    "def": "Real-time audit showing what was allowed or denied across endpoints \u2014 and why; the evidence layer for triage."
+   },
+   {
+    "term": "Testing Environment",
+    "def": "One-button cloud VDI sandbox launched from an approval request; logs AV flags, canary-file access, and registry/system changes."
+   },
+   {
+    "term": "Cyber Hero MDR",
+    "def": "24/7/365 US-based managed detection and response team; validates alerts, isolates hosts, acts on customer runbooks; ~60-second average response."
+   },
+   {
+    "term": "Assume breach",
+    "def": "Design and operate as if the attacker already has a foothold \u2014 least privilege, containment, and monitoring everywhere."
+   },
+   {
+    "term": "Living off the land",
+    "def": "Attacks that hijack trusted built-in tools (Word, PowerShell) instead of dropping malware \u2014 defeated by behavior containment, not signatures."
+   },
+   {
+    "term": "Change control",
+    "def": "Scoped, ticketed, tested changes with validation and rollback \u2014 emergency speed never cancels the process."
+   },
+   {
+    "def": "A node in an attack graph representing a system or weakness, connected by edges that represent steps an attacker could take between them.",
+    "term": "attack graph"
+   },
+   {
+    "def": "How central a node is to paths through the graph (for example, betweenness: how many shortest paths cross it).",
+    "term": "centrality"
+   },
+   {
+    "def": "The most valuable assets in the environment (customer data, finance systems, source code): what attack paths are measured against.",
+    "term": "crown jewels"
+   },
+   {
+    "def": "A labeled connection between two nodes, representing a relationship such as 'logged into' or 'resolved to'.",
+    "term": "edge"
+   },
+   {
+    "def": "A graph of threat indicators (IPs, domains, hashes) linked to campaigns, actors, and each other through shared infrastructure.",
+    "term": "knowledge graph"
+   },
+   {
+    "def": "The practice of mapping relationships in data to reveal hidden associations; rooted in Euler's 1736 graph theory, 1970s paper link charts, and post-2001 intelligence work.",
+    "term": "link analysis"
+   },
+   {
+    "def": "A segment of the network so small that its allowed communications can be enumerated as a graph of approved edges.",
+    "term": "microsegmentation"
+   },
+   {
+    "def": "An entity in the graph: a user, host, IP address, domain, file, or vulnerability.",
+    "term": "node"
+   },
+   {
+    "def": "Access control where policy is evaluated by traversing relationships on a graph (for example: user reports_to manager who owns the resource's project).",
+    "term": "ReBAC"
+   },
+   {
+    "def": "A machine-learning model that operates directly on graph structure to classify nodes or subgraphs, for example labeling attack vs normal behavior.",
+    "term": "graph neural network (GNN)"
+   },
+   {
+    "def": "Monitoring user and entity behavior by modeling their normal relationship patterns and flagging structural anomalies.",
+    "term": "UEBA"
+   },
+   {
+    "term": "Supervised learning",
+    "def": "ML trained on labeled examples; classifies new inputs into known categories."
+   },
+   {
+    "term": "Anomaly detection",
+    "def": "ML approach that models normal behavior and flags statistically rare deviations."
+   },
+   {
+    "term": "Feature engineering",
+    "def": "Turning raw telemetry into numeric model inputs, e.g. login velocity or domain entropy."
+   },
+   {
+    "term": "Precision",
+    "def": "Share of flagged alerts that were real; the false-positive economics of the queue."
+   },
+   {
+    "term": "Recall",
+    "def": "Share of real attacks the detector flagged; the miss rate's complement."
+   },
+   {
+    "term": "Concept drift",
+    "def": "Decay of model performance as the data distribution shifts over time."
+   },
+   {
+    "term": "Prompt injection",
+    "def": "Attacker-crafted instructions that override an LLM application's intended behavior; direct (user input) or indirect (retrieved data)."
+   },
+   {
+    "term": "Jailbreak",
+    "def": "Crafted input that defeats an LLM's own safety policy or refusal behavior."
+   },
+   {
+    "term": "Tool poisoning",
+    "def": "Malicious tool descriptions or metadata that manipulate an AI agent into misusing its tools."
+   },
+   {
+    "term": "Insecure output handling",
+    "def": "Failing to validate LLM output before acting on it, e.g. executing generated commands."
+   },
+   {
+    "term": "Evasion attack",
+    "def": "Adversarial ML technique: perturbing inputs to cross a classifier's decision boundary."
+   },
+   {
+    "term": "MITRE ATLAS",
+    "def": "Adversarial Threat Landscape for AI Systems; MITRE's knowledge base of AI attack tactics."
+   },
+   {
+    "term": "SOAR",
+    "def": "Security orchestration, automation and response; playbooks that enrich automatically and gate containment on humans."
+   },
+   {
+    "term": "Human-in-the-loop",
+    "def": "Required human approval before high-impact or irreversible automated actions."
+   }
+  ],
+  "links": [
+   {
+    "label": "ThreatLocker Zero Trust platform explainer (official)",
+    "url": "https://www.threatlocker.com/blog/edr-xdr-vs-zero-trust-prevention",
+    "note": "EDR/XDR vs Zero Trust prevention \u2014 the deny-by-default argument in their own words."
+   },
+   {
+    "label": "ThreatLocker Bootcamp page (official)",
+    "url": "https://www.threatlocker.com/bootcamp",
+    "note": "Free six-week program: phases, format, and what completion leads to."
+   },
+   {
+    "label": "ThreatLocker Careers (official)",
+    "url": "https://www.threatlocker.com/company/careers",
+    "note": "Open roles and the hiring-event listing; roles are in-office in Orlando."
+   },
+   {
+    "label": "Elevation Control (official)",
+    "url": "https://www.threatlocker.com/secure-privileges-without-sacrificing-agility",
+    "note": "Just-in-time privilege without standing admin."
+   },
+   {
+    "label": "Storage Control (official)",
+    "url": "https://www.threatlocker.com/capabilities/external-storage-device-control",
+    "note": "USB/device policy by serial, user, file type, encryption."
+   },
+   {
+    "label": "Web Control (official)",
+    "url": "https://www.threatlocker.com/capabilities/web-content-control",
+    "note": "Agent-based DNS/URL filtering, including off-network."
+   },
+   {
+    "label": "Cyber Hero MDR (official)",
+    "url": "https://www.threatlocker.com/get-threat-response-in-minutes",
+    "note": "24/7/365 managed response positioning."
+   },
+   {
+    "label": "MDR capabilities (official)",
+    "url": "https://www.threatlocker.com/capabilities/managed-detection-and-response",
+    "note": "Detection and response capability detail."
+   },
+   {
+    "label": "NIST SP 800-207 \u2014 Zero Trust Architecture",
+    "url": "https://csrc.nist.gov/pubs/sp/800/207/final",
+    "note": "The canonical Zero Trust reference: tenets, deployment models, policy engine trust algorithm."
+   },
+   {
+    "label": "CISA Zero Trust Maturity Model",
+    "url": "https://www.cisa.gov/zero-trust-maturity-model",
+    "note": "Federal maturity steps across identity, devices, networks, applications, and data."
+   },
+   {
+    "label": "MITRE ATT&CK",
+    "note": "The adversary-tactics framework; codify its tactic chains as subgraphs to hunt for in your security graph.",
+    "url": "https://attack.mitre.org/"
+   },
+   {
+    "label": "CISA \u2014 Cybersecurity and Infrastructure Security Agency",
+    "note": "US government advisories, alerts, and guidance frequently referenced in threat-intel work.",
+    "url": "https://www.cisa.gov/"
+   },
+   {
+    "label": "Neo4j getting started",
+    "note": "A widely used graph database; the book's call to action suggests piloting graph queries on exported security data with tools like this.",
+    "url": "https://neo4j.com/docs/getting-started/"
+   },
+   {
+    "label": "OWASP GenAI Security Project",
+    "url": "https://genai.owasp.org/",
+    "note": "Home of the LLM Top 10 and GenAI security guidance"
+   },
+   {
+    "label": "OWASP Top 10 for LLM Applications",
+    "url": "https://genai.owasp.org/llm-top-10/",
+    "note": "The ranked LLM risk list \u2014 prompt injection is #1"
+   },
+   {
+    "label": "NIST AI Risk Management Framework",
+    "url": "https://www.nist.gov/itl/ai-risk-management-framework",
+    "note": "The standard governance framework for managing AI risk"
+   },
+   {
+    "label": "MITRE ATLAS",
+    "url": "https://atlas.mitre.org/",
+    "note": "Adversarial Threat Landscape for AI Systems \u2014 tactics and techniques"
+   },
+   {
+    "label": "CISA AI guidance",
+    "url": "https://www.cisa.gov/ai",
+    "note": "CISA's AI security resources and guidance"
+   }
+  ],
+  "checklist": [
+   "Sixty-second company brief rehearsed out loud: year, city, philosophy, three products, one milestone",
+   "Two STAR stories ready: hardest technical problem; a frustrated customer or user",
+   "\u201cWhy ThreatLocker / why cybersecurity\u201d answer tied to prevention and service, not slogans",
+   "Ringfencing explained in one plain-English sentence (the Word-on-a-leash version)",
+   "Elevation Control answer ready: just-in-time, per-app, time-boxed, ringfenced, logged",
+   "Triage loop memorized: scope \u2192 observe \u2192 hypothesize \u2192 smallest safe change \u2192 validate \u2192 explain",
+   "Three questions to ask them: team on-call shape, approval SLA expectations, what \u201cmost helpful\u201d looks like on the team",
+   "Logistics: 1901 Summit Tower Blvd, Orlando FL; in-office role; ID and references ready",
+   "Define your crown jewels before you model anything.",
+   "Build the asset-and-access graph from live sources (scans, configs, identity), not from the CMDB alone.",
+   "Model vulnerabilities AND misconfigurations as exploit edges.",
+   "Compute shortest attack paths to each crown jewel; name the choke points.",
+   "Prioritize remediation by path risk, not by raw severity score.",
+   "Express at least one access policy as a relationship path (ReBAC pilot).",
+   "Baseline approved communication edges per segment; alert on first-seen edges.",
+   "Brief the next incident or risk review with the graph, not a spreadsheet.",
+   "Can you explain supervised vs unsupervised vs anomaly detection with a security example for each?",
+   "Can you name three log features you would engineer for a C2 detector and why?",
+   "Can you walk through a UEBA alert (baseline, deviation, verification) end to end?",
+   "Can you explain the precision/recall tradeoff and how you would set a threshold for a fatigued SOC?",
+   "Can you define concept drift and describe a retraining process?",
+   "Can you distinguish direct vs indirect prompt injection and jailbreaking?",
+   "Can you explain tool poisoning in the MCP ecosystem and three controls against it?",
+   "Can you describe insecure output handling and how you would validate agent output?",
+   "Can you name the three adversarial ML attack classes and one defense for evasion?",
+   "Can you design a SOAR playbook gate: what automates freely, what needs human approval?"
+  ]
+ },
+ "chat": {
+  "persona": "You are a rigorous but encouraging interviewer preparing a candidate for a Zero Trust endpoint security role. Probe with 'why' and 'how would you explain that' follow-ups. Stay on topic: ThreatLocker-style endpoint defense, security graphs, and AI-powered security. All practice is original; never reproduce vendor material.",
+  "topics": [
+   {
+    "id": "tl-interview",
+    "name": "ThreatLocker Interview Prep",
+    "key_points": [
+     "allowlisting",
+     "ringfencing",
+     "default-deny",
+     "cyber hero",
+     "zero trust tenets",
+     "STAR stories"
+    ],
+    "followups": [
+     "Can you give an example?",
+     "How would you explain that to a CFO?"
+    ]
+   },
+   {
+    "id": "tl-endpoint-ops",
+    "name": "Zero Trust Endpoint Operations",
+    "key_points": [
+     "default-deny",
+     "ringfencing dimensions",
+     "elevation control",
+     "storage control",
+     "network control",
+     "change control"
+    ],
+    "followups": [
+     "Walk me through the triage order.",
+     "When would you deny outright?"
+    ]
+   },
+   {
+    "followups": [
+     "Can you walk through an example?",
+     "How does this change patch prioritization?",
+     "What is the difference between a security graph and an attack graph?"
+    ],
+    "id": "sec-graphs",
+    "key_points": [
+     "nodes",
+     "edges",
+     "attack graphs",
+     "kill chain",
+     "link analysis",
+     "threat intel graphs"
+    ],
+    "name": "Security Graphs: Think Like an Attacker"
+   },
+   {
+    "followups": [
+     "How do graphs change patch prioritization?",
+     "What is ReBAC and how is it different from RBAC?",
+     "How would a small team start with graphs?"
+    ],
+    "id": "graph-defense",
+    "key_points": [
+     "attack-path analysis",
+     "insider threat",
+     "vulnerability graphs",
+     "Zero Trust",
+     "microsegmentation",
+     "blast radius"
+    ],
+    "name": "Graph-Powered Defense Operations"
+   },
+   {
+    "id": "ml-defense",
+    "name": "ML-Powered Threat Defense",
+    "key_points": [
+     "anomaly detection",
+     "UEBA",
+     "alert fatigue",
+     "concept drift",
+     "threat hunting",
+     "precision recall"
+    ],
+    "followups": [
+     "Walk me through an example.",
+     "How do you handle false positives?"
+    ]
+   },
+   {
+    "id": "ai-agent-sec",
+    "name": "Securing AI Systems & Agents",
+    "key_points": [
+     "prompt injection",
+     "tool poisoning",
+     "MCP risks",
+     "insecure output handling",
+     "SOAR gates",
+     "adversarial ML"
+    ],
+    "followups": [
+     "Walk me through an example.",
+     "How do you secure an AI agent end to end?"
+    ]
+   }
+  ]
+ },
+ "simulation": {
+  "items": 12,
+  "minutes": 180,
+  "evidence_cost_mins": 2
+ },
+ "media": [
+  {
+   "id": "tl-allowlist-vs-blocklist",
+   "kind": "diagram",
+   "title": "Allowlisting vs blocklisting: default-deny vs default-allow",
+   "svg": "assets/diagrams/tl-allowlist-vs-blocklist.svg",
+   "lesson_ref": "c-tl-endpoint-ops",
+   "caption": "Default-deny stops unknown code without a signature; default-allow runs it until one exists.",
+   "alt": "Side-by-side comparison: on the left, a default-deny gate runs known-good payroll software and denies unknown ransomware with no signature needed; on the right, a default-allow gate runs both until the ransomware is recognized as bad."
+  },
+  {
+   "id": "tl-ringfencing",
+   "kind": "diagram",
+   "title": "Ringfencing: four leashes on an allowed application",
+   "svg": "assets/diagrams/tl-ringfencing.svg",
+   "lesson_ref": "c-tl-endpoint-ops",
+   "caption": "Word stays approved, but it cannot spawn PowerShell, read the credential store, or reach the internet \u2014 while opening its document is allowed.",
+   "alt": "An approved Word application inside a dashed containment ring: arrows show PowerShell launch denied, credential-store registry access denied, external network denied, and document file access allowed."
+  },
+  {
+   "id": "tl-zero-trust-stack",
+   "kind": "diagram",
+   "title": "The Zero Trust endpoint stack",
+   "svg": "assets/diagrams/tl-zero-trust-stack.svg",
+   "lesson_ref": "c-tl-interview",
+   "caption": "Five deny-by-default layers \u2014 Allowlisting, Ringfencing, Elevation, Storage, Network \u2014 watched by Web Control, the Testing Environment, Unified Audit, and the Cyber Hero MDR team.",
+   "alt": "A vertical stack of five layers from Allowlisting at the foundation up through Ringfencing, Elevation Control, Storage Control, and Network Control, with side boxes for Web Control, Testing Environment, Unified Audit, and Cyber Hero MDR."
+  },
+  {
+   "id": "tl-triage-flow",
+   "kind": "diagram",
+   "title": "Application-request triage flow",
+   "svg": "assets/diagrams/tl-triage-flow.svg",
+   "lesson_ref": "c-tl-endpoint-ops",
+   "caption": "Gather evidence first, then branch: trusted gets a scoped rule, unknown goes to the sandbox, malicious gets a documented deny.",
+   "alt": "Flowchart from request arrival through evidence gathering to a decision diamond branching into three outcomes: approve with a scoped rule, detonate in the Testing Environment then ringfence, or deny with documented evidence."
+  },
+  {
+   "alt": "Diagram of four labeled nodes (user, host, file, domain, IP) joined by labeled directed edges such as logged into, downloaded, and resolved to, illustrating graph vocabulary.",
+   "caption": "Nodes are the things; edges are the relationships. Attackers move along the edges.",
+   "id": "sg-graph-vocabulary",
+   "kind": "diagram",
+   "lesson_ref": "c-sec-graphs",
+   "svg": "assets/diagrams/sg-graph-vocabulary.svg",
+   "title": "Graph vocabulary: nodes and edges"
+  },
+  {
+   "alt": "Attack graph with four nodes in a chain: external attacker to VPN gateway to file server to customer database, with a dead-end branch to a printer, showing the shortest path to the crown jewel.",
+   "caption": "The shortest path to the crown jewel is length 3. Break the choke point and the campaign dies.",
+   "id": "sg-attack-path",
+   "kind": "diagram",
+   "lesson_ref": "c-sec-graphs",
+   "svg": "assets/diagrams/sg-attack-path.svg",
+   "title": "Attack graph: shortest path to the crown jewels"
+  },
+  {
+   "alt": "Seven kill-chain stages as connected graph nodes: reconnaissance, weaponization, delivery, exploitation, installation, command and control, actions. Three alerts are annotated at delivery, installation, and command and control.",
+   "caption": "Three 'unrelated' alerts, one kill-chain subgraph. Correlate by shared entities, not by severity.",
+   "id": "sg-kill-chain",
+   "kind": "diagram",
+   "lesson_ref": "c-sec-graphs",
+   "svg": "assets/diagrams/sg-kill-chain.svg",
+   "title": "Kill chain as a graph"
+  },
+  {
+   "alt": "A policy engine at the center of a small graph evaluates an access request from a finance user on an untrusted laptop to an R and D code server. The request is denied because there is no prior relationship edge and the device is untrusted.",
+   "caption": "Valid credentials are not enough. The graph checks device trust, history, and relationships on every request.",
+   "id": "sg-zero-trust",
+   "kind": "diagram",
+   "lesson_ref": "c-graph-defense",
+   "svg": "assets/diagrams/sg-zero-trust.svg",
+   "title": "Zero Trust runs on relationships"
+  },
+  {
+   "id": "ai-ml-pipeline",
+   "kind": "diagram",
+   "title": "ML detection pipeline: telemetry to triage",
+   "svg": "assets/diagrams/ai-ml-pipeline.svg",
+   "lesson_ref": "c-ml-defense",
+   "caption": "How raw telemetry becomes scored alerts: features feed the model, the model scores, analysts triage top-down \u2014 and analyst verdicts feed retraining.",
+   "alt": "Flow diagram: telemetry sources feed feature extraction, which feeds an ML model, which outputs scored alerts into an analyst triage queue, with a feedback arrow for retraining."
+  },
+  {
+   "id": "ai-ueba-baseline-diagram",
+   "kind": "diagram",
+   "title": "UEBA: baseline vs deviation",
+   "svg": "assets/diagrams/ai-ueba-baseline.svg",
+   "lesson_ref": "c-ml-defense",
+   "caption": "UEBA learns each user's normal hours, locations, and volumes, then scores deviations from that baseline.",
+   "alt": "24-hour timeline showing a shaded normal login window from 8 AM to 6 PM with normal logins inside it, and a red anomaly marker at 2:47 AM for a foreign login scoring 97 out of 100."
+  },
+  {
+   "id": "ai-injection-flow",
+   "kind": "diagram",
+   "title": "Indirect prompt injection attack flow",
+   "svg": "assets/diagrams/ai-injection-flow.svg",
+   "lesson_ref": "c-ai-agent-sec",
+   "caption": "An attacker hides instructions in data the agent retrieves; the agent mistakes data for instructions and misuses its tools.",
+   "alt": "Attack flow diagram: hidden instruction in an email is read by an AI agent, which mistakes it for a command and calls a privileged tool, causing fraud; three defense boxes below: sanitize content, least-privilege tools, human approval."
+  }
+ ],
+ "foundations": [
+  {
+   "track": "linux-cli",
+   "why_needed": "Terminal labs and missions run in a simulated Linux shell; command-line fluency is required to complete them."
+  },
+  {
+   "track": "security-basics",
+   "why_needed": "Security-graph and ML-detection lessons assume baseline vocabulary (CIA triad, malware types, incident response phases)."
+  }
+ ],
+ "math": [
+  "stats",
+  "probability"
+ ]
+}

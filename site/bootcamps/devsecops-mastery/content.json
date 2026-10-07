@@ -1,0 +1,1055 @@
+{
+ "slug": "devsecops-mastery",
+ "title": "DevSecOps Mastery",
+ "tagline": "Shifting security left \u2014 SAST/DAST/SCA scanning, container image hardening, supply-chain integrity, and policy as code. Practical security engineering; this course confers no certificate.",
+ "vendor": {
+  "name": "Independent interview prep (not affiliated with ThreatLocker)",
+  "certs": "",
+  "docs": "https://www.threatlocker.com"
+ },
+ "disclaimer": "Independent interview-prep material by Interstitium Labs. Not affiliated with, endorsed by, or sponsored by ThreatLocker or any vendor mentioned. Confers no certificate. All scenarios are original practice content; no exam or vendor-training content is reproduced.",
+ "accent": "#e5484d",
+ "domains": [
+  {
+   "id": "devsecops-mastery",
+   "name": "DevSecOps Mastery",
+   "summary": "Shifting security left \u2014 SAST/DAST/SCA scanning, container image hardening, supply-chain integrity, and policy as code. Practical security engineering; this course confers no certificate.",
+   "scenarios": [
+    {
+     "id": "devsecops-mastery-sc1",
+     "title": "Where does the SAST scan go?",
+     "situation": "Your team just bought a SAST tool. The security team wants it to run as a nightly batch over the whole codebase; developers worry findings will pile up unread.",
+     "prompt": "Where in the pipeline should SAST run for maximum effect?",
+     "evidence": [
+      [
+       "pipeline",
+       "dev push -> CI (build, unit test) -> nightly security batch -> deploy Friday"
+      ]
+     ],
+     "choices": [
+      "Run SAST on every pull request as a required check, scoped to changed code with a baseline \u2014 developers get fast, relevant feedback where they can still fix it cheaply.",
+      "Keep it nightly over the whole codebase \u2014 broader coverage finds more issues.",
+      "Run SAST only right before production deploys as a final gate.",
+      "Run SAST manually once a quarter during security reviews."
+     ],
+     "answer": 0,
+     "why": "Security feedback follows the same economics as test feedback: cheapest at the point of authorship. PR-scoped SAST with baselining gives developers actionable findings on their own diff; nightly whole-codebase scans produce unactionable backlogs, and pre-deploy gates arrive when fixes are most expensive.",
+     "hint": "When is a vulnerability cheapest to fix \u2014 while the author still has the code open, or weeks later from a backlog?",
+     "objectives": [
+      "SAST",
+      "shift-left"
+     ],
+     "mins": 5,
+     "difficulty": 1
+    },
+    {
+     "id": "devsecops-mastery-sc2",
+     "title": "The vulnerable base image",
+     "situation": "Your container image is built FROM a popular public base image. A scan reports 40 critical CVEs \u2014 all in the base image's OS packages, none in your application code. Rebuilding from scratch would take weeks.",
+     "prompt": "What is the best remediation?",
+     "evidence": [
+      [
+       "terminal",
+       "trivy image myapp:1.2\nTotal: 40 (CRITICAL: 40, all in debian base packages)\nFROM debian:bookworm in Dockerfile"
+      ]
+     ],
+     "choices": [
+      "Switch to a minimal base image (distroless or minimal) and pin the digest; add package updates in the build so the image carries only what the app needs.",
+      "Add a comment in the Dockerfile noting the CVEs are not in your code.",
+      "Suppress the 40 findings in the scanner so the pipeline goes green.",
+      "Stop scanning images \u2014 the CVEs are in the OS layer, not your responsibility."
+     ],
+     "answer": 0,
+     "why": "Most base-image CVEs come from packages your app never uses \u2014 a minimal or distroless base removes the attack surface instead of patching it. Pinning the digest makes builds reproducible. Suppressing findings or ignoring the OS layer leaves exploitable code in your shipped artifact.",
+     "hint": "The vulnerabilities live in packages your app doesn't need. What's the smallest base that still runs your app?",
+     "objectives": [
+      "image scanning",
+      "supply chain"
+     ],
+     "mins": 5,
+     "difficulty": 1
+    },
+    {
+     "id": "devsecops-mastery-sc3",
+     "title": "DAST found it, SAST didn't",
+     "situation": "A DAST scan against staging found an authentication bypass. SAST never flagged it \u2014 the flaw is in how two services interact at runtime, invisible in static analysis of either repo alone.",
+     "prompt": "What does this teach about scan strategy?",
+     "evidence": [
+      [
+       "finding",
+       "DAST: POST /api/admin/users without token returns 200 (staging)\nSAST: 0 findings on both services"
+      ]
+     ],
+     "choices": [
+      "SAST and DAST are complementary: SAST finds code-level flaws early, DAST finds runtime/interaction flaws \u2014 run both, since neither covers the other's blind spots.",
+      "Replace SAST with DAST since DAST found the real bug.",
+      "The SAST tool is broken \u2014 file a vendor ticket and wait.",
+      "Disable the admin endpoint instead of fixing the scan gap."
+     ],
+     "answer": 0,
+     "why": "SAST analyzes code without running it (great for injection, hardcoded secrets) while DAST tests the running app (great for auth flows, session handling, service interactions). The bypass lived in runtime behavior across services \u2014 structurally invisible to SAST. Defense in depth means layering both, plus SCA for dependencies.",
+     "hint": "One tool reads code, the other attacks a running system. Could any single perspective catch both classes of flaw?",
+     "objectives": [
+      "SAST",
+      "DAST",
+      "defense in depth"
+     ],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "devsecops-mastery-sc4",
+     "title": "The pipeline needs a policy",
+     "situation": "Security wants guarantees: no image with a critical CVE reaches production, and every deploy to prod needs a signed attestation. Today these are wiki pages everyone ignores.",
+     "prompt": "How do you enforce this as code?",
+     "evidence": [
+      [
+       "wiki",
+       "\"Policy: no critical CVEs in prod. All prod deploys must be signed.\"\n# compliance: 12% (measured by audit sample)"
+      ]
+     ],
+     "choices": [
+      "Implement policy as code (e.g. OPA/Conftest gates in CI, admission controllers in-cluster): the scan results and signatures become machine-checked inputs, and violating artifacts are blocked automatically.",
+      "Make the wiki page required reading during onboarding.",
+      "Have a security engineer manually approve every production deploy.",
+      "Add the policy text as comments in the deployment YAML."
+     ],
+     "answer": 0,
+     "why": "Policy as code turns unenforceable prose into deterministic gates: the pipeline evaluates scan results and signature attestations and refuses to promote non-compliant artifacts. Manual approvals don't scale and get rubber-stamped; comments and wiki pages have no enforcement mechanism.",
+     "hint": "The policy exists but compliance is 12%. What would make a violating deploy technically impossible instead of merely discouraged?",
+     "objectives": [
+      "policy as code",
+      "OPA",
+      "admission control"
+     ],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "devsecops-mastery-sc5",
+     "title": "Whose vulnerability is it anyway?",
+     "situation": "A critical CVE is announced in a transitive dependency \u2014 a library of a library, four levels deep. Your SCA tool flags it, but the vulnerable code path isn't reachable from your application. Upgrading breaks the build.",
+     "prompt": "How should you triage this?",
+     "evidence": [
+      [
+       "terminal",
+       "npm audit / grype report\nCRITICAL CVE-2026-XXXX in dep-of-dep-of-dep\nReachability analysis: vulnerable function never called by app code"
+      ]
+     ],
+     "choices": [
+      "Use reachability/VEX analysis to deprioritize the non-exploitable finding, document the assessment, schedule the upgrade normally \u2014 and fix the build breakage as tech debt rather than under incident pressure.",
+      "Drop everything and upgrade immediately regardless of the broken build \u2014 critical means critical.",
+      "Suppress the CVE permanently since it's not reachable.",
+      "Remove the SCA scanner \u2014 unreachable findings are noise."
+     ],
+     "answer": 0,
+     "why": "Not all critical CVEs are exploitable in your context \u2014 reachability analysis (and VEX statements) distinguish theoretical from actual risk. Treating every transitive critical as a fire drill burns out teams; permanent suppression without documentation hides risk. The disciplined path: assess, document, schedule the upgrade, fix the underlying build fragility.",
+     "hint": "Severity scores describe the vulnerability in isolation. What additional fact determines whether it threatens you?",
+     "objectives": [
+      "SCA",
+      "triage",
+      "VEX",
+      "reachability"
+     ],
+     "mins": 7,
+     "difficulty": 3
+    },
+    {
+     "id": "devsecops-mastery-sc6",
+     "title": "Signing the supply chain",
+     "situation": "After a dependency-confusion incident at a peer company, your CTO asks: how do we prove that the artifact in production is exactly what our pipeline built from the reviewed commit?",
+     "prompt": "What is the correct supply-chain integrity design?",
+     "evidence": [
+      [
+       "incident",
+       "Peer company shipped a poisoned package: registry served attacker code under a trusted name"
+      ]
+     ],
+     "choices": [
+      "Sign artifacts at build time (Sigstore/cosign), generate SLSA-style provenance attestations linking artifact to source commit and build, and verify signatures + attestations at deploy time with policy enforcement.",
+      "Only pull dependencies from the public registry's 'verified' badge publishers.",
+      "Checksum the final image and email the checksum to the team for manual comparison.",
+      "Trust the CI system \u2014 it has authentication, so its outputs are trustworthy."
+     ],
+     "answer": 0,
+     "why": "Signing plus provenance closes the loop: the signature proves who built it, the attestation proves what source and build produced it, and deploy-time verification makes tampering fail closed. Publisher badges and CI auth are trust assumptions, not verification; emailed checksums are unscalable theater.",
+     "hint": "You need a chain of evidence from reviewed commit to running artifact that a machine can verify. What two artifacts provide that?",
+     "objectives": [
+      "supply chain",
+      "signing",
+      "SLSA",
+      "provenance"
+     ],
+     "mins": 7,
+     "difficulty": 3
+    }
+   ]
+  }
+ ],
+ "lessons": [
+  {
+   "domain_id": "devsecops-mastery",
+   "title": "DevSecOps \u2014 Core concepts",
+   "concepts": [
+    "Shift-left means security feedback at authorship time: SAST on pull requests, secret scanning pre-commit (enforced in CI), and image scans on every build \u2014 findings are cheapest where the code is still open.",
+    "SAST, DAST, and SCA see different things: static code flaws, runtime behavior, and dependency vulnerabilities \u2014 layer all three because each has blind spots the others cover.",
+    "Containers shrink the attack surface: minimal/distroless bases, pinned digests, non-root users, and scanned layers turn the image into a deliberate artifact instead of an accident.",
+    "Policy as code (OPA/Conftest, admission controllers) makes security requirements machine-enforced gates rather than wiki prose \u2014 non-compliant artifacts physically cannot promote.",
+    "Supply-chain integrity is signatures plus provenance: sign what you build, attest where it came from (SLSA), and verify at deploy time so tampering fails closed.",
+    "Triage with reachability: not every critical CVE is exploitable in your app \u2014 assess exploitability, document with VEX, and schedule upgrades sanely instead of firefighting every scanner alert."
+   ],
+   "example": {
+    "lang": "yaml",
+    "code": "# CI security stage (conceptual)\n- name: Scan image\n  run: |\n    trivy image --severity HIGH,CRITICAL --exit-code 1 myapp:${{ github.sha }}\n- name: Policy check\n  run: conftest test --policy policy/ deployment.yaml",
+    "walkthrough": "Trivy fails the build on high/critical CVEs in the image, and Conftest evaluates the deployment manifest against OPA policies (e.g. 'must run as non-root'). Both run before any push to a registry or deploy \u2014 violating artifacts never leave CI."
+   },
+   "pitfalls": [
+    "Common trap: nightly whole-codebase SAST producing unactionable backlogs \u2014 scope scans to the PR diff with baselines.",
+    "Common trap: base64 'encrypted' secrets and suppressed scanner findings \u2014 both hide risk instead of reducing it.",
+    "Common trap: treating every scanner critical as an incident \u2014 use reachability/VEX triage or the team burns out.",
+    "Common trap: signing without verification \u2014 a signature nobody checks at deploy time is decoration."
+   ],
+   "try_it": "Work through this in the Labs tab."
+  }
+ ],
+ "labs": [
+  {
+   "id": "devsecops-lab1",
+   "domain_id": "devsecops",
+   "title": "Scan and slim a container image",
+   "objective": "Find vulnerabilities in an image, then rebuild minimal and verify the reduction.",
+   "steps": [
+    "Build an image FROM a full OS base and scan it: 'trivy image myapp:full'.",
+    "Record the critical/high CVE count.",
+    "Rewrite the Dockerfile on a minimal/distroless base with a pinned digest and non-root USER.",
+    "Rebuild, rescan, and compare counts.",
+    "Add the scan to a CI workflow step with '--exit-code 1' so future regressions fail the build."
+   ],
+   "checks": [
+    {
+     "command_pattern": "^trivy\\s",
+     "expect_contains": "Total:",
+     "hint": "Compare the vulnerability totals between the two images."
+    }
+   ]
+  },
+  {
+   "id": "devsecops-lab2",
+   "domain_id": "devsecops",
+   "title": "Enforce a deploy policy as code",
+   "objective": "Write an OPA policy that blocks privileged or root-running workloads and test it locally.",
+   "steps": [
+    "Install conftest and write a policy/ directory with a Rego rule denying containers without 'runAsNonRoot: true'.",
+    "Test against a violating manifest: 'conftest test --policy policy/ bad.yaml' \u2014 expect FAIL.",
+    "Fix the manifest (securityContext) and re-test \u2014 expect PASS.",
+    "Add the conftest step to a CI workflow before any deploy step.",
+    "Document the policy's intent in a one-paragraph comment at the top of the Rego file."
+   ],
+   "checks": [
+    {
+     "command_pattern": "^conftest\\s",
+     "expect_contains": "FAIL",
+     "hint": "Confirm the violating manifest is rejected."
+    }
+   ]
+  }
+ ],
+ "simulations": [],
+ "consoleSims": [],
+ "terminalMissions": [],
+ "sections": [
+  {
+   "id": "sec-full-spectrum",
+   "title": "Full Spectrum Dominance \u2014 core path",
+   "kind": "core",
+   "lectures": [],
+   "lab_ids": [
+    "fsd-tl-lab-1",
+    "fsd-tl-lab-2",
+    "fsd-tl-lab-3",
+    "fsd-sg-lab-1",
+    "fsd-sg-lab-2",
+    "fsd-sg-lab-3",
+    "fsd-ai-lab-1",
+    "fsd-ai-lab-2",
+    "fsd-ai-lab-3"
+   ],
+   "drill_domain_ids": [
+    "tl-interview",
+    "tl-endpoint-ops",
+    "sec-graphs",
+    "graph-defense",
+    "ml-defense",
+    "ai-agent-sec"
+   ]
+  }
+ ],
+ "behavioral": [
+  {
+   "prompt": "Tell me about the most technically difficult problem you have run into \u2014 a homelab, a broken environment, anything \u2014 and how you solved it.",
+   "framework": "STAR",
+   "points": [
+    "Pick ONE problem with a real evidence trail: the symptom, what you measured, the hypothesis you tested",
+    "Show the loop: scope, observe, hypothesize, smallest safe change, validate \u2014 interviewers score the method, not just the fix",
+    "Name the tools (VM build, networking, logs) and the lesson it taught you",
+    "Close with the result in concrete terms: what works now that did not before"
+   ],
+   "pitfalls": [
+    "Choosing a story with no real obstacle (\u201cI Googled it\u201d is not a story)",
+    "Skipping validation \u2014 saying it worked without proving it",
+    "Rambling past two minutes without reaching the result"
+   ]
+  },
+  {
+   "prompt": "Tell me about a time you dealt with a frustrated customer or user while something was broken.",
+   "framework": "STAR",
+   "points": [
+    "Lead with empathy and ownership: acknowledge the impact before the technical detail",
+    "Show translation: what you told them, in their language, plus the timeline you committed to",
+    "Show judgment: the narrow fix you chose and what you refused to do (e.g., disabling the control to clear the symptom)",
+    "Close with the relationship outcome, not just the technical one"
+   ],
+   "pitfalls": [
+    "Badmouthing the customer to sound decisive",
+    "Promising a timeline you could not keep",
+    "Framing the user as the problem rather than the situation"
+   ]
+  },
+  {
+   "prompt": "Why ThreatLocker, and why cybersecurity?",
+   "framework": "STAR",
+   "points": [
+    "Connect prevention to something concrete: a moment you saw detection arrive too late, or a system you hardened",
+    "Tie their model to your instincts: deny-by-default matches how you already think about trust",
+    "Show service orientation: the Cyber Hero culture rewards the 2 a.m. helper \u2014 give an example of being one",
+    "Name one forward-looking reason: Zero Trust, the MSP mission, or the bootcamp community investment"
+   ],
+   "pitfalls": [
+    "Generic flattery with no specifics about the company",
+    "Leading with compensation, title, or location convenience",
+    "Claiming expertise in products you have only read about \u2014 frame it as studied, not mastered"
+   ]
+  },
+  {
+   "framework": "STAR",
+   "pitfalls": [
+    "Staying vague ('I analyzed the data') instead of naming what you connected.",
+    "Skipping your own role: what did YOU see that others missed?",
+    "No outcome: what changed because you joined the dots?"
+   ],
+   "points": [
+    "The scattered signals and why nobody had connected them yet",
+    "The specific links you drew between them (shared host, time, infrastructure)",
+    "What the bigger picture turned out to be and what action it drove",
+    "What the experience taught you about investigating"
+   ],
+   "prompt": "Tell me about a time you connected scattered clues into a bigger picture that others had missed."
+  },
+  {
+   "framework": "STAR",
+   "pitfalls": [
+    "Claiming you fixed everything: credibility comes from trade-offs, not heroics.",
+    "Hiding the constraint: the limitation is what makes the prioritization story real.",
+    "No metric: 'better' needs a before-and-after."
+   ],
+   "points": [
+    "The constraint (time, budget, staff) and the size of the backlog",
+    "How you decided what mattered most (what was reachable, what was critical)",
+    "What you did first and what you deliberately deferred",
+    "The measurable result of the prioritization"
+   ],
+   "prompt": "Describe a time you had to prioritize risks or fixes with limited time or resources. How did you decide what came first?"
+  },
+  {
+   "framework": "STAR",
+   "pitfalls": [
+    "Reciting jargon to a non-technical audience and calling it communication.",
+    "Skipping the audience's reaction: did they actually understand and act?",
+    "Making yourself the hero instead of the translator."
+   ],
+   "points": [
+    "The technical finding and why it mattered",
+    "Who the audience was and what they cared about",
+    "How you reframed it (a picture, an analogy, a story)",
+    "What decision or action the audience took because they understood"
+   ],
+   "prompt": "Tell me about a time you explained a complex technical finding to a non-technical audience and it changed a decision."
+  },
+  {
+   "prompt": "Tell me about a time you used automation or AI to solve a security problem.",
+   "framework": "STAR",
+   "points": [
+    "The repetitive security task and what it cost in analyst time",
+    "The automation or AI approach you built and how you validated it",
+    "Measured outcome: time saved, detection gained, false positives changed"
+   ],
+   "pitfalls": [
+    "Describing the tool but never the validation",
+    "No measurable outcome"
+   ]
+  },
+  {
+   "prompt": "Describe a time you had to decide whether to trust an automated security decision.",
+   "framework": "STAR",
+   "points": [
+    "The stakes of the automated action and its blast radius",
+    "How you verified before acting (or the gate you built)",
+    "What happened and what you would automate differently next time"
+   ],
+   "pitfalls": [
+    "Saying you always trust the tool",
+    "No mention of blast radius or reversibility"
+   ]
+  }
+ ],
+ "resources": {
+  "cheatsheet": {
+   "title": "Full Spectrum Dominance \u2014 field reference",
+   "sections": [
+    {
+     "heading": "Company facts (verified)",
+     "items": [
+      "Founded 2017 in Orlando, FL \u2014 Danny Jenkins (CEO), Sami Jenkins (COO), John Carolan (QA)",
+      "Philosophy: deny-by-default / default-deny \u2014 approve known-good, deny the rest",
+      "Customers: 70,000+ organizations, sold heavily through the MSP channel",
+      "Funding: $190M Series F, July 2026 (Elephant-led); ~730 employees",
+      "Interview address: 1901 Summit Tower Blvd, Orlando, FL 32810",
+      "Culture: in-office 5 days/week; free lunch; post-offer background + drug screening"
+     ]
+    },
+    {
+     "heading": "Product stack",
+     "items": [
+      "Allowlisting \u2014 default-deny execution control for apps, DLLs, scripts, installers",
+      "Ringfencing \u2014 constrains allowed apps: app-to-app, file, registry, network",
+      "Storage Control \u2014 USB/device policy by serial, user, file type, encryption",
+      "Elevation Control \u2014 just-in-time per-app admin, no standing rights",
+      "Network Control \u2014 host firewall; port/IP/dynamic-ACL rules; ZTNA foundation",
+      "Web Control \u2014 agent-based DNS/URL category filtering, works off-network",
+      "Cyber Hero MDR \u2014 24/7/365 US-based response, ~60-second average",
+      "Testing Environment \u2014 one-button VDI sandbox; checks AV flags, canary files, registry changes"
+     ]
+    },
+    {
+     "heading": "Rule strength (strongest to weakest)",
+     "items": [
+      "Certificate/publisher rules \u2014 survive version updates",
+      "Hash rules \u2014 precise but break on every new version",
+      "Path rules \u2014 weakest; never in user-writable locations",
+      "Learning Mode catalogs before enforcement; Installation Mode pauses blocking \u2014 scope and time-box both"
+     ]
+    },
+    {
+     "heading": "Terminal evidence commands",
+     "items": [
+      "nmap <host> \u2014 which ports answer (22/80/443 open)",
+      "dig <name> \u2014 ANSWER SECTION with the A record",
+      "ss \u2014 listening sockets",
+      "systemctl status <svc> \u2014 unit state",
+      "journalctl -u <svc> \u2014 service logs",
+      "sha256sum <file> \u2014 real SHA-256 identity",
+      "grep <pattern> <file> \u2014 search the record",
+      "ps \u2014 what is actually running"
+     ]
+    },
+    {
+     "heading": "Graph vocabulary",
+     "items": [
+      "node \u2014 any entity tracked in the model (user, host, IP, domain, file hash, vulnerability)",
+      "edge \u2014 a labeled relationship between two nodes (logged into, resolved to, downloaded)",
+      "degree \u2014 number of edges on a node; high-degree nodes are attacker highways",
+      "centrality \u2014 how much traffic or how many paths flow through a node",
+      "directed edge \u2014 a relationship with a direction (A downloaded FROM B)",
+      "security graph \u2014 the living model of your whole environment as nodes and edges",
+      "attack graph \u2014 the subgraph of exploitable paths to your targets",
+      "knowledge graph \u2014 threat-intel indicators linked to campaigns and actors"
+     ]
+    },
+    {
+     "heading": "Attack-graph playbook",
+     "items": [
+      "inventory first \u2014 you cannot graph what you have not discovered",
+      "model flaws AND misconfigs as exploit edges",
+      "compute shortest paths to the crown jewels",
+      "find the choke point (highest betweenness on those paths)",
+      "break the path: patch, segment, or remove the edge",
+      "re-scan and re-run the graph to prove the path is gone",
+      "never trust yesterday's graph \u2014 redeployments redraw the map"
+     ]
+    },
+    {
+     "heading": "Zero Trust + graphs",
+     "items": [
+      "never trust, always verify \u2014 re-evaluate every access decision",
+      "assume breach \u2014 treat unexpected edges as hostile until proven otherwise",
+      "microsegmentation \u2014 allow-list approved edges, alert on new ones",
+      "ReBAC \u2014 policies are path queries on the identity graph",
+      "continuous verification \u2014 device/location/behavior edges change, trust follows",
+      "anomalous edge \u2014 a first-seen connection between strangers is the classic signal"
+     ]
+    },
+    {
+     "heading": "ML detection vocabulary",
+     "items": [
+      "Supervised learning \u2014 learns from labeled examples; strong on known threats, blind to novel ones",
+      "Unsupervised learning \u2014 finds structure without labels; clustering and dimensionality reduction",
+      "Anomaly detection \u2014 models 'normal' and flags deviations; the workhorse for novel threats",
+      "UEBA \u2014 user and entity behavior analytics: per-user baselines plus peer-group comparison",
+      "Feature engineering \u2014 encoding raw logs into model inputs (login velocity, rare processes, domain entropy)",
+      "Concept drift \u2014 model decay as attacker behavior and legitimate traffic shift over time"
+     ]
+    },
+    {
+     "heading": "Detection metrics",
+     "items": [
+      "Precision \u2014 of all flagged alerts, how many were real",
+      "Recall \u2014 of all real attacks, how many were flagged",
+      "Threshold tuning \u2014 sliding the decision cutoff trades precision against recall",
+      "Alert fatigue \u2014 when false positives train analysts to ignore the queue",
+      "DGA \u2014 domain generation algorithm; detected via character entropy of domain names"
+     ]
+    },
+    {
+     "heading": "Agent and LLM security",
+     "items": [
+      "Direct prompt injection \u2014 attacker input overrides app instructions (OWASP LLM01:2025, the #1 LLM risk)",
+      "Indirect prompt injection \u2014 hidden instructions inside retrieved data (email, web, docs)",
+      "Jailbreak \u2014 defeating the model's own safety policy; distinct from hijacking app behavior",
+      "Tool poisoning \u2014 malicious tool descriptions or metadata steer an agent to misuse its tools (MCP ecosystem risk)",
+      "Insecure output handling \u2014 executing or trusting model output without validation",
+      "Least-privilege tools \u2014 grant each tool only the scope its task requires"
+     ]
+    },
+    {
+     "heading": "Adversarial ML and governance",
+     "items": [
+      "Evasion \u2014 perturbing inputs at inference time to dodge a classifier",
+      "Poisoning \u2014 corrupting training data to corrupt the model",
+      "Extraction \u2014 querying a model to steal its behavior or parameters",
+      "MITRE ATLAS \u2014 knowledge base of adversarial ML tactics and techniques",
+      "Red-teaming and evals \u2014 adversarial testing of AI systems before deployment",
+      "Human-in-the-loop \u2014 required approval for high-impact or irreversible agent actions",
+      "SOAR \u2014 security orchestration, automation and response; automate enrichment, gate containment"
+     ]
+    }
+   ]
+  },
+  "glossary": [
+   {
+    "term": "Allowlisting",
+    "def": "Default-deny execution control: only explicitly approved applications, scripts, and installers may run."
+   },
+   {
+    "term": "Blocklisting",
+    "def": "Default-allow model: everything runs except recognized-bad items \u2014 the window zero-days live in."
+   },
+   {
+    "term": "Default-deny",
+    "def": "Deny-by-default posture: unknown code, devices, or connections are refused unless explicitly approved."
+   },
+   {
+    "term": "Ringfencing",
+    "def": "Containment applied on top of allowlisting; restricts what a permitted app may do across app-to-app, file, registry, and network dimensions."
+   },
+   {
+    "term": "Learning Mode",
+    "def": "Agent mode that catalogs applications and dependencies and auto-builds policies before enforcement; temporarily disables file blocking."
+   },
+   {
+    "term": "Installation Mode",
+    "def": "Temporary mode that pauses file blocking for installs \u2014 must be tightly scoped and time-boxed."
+   },
+   {
+    "term": "Elevation Control",
+    "def": "Grants specific approved applications admin rights for standard users \u2014 just-in-time, per-app, time-boxed \u2014 without standing admin rights."
+   },
+   {
+    "term": "Application hopping",
+    "def": "An elevated or trusted process spawning another tool (e.g., PowerShell) to inherit its privileges \u2014 countered by ringfencing the elevated process."
+   },
+   {
+    "term": "Storage Control",
+    "def": "Device and path policy: USB approved by serial, user, file type, time, and encryption; unapproved devices do not connect."
+   },
+   {
+    "term": "Network Control",
+    "def": "Centrally managed host firewall; rules by port, source IP, and dynamic ACLs; egress allowlisting pins apps to approved destinations."
+   },
+   {
+    "term": "ZTNA",
+    "def": "Zero Trust Network Access: per-session, per-application brokered connections (commonly over port 443) with no open inbound ports \u2014 deny-by-default for network access."
+   },
+   {
+    "term": "Approval Center",
+    "def": "Portal queue where end-user software requests arrive for admin review and decision."
+   },
+   {
+    "term": "Unified Audit",
+    "def": "Real-time audit showing what was allowed or denied across endpoints \u2014 and why; the evidence layer for triage."
+   },
+   {
+    "term": "Testing Environment",
+    "def": "One-button cloud VDI sandbox launched from an approval request; logs AV flags, canary-file access, and registry/system changes."
+   },
+   {
+    "term": "Cyber Hero MDR",
+    "def": "24/7/365 US-based managed detection and response team; validates alerts, isolates hosts, acts on customer runbooks; ~60-second average response."
+   },
+   {
+    "term": "Assume breach",
+    "def": "Design and operate as if the attacker already has a foothold \u2014 least privilege, containment, and monitoring everywhere."
+   },
+   {
+    "term": "Living off the land",
+    "def": "Attacks that hijack trusted built-in tools (Word, PowerShell) instead of dropping malware \u2014 defeated by behavior containment, not signatures."
+   },
+   {
+    "term": "Change control",
+    "def": "Scoped, ticketed, tested changes with validation and rollback \u2014 emergency speed never cancels the process."
+   },
+   {
+    "def": "A node in an attack graph representing a system or weakness, connected by edges that represent steps an attacker could take between them.",
+    "term": "attack graph"
+   },
+   {
+    "def": "How central a node is to paths through the graph (for example, betweenness: how many shortest paths cross it).",
+    "term": "centrality"
+   },
+   {
+    "def": "The most valuable assets in the environment (customer data, finance systems, source code): what attack paths are measured against.",
+    "term": "crown jewels"
+   },
+   {
+    "def": "A labeled connection between two nodes, representing a relationship such as 'logged into' or 'resolved to'.",
+    "term": "edge"
+   },
+   {
+    "def": "A graph of threat indicators (IPs, domains, hashes) linked to campaigns, actors, and each other through shared infrastructure.",
+    "term": "knowledge graph"
+   },
+   {
+    "def": "The practice of mapping relationships in data to reveal hidden associations; rooted in Euler's 1736 graph theory, 1970s paper link charts, and post-2001 intelligence work.",
+    "term": "link analysis"
+   },
+   {
+    "def": "A segment of the network so small that its allowed communications can be enumerated as a graph of approved edges.",
+    "term": "microsegmentation"
+   },
+   {
+    "def": "An entity in the graph: a user, host, IP address, domain, file, or vulnerability.",
+    "term": "node"
+   },
+   {
+    "def": "Access control where policy is evaluated by traversing relationships on a graph (for example: user reports_to manager who owns the resource's project).",
+    "term": "ReBAC"
+   },
+   {
+    "def": "A machine-learning model that operates directly on graph structure to classify nodes or subgraphs, for example labeling attack vs normal behavior.",
+    "term": "graph neural network (GNN)"
+   },
+   {
+    "def": "Monitoring user and entity behavior by modeling their normal relationship patterns and flagging structural anomalies.",
+    "term": "UEBA"
+   },
+   {
+    "term": "Supervised learning",
+    "def": "ML trained on labeled examples; classifies new inputs into known categories."
+   },
+   {
+    "term": "Anomaly detection",
+    "def": "ML approach that models normal behavior and flags statistically rare deviations."
+   },
+   {
+    "term": "Feature engineering",
+    "def": "Turning raw telemetry into numeric model inputs, e.g. login velocity or domain entropy."
+   },
+   {
+    "term": "Precision",
+    "def": "Share of flagged alerts that were real; the false-positive economics of the queue."
+   },
+   {
+    "term": "Recall",
+    "def": "Share of real attacks the detector flagged; the miss rate's complement."
+   },
+   {
+    "term": "Concept drift",
+    "def": "Decay of model performance as the data distribution shifts over time."
+   },
+   {
+    "term": "Prompt injection",
+    "def": "Attacker-crafted instructions that override an LLM application's intended behavior; direct (user input) or indirect (retrieved data)."
+   },
+   {
+    "term": "Jailbreak",
+    "def": "Crafted input that defeats an LLM's own safety policy or refusal behavior."
+   },
+   {
+    "term": "Tool poisoning",
+    "def": "Malicious tool descriptions or metadata that manipulate an AI agent into misusing its tools."
+   },
+   {
+    "term": "Insecure output handling",
+    "def": "Failing to validate LLM output before acting on it, e.g. executing generated commands."
+   },
+   {
+    "term": "Evasion attack",
+    "def": "Adversarial ML technique: perturbing inputs to cross a classifier's decision boundary."
+   },
+   {
+    "term": "MITRE ATLAS",
+    "def": "Adversarial Threat Landscape for AI Systems; MITRE's knowledge base of AI attack tactics."
+   },
+   {
+    "term": "SOAR",
+    "def": "Security orchestration, automation and response; playbooks that enrich automatically and gate containment on humans."
+   },
+   {
+    "term": "Human-in-the-loop",
+    "def": "Required human approval before high-impact or irreversible automated actions."
+   }
+  ],
+  "links": [
+   {
+    "label": "ThreatLocker Zero Trust platform explainer (official)",
+    "url": "https://www.threatlocker.com/blog/edr-xdr-vs-zero-trust-prevention",
+    "note": "EDR/XDR vs Zero Trust prevention \u2014 the deny-by-default argument in their own words."
+   },
+   {
+    "label": "ThreatLocker Bootcamp page (official)",
+    "url": "https://www.threatlocker.com/bootcamp",
+    "note": "Free six-week program: phases, format, and what completion leads to."
+   },
+   {
+    "label": "ThreatLocker Careers (official)",
+    "url": "https://www.threatlocker.com/company/careers",
+    "note": "Open roles and the hiring-event listing; roles are in-office in Orlando."
+   },
+   {
+    "label": "Elevation Control (official)",
+    "url": "https://www.threatlocker.com/secure-privileges-without-sacrificing-agility",
+    "note": "Just-in-time privilege without standing admin."
+   },
+   {
+    "label": "Storage Control (official)",
+    "url": "https://www.threatlocker.com/capabilities/external-storage-device-control",
+    "note": "USB/device policy by serial, user, file type, encryption."
+   },
+   {
+    "label": "Web Control (official)",
+    "url": "https://www.threatlocker.com/capabilities/web-content-control",
+    "note": "Agent-based DNS/URL filtering, including off-network."
+   },
+   {
+    "label": "Cyber Hero MDR (official)",
+    "url": "https://www.threatlocker.com/get-threat-response-in-minutes",
+    "note": "24/7/365 managed response positioning."
+   },
+   {
+    "label": "MDR capabilities (official)",
+    "url": "https://www.threatlocker.com/capabilities/managed-detection-and-response",
+    "note": "Detection and response capability detail."
+   },
+   {
+    "label": "NIST SP 800-207 \u2014 Zero Trust Architecture",
+    "url": "https://csrc.nist.gov/pubs/sp/800/207/final",
+    "note": "The canonical Zero Trust reference: tenets, deployment models, policy engine trust algorithm."
+   },
+   {
+    "label": "CISA Zero Trust Maturity Model",
+    "url": "https://www.cisa.gov/zero-trust-maturity-model",
+    "note": "Federal maturity steps across identity, devices, networks, applications, and data."
+   },
+   {
+    "label": "MITRE ATT&CK",
+    "note": "The adversary-tactics framework; codify its tactic chains as subgraphs to hunt for in your security graph.",
+    "url": "https://attack.mitre.org/"
+   },
+   {
+    "label": "CISA \u2014 Cybersecurity and Infrastructure Security Agency",
+    "note": "US government advisories, alerts, and guidance frequently referenced in threat-intel work.",
+    "url": "https://www.cisa.gov/"
+   },
+   {
+    "label": "Neo4j getting started",
+    "note": "A widely used graph database; the book's call to action suggests piloting graph queries on exported security data with tools like this.",
+    "url": "https://neo4j.com/docs/getting-started/"
+   },
+   {
+    "label": "OWASP GenAI Security Project",
+    "url": "https://genai.owasp.org/",
+    "note": "Home of the LLM Top 10 and GenAI security guidance"
+   },
+   {
+    "label": "OWASP Top 10 for LLM Applications",
+    "url": "https://genai.owasp.org/llm-top-10/",
+    "note": "The ranked LLM risk list \u2014 prompt injection is #1"
+   },
+   {
+    "label": "NIST AI Risk Management Framework",
+    "url": "https://www.nist.gov/itl/ai-risk-management-framework",
+    "note": "The standard governance framework for managing AI risk"
+   },
+   {
+    "label": "MITRE ATLAS",
+    "url": "https://atlas.mitre.org/",
+    "note": "Adversarial Threat Landscape for AI Systems \u2014 tactics and techniques"
+   },
+   {
+    "label": "CISA AI guidance",
+    "url": "https://www.cisa.gov/ai",
+    "note": "CISA's AI security resources and guidance"
+   }
+  ],
+  "checklist": [
+   "Sixty-second company brief rehearsed out loud: year, city, philosophy, three products, one milestone",
+   "Two STAR stories ready: hardest technical problem; a frustrated customer or user",
+   "\u201cWhy ThreatLocker / why cybersecurity\u201d answer tied to prevention and service, not slogans",
+   "Ringfencing explained in one plain-English sentence (the Word-on-a-leash version)",
+   "Elevation Control answer ready: just-in-time, per-app, time-boxed, ringfenced, logged",
+   "Triage loop memorized: scope \u2192 observe \u2192 hypothesize \u2192 smallest safe change \u2192 validate \u2192 explain",
+   "Three questions to ask them: team on-call shape, approval SLA expectations, what \u201cmost helpful\u201d looks like on the team",
+   "Logistics: 1901 Summit Tower Blvd, Orlando FL; in-office role; ID and references ready",
+   "Define your crown jewels before you model anything.",
+   "Build the asset-and-access graph from live sources (scans, configs, identity), not from the CMDB alone.",
+   "Model vulnerabilities AND misconfigurations as exploit edges.",
+   "Compute shortest attack paths to each crown jewel; name the choke points.",
+   "Prioritize remediation by path risk, not by raw severity score.",
+   "Express at least one access policy as a relationship path (ReBAC pilot).",
+   "Baseline approved communication edges per segment; alert on first-seen edges.",
+   "Brief the next incident or risk review with the graph, not a spreadsheet.",
+   "Can you explain supervised vs unsupervised vs anomaly detection with a security example for each?",
+   "Can you name three log features you would engineer for a C2 detector and why?",
+   "Can you walk through a UEBA alert (baseline, deviation, verification) end to end?",
+   "Can you explain the precision/recall tradeoff and how you would set a threshold for a fatigued SOC?",
+   "Can you define concept drift and describe a retraining process?",
+   "Can you distinguish direct vs indirect prompt injection and jailbreaking?",
+   "Can you explain tool poisoning in the MCP ecosystem and three controls against it?",
+   "Can you describe insecure output handling and how you would validate agent output?",
+   "Can you name the three adversarial ML attack classes and one defense for evasion?",
+   "Can you design a SOAR playbook gate: what automates freely, what needs human approval?"
+  ]
+ },
+ "chat": {
+  "persona": "You are a rigorous but encouraging interviewer preparing a candidate for a Zero Trust endpoint security role. Probe with 'why' and 'how would you explain that' follow-ups. Stay on topic: ThreatLocker-style endpoint defense, security graphs, and AI-powered security. All practice is original; never reproduce vendor material.",
+  "topics": [
+   {
+    "id": "tl-interview",
+    "name": "ThreatLocker Interview Prep",
+    "key_points": [
+     "allowlisting",
+     "ringfencing",
+     "default-deny",
+     "cyber hero",
+     "zero trust tenets",
+     "STAR stories"
+    ],
+    "followups": [
+     "Can you give an example?",
+     "How would you explain that to a CFO?"
+    ]
+   },
+   {
+    "id": "tl-endpoint-ops",
+    "name": "Zero Trust Endpoint Operations",
+    "key_points": [
+     "default-deny",
+     "ringfencing dimensions",
+     "elevation control",
+     "storage control",
+     "network control",
+     "change control"
+    ],
+    "followups": [
+     "Walk me through the triage order.",
+     "When would you deny outright?"
+    ]
+   },
+   {
+    "followups": [
+     "Can you walk through an example?",
+     "How does this change patch prioritization?",
+     "What is the difference between a security graph and an attack graph?"
+    ],
+    "id": "sec-graphs",
+    "key_points": [
+     "nodes",
+     "edges",
+     "attack graphs",
+     "kill chain",
+     "link analysis",
+     "threat intel graphs"
+    ],
+    "name": "Security Graphs: Think Like an Attacker"
+   },
+   {
+    "followups": [
+     "How do graphs change patch prioritization?",
+     "What is ReBAC and how is it different from RBAC?",
+     "How would a small team start with graphs?"
+    ],
+    "id": "graph-defense",
+    "key_points": [
+     "attack-path analysis",
+     "insider threat",
+     "vulnerability graphs",
+     "Zero Trust",
+     "microsegmentation",
+     "blast radius"
+    ],
+    "name": "Graph-Powered Defense Operations"
+   },
+   {
+    "id": "ml-defense",
+    "name": "ML-Powered Threat Defense",
+    "key_points": [
+     "anomaly detection",
+     "UEBA",
+     "alert fatigue",
+     "concept drift",
+     "threat hunting",
+     "precision recall"
+    ],
+    "followups": [
+     "Walk me through an example.",
+     "How do you handle false positives?"
+    ]
+   },
+   {
+    "id": "ai-agent-sec",
+    "name": "Securing AI Systems & Agents",
+    "key_points": [
+     "prompt injection",
+     "tool poisoning",
+     "MCP risks",
+     "insecure output handling",
+     "SOAR gates",
+     "adversarial ML"
+    ],
+    "followups": [
+     "Walk me through an example.",
+     "How do you secure an AI agent end to end?"
+    ]
+   }
+  ]
+ },
+ "simulation": {
+  "items": 12,
+  "minutes": 180,
+  "evidence_cost_mins": 2
+ },
+ "media": [
+  {
+   "id": "tl-allowlist-vs-blocklist",
+   "kind": "diagram",
+   "title": "Allowlisting vs blocklisting: default-deny vs default-allow",
+   "svg": "assets/diagrams/tl-allowlist-vs-blocklist.svg",
+   "lesson_ref": "c-tl-endpoint-ops",
+   "caption": "Default-deny stops unknown code without a signature; default-allow runs it until one exists.",
+   "alt": "Side-by-side comparison: on the left, a default-deny gate runs known-good payroll software and denies unknown ransomware with no signature needed; on the right, a default-allow gate runs both until the ransomware is recognized as bad."
+  },
+  {
+   "id": "tl-ringfencing",
+   "kind": "diagram",
+   "title": "Ringfencing: four leashes on an allowed application",
+   "svg": "assets/diagrams/tl-ringfencing.svg",
+   "lesson_ref": "c-tl-endpoint-ops",
+   "caption": "Word stays approved, but it cannot spawn PowerShell, read the credential store, or reach the internet \u2014 while opening its document is allowed.",
+   "alt": "An approved Word application inside a dashed containment ring: arrows show PowerShell launch denied, credential-store registry access denied, external network denied, and document file access allowed."
+  },
+  {
+   "id": "tl-zero-trust-stack",
+   "kind": "diagram",
+   "title": "The Zero Trust endpoint stack",
+   "svg": "assets/diagrams/tl-zero-trust-stack.svg",
+   "lesson_ref": "c-tl-interview",
+   "caption": "Five deny-by-default layers \u2014 Allowlisting, Ringfencing, Elevation, Storage, Network \u2014 watched by Web Control, the Testing Environment, Unified Audit, and the Cyber Hero MDR team.",
+   "alt": "A vertical stack of five layers from Allowlisting at the foundation up through Ringfencing, Elevation Control, Storage Control, and Network Control, with side boxes for Web Control, Testing Environment, Unified Audit, and Cyber Hero MDR."
+  },
+  {
+   "id": "tl-triage-flow",
+   "kind": "diagram",
+   "title": "Application-request triage flow",
+   "svg": "assets/diagrams/tl-triage-flow.svg",
+   "lesson_ref": "c-tl-endpoint-ops",
+   "caption": "Gather evidence first, then branch: trusted gets a scoped rule, unknown goes to the sandbox, malicious gets a documented deny.",
+   "alt": "Flowchart from request arrival through evidence gathering to a decision diamond branching into three outcomes: approve with a scoped rule, detonate in the Testing Environment then ringfence, or deny with documented evidence."
+  },
+  {
+   "alt": "Diagram of four labeled nodes (user, host, file, domain, IP) joined by labeled directed edges such as logged into, downloaded, and resolved to, illustrating graph vocabulary.",
+   "caption": "Nodes are the things; edges are the relationships. Attackers move along the edges.",
+   "id": "sg-graph-vocabulary",
+   "kind": "diagram",
+   "lesson_ref": "c-sec-graphs",
+   "svg": "assets/diagrams/sg-graph-vocabulary.svg",
+   "title": "Graph vocabulary: nodes and edges"
+  },
+  {
+   "alt": "Attack graph with four nodes in a chain: external attacker to VPN gateway to file server to customer database, with a dead-end branch to a printer, showing the shortest path to the crown jewel.",
+   "caption": "The shortest path to the crown jewel is length 3. Break the choke point and the campaign dies.",
+   "id": "sg-attack-path",
+   "kind": "diagram",
+   "lesson_ref": "c-sec-graphs",
+   "svg": "assets/diagrams/sg-attack-path.svg",
+   "title": "Attack graph: shortest path to the crown jewels"
+  },
+  {
+   "alt": "Seven kill-chain stages as connected graph nodes: reconnaissance, weaponization, delivery, exploitation, installation, command and control, actions. Three alerts are annotated at delivery, installation, and command and control.",
+   "caption": "Three 'unrelated' alerts, one kill-chain subgraph. Correlate by shared entities, not by severity.",
+   "id": "sg-kill-chain",
+   "kind": "diagram",
+   "lesson_ref": "c-sec-graphs",
+   "svg": "assets/diagrams/sg-kill-chain.svg",
+   "title": "Kill chain as a graph"
+  },
+  {
+   "alt": "A policy engine at the center of a small graph evaluates an access request from a finance user on an untrusted laptop to an R and D code server. The request is denied because there is no prior relationship edge and the device is untrusted.",
+   "caption": "Valid credentials are not enough. The graph checks device trust, history, and relationships on every request.",
+   "id": "sg-zero-trust",
+   "kind": "diagram",
+   "lesson_ref": "c-graph-defense",
+   "svg": "assets/diagrams/sg-zero-trust.svg",
+   "title": "Zero Trust runs on relationships"
+  },
+  {
+   "id": "ai-ml-pipeline",
+   "kind": "diagram",
+   "title": "ML detection pipeline: telemetry to triage",
+   "svg": "assets/diagrams/ai-ml-pipeline.svg",
+   "lesson_ref": "c-ml-defense",
+   "caption": "How raw telemetry becomes scored alerts: features feed the model, the model scores, analysts triage top-down \u2014 and analyst verdicts feed retraining.",
+   "alt": "Flow diagram: telemetry sources feed feature extraction, which feeds an ML model, which outputs scored alerts into an analyst triage queue, with a feedback arrow for retraining."
+  },
+  {
+   "id": "ai-ueba-baseline-diagram",
+   "kind": "diagram",
+   "title": "UEBA: baseline vs deviation",
+   "svg": "assets/diagrams/ai-ueba-baseline.svg",
+   "lesson_ref": "c-ml-defense",
+   "caption": "UEBA learns each user's normal hours, locations, and volumes, then scores deviations from that baseline.",
+   "alt": "24-hour timeline showing a shaded normal login window from 8 AM to 6 PM with normal logins inside it, and a red anomaly marker at 2:47 AM for a foreign login scoring 97 out of 100."
+  },
+  {
+   "id": "ai-injection-flow",
+   "kind": "diagram",
+   "title": "Indirect prompt injection attack flow",
+   "svg": "assets/diagrams/ai-injection-flow.svg",
+   "lesson_ref": "c-ai-agent-sec",
+   "caption": "An attacker hides instructions in data the agent retrieves; the agent mistakes data for instructions and misuses its tools.",
+   "alt": "Attack flow diagram: hidden instruction in an email is read by an AI agent, which mistakes it for a command and calls a privileged tool, causing fraud; three defense boxes below: sanitize content, least-privilege tools, human approval."
+  }
+ ],
+ "foundations": [
+  {
+   "track": "linux-cli",
+   "why_needed": "Terminal labs and missions run in a simulated Linux shell; command-line fluency is required to complete them."
+  },
+  {
+   "track": "security-basics",
+   "why_needed": "Security-graph and ML-detection lessons assume baseline vocabulary (CIA triad, malware types, incident response phases)."
+  }
+ ],
+ "math": [
+  "stats",
+  "probability"
+ ]
+}

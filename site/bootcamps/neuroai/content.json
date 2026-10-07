@@ -1,0 +1,490 @@
+{
+ "slug": "neuroai",
+ "title": "NeuroAI: Brain Principles in Computing",
+ "tagline": "A computing-oriented neuroscience track: neural coding, biophysical neuron models, spiking-network simulation with Brian2, and an honest synthesis of what brains and AI share — 120 hours. No medical content.",
+ "vendor": {
+  "name": "Independent",
+  "certs": [],
+  "docs": []
+ },
+ "disclaimer": "Independent study material by Interstitium Labs. Not affiliated with or endorsed by any vendor. Confers no certificate.",
+ "accent": "#06b6d4",
+ "domains": [
+  {
+   "id": "neuroai",
+   "name": "NeuroAI: Brain Principles in Computing",
+   "summary": "Brain principles for computing people: neural coding, leaky integrate-and-fire and Hodgkin-Huxley models, Hebbian and STDP plasticity, Hopfield networks, spiking-network simulation with NEURON and Brian2, and an honest NeuroAI synthesis — labeled analogies, predictive coding, neuromorphic hardware, and the open backprop question. Independent study; confers no certificate. No medical content.",
+   "scenarios": [
+    {
+     "id": "neuroai-sc1",
+     "title": "Rate or spike?",
+     "situation": "A team records from a sensory neuron population and debates the code. One side argues mean firing rate over a 500 ms window captures everything the downstream area could use; the other insists precise spike timing carries extra information. The recordings show reliable millisecond-scale spike patterns across trials.",
+     "prompt": "How should a computing-oriented student frame this debate?",
+     "evidence": [],
+     "choices": [
+      "Keep both hypotheses: rate coding (mean spike count, the classical Adrian view) is real and sufficient for many signals, but temporal codes — spike timing, latency, synchrony — carry information that averaging destroys, and mechanisms like STDP are explicitly timing-sensitive. The code question is empirical, not ideological.",
+      "Rate coding is the whole story: timing is always noise.",
+      "Temporal coding is the whole story: rates are obsolete.",
+      "Whichever is simpler to simulate is the correct code."
+     ],
+     "answer": 0,
+     "why": "The nervous system demonstrably uses both: firing rates encode stimulus intensity in many pathways, while phenomena like spike-timing-dependent plasticity and precise first-spike latencies prove downstream machinery reads timing. For computing, the lesson is architectural — your model must represent whichever code the task's mechanism actually uses.",
+     "hint": "STDP strengthens a synapse based on the relative timing of two spikes — could a pure rate code even express that rule?",
+     "objectives": [],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "neuroai-sc2",
+     "title": "The silent neuron",
+     "situation": "A student implements a leaky integrate-and-fire neuron in Python: membrane potential integrates the input current, leaks toward rest, and should spike at threshold. The simulation runs 100 ms and the neuron never spikes, though the equations look right.",
+     "prompt": "What is the systematic way to debug it?",
+     "evidence": [],
+     "choices": [
+      "Check the drive against the threshold: compute the steady-state voltage the input current would produce (V_inf = V_rest + R_m * I) and confirm it exceeds threshold — if not, the neuron is below rheobase and can never spike. Then check the leak: an excessive leak time-constant or too-high threshold has the same silencing effect. Diagnose parameters before blaming the integrator.",
+      "Halve the time step: dt is always the problem.",
+      "Add noise to the input: neurons need noise to spike.",
+      "Increase the simulation time to 10 seconds: it just needs longer."
+     ],
+     "answer": 0,
+     "why": "LIF dynamics have a closed-form steady state, so 'never spikes' is usually a parameter fact, not a code bug: rheobase — the minimum sustained current that drives V to threshold — is the first number to compute. This habit (steady-state analysis before longer runs) transfers to every dynamical model you will simulate.",
+     "hint": "If the leak pulls the voltage down faster than the current pushes it up, what is the highest voltage the neuron can ever reach — and is it above threshold?",
+     "objectives": [],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "neuroai-sc3",
+     "title": "Hebb explodes",
+     "situation": "A student codes pure Hebbian plasticity — strengthen the synapse whenever pre fires before post — in a small recurrent network. Within seconds of simulated time every weight saturates at its maximum and all neurons fire constantly. The student concludes Hebb's rule is wrong.",
+     "prompt": "What is the correct lesson?",
+     "evidence": [],
+     "choices": [
+      "Unconstrained Hebbian learning is unstable by construction: positive feedback (stronger synapse → more correlated firing → stronger synapse) drives runaway growth. Biology and stable models add constraints — weight normalization, bounds, decay, or rules like Oja's and BCM with homeostatic terms. Hebb identified the correlation principle; stability requires the rest of the machinery.",
+      "Hebb's rule is wrong: discard it.",
+      "Lower the learning rate: that alone stabilizes Hebbian growth.",
+      "Remove recurrence: feedforward Hebbian networks are stable."
+     ],
+     "answer": 0,
+     "why": "Positive feedback without a counterforce diverges — this is dynamics, not a bug in the idea. Real synapses face normalization (total synaptic weight is regulated), and theoretical neuroscience answered with Oja's rule (which adds a forgetting term yielding principal components) and BCM (sliding threshold for stability). The exploding simulation is actually the correct result for the unconstrained rule.",
+     "hint": "If every 'fire together, wire together' event makes the next co-firing more likely, what stops the weights — and what did your simulation include as a stop?",
+     "objectives": [],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "neuroai-sc4",
+     "title": "Fifty patterns, one hundred neurons",
+     "situation": "A team builds a Hopfield network with 100 binary neurons and stores 50 random patterns with the Hebbian outer-product rule. Retrieval from partial cues returns garbage — spurious mixtures instead of clean patterns. They assume the update code is broken.",
+     "prompt": "What is actually happening?",
+     "evidence": [],
+     "choices": [
+      "They exceeded capacity: a Hopfield net of N neurons reliably stores only about 0.14N random patterns (roughly 14 for N=100). Beyond that, cross-talk between stored patterns creates spurious attractors — the 'garbage' is the network correctly converging to minima the overloaded weight matrix created.",
+      "The asynchronous update order is wrong: update order causes spurious states.",
+      "The energy function has a sign error: check the code again.",
+      "Hopfield networks cannot store random patterns at all: use correlated ones."
+     ],
+     "answer": 0,
+     "why": "The ~0.14N capacity result (Amit, Gutfreund and Sompolinsky) is one of the field's classic calculations: each stored pattern contributes noise to every other pattern's recall. The garbage outputs are not a code bug — they are the predicted behavior of an overloaded associative memory, which is exactly why the scenario is diagnostic.",
+     "hint": "Fifty patterns into 100 neurons is 0.5 patterns per neuron — how does that compare to the known capacity scaling, and what does overload predict?",
+     "objectives": [],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "neuroai-sc5",
+     "title": "Attention is not attention",
+     "situation": "A blog post claims 'transformers work because attention is how the brain works.' A student asks whether transformer self-attention and biological attention are the same mechanism, and whether the analogy justifies brain-inspired architecture claims.",
+     "prompt": "What is the honest framing?",
+     "evidence": [],
+     "choices": [
+      "Name the shared function and the different mechanisms: both select and route information, but transformer attention is a differentiable softmax weighting over key-query similarities computed in parallel, while biological attention involves neuromodulatory gating, thalamocortical routing, and selective enhancement across recurrent circuits. The analogy is real at the functional level and false at the mechanistic level — label which level every claim sits on.",
+      "They are the same mechanism: the analogy is literal.",
+      "They are completely unrelated: the shared word is a coincidence.",
+      "Biological attention is just softmax with noise: implement it directly."
+     ],
+     "answer": 0,
+     "why": "This is the course's central discipline: analogies between AI and brains must carry their level labels. Functional similarity (selection, routing, prioritization) can inspire architectures; mechanistic claims require evidence about actual neural circuits. Collapsing the two levels is how honest inspiration becomes hype.",
+     "hint": "If you had to defend the analogy to a neuroscientist, which level — what it computes, or how the tissue implements it — could you actually defend?",
+     "objectives": [],
+     "mins": 6,
+     "difficulty": 3
+    },
+    {
+     "id": "neuroai-sc6",
+     "title": "Does the brain do backprop?",
+     "situation": "A team member states as fact that 'the brain must do backpropagation because deep learning works.' Another counters that backprop is biologically impossible, case closed. The team looks to you for the research-literate position.",
+     "prompt": "What is it?",
+     "evidence": [],
+     "choices": [
+      "It is open research, not settled syllabus: standard backprop needs weight symmetry (feedback weights mirroring feedforward weights — the weight-transport problem) with no clear biological implementation, but alternatives exist — feedback alignment shows random feedback weights can still teach, and predictive-coding circuits can approximate gradient descent. Report the debate, not a verdict.",
+      "The brain definitely does backprop: deep learning proves it.",
+      "Backprop is biologically impossible: the case is closed.",
+      "The question is irrelevant to computing: ignore biology entirely."
+     ],
+     "answer": 0,
+     "why": "The weight-transport problem is the sharp core of the debate: synapses are unidirectional, so symmetric feedback is not observed. But 'not standard backprop' is not 'no gradient-like learning' — feedback alignment (Lillicrap et al., 2016) and predictive coding (Rao & Ballard, 1999; Friston) keep the question genuinely open. Teaching a verdict either way would be the invented fact this course refuses.",
+     "hint": "What specific mechanism of standard backprop lacks a biological counterpart — and does that rule out every gradient-like alternative?",
+     "objectives": [],
+     "mins": 6,
+     "difficulty": 3
+    }
+   ]
+  }
+ ],
+ "lessons": [
+  {
+   "domain_id": "neuroai",
+   "title": "NeuroAI: Brain Principles in Computing — Core concepts",
+   "concepts": [
+    "Neural coding is the representation question: rate codes (spike counts, the classical Adrian view) versus temporal codes (timing, latency, synchrony). The code your model assumes decides which mechanisms it can even express — STDP is meaningless in a pure rate model.",
+    "The leaky integrate-and-fire neuron is the workhorse abstraction: integrate input, leak toward rest, spike at threshold, reset. Its steady state (V_rest + R_m*I) tells you before any simulation whether a neuron can ever fire — rheobase first, code second.",
+    "Hodgkin and Huxley (1952) modeled the squid giant axon's action potential with voltage-gated sodium and potassium conductances (gating variables m, h, n) — the landmark that biophysics can be written as differential equations, recognized with the 1963 Nobel Prize.",
+    "Plasticity rules are correlation detectors with stability problems: Hebb (1949, 'fire together, wire together'), STDP (pre-before-post within tens of milliseconds strengthens; the reverse weakens — Bi & Poo 1998), and the homeostatic machinery (Oja, BCM) that keeps correlation learning from exploding.",
+    "Hopfield networks (1982) made memory an energy landscape: stored patterns are attractors of a recurrent dynamics, retrievable from partial cues, with capacity near 0.14N — the bridge where AI architectures and statistical physics of neural systems meet.",
+    "NeuroAI synthesis demands labeled analogies: transformer attention shares function (selection) with biological attention but not mechanism; predictive coding frames cortex as hierarchical prediction-error minimization (Rao & Ballard 1999); neuromorphic hardware (TrueNorth, Loihi) bets on spikes for efficiency; and whether brains approximate backprop remains genuinely open research."
+   ],
+   "example": {
+    "lang": "python",
+    "code": "from brian2 import *\n\n# Leaky integrate-and-fire: the workhorse neuron model.\ntau = 10*ms\neqs = '''\ndv/dt = (I - v)/tau : 1\nI : 1\n'''\nG = NeuronGroup(5, eqs, threshold='v>1', reset='v=0', method='exact')\nG.I = [0.8, 1.0, 1.2, 1.5, 2.0]  # drive each neuron differently\n\nspikemon = SpikeMonitor(G)\nstatemon = StateMonitor(G, 'v', record=True)\nrun(100*ms)\n\nprint('spike counts:', spikemon.count[:])\n# Neuron 0 (I=0.8): steady state v=0.8 < threshold 1 -> never spikes.\n# Neurons 1-4: steady state above threshold -> regular spiking,\n# faster for larger I. Rheobase, demonstrated, not asserted.\n",
+    "walkthrough": "This is a complete Brian2 experiment in fifteen lines: the equations string declares the LIF dynamics, NeuronGroup instantiates five neurons with different drive currents, and the monitors record spikes and voltage traces. The predicted outcome is the lesson — neuron 0 sits below rheobase (steady state 0.8 < threshold 1) and stays silent while the others fire at rates ordered by their input current. Running it turns the steady-state calculation from scenario 2 into observed data, and the same pattern (equations, monitors, run) scales to the spiking-network capstone."
+   },
+   "pitfalls": [
+    "Common trap: collapsing analogy levels — claiming transformer attention IS biological attention because both 'select information.' Label function vs mechanism every time.",
+    "Common trap: simulating before steady-state analysis — compute rheobase and fixed points first; most 'broken' neuron simulations are parameter facts.",
+    "Common trap: running unconstrained Hebbian plasticity and calling the explosion a bug — positive feedback without normalization diverges by design.",
+    "Common trap: teaching the backprop-in-the-brain question as settled — the weight-transport problem and its proposed alternatives make it open research."
+   ],
+   "try_it": "Work through this in the Labs tab."
+  }
+ ],
+ "labs": [
+  {
+   "id": "neuroai-lab1",
+   "domain_id": "neuroai",
+   "title": "Leaky integrate-and-fire: find the rheobase",
+   "objective": "Simulate LIF neurons in Brian2 across a sweep of input currents, measure spike counts, and locate the rheobase — the minimum current that produces spiking — comparing it against the analytic steady-state prediction.",
+   "steps": [
+    "Create lab1.py with the lesson's Brian2 LIF snippet, extended to 11 neurons with input currents from 0.5 to 2.5 in steps of 0.2.",
+    "Run 200 ms of simulated time, record spike counts per neuron with SpikeMonitor, and print a table of current vs spike count.",
+    "Compute the analytic prediction: steady-state v = I (in these units), so rheobase is the current where v crosses threshold 1.0 — print the predicted rheobase.",
+    "Compare: identify the first current in your table with nonzero spikes and state whether it matches the prediction, and why boundary cases may differ by one step.",
+    "In three sentences, explain what rheobase means biophysically and why a network modeler needs it before wiring neurons together."
+   ],
+   "checks": [
+    {
+     "command_pattern": "^python3\\s",
+     "expect_contains": "rheobase",
+     "hint": "Print a line like 'predicted rheobase 1.0 / observed first spiking current 1.1' so the check can see the comparison."
+    }
+   ]
+  },
+  {
+   "id": "neuroai-lab2",
+   "domain_id": "neuroai",
+   "title": "Hopfield associative memory in numpy",
+   "objective": "Implement a Hopfield network with the Hebbian outer-product rule, store a few patterns, corrupt one, and watch the dynamics converge back — then overload it to observe the capacity failure from scenario 4.",
+   "steps": [
+    "Create lab2.py: define 3 random bipolar (+1/-1) patterns of length 100, build the weight matrix as the sum of outer products with zero diagonal, divided by N.",
+    "Implement asynchronous updates (random neuron order, sign activation) and an energy function E = -0.5 * s^T W s; verify energy never increases across updates.",
+    "Corrupt one pattern by flipping 20 bits, run the dynamics to convergence, and print the overlap (fraction of matching bits) with the original — it should recover fully.",
+    "Now store 40 patterns in the same 100 neurons, corrupt one, and run retrieval: print the final overlap and note the spurious-mixture failure.",
+    "In three sentences, connect the two runs to the 0.14N capacity result and to the idea of memories as attractors in an energy landscape."
+   ],
+   "checks": [
+    {
+     "command_pattern": "^python3\\s",
+     "expect_contains": "overlap",
+     "hint": "Print lines like 'clean recall overlap 1.0000 / overloaded overlap 0.XXXX' so the check can see both regimes."
+    }
+   ]
+  }
+ ],
+ "simulations": [],
+ "consoleSims": [],
+ "terminalMissions": [],
+ "sections": [
+  {
+   "id": "neuroai-sec",
+   "title": "NeuroAI: Brain Principles in Computing — core path",
+   "kind": "path",
+   "lectures": [],
+   "lab_ids": [
+    "neuroai-lab1",
+    "neuroai-lab2"
+   ],
+   "drill_domain_ids": [
+    "neuroai"
+   ]
+  }
+ ],
+ "behavioral": [
+  {
+   "prompt": "Explain the difference between rate coding and temporal coding to an ML engineer who has never studied neuroscience.",
+   "framework": "STAR",
+   "points": [
+    "Start from their world: firing rate as a ReLU-like activation",
+    "Introduce timing with one concrete mechanism (STDP)",
+    "Name what each code can and cannot express",
+    "Connect to a modeling choice they might actually make"
+   ],
+   "pitfalls": [
+    "Drowning them in biophysics",
+    "Claiming one code is 'correct'",
+    "No connection to computing"
+   ]
+  },
+  {
+   "prompt": "Tell me about a time you had to say 'the honest answer is we don't know' on a technical question.",
+   "framework": "STAR",
+   "points": [
+    "Name the question and why a confident answer would have been tempting",
+    "Explain what the evidence actually supports",
+    "Show how you communicated the uncertainty without losing credibility",
+    "Describe what you proposed instead of a false verdict"
+   ],
+   "pitfalls": [
+    "Faking certainty",
+    "Using uncertainty as an excuse to stop thinking",
+    "No proposal for how to decide later"
+   ]
+  },
+  {
+   "prompt": "Describe collaborating across disciplines — for example with neuroscientists, or engineers from another field.",
+   "framework": "STAR",
+   "points": [
+    "Name the vocabulary gap and how you bridged it",
+    "Give a concrete misunderstanding you caught and fixed",
+    "Show what each side contributed that the other could not",
+    "State what the collaboration produced"
+   ],
+   "pitfalls": [
+    "Claiming your field's framing is the right one",
+    "No concrete misunderstanding example",
+    "One side doing all the adapting"
+   ]
+  },
+  {
+   "prompt": "Walk me through how you validate a simulation model against reality.",
+   "framework": "STAR",
+   "points": [
+    "Name the analytic prediction you checked first",
+    "Describe the parameter sweep or ablation you ran",
+    "Explain what would have falsified the model",
+    "State the limits you documented on the model's validity"
+   ],
+   "pitfalls": [
+    "Trusting the simulation because it ran",
+    "No analytic check",
+    "No stated limits of validity"
+   ]
+  },
+  {
+   "prompt": "Tell me about a time an analogy misled you or your team — in AI, neuroscience, or anywhere else.",
+   "framework": "STAR",
+   "points": [
+    "Name the analogy and why it was attractive",
+    "Explain the level at which it broke down",
+    "Describe the cost of the confusion",
+    "State the labeling discipline you use now"
+   ],
+   "pitfalls": [
+    "Blaming the analogy instead of the reasoning",
+    "No concrete cost",
+    "Still using the analogy uncritically"
+   ]
+  },
+  {
+   "prompt": "How do you read a scientific paper critically before building on its claims?",
+   "framework": "STAR",
+   "points": [
+    "Name what you check: methods, controls, statistics, scope of claims",
+    "Give an example of a claim you downgraded after reading the methods",
+    "Explain how you track whether a result replicated",
+    "Show how skepticism changed a build decision"
+   ],
+   "pitfalls": [
+    "Trusting abstracts",
+    "No example of a downgraded claim",
+    "Citing papers you have not read"
+   ]
+  },
+  {
+   "prompt": "Describe explaining a complex dynamical system — a network, a simulation, a feedback loop — to a non-expert.",
+   "framework": "STAR",
+   "points": [
+    "Name the one intuition you chose as the anchor",
+    "Explain what you deliberately left out and why",
+    "Show how you checked understanding",
+    "Connect the system to something they already reason about"
+   ],
+   "pitfalls": [
+    "Leading with equations",
+    "Leaving out the feedback that matters",
+    "No understanding check"
+   ]
+  },
+  {
+   "prompt": "Tell me about a research rabbit hole you went down and what you brought back.",
+   "framework": "STAR",
+   "points": [
+    "Name the question that pulled you in",
+    "Describe how you bounded the exploration",
+    "State the concrete finding or artifact you returned with",
+    "Explain how it changed your subsequent work"
+   ],
+   "pitfalls": [
+    "Unbounded wandering presented as research",
+    "Nothing concrete brought back",
+    "No effect on later work"
+   ]
+  }
+ ],
+ "resources": {
+  "cheatsheet": [
+   "Coding question first: rate vs temporal decides which mechanisms your model can express.",
+   "LIF steady state: v_inf = V_rest + R_m * I — compute rheobase before simulating.",
+   "Hodgkin-Huxley 1952: squid giant axon, Na+/K+ conductances, gating variables m, h, n.",
+   "Hebb 1949: fire together, wire together — plus a stabilizer (Oja, BCM, normalization), always.",
+   "STDP: pre-before-post (tens of ms) → strengthen; post-before-pre → weaken (Bi & Poo 1998).",
+   "Hopfield: patterns as attractors, energy E = -0.5 s^T W s, capacity ~0.14N.",
+   "Analogies carry level labels: function vs mechanism — never collapse them.",
+   "Backprop in the brain: open research (weight transport; feedback alignment; predictive coding)."
+  ],
+  "glossary": [
+   [
+    "neural coding",
+    "How neurons represent information: rate codes (spike counts) vs temporal codes (timing, latency, synchrony)."
+   ],
+   [
+    "leaky integrate-and-fire (LIF)",
+    "Neuron model integrating input with leak toward rest; spikes at threshold, then resets."
+   ],
+   [
+    "rheobase",
+    "Minimum sustained input current that drives a neuron to spike threshold."
+   ],
+   [
+    "Hodgkin-Huxley model",
+    "1952 conductance-based model of the action potential (squid giant axon); Na+/K+ gating variables m, h, n."
+   ],
+   [
+    "action potential",
+    "The spike: rapid depolarization, repolarization, and refractory period of the membrane voltage."
+   ],
+   [
+    "refractory period",
+    "Brief window after a spike when the neuron cannot (absolute) or hardly can (relative) fire again."
+   ],
+   [
+    "Hebbian plasticity",
+    "Hebb 1949: synapses strengthen with correlated pre/post activity — unstable without constraints."
+   ],
+   [
+    "STDP",
+    "Spike-timing-dependent plasticity: pre-before-post strengthens, post-before-pre weakens, within tens of ms."
+   ],
+   [
+    "LTP / LTD",
+    "Long-term potentiation/depression: lasting increases/decreases in synaptic strength."
+   ],
+   [
+    "Oja's rule / BCM",
+    "Hebbian variants with normalization (Oja) or a sliding modification threshold (BCM) for stability."
+   ],
+   [
+    "Hopfield network",
+    "Recurrent associative memory (1982): stored patterns as attractors of an energy landscape."
+   ],
+   [
+    "attractor",
+    "A stable state (or set) the network dynamics converge to from nearby initial conditions."
+   ],
+   [
+    "NEURON",
+    "Yale simulator for detailed compartmental biophysical neuron models (Hines)."
+   ],
+   [
+    "Brian2",
+    "Python spiking-neural-network simulator using equations strings; the lab instrument of this track."
+   ],
+   [
+    "neuromorphic hardware",
+    "Chips computing with spikes and colocalized memory (e.g. IBM TrueNorth, Intel Loihi) for efficiency."
+   ],
+   [
+    "predictive coding",
+    "Theory of cortex as hierarchical prediction-error minimization (Rao & Ballard 1999); related to Friston's free-energy principle."
+   ],
+   [
+    "Bayesian brain",
+    "The hypothesis that neural computation approximates Bayesian inference under uncertainty."
+   ],
+   [
+    "weight transport problem",
+    "Backprop's need for feedback weights mirroring feedforward weights — no clear biological implementation."
+   ],
+   [
+    "feedback alignment",
+    "Lillicrap et al. 2016: random fixed feedback weights can still drive useful learning — a candidate alternative."
+   ],
+   [
+    "biological attention",
+    "Neuromodulatory and thalamocortical selection mechanisms — functionally akin to, mechanistically distinct from transformer attention."
+   ]
+  ],
+  "links": [
+   {
+    "name": "Neuronal Dynamics (EPFL) — open text",
+    "url": "https://neuronaldynamics.epfl.ch/"
+   },
+   {
+    "name": "Brian2 documentation",
+    "url": "https://brian2.readthedocs.io/"
+   },
+   {
+    "name": "NEURON simulator",
+    "url": "https://www.neuron.yale.edu/"
+   }
+  ],
+  "checklist": [
+   "Coding assumption stated: rate, temporal, or hybrid — and why the task needs it.",
+   "Steady-state / rheobase analysis done before any neuron simulation.",
+   "Plasticity rule paired with its stabilizer (normalization, bounds, BCM/Oja).",
+   "Hopfield pattern count checked against ~0.14N capacity before debugging retrieval.",
+   "Every brain-AI analogy labeled: functional similarity vs mechanistic claim.",
+   "Simulation validated against an analytic prediction, with limits documented.",
+   "Neuromorphic claims scoped to efficiency/architecture, not cognition.",
+   "Open questions (backprop, coding) reported as open — no verdicts taught as fact."
+  ]
+ },
+ "chat": {
+  "persona": "You are a rigorous but encouraging NeuroAI tutor. Teach from first principles, show short real code (Brian2, numpy) when it clarifies, label every brain-AI analogy with its level (function vs mechanism), and treat open research questions as open — never teach a verdict. Stay on topic: neural coding, biophysical neuron models, plasticity, Hopfield networks, spiking simulation, predictive coding, neuromorphic hardware, and the backprop question. Independent study material; no vendor affiliation, no certificates, no medical content.",
+  "topics": [
+   {
+    "id": "neuroai",
+    "name": "NeuroAI: Brain Principles in Computing",
+    "key_points": [
+     "rate vs temporal coding",
+     "leaky integrate-and-fire",
+     "Hodgkin-Huxley",
+     "Hebbian learning and STDP",
+     "Hopfield networks",
+     "NEURON and Brian2 simulation",
+     "transformer vs biological attention",
+     "predictive coding and Bayesian brain",
+     "spiking nets and neuromorphic hardware",
+     "the backprop question"
+    ]
+   }
+  ]
+ },
+ "simulation": {
+  "items": 10,
+  "minutes": 30,
+  "evidence_cost_mins": 2
+ },
+ "media": [],
+ "foundations": [],
+ "math": []
+}

@@ -1,1 +1,1153 @@
-{"slug": "openshift", "title": "OpenShift", "tagline": "EX280/EX380 admin and EX188/EX288 developer concepts", "vendor": {"name": "Red Hat", "certs": "EX280, EX380, EX188", "docs": "https://www.redhat.com"}, "disclaimer": "Independent practice material by Interstitium Labs. Not affiliated with, endorsed by, or sponsored by Red Hat. Confers no certificate. All scenarios are original; no exam content is reproduced.", "domains": [{"id": "platform-concepts", "name": "Platform Concepts", "scenarios": [{"id": "ocp-k8s-plus", "title": "Is OpenShift just Kubernetes?", "situation": "A developer says 'OpenShift is just Kubernetes with a logo — I can use plain kubectl and YAML and ignore the rest.' Their first deploy fails on security constraints they never hit on vanilla K8s.", "prompt": "What does OpenShift add on top of Kubernetes, and what bit them?", "evidence": [], "choices": ["Opinionated defaults: projects, Routes, Builds, ImageStreams, and Security Context Constraints — the SCC 'restricted' default likely blocked their container running as root", "Nothing — OpenShift is byte-for-byte identical to upstream Kubernetes", "Only a web console — the CLI and APIs are identical with no behavioral differences", "OpenShift removes Kubernetes networking — that's why the deploy failed"], "answer": 0, "why": "OpenShift is Kubernetes plus an opinionated platform layer: SCCs (admission control on pod security — containers don't run as root by default), Routes for external access, BuildConfigs/ImageStreams for image workflows, and Operators managing the platform itself. kubectl works, but oc exposes the OpenShift-native resources, and SCCs are the classic surprise for K8s veterans.", "hint": "What admits or rejects a Pod based on its security context before it runs?", "objectives": ["Platform model", "OpenShift vs Kubernetes", "SCC"], "mins": 6}, {"id": "ocp-projects", "title": "Projects vs namespaces", "situation": "You run 'oc new-project team-a' and a teammate says 'that's just a namespace — why not kubectl create namespace?'", "prompt": "What does a project add beyond a namespace?", "evidence": [], "choices": ["A namespace plus OpenShift annotations (display name, description, requester) and automatic RBAC/policy setup — the API object is still a Namespace underneath", "A completely separate cluster per project", "Projects bypass all RBAC — anyone can create them", "Nothing — oc new-project is an alias with no additional behavior"], "answer": 0, "why": "A Project is a Kubernetes Namespace with extra metadata annotations and self-service provisioning: creating one also sets up default RBAC roles, quotas hooks, and network policy defaults per cluster configuration. 'oc projects' lists the ones you can access. Underneath, it's a Namespace — kubectl sees it too.", "hint": "What does the API server actually store when you create a project?", "objectives": ["Projects", "Namespaces"], "mins": 5}, {"id": "ocp-routes-ingress", "title": "Exposing the app", "situation": "On vanilla K8s you'd create an Ingress. On OpenShift, 'oc expose svc/frontend' creates something else, and external traffic works immediately with no ingress controller to install.", "prompt": "What did oc expose create, and why does it work out of the box?", "evidence": [], "choices": ["A Route — OpenShift ships a default HAProxy-based router (Ingress Operator) in every cluster, so Routes work without extra installation", "An Ingress — oc expose is just an alias for kubectl's ingress creation", "A LoadBalancer Service — OpenShift auto-provisions cloud load balancers", "A NodePort — external traffic hits node ports directly"], "answer": 0, "why": "Routes are OpenShift's native external-access object, served by the built-in router (HAProxy, managed by the Ingress Operator). 'oc expose' creates one with an admitted hostname automatically. OpenShift also supports standard Ingress, but Routes predate it and add features like edge/passthrough/re-encrypt TLS termination modes.", "hint": "Which component is already running in every OpenShift cluster to serve external HTTP?", "objectives": ["Routes", "Ingress Operator"], "mins": 5}, {"id": "ocp-immutable-os", "title": "SSH to the node to install a package?", "situation": "A node needs a debugging tool. You SSH in, run yum install, and it works — but after the next Machine Config Operator rollout, the package is gone.", "prompt": "Why, and what is the correct way to change node configuration?", "evidence": [], "choices": ["Worker nodes run immutable RHEL CoreOS — manual changes are wiped; node config must go through MachineConfig objects applied by the MCO", "yum is broken on CoreOS — you must use rpm-ostree install instead", "The package was removed by a cron job — disable the cron", "SSH is disabled on OpenShift nodes — you imagined the session"], "answer": 0, "why": "RHEL CoreOS is an immutable container-optimized OS: /usr is read-only and the system is managed as a unit. The Machine Config Operator applies MachineConfig CRs (files, systemd units, kernel args) across machine pools, draining and rebooting nodes in a controlled rollout. Manual SSH tweaks are intentionally ephemeral — the MCO reverts drift.", "hint": "Who owns the desired state of the nodes' operating systems?", "objectives": ["RHCOS", "Machine Config Operator"], "mins": 6}, {"id": "ocp-operators-manage", "title": "Who runs the platform?", "situation": "You notice the cluster's etcd, DNS, and ingress are all managed by things called 'operators' rather than static manifests or systemd units.", "prompt": "What is the operator pattern, and why does OpenShift use it for platform components?", "evidence": [], "choices": ["Operators extend the API with CRDs plus controllers that reconcile desired state in a loop — encoding operational knowledge (upgrades, backups, scaling) as software", "Operators are just a new name for DaemonSets", "Operators replace the kubelet on each node", "Operators are only for third-party apps, never platform components"], "answer": 0, "why": "An operator = CustomResourceDefinition (the desired-state API) + controller (the reconcile loop). OpenShift runs its core as Cluster Version Operator-managed operators so upgrades, config changes, and day-2 operations happen declaratively through the API instead of SSH and scripts. The same pattern is available for your own applications via OperatorHub.", "hint": "What watches a custom resource and drives the world toward what it declares?", "objectives": ["Operators", "CRDs", "Reconcile loop"], "mins": 6}, {"id": "ocp-install-modes", "title": "IPI or UPI?", "situation": "You're planning an OpenShift install on bare metal with no cloud API. The docs mention installer-provisioned infrastructure (IPI) and user-provisioned infrastructure (UPI).", "prompt": "Which fits, and what's the key difference?", "evidence": [], "choices": ["UPI — you provision the machines, networking, DNS, and load balancers yourself; IPI has the installer create infrastructure via a cloud API", "IPI — the installer works on any infrastructure including bare metal without a cloud API", "They're identical — just two names for the same flow", "UPI means Red Hat provisions it for you remotely"], "answer": 0, "why": "IPI = the installer drives a cloud provider API to create VPCs, VMs, DNS, LBs (full automation, needs a supported cloud). UPI = you provide all infrastructure to spec (required for bare metal, restricted networks, unsupported platforms) and the installer only deploys OpenShift onto it. Bare metal with no cloud API means UPI (or the assisted installer, which simplifies UPI).", "hint": "Who creates the VMs — the installer, or you?", "objectives": ["Installation", "IPI vs UPI"], "mins": 5}]}, {"id": "projects-rbac", "name": "Projects & RBAC", "scenarios": [{"id": "ocp-grant-edit", "title": "Onboarding a developer to a project", "situation": "Ana joins the team-a project. She needs to deploy and edit resources there — but must NOT get cluster-wide powers.", "prompt": "What is the correct grant?", "evidence": [], "choices": ["oc adm policy add-role-to-user edit ana -n team-a — project-scoped edit role", "oc adm policy add-cluster-role-to-user cluster-admin ana — simplest", "oc adm policy add-role-to-user admin ana — without -n it applies everywhere", "Give Ana the kubeadmin password — fastest onboarding"], "answer": 0, "why": "OpenShift RBAC: 'oc adm policy add-role-to-user <role> <user> -n <project>' binds a namespaced Role (edit = full access within the project except RBAC/quota admin) to the user in that project only. ClusterRoleBindings (cluster-admin) are cluster-wide — never for routine onboarding. '-n' scoping is the whole point.", "hint": "Which flag keeps the grant inside one project?", "objectives": ["RBAC", "RoleBindings"], "mins": 5}, {"id": "ocp-scc-blocked", "title": "Blocked by the SCC", "situation": "A Pod fails to create: 'unable to validate against any security context constraint'. The container runs as root and wants hostPath access.", "prompt": "What is happening, and what is the right fix?", "evidence": [], "choices": ["No SCC admits the Pod's security context — fix the Pod (run as non-root, drop hostPath) rather than granting privileged SCC", "Add the anyuid SCC to the service account immediately", "SCCs are advisory — the Pod will start after a few retries", "Delete the SCCs — they're incompatible with Kubernetes"], "answer": 0, "why": "SCCs are admission controllers: a Pod must be admittable by at least one SCC available to its service account. 'restricted' (the default) forbids root, hostPath, privileged. The right fix is almost always to make the workload compliant (arbitrary UID, no host access). Granting 'privileged' or 'anyuid' SCCs is a security exception needing justification — never the first move.", "hint": "Should you change the workload or weaken the guardrail?", "objectives": ["SCC", "Admission control"], "mins": 6}, {"id": "ocp-quota", "title": "One team ate the cluster", "situation": "Team-b deployed 200 replicas and starved other projects. You need per-project CPU/memory caps and per-container defaults.", "prompt": "Which two objects do this?", "evidence": [], "choices": ["ResourceQuota (project-wide caps) plus LimitRange (default/min/max per container) — apply both in each project", "ClusterResourceQuota only — project quotas don't exist", "ResourceQuota alone — it also sets container defaults", "LimitRange alone — it caps project totals"], "answer": 0, "why": "ResourceQuota caps aggregates per project (e.g., requests.cpu: 20, pods: 50) and rejects creations that would exceed them. LimitRange sets defaults and min/max per Pod/container so every container gets sane requests/limits. Together they give fair sharing; ClusterResourceQuota extends this across multiple projects for admin-level multi-tenancy.", "hint": "Which object caps totals, and which sets per-container defaults?", "objectives": ["ResourceQuota", "LimitRange"], "mins": 5}, {"id": "ocp-serviceaccount", "title": "CI needs to deploy", "situation": "Your CI pipeline must 'oc apply' into the staging project. Using a human user's credentials in CI is banned.", "prompt": "What is the OpenShift-native approach?", "evidence": [], "choices": ["Create a ServiceAccount in staging, grant it the edit role, and give CI its token — scoped, rotatable, auditable", "Share the kubeadmin credentials with CI — it's automated so it's safe", "Create a human user 'ci-bot' with a password in the pipeline", "ServiceAccounts are only for Pods — CI must use user accounts"], "answer": 0, "why": "'oc create sa ci-deployer -n staging' + 'oc adm policy add-role-to-user edit system:serviceaccount:staging:ci-deployer -n staging'. The SA token (a Secret or TokenRequest) goes to CI. It's scoped to one project, doesn't expire with employee offboarding, and its actions audit as the SA — unlike shared human creds.", "hint": "What non-human identity exists precisely for workloads and automation?", "objectives": ["ServiceAccounts", "CI/CD auth"], "mins": 5}, {"id": "ocp-groups", "title": "Managing 40 developers", "situation": "Forty developers across 4 teams need project access. Binding each user individually is already unmanageable.", "prompt": "How do you scale RBAC?", "evidence": [], "choices": ["Create Groups per team ('oc adm groups new team-a'), bind roles to groups, and sync membership from LDAP/IdP", "Give everyone cluster-admin — teams are trusted", "One shared 'dev' user per team with the password in chat", "RBAC can't use groups — individual bindings are the only way"], "answer": 0, "why": "Groups are first-class RBAC subjects: bind 'edit' to group 'team-a' once in the project, then manage membership centrally. 'oc adm groups sync' (or IdP group sync via LDAP/OIDC claims) keeps it automated — joiners/leavers update in one place. Individual bindings don't scale and rot when people leave.", "hint": "What RBAC subject represents many users at once?", "objectives": ["Groups", "RBAC at scale"], "mins": 5}, {"id": "ocp-view-vs-edit", "title": "Auditor access", "situation": "An auditor needs to inspect resources in the payments project but must not change anything. Someone suggests the 'edit' role 'since it's read-mostly'.", "prompt": "Which role is correct, and why not edit?", "evidence": [], "choices": ["'view' — read-only on most resources; 'edit' allows creating/deleting workloads, which violates least privilege", "'edit' — it's effectively read-only for auditors", "'admin' — auditors need to see RBAC bindings too", "cluster-admin scoped with -n — namespaces limit cluster roles"], "answer": 0, "why": "OpenShift's default roles: view (read-only), edit (manage most resources, can't touch RBAC/quotas), admin (project admin incl. RBAC). Least privilege means view for auditors. Note: '-n' doesn't scope a ClusterRoleBinding — that's what makes cluster-admin grants so dangerous.", "hint": "Which default role is read-only by design?", "objectives": ["Default roles", "Least privilege"], "mins": 4}]}, {"id": "builds-imagestreams", "name": "Builds & ImageStreams", "scenarios": [{"id": "ocp-buildconfig-source", "title": "From git to image, in-cluster", "situation": "You want pushes to the app's git repo to automatically build a container image inside OpenShift — no external CI for this simple service.", "prompt": "Which BuildConfig strategy and trigger do this?", "evidence": [], "choices": ["Source strategy (S2I) with a GitHub webhook trigger — code + builder image in, runnable image out, triggered on push", "Docker strategy with manual builds — webhooks don't exist for builds", "Jenkins Pipeline strategy — the only automated option", "BuildConfigs can't pull from git — use a local binary build only"], "answer": 0, "why": "BuildConfigs support strategies: Source (S2I injects code into a builder image), Docker (Dockerfile build), Custom. Triggers: webhook (GitHub/GitLab push → rebuild), image change (rebuild when base image updates), config change. 'oc start-build' kicks off manual/binary builds. The output pushes to an ImageStream tag.", "hint": "Which strategy combines your source code with a builder image?", "objectives": ["BuildConfigs", "S2I", "Webhooks"], "mins": 6}, {"id": "ocp-imagestream", "title": "Why not just use image tags?", "situation": "Your Deployment references 'image-registry.openshift-image-registry.svc:5000/team-a/api:latest'. A teammate asks why you don't point at the external registry directly.", "prompt": "What do ImageStreams add?", "evidence": [], "choices": ["An ImageStream tracks tags → immutable image digests, triggers redeploys on new images, and abstracts the registry location — 'latest' always resolves to a specific digest", "ImageStreams are just DNS aliases — no functional difference", "They're required — external registries are blocked", "ImageStreams store the image bytes themselves"], "answer": 0, "why": "An ImageStream is a local named reference: each tag points to a specific image digest, updated when new images push. Deployments referencing the stream get imageChangeTriggers — automatic redeploys on new builds. It decouples workloads from registry URLs and makes 'which exact image is running' auditable via digest.", "hint": "What does the stream resolve a floating tag into?", "objectives": ["ImageStreams", "Image triggers"], "mins": 5}, {"id": "ocp-binary-build", "title": "Build from local code", "situation": "You're iterating rapidly and don't want to push to git for every test build. You want to build from your working directory.", "prompt": "How?", "evidence": [], "choices": ["oc start-build api --from-dir=. (or --from-file) — streams local content to a BuildConfig with a binary source", "Binary builds don't exist — commit to git every time", "oc apply -f localdir/ — apply builds images", "Copy the code into a running Pod and commit the container"], "answer": 0, "why": "BuildConfigs with binary source accept 'oc start-build <bc> --from-dir=.', --from-file, or --from-archive — uploading local content for the build without a git round-trip. Perfect for inner-loop development. The BuildConfig must exist first (strategy docker or source with binary: {}).", "hint": "Which start-build flag uploads your working directory?", "objectives": ["Binary builds", "Inner loop"], "mins": 4}, {"id": "ocp-build-trigger-loop", "title": "The build that never stops", "situation": "Every completed build triggers another build, infinitely. The BuildConfig has an image change trigger on the output ImageStream tag.", "prompt": "What caused the loop, and how do you break it?", "evidence": [], "choices": ["The output tag triggers its own input — point the imageChange trigger at the BASE image stream, not the output, or disable the trigger", "Webhooks fire twice — delete the webhook", "Builds always loop — this is expected", "The registry is echoing pushes — restart it"], "answer": 0, "why": "Image change triggers fire when the watched ImageStreamTag updates. If the BuildConfig watches its own output tag, each successful build updates the tag → triggers another build. Fix: trigger on the builder/base image stream (rebuild when the base updates — usually desired) and let the output tag update silently, or set the trigger to manual.", "hint": "What updates as a result of the build — and what is watching that update?", "objectives": ["Build triggers", "Trigger loops"], "mins": 6}, {"id": "ocp-s2i-scripts", "title": "Customizing the S2I build", "situation": "The default S2I builder image almost fits, but you need to run database migrations during the build and set custom environment variables.", "prompt": "How do you customize a Source build without forking the builder?", "evidence": [], "choices": ["Add .s2i/bin/assemble and .s2i/bin/run scripts in your repo to override/extend build and run behavior, plus .s2i/environment for env vars", "S2I can't be customized — write a Dockerfile instead", "Edit the builder image in the registry directly", "Environment variables aren't supported in S2I"], "answer": 0, "why": "S2I looks for .s2i/bin/assemble (build) and .s2i/bin/run (runtime) in your source to override the builder's defaults, and .s2i/environment for build-time env vars. This keeps you on the supported builder image while customizing the steps — the middle path between stock S2I and a full Dockerfile strategy.", "hint": "Where in your repo can you drop scripts that override the builder's defaults?", "objectives": ["S2I", "Build customization"], "mins": 5}, {"id": "ocp-image-pull-secret", "title": "Pulling from the external registry", "situation": "Your BuildConfig needs a base image from a private external registry. Builds fail with 'unauthorized'.", "prompt": "How do you give builds registry credentials?", "evidence": [], "choices": ["Create a dockerconfigjson Secret and link it to the builder ServiceAccount ('oc secrets link builder mysecret --for=pull')", "Put the password in the BuildConfig YAML — it's base64'd", "docker login on every node manually", "Private base images aren't supported — mirror publicly"], "answer": 0, "why": "'oc create secret docker-registry' makes the credential Secret; linking it to the 'builder' SA with --for=pull attaches it to build Pods' imagePullSecrets. (--for=mount is for pushing.) The integrated registry is pre-authenticated; external private registries need this wiring for both builds and deployments (link to 'default' SA for runtime pulls).", "hint": "Which ServiceAccount runs build Pods, and how do pull secrets attach to it?", "objectives": ["Pull secrets", "Builder SA"], "mins": 5}]}, {"id": "routes-networking", "name": "Routes & Networking", "scenarios": [{"id": "ocp-expose-route", "title": "Exposing the service", "situation": "Your 'api' Service (port 8080) works in-cluster. You need it at https://api.apps.cluster.example.com with TLS.", "prompt": "What is the minimal path, and what TLS mode terminates at the router?", "evidence": [], "choices": ["oc expose svc/api --hostname=api.apps.cluster.example.com, then add edge TLS termination — router decrypts, re-encrypts or forwards HTTP to the Pod", "oc expose creates HTTP only — TLS needs a separate Ingress", "Change the Service to LoadBalancer — Routes can't do TLS", "TLS is automatic on all Routes — no configuration needed"], "answer": 0, "why": "'oc expose svc/<name>' creates a Route with an admitted hostname. TLS modes: edge (router terminates TLS, traffic to Pod is HTTP), passthrough (router passes TLS through to the Pod — Pod terminates), re-encrypt (router terminates then re-encrypts to the Pod). Edge is the common default; choose per security needs. Certificates via 'oc create route ... --cert/--key' or the console.", "hint": "Where can TLS terminate — at the router, at the Pod, or both?", "objectives": ["Routes", "TLS termination"], "mins": 6}, {"id": "ocp-route-sharding", "title": "Two routers, two tenants", "situation": "Tenant A's routes must be served by router-shard-a, tenant B's by router-shard-b, for compliance isolation.", "prompt": "How do you steer Routes to specific routers?", "evidence": [], "choices": ["Route labels + router shard selection (namespace or route-label selectors on the IngressController) — each shard serves only matching Routes", "Routes can't be assigned — one router serves all", "Create two clusters — sharding isn't supported", "DNS round-robin — traffic splits naturally"], "answer": 0, "why": "OpenShift supports multiple IngressControllers (router shards), each with namespaceSelector or routeSelector choosing which Routes/namespaces it serves. Label tenant Routes accordingly. This gives compliance isolation, per-shard tuning, and internal vs external router separation (the default internal/external pattern).", "hint": "What selects which Routes a given router serves?", "objectives": ["Router sharding", "IngressController"], "mins": 6}, {"id": "ocp-ovn-egress", "title": "The Pod with a changing IP", "situation": "A partner firewall allows only one fixed source IP for your cluster's outbound API calls, but Pod IPs change constantly.", "prompt": "How do you present a stable egress IP?", "evidence": [], "choices": ["EgressIP — assign a fixed IP from a reserved pool to a namespace's (or Pod's) outbound traffic via the OVN-Kubernetes egress IP feature", "Use the node's IP — Pod traffic always SNATs to the node IP", "Egress IPs must be configured per Pod manually", "Outbound IPs can't be stabilized — ask the partner to allow the whole Pod CIDR"], "answer": 0, "why": "EgressIP allocates stable IPs from an admin-reserved pool to namespaces/Pods; outbound traffic from those workloads SNATs to the EgressIP (hosted on a chosen node, with failover). It's the answer for partner allowlists and compliance. Related: EgressFirewall for L3/L4 outbound rules per project. (Default OVN-Kubernetes networking in modern OpenShift.)", "hint": "What gives a namespace's outbound traffic a fixed source address?", "objectives": ["EgressIP", "Outbound traffic"], "mins": 6}, {"id": "ocp-service-ca", "title": "Internal TLS without cert-manager", "situation": "Your api Service needs serving TLS certs for in-cluster clients. You don't want to run a full CA.", "prompt": "What does OpenShift provide natively?", "evidence": [], "choices": ["The service CA — annotate the Service with service.beta.openshift.io/serving-cert-secret-name and OpenShift issues and rotates a cert signed by the cluster's service CA", "Internal TLS isn't possible — only Routes get certs", "Use the router's default cert for Services too", "Generate self-signed certs and bake them into the image"], "answer": 0, "why": "OpenShift runs an internal service CA: annotating a Service auto-provisions a Secret with a serving certificate (rotated automatically), and the CA bundle is injectable into client Pods via the service-ca ConfigMap annotation. It covers service-to-service TLS with zero CA operations — distinct from Route (edge) certs.", "hint": "Which annotation makes the platform mint a serving cert for a Service?", "objectives": ["Service CA", "In-cluster TLS"], "mins": 5}, {"id": "ocp-networkpolicy-default", "title": "Default-deny for the project", "situation": "The payments project must deny all Pod-to-Pod traffic by default, then allow only api→db on 5432.", "prompt": "What is the two-policy pattern?", "evidence": [], "choices": ["A default-deny policy (podSelector: {} with no ingress/egress rules) plus an allow policy selecting db Pods permitting ingress from api Pods on port 5432", "One policy is enough — deny and allow can't coexist", "NetworkPolicies default to deny — no policy needed", "Use a Route — it firewalls Pod traffic"], "answer": 0, "why": "Kubernetes is allow-all by default; an empty-ingress policy (podSelector: {} ) flips the project to default-deny. Then additive allow policies whitelist required flows (api podSelector → db podSelector, port 5432). Policies are additive (union of allows) — deny is only via absence of allows. OVN-Kubernetes enforces them in OpenShift.", "hint": "How do you express 'deny everything, then allow this' with additive policies?", "objectives": ["NetworkPolicy", "Default deny"], "mins": 5}, {"id": "ocp-passthrough-vs-edge", "title": "End-to-end encryption requirement", "situation": "Compliance requires TLS encryption all the way to the application Pod — the router must NOT decrypt traffic.", "prompt": "Which Route TLS mode, and what must the Pod do?", "evidence": [], "choices": ["Passthrough — the router forwards TLS bytes untouched; the Pod (app) must terminate TLS itself with its own certificate", "Edge — the router decrypts but promises not to look", "Re-encrypt — the router decrypts and re-encrypts, which satisfies 'no decryption'", "Routes can't do this — use NodePort"], "answer": 0, "why": "Passthrough: the router uses SNI to route without decrypting — the app Pod terminates TLS (needs the cert + TLS-speaking app). Edge decrypts at the router (Pod gets HTTP). Re-encrypt decrypts at router then re-encrypts to the Pod (Pod needs a cert, often the service CA one). Only passthrough keeps the router blind — at the cost of no L7 routing/inspection.", "hint": "Which mode never gives the router the plaintext?", "objectives": ["TLS modes", "Passthrough"], "mins": 5}]}, {"id": "operators", "name": "Operators", "scenarios": [{"id": "ocp-operator-pattern", "title": "What an operator actually is", "situation": "You're asked to 'write an operator' for the in-house message queue: it should provision, scale, upgrade, and back up queue clusters from a simple YAML spec.", "prompt": "What are the pieces you build?", "evidence": [], "choices": ["A CRD defining the desired state (MessageQueueCluster spec) + a controller implementing the reconcile loop (observe → diff → act), packaged via OLM", "A shell script run by cron — that's an operator", "A Helm chart — identical to an operator", "Operators can't be written in-house — only Red Hat ships them"], "answer": 0, "why": "Operator = CustomResourceDefinition (your API: spec for desired state, status for observed) + controller (watch the CR, reconcile toward spec: create StatefulSets, handle upgrades, schedule backups). The Operator SDK scaffolds this in Go/Ansible/Helm. Package with a ClusterServiceVersion for OperatorHub/OLM lifecycle (install plans, channels, upgrades).", "hint": "What watches your custom resource and drives reality toward its spec?", "objectives": ["Operator pattern", "CRD + controller"], "mins": 6}, {"id": "ocp-olm-install", "title": "Installing from OperatorHub", "situation": "You need the database operator in namespace 'db'. You want to control WHEN updates apply (not auto-update on release day).", "prompt": "What OLM objects do you create, and which setting gates updates?", "evidence": [], "choices": ["An OperatorGroup (target namespaces) + Subscription (channel + source); set installPlanApproval: Manual to approve InstallPlans yourself", "Just the CSV — OLM figures out the rest", "Subscriptions auto-update always — manual approval doesn't exist", "Install the operator YAML with oc apply — OLM is optional"], "answer": 0, "why": "OLM flow: OperatorGroup scopes the operator to namespace(s) → Subscription (package, channel, source, installPlanApproval) → OLM resolves a ClusterServiceVersion → InstallPlan (auto-applied if Automatic, pending approval if Manual). Channels (stable/fast) choose the update stream. Manual approval = change control for production operators.", "hint": "Which Subscription field makes updates wait for your approval?", "objectives": ["OLM", "Subscriptions", "InstallPlans"], "mins": 6}, {"id": "ocp-csv-stuck", "title": "CSV stuck in Pending", "situation": "Your operator's ClusterServiceVersion sits in 'Pending' phase. The InstallPlan is approved. Nothing is installed.", "prompt": "What are the common causes to check?", "evidence": [], "choices": ["Unmet requirements (missing CRDs/APIs), RBAC/permission errors, OperatorGroup targeting mismatches, or conflicting installed operators — check CSV status conditions and events", "CSVs always take 24 hours — wait", "Delete the namespace — Pending means corrupted", "Pending is the running state — it's fine"], "answer": 0, "why": "CSV phases: Pending → InstallReady → Succeeded (or Failed). Pending usually means OLM can't satisfy requirements: required CRDs not present, insufficient RBAC, no matching OperatorGroup, or version conflicts. 'oc describe csv' conditions + events name the blocker. This is the standard OLM debug path.", "hint": "What does the CSV's status conditions say it's waiting for?", "objectives": ["CSV", "OLM troubleshooting"], "mins": 5}, {"id": "ocp-mco-example", "title": "The operator that owns the nodes", "situation": "A teammate asks for a concrete example of 'day-2 operations via operator' on the platform itself.", "prompt": "Which platform operator best illustrates it?", "evidence": [], "choices": ["The Machine Config Operator — declaratively manages OS config (files, systemd units, kernel args) across node pools with controlled drain/reboot rollouts", "The web console operator — it only serves the UI", "Operators don't manage the platform — only apps", "The scheduler — it's technically an operator"], "answer": 0, "why": "MCO is the canonical platform operator: MachineConfig CRs declare node desired-state; the controller renders, applies, drains, and reboots nodes pool by pool — upgrades, config changes, and drift correction as reconciliation. Same pattern as etcd/cluster-version operators. It demonstrates operators encoding operational knowledge (safe rollout sequencing) as software.", "hint": "Which operator rolls out OS changes with drain-and-reboot sequencing?", "objectives": ["MCO", "Day-2 operations"], "mins": 5}, {"id": "ocp-operator-vs-helm", "title": "Operator or Helm chart?", "situation": "You're packaging the message queue. Helm chart exists; someone proposes an operator instead. The queue needs automated failover, version upgrades, and scheduled backups.", "prompt": "When does the operator earn its complexity over Helm?", "evidence": [], "choices": ["When ongoing lifecycle automation (failover, upgrades, backups) must run continuously — Helm renders install-time manifests; operators reconcile runtime state in a loop", "Always — operators replace Helm entirely", "Never — Helm can do everything operators do", "Operators are only for Red Hat products"], "answer": 0, "why": "Helm = package manager (template + install/upgrade/rollback at deploy time). Operator = running controller (continuous reconcile: detect failed primary → promote replica, run upgrade steps in order, schedule backups). The Operator SDK even has a Helm-based operator type for the middle ground. Choose by lifecycle needs: one-shot deploy → Helm; ongoing automation → operator.", "hint": "What happens after install — who keeps watching the queue?", "objectives": ["Operators vs Helm", "Lifecycle"], "mins": 5}, {"id": "ocp-channel-choice", "title": "Which channel?", "situation": "The database operator offers channels 'stable', 'fast', and 'candidate'. Production needs predictability; dev wants the newest features.", "prompt": "How do you choose?", "evidence": [], "choices": ["Production pins 'stable' (vetted releases); dev can track 'fast' — channels are update streams, and you can move between them deliberately", "Always use 'candidate' — newest is best everywhere", "Channels are cosmetic — they all serve the same CSV", "One channel per cluster — you can't mix"], "answer": 0, "why": "Channels are OLM's release streams per package: stable (vetted), fast (newer, less baked), candidate (pre-release). Subscriptions pin a channel; moving channels is a deliberate upgrade action. Different namespaces can even track different channels — prod stable, dev fast — giving controlled exposure to new operator versions.", "hint": "What does a channel control about the updates you receive?", "objectives": ["Channels", "Update streams"], "mins": 4}]}, {"id": "pipelines", "name": "Pipelines", "scenarios": [{"id": "ocp-tekton-anatomy", "title": "Anatomy of a Tekton pipeline", "situation": "You're moving a Jenkins pipeline to OpenShift Pipelines. You need: clone → test → build image → deploy, sharing the workspace between steps.", "prompt": "What are the Tekton objects, and how do they relate?", "evidence": [], "choices": ["Tasks (reusable units: clone, test, build) composed in a Pipeline; PipelineRuns execute it; Workspaces (PVC) share data between Tasks", "Pipelines contain Pods directly — Tasks are optional", "One TaskRun per pipeline — PipelineRuns don't exist", "Workspaces are git repos — PVCs aren't used"], "answer": 0, "why": "Tekton model: Task = reusable step template (or ClusterTask for shared), Pipeline = DAG of Tasks with params/results wiring, TaskRun/PipelineRun = executions. Workspaces abstract shared storage (volumeClaimTemplate for dynamic PVCs). 'tkn' CLI manages them: tkn pipeline start, tkn pipelinerun logs -f. It's Kubernetes-native CI/CD — everything is a CR.", "hint": "Which object is the reusable template, and which is the execution?", "objectives": ["Tekton", "Pipeline/Task/Run"], "mins": 6}, {"id": "ocp-triggers", "title": "Git push starts the pipeline", "situation": "You want GitHub pushes to automatically start the PipelineRun with the right revision — no polling, no manual tkn commands.", "prompt": "What are the Trigger objects involved?", "evidence": [], "choices": ["EventListener (receives webhook) + TriggerBinding (extracts fields like revision) + TriggerTemplate (renders the PipelineRun) — exposed via a Route", "A CronJob polling git — triggers don't exist", "Webhooks call tkn directly — no objects needed", "Pipelines poll git natively — no webhook needed"], "answer": 0, "why": "Tekton Triggers: EventListener is a Service (expose via Route) receiving webhooks; TriggerBindings extract JSON fields (gitrevision); TriggerTemplates stamp out PipelineRuns with those values; Trigger intercepts tie them. Add a GitHub webhook secret for authenticity. This is the event-driven CI entry point.", "hint": "What receives the webhook, extracts fields, and renders the run?", "objectives": ["Triggers", "EventListener"], "mins": 6}, {"id": "ocp-workspaces-pvc", "title": "Sharing data between Tasks", "situation": "The clone Task fetches source; the build Task needs it. Tasks run in separate Pods — how do they share files?", "prompt": "How do Workspaces solve this?", "evidence": [], "choices": ["Declare a workspace in the Pipeline; bind it at run time to a volumeClaimTemplate (dynamic PVC) or existing PVC — each Task mounts it at its declared path", "Tasks share a filesystem automatically — no config needed", "Pass files via params — workspaces are for secrets", "Use an emptyDir on the PipelineRun — the only option"], "answer": 0, "why": "Workspaces are the named shared-storage contract: the Pipeline declares 'source' workspace; Tasks declare they need it (mountPath); the PipelineRun binds it (volumeClaimTemplate creates a PVC per run, or an existing PVC/emptyDir/ConfigMap). This decouples pipeline authorship from storage decisions — the same Pipeline runs with different bindings.", "hint": "What binds a Pipeline's workspace declaration to actual storage?", "objectives": ["Workspaces", "volumeClaimTemplate"], "mins": 5}, {"id": "ocp-results-params", "title": "Passing the image digest", "situation": "The build Task produces an image digest; the deploy Task needs it as a parameter. You want typed, traceable handoff — not a file both Tasks guess about.", "prompt": "How do Tasks pass data?", "evidence": [], "choices": ["Task results: build Task declares results (digest), writes to $(results.digest.path); Pipeline wires $(tasks.build.results.digest) into deploy's params", "Global variables — results don't exist", "Write to a shared PVC path by convention — the only way", "Params flow backward automatically — no wiring needed"], "answer": 0, "why": "Results are the typed inter-task contract: the Task declares results: [{name: digest}], writes the value to the results path; the Pipeline references $(tasks.<name>.results.<result>) in downstream params. It's explicit, visible in the PipelineRun status, and validated — versus convention-based file paths that break silently.", "hint": "What named outputs can a Task declare for downstream Tasks to consume?", "objectives": ["Results", "Params"], "mins": 5}, {"id": "ocp-finally", "title": "Cleanup that always runs", "situation": "Your pipeline must post a Slack notification and clean temp resources whether the build succeeds or fails — like try/finally.", "prompt": "How do you express this in Tekton?", "evidence": [], "choices": ["Pipeline 'finally' Tasks — they run after all DAG Tasks complete, regardless of success/failure, with access to the pipeline status", "Add the cleanup as the last DAG Task — ordering guarantees it runs", "finally doesn't exist — use a separate pipeline", "Cleanup Tasks run first — that's the Tekton way"], "answer": 0, "why": "'finally:' Tasks in a Pipeline execute after the main DAG finishes — success or failure — ideal for notifications, cleanup, and status reporting. They can reference $(tasks.<name>.status) for conditional logic. (Note: finally Tasks can't easily consume results of failed Tasks — design accordingly.)", "hint": "Which Pipeline section runs regardless of the DAG's outcome?", "objectives": ["finally", "Cleanup"], "mins": 4}, {"id": "ocp-gitops-openshift", "title": "GitOps on OpenShift", "situation": "You want Argo CD managing app deployments on OpenShift, integrated with the platform's auth and monitoring.", "prompt": "What is the OpenShift-native path?", "evidence": [], "choices": ["Install the OpenShift GitOps operator (Argo CD) from OperatorHub — it wires SSO, monitoring, and console integration", "Argo CD can't run on OpenShift — use Jenkins", "Install upstream Argo CD YAML manually — the operator adds nothing", "GitOps conflicts with Routes — pick one"], "answer": 0, "why": "The OpenShift GitOps operator deploys and manages Argo CD instances as CRs, with platform integration (RHSSO, monitoring stack, console plugin). It works fine with Routes, ImageStreams, and BuildConfigs as sync targets. Pipelines (Tekton) build and push; GitOps (Argo CD) deploys — the standard split: CI builds images, CD syncs desired state.", "hint": "Which operator packages Argo CD for OpenShift?", "objectives": ["OpenShift GitOps", "Argo CD"], "mins": 5}]}], "lessons": [{"domain_id": "platform-concepts", "title": "Platform Concepts — Core concepts", "concepts": ["Platform model: openShift is Kubernetes plus an opinionated platform layer: SCCs (admission control on pod security — containers don't run as root by default), Routes for external access, BuildConfigs/ImageStreams for image workflows, and Operators managing the platform itself. kubectl works, but oc exposes the OpenShift-native resources, and SCCs are the classic surprise for K8s veterans.", "OpenShift vs Kubernetes: routes are OpenShift's native external-access object, served by the built-in router (HAProxy, managed by the Ingress Operator). OpenShift runs its core as Cluster Version Operator-managed operators so upgrades, config changes, and day-2 operations happen declaratively through the API instead of SSH and scripts.", "Projects: 'oc projects' lists the ones you can access.", "Routes: openShift also supports standard Ingress, but Routes predate it and add features like edge/passthrough/re-encrypt TLS termination modes."], "example": {"lang": "text", "code": "Worked example — platform model\nSetup: OpenShift is Kubernetes plus an opinionated platform layer: SCCs (admission control on pod security — containers don't run as root by default)…\nReasoning: Routes are OpenShift's native external-access object, served by the built-in router (HAProxy, managed by the Ingress Operator).\nTakeaway: OpenShift also supports standard Ingress, but Routes predate it and add features like edge/passthrough/re-encrypt TLS termination modes.", "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."}, "pitfalls": ["Common trap: openShift is byte-for-byte identical to upstream Kubernetes.", "Common trap: operators are only for third-party apps, never platform components.", "Common trap: UPI means Red Hat provisions it for you remotely.", "Common trap: oc expose is just an alias for kubectl's ingress creation."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "projects-rbac", "title": "Projects & RBAC — Core concepts", "concepts": ["RBAC: groups are first-class RBAC subjects: bind 'edit' to group 'team-a' once in the project, then manage membership centrally. OpenShift RBAC: 'oc adm policy add-role-to-user <role> <user> -n <project>' binds a namespaced Role (edit = full access within the project except RBAC/quota admin) to the user in that project only.", "RoleBindings: clusterRoleBindings (cluster-admin) are cluster-wide — never for routine onboarding.", "SCCs are admission controllers: a Pod must be admittable by at least one SCC available to its service account.", "ResourceQuota caps aggregates per project (e.g., requests.cpu: 20, pods: 50) and rejects creations that would exceed them.", "LimitRange sets defaults and min/max per Pod/container so every container gets sane requests/limits."], "example": {"lang": "text", "code": "Worked example — rbac\nSetup: Least privilege means view for auditors.\nReasoning: SCCs are admission controllers: a Pod must be admittable by at least one SCC available to its service account.\nTakeaway: ClusterRoleBindings (cluster-admin) are cluster-wide — never for routine onboarding.", "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."}, "pitfalls": ["Common trap: add the anyuid SCC to the service account immediately.", "Common trap: one shared 'dev' user per team with the password in chat.", "Common trap: create a human user 'ci-bot' with a password in the pipeline.", "Common trap: oc adm policy add-cluster-role-to-user cluster-admin ana."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "builds-imagestreams", "title": "Builds & ImageStreams — Core concepts", "concepts": ["S2I: buildConfigs support strategies: Source (S2I injects code into a builder image), Docker (Dockerfile build), Custom. S2I looks for .s2i/bin/assemble (build) and .s2i/bin/run (runtime) in your source to override the builder's defaults, and .s2i/environment for build-time env vars.", "BuildConfigs with binary source accept 'oc start-build <bc> --from-dir=.', --from-file, or --from-archive — uploading local content for the build without a git round-trip.", "Image triggers: triggers: webhook (GitHub/GitLab push → rebuild), image change (rebuild when base image updates), config change. Image change triggers fire when the watched ImageStreamTag updates.", "Binary builds: 'oc start-build' kicks off manual/binary builds. The BuildConfig must exist first (strategy docker or source with binary: {})."], "example": {"lang": "text", "code": "Worked example — s2i\nSetup: BuildConfigs support strategies: Source (S2I injects code into a builder image), Docker (Dockerfile build), Custom.\nReasoning: BuildConfigs with binary source accept 'oc start-build <bc> --from-dir=.', --from-file, or --from-archive — uploading local content for the build…\nTakeaway: S2I looks for .s2i/bin/assemble (build) and .s2i/bin/run (runtime) in your source to override the builder's defaults, and .s2i/environment for…", "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."}, "pitfalls": ["Common trap: imageStreams store the image bytes themselves.", "Common trap: edit the builder image in the registry directly.", "Common trap: environment variables aren't supported in S2I.", "Common trap: docker strategy with manual builds."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "routes-networking", "title": "Routes & Networking — Core concepts", "concepts": ["Routes: label tenant Routes accordingly.", "TLS modes: edge (router terminates TLS, traffic to Pod is HTTP), passthrough (router passes TLS through to the Pod — Pod terminates), re-encrypt (router terminates then re-encrypts to the Pod). Passthrough: the router uses SNI to route without decrypting — the app Pod terminates TLS (needs the cert + TLS-speaking app).", "Router sharding: this gives compliance isolation, per-shard tuning, and internal vs external router separation (the default internal/external pattern).", "IngressController: openShift supports multiple IngressControllers (router shards), each with namespaceSelector or routeSelector choosing which Routes/namespaces it serves.", "EgressIP allocates stable IPs from an admin-reserved pool to namespaces/Pods; outbound traffic from those workloads SNATs to the EgressIP (hosted on a chosen node, with failover).", "Outbound traffic: related: EgressFirewall for L3/L4 outbound rules per project."], "example": {"lang": "text", "code": "Worked example — routes\nSetup: TLS modes: edge (router terminates TLS, traffic to Pod is HTTP), passthrough (router passes TLS through to the Pod — Pod terminates), re-encrypt…\nReasoning: EgressIP allocates stable IPs from an admin-reserved pool to namespaces/Pods; outbound traffic from those workloads SNATs to the EgressIP (hosted on…\nTakeaway: Passthrough: the router uses SNI to route without decrypting — the app Pod terminates TLS (needs the cert + TLS-speaking app).", "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."}, "pitfalls": ["Common trap: use the router's default cert for Services too.", "Common trap: the router decrypts and re-encrypts, which satisfies 'no decryption'.", "Common trap: pod traffic always SNATs to the node IP.", "Common trap: the router decrypts but promises not to look."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "operators", "title": "Operators — Core concepts", "concepts": ["Operator pattern: MCO is the canonical platform operator: MachineConfig CRs declare node desired-state; the controller renders, applies, drains, and reboots nodes pool by pool — upgrades, config changes, and drift correction as reconciliation.", "CRD + controller: operator = running controller (continuous reconcile: detect failed primary → promote replica, run upgrade steps in order, schedule backups).", "OLM: channels are OLM's release streams per package: stable (vetted), fast (newer, less baked), candidate (pre-release).", "Subscriptions pin a channel; moving channels is a deliberate upgrade action.", "CSV phases: Pending → InstallReady → Succeeded (or Failed)."], "example": {"lang": "text", "code": "Worked example — operator pattern\nSetup: Pending usually means OLM can't satisfy requirements: required CRDs not present, insufficient RBAC, no matching OperatorGroup, or version conflicts.\nReasoning: MCO is the canonical platform operator: MachineConfig CRs declare node desired-state; the controller renders, applies, drains, and reboots nodes pool…\nTakeaway: Channels are OLM's release streams per package: stable (vetted), fast (newer, less baked), candidate (pre-release).", "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."}, "pitfalls": ["Common trap: operators replace Helm entirely.", "Common trap: install the operator YAML with oc apply.", "Common trap: operators are only for Red Hat products.", "Common trap: a shell script run by cron."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "pipelines", "title": "Pipelines — Core concepts", "concepts": ["Tekton: pipelines (Tekton) build and push; GitOps (Argo CD) deploys — the standard split: CI builds images, CD syncs desired state.", "Workspaces abstract shared storage (volumeClaimTemplate for dynamic PVCs). Workspaces are the named shared-storage contract: the Pipeline declares 'source' workspace; Tasks declare they need it (mountPath); the PipelineRun binds it (volumeClaimTemplate creates a PVC per run, or an existing PVC/emptyDir/ConfigMap).", "Principle: tekton model: Task = reusable step template (or ClusterTask for shared), Pipeline = DAG of Tasks with params/results wiring, TaskRun/PipelineRun = executions."], "example": {"lang": "text", "code": "Worked example — tekton\nSetup: Pipelines (Tekton) build and push; GitOps (Argo CD) deploys — the standard split: CI builds images, CD syncs desired state.\nReasoning: Tekton Triggers: EventListener is a Service (expose via Route) receiving webhooks; TriggerBindings extract JSON fields (gitrevision)…\nTakeaway: The OpenShift GitOps operator deploys and manages Argo CD instances as CRs, with platform integration (RHSSO, monitoring stack, console plugin).", "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."}, "pitfalls": ["Common trap: add the cleanup as the last DAG Task.", "Common trap: install upstream Argo CD YAML manually.", "Common trap: write to a shared PVC path by convention.", "Common trap: tasks share a filesystem automatically."], "try_it": "Work through this in the Terminal tab →"}], "sections": [{"id": "foundations", "title": "Foundations", "kind": "foundation", "lectures": ["m-binary", "m-subnetting", "f-linux-cli-0", "f-linux-cli-1", "f-linux-cli-2", "f-yaml-0", "f-yaml-1", "f-yaml-2", "f-networking-0", "f-networking-1", "f-networking-2", "f-networking-3"], "lab_ids": [], "drill_domain_ids": []}, {"id": "core", "title": "Core", "kind": "core", "lectures": ["c-platform-concepts", "c-projects-rbac", "c-builds-imagestreams"], "lab_ids": ["openshift-lab-1", "openshift-lab-2"], "drill_domain_ids": ["platform-concepts", "projects-rbac", "builds-imagestreams"]}, {"id": "advanced", "title": "Advanced", "kind": "advanced", "lectures": ["c-routes-networking", "c-operators", "c-pipelines"], "lab_ids": ["openshift-lab-3", "openshift-lab-4"], "drill_domain_ids": ["routes-networking", "operators", "pipelines"]}, {"id": "exam-prep", "title": "Exam Prep", "kind": "exam-prep", "lectures": [], "lab_ids": [], "drill_domain_ids": ["platform-concepts", "projects-rbac", "builds-imagestreams", "routes-networking", "operators", "pipelines"]}], "behavioral": [{"prompt": "Tell me about an OpenShift (or Kubernetes platform) project you worked on. What was your role?", "framework": "STAR", "points": ["The platform and its users", "Your specific contributions", "Outcome for the users"], "pitfalls": ["Can't distinguish OpenShift from vanilla K8s", "No user impact"]}, {"prompt": "Describe a time you troubleshot an application deployment on OpenShift.", "framework": "STAR", "points": ["Symptoms", "How you used oc, events, logs", "Root cause"], "pitfalls": ["No method", "Blaming the platform"]}, {"prompt": "Tell me about implementing CI/CD on OpenShift (Pipelines, GitOps, or Jenkins).", "framework": "STAR", "points": ["The pipeline design", "Challenges (auth, triggers, etc.)", "Results"], "pitfalls": ["No specifics", "Can't explain the pieces"]}, {"prompt": "Describe a security or compliance requirement you implemented on the platform (SCC, RBAC, network policy).", "framework": "STAR", "points": ["The requirement", "What you configured", "How you verified"], "pitfalls": ["Weakening controls to unblock", "No verification"]}, {"prompt": "Tell me about a time you helped developers adopt the platform (onboarding, golden paths, docs).", "framework": "STAR", "points": ["The adoption barrier", "What you built or taught", "Adoption results"], "pitfalls": ["Mandate without enablement", "No results"]}, {"prompt": "Describe an operator or automation you built or managed on OpenShift.", "framework": "STAR", "points": ["What it automated", "How you built/packaged it", "Operational experience"], "pitfalls": ["Can't explain the operator pattern", "No operational story"]}, {"prompt": "Tell me about a production incident on the platform and your role in it.", "framework": "STAR", "points": ["Triage approach", "Your actions", "Prevention added"], "pitfalls": ["No method", "No prevention"]}, {"prompt": "Where is the OpenShift/Kubernetes platform space heading, and how are you preparing?", "framework": "Present-Past-Future", "points": ["Informed view", "Current learning", "Application"], "pitfalls": ["Buzzwords only", "No action"]}], "chat": {"persona": "You are a friendly but rigorous OpenShift interviewer running a mock assessment. Pose platform scenarios, expect exact oc commands and resource reasoning, and give concise keyword-driven feedback.", "topics": [{"id": "platform-concepts", "name": "Platform Concepts", "key_points": ["OpenShift vs Kubernetes", "projects vs namespaces", "Routes and router", "RHCOS immutability", "operators manage platform", "IPI vs UPI"], "followups": ["What bit the K8s veteran here?", "Who owns that desired state?"]}, {"id": "projects-rbac", "name": "Projects & RBAC", "key_points": ["add-role-to-user with -n", "SCC admission", "ResourceQuota + LimitRange", "ServiceAccounts for CI", "groups", "view vs edit vs admin"], "followups": ["What's the least-privilege grant?", "Where does the grant apply?"]}, {"id": "builds-imagestreams", "name": "Builds & ImageStreams", "key_points": ["BuildConfig strategies", "ImageStream tag tracking", "binary builds", "trigger loops", "S2I customization", "builder pull secrets"], "followups": ["What triggers the build?", "What does the stream resolve?"]}, {"id": "routes-networking", "name": "Routes & Networking", "key_points": ["oc expose", "edge/passthrough/re-encrypt", "router sharding", "EgressIP", "service CA", "default-deny NetworkPolicy"], "followups": ["Where does TLS terminate?", "What gives stable egress IP?"]}, {"id": "operators", "name": "Operators", "key_points": ["CRD + reconcile loop", "OLM Subscription/InstallPlan", "CSV phases", "MCO example", "operator vs Helm", "channels"], "followups": ["What watches the custom resource?", "What gates the update?"]}, {"id": "pipelines", "name": "Pipelines", "key_points": ["Task/Pipeline/Run", "Triggers", "Workspaces", "results and params", "finally tasks", "OpenShift GitOps operator"], "followups": ["How do Tasks share data?", "What starts the run?"]}]}, "labs": [{"id": "openshift-lab-1", "title": "Platform model — kubectl drill", "objective": "Run a short sequence of kubectl commands that demonstrates platform model, then verify each result against the expected output.", "steps": ["This lab reworks the Platform Concepts practice scenario \"Is OpenShift just Kubernetes?\" into commands you run yourself — same concept, hands-on instead of multiple choice.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: kubectl get pods — the pod list shows pods in the Running phase", "Type exactly: kubectl get nodes — the node list reports Ready status", "Type exactly: kubectl get deployments — the deployment list shows available replicas", "In your own words, say what each command's output taught you about platform model."], "checks": [{"command_pattern": "kubectl get pods", "expect_contains": "Running", "hint": "In the Terminal tab, run `kubectl get pods`. If the check fails, confirm you typed it exactly and that the output contains \"Running\"."}, {"command_pattern": "kubectl get nodes", "expect_contains": "Ready", "hint": "In the Terminal tab, run `kubectl get nodes`. If the check fails, confirm you typed it exactly and that the output contains \"Ready\"."}, {"command_pattern": "kubectl get deployments", "expect_contains": "Available", "hint": "In the Terminal tab, run `kubectl get deployments`. If the check fails, confirm you typed it exactly and that the output contains \"Available\"."}], "success_message": "Lab complete — platform model practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"id": "openshift-lab-2", "title": "RBAC — kubectl drill", "objective": "Use the kubectl to explore RBAC hands-on: type each command, read what comes back, and connect the output to the concept.", "steps": ["Inspired by the Projects & RBAC scenario \"Onboarding a developer to a project\": take its core idea and prove it live in the terminal instead of answering on paper.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: kubectl get deployments — the deployment list shows available replicas", "Type exactly: kubectl describe pod/web — the describe output names the pod web", "Type exactly: kubectl get pods — the pod list shows pods in the Running phase", "In your own words, say what each command's output taught you about RBAC."], "checks": [{"command_pattern": "kubectl get deployments", "expect_contains": "Available", "hint": "In the Terminal tab, run `kubectl get deployments`. If the check fails, confirm you typed it exactly and that the output contains \"Available\"."}, {"command_pattern": "kubectl describe pod", "expect_contains": "web", "hint": "In the Terminal tab, run `kubectl describe pod/web`. If the check fails, confirm you typed it exactly and that the output contains \"web\"."}, {"command_pattern": "kubectl get pods", "expect_contains": "Running", "hint": "In the Terminal tab, run `kubectl get pods`. If the check fails, confirm you typed it exactly and that the output contains \"Running\"."}], "success_message": "Lab complete — RBAC practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"id": "openshift-lab-3", "title": "BuildConfigs — kubectl drill", "objective": "Prove you can apply buildConfigs in the kubectl — follow the steps, watch the output, and confirm every check passes.", "steps": ["The Builds & ImageStreams scenario \"From git to image, in-cluster\" tests this concept as a question. This lab makes you demonstrate it with real commands.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: kubectl get pods — the pod list shows pods in the Running phase", "Type exactly: kubectl get nodes — the node list reports Ready status", "Type exactly: kubectl get deployments — the deployment list shows available replicas", "In your own words, say what each command's output taught you about buildConfigs."], "checks": [{"command_pattern": "kubectl get pods", "expect_contains": "Running", "hint": "In the Terminal tab, run `kubectl get pods`. If the check fails, confirm you typed it exactly and that the output contains \"Running\"."}, {"command_pattern": "kubectl get nodes", "expect_contains": "Ready", "hint": "In the Terminal tab, run `kubectl get nodes`. If the check fails, confirm you typed it exactly and that the output contains \"Ready\"."}, {"command_pattern": "kubectl get deployments", "expect_contains": "Available", "hint": "In the Terminal tab, run `kubectl get deployments`. If the check fails, confirm you typed it exactly and that the output contains \"Available\"."}], "success_message": "Lab complete — buildConfigs practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"id": "openshift-lab-4", "title": "Routes — kubectl drill", "objective": "Run a short sequence of kubectl commands that demonstrates routes, then verify each result against the expected output.", "steps": ["This lab reworks the Routes & Networking practice scenario \"Exposing the service\" into commands you run yourself — same concept, hands-on instead of multiple choice.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: kubectl get deployments — the deployment list shows available replicas", "Type exactly: kubectl describe pod/web — the describe output names the pod web", "Type exactly: kubectl get pods — the pod list shows pods in the Running phase", "In your own words, say what each command's output taught you about routes."], "checks": [{"command_pattern": "kubectl get deployments", "expect_contains": "Available", "hint": "In the Terminal tab, run `kubectl get deployments`. If the check fails, confirm you typed it exactly and that the output contains \"Available\"."}, {"command_pattern": "kubectl describe pod", "expect_contains": "web", "hint": "In the Terminal tab, run `kubectl describe pod/web`. If the check fails, confirm you typed it exactly and that the output contains \"web\"."}, {"command_pattern": "kubectl get pods", "expect_contains": "Running", "hint": "In the Terminal tab, run `kubectl get pods`. If the check fails, confirm you typed it exactly and that the output contains \"Running\"."}], "success_message": "Lab complete — routes practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"checks": [{"command_pattern": "^kubectl\\s+version", "expect_contains": "v1.31.2", "hint": "Type: kubectl version"}, {"command_pattern": "^kubectl\\s+get\\s+nodes", "expect_contains": "Ready", "hint": "Type: kubectl get nodes"}], "difficulty": 1, "id": "openshift-lab-5", "objective": "Confirm cluster access: client/server versions and node health.", "steps": ["Open the terminal view for this bootcamp", "Run: kubectl version", "Note the client and server versions", "Run: kubectl get nodes", "Confirm both nodes report Ready"], "success_message": "Cluster reachable — v1.31.2, both nodes Ready.", "title": "Cluster access check"}, {"checks": [{"command_pattern": "^kubectl\\s+get\\s+(namespaces|ns)", "expect_contains": "default", "hint": "Type: kubectl get namespaces"}, {"command_pattern": "^kubectl\\s+config\\s+get-contexts", "expect_contains": "ilb-prod", "hint": "Type: kubectl config get-contexts"}], "difficulty": 1, "id": "openshift-lab-6", "objective": "List the projects (namespaces) and see which cluster context is active.", "steps": ["Open the terminal view for this bootcamp", "Run: kubectl get namespaces", "Identify the default, kube-system, and prod projects", "Run: kubectl config get-contexts", "Find the context marked with * as current"], "success_message": "Projects listed; current context is ilb-prod.", "title": "Projects and contexts"}, {"checks": [{"command_pattern": "^kubectl\\s+get\\s+(services|svc)", "expect_contains": "NodePort", "hint": "Type: kubectl get svc"}, {"command_pattern": "^kubectl\\s+describe\\s+(service|svc)/web-svc", "expect_contains": "30080", "hint": "Type: kubectl describe svc/web-svc"}], "difficulty": 2, "id": "openshift-lab-7", "objective": "Inspect how the web service is exposed and find its node port.", "steps": ["Open the terminal view for this bootcamp", "Run: kubectl get svc", "Compare the ClusterIP and NodePort service types", "Run: kubectl describe svc/web-svc", "Find the node port 30080 in the Port(s) line"], "success_message": "Service exposure mapped — web-svc on node port 30080.", "title": "Service exposure deep dive"}, {"checks": [{"command_pattern": "^kubectl\\s+scale\\s+deployment/api", "expect_contains": "scaled to 3", "hint": "Type: kubectl scale deployment/api --replicas=3"}, {"command_pattern": "^kubectl\\s+rollout\\s+status", "expect_contains": "successfully rolled out", "hint": "Type: kubectl rollout status deployment/api"}, {"command_pattern": "^kubectl\\s+top\\s+pods", "expect_contains": "CPU(cores)", "hint": "Type: kubectl top pods"}], "difficulty": 3, "id": "openshift-lab-8", "objective": "Scale a deployment, verify the rollout, and check pod resource usage.", "steps": ["Open the terminal view for this bootcamp", "Run: kubectl scale deployment/api --replicas=3", "Run: kubectl rollout status deployment/api", "Run: kubectl get pods and confirm three api pods", "Run: kubectl top pods and read CPU/memory usage"], "success_message": "Scaled to 3, rollout verified, usage inspected.", "title": "Scale, verify, and observe"}], "foundations": [{"track": "linux-cli", "why_needed": "OpenShift is Kubernetes on Red Hat, operated from the terminal. Linux command-line skills come first."}, {"track": "yaml", "why_needed": "Projects, builds, and routes are YAML manifests. Learn the format before the platform."}, {"track": "networking", "why_needed": "Routes and networking are cluster networking: DNS, ports, and HTTP applied."}], "math": ["binary", "subnetting"], "simulations": [{"brief": "The api pods were healthy yesterday. This morning one pod shows 12 restarts and the logs show a Redis connection error. Diagnose before restarting anything.", "debrief": "CrashLoopBackOff with a dependency error is a configuration problem, not a pod problem. Restarting the pod replays the same failure; fixing the dependency address or the secret fixes the loop.", "difficulty": 2, "domain_id": "platform-concepts", "id": "oc-sim-crashloop", "kind": "troubleshoot", "points": 15, "steps": [{"correct": 0, "evidence": [["kubectl get pods", "api-7d9f8c6b4-x2kzq   1/1   Running   12   6d   10.244.1.12   node-1"], ["kubectl logs api-7d9f8c6b4-x2kzq", "2026-10-04T09:14:47Z ERROR dial tcp 10.96.0.5:6379: connect: connection refused"]], "explain": "The pod itself starts fine; it crashes because its Redis dependency at 10.96.0.5:6379 refuses connections. The fix targets the cache endpoint or its service, not the pod.", "options": ["The pod is crashing because its Redis dependency is unreachable — investigate the cache service, not the pod", "The pod image is corrupt and must be rebuilt", "The node is out of memory and evicting pods", "The deployment needs more replicas"], "symptom": "One api pod has 12 restarts; logs show a Redis connection refused error."}, {"correct": 0, "evidence": [["kubectl get svc", "api-svc    ClusterIP   10.96.4.21   80/TCP   6d\nredis-svc  ClusterIP   10.96.4.99   6379/TCP   6d"], ["env dump", "REDIS_HOST=10.96.0.5  (stale; redis-svc moved to 10.96.4.99)"]], "explain": "Hardcoded IPs rot when services move. The durable fix is to reference redis-svc by DNS name so the platform resolves the current cluster IP automatically.", "options": ["REDIS_HOST is a stale hardcoded IP — point the app at the redis-svc DNS name instead", "Scale Redis to more replicas", "Delete the redis-svc service", "Increase the pod memory limit"], "symptom": "The configured Redis IP does not match any current service."}, {"correct": 0, "evidence": [["postmortem.txt", "Root cause: hardcoded service IP. Fix: use DNS names for all in-cluster dependencies; add a startup probe so bad config fails fast."]], "explain": "Startup probes and DNS-based service discovery turn this class of outage into a fast, obvious config error instead of a restart loop.", "options": ["Switch all in-cluster dependencies to DNS names and add a startup probe", "Pin every service to a static IP", "Disable liveness probes", "Run Redis outside the cluster"], "symptom": "Fix applied. How do you prevent the whole class of failure?"}], "title": "CrashLoopBackOff on the api pod"}, {"brief": "A teammate deploys by running commands in random order and wonders why routes 404. Put the OpenShift deployment flow in order.", "debrief": "Build the image, make it visible to the cluster, run it as a deployment, expose it inside the cluster, then create the route that publishes it externally. Each step depends on the last.", "difficulty": 1, "domain_id": "builds-imagestreams", "id": "oc-sim-deploy-order", "kind": "ordering", "points": 10, "steps": {"context": "Drag the steps into the order a correct OpenShift deployment follows.", "correct_order": [0, 2, 1, 3], "items": ["Build the container image", "Create the deployment", "Push the image to the registry", "Create the route to expose it externally"]}, "title": "Order the deployment flow"}, {"brief": "A route manifest for the web frontend fails review. Click the lines that are wrong (2 issues).", "debrief": "Routes must point at a real service name and a real service port, and TLS termination must be a valid mode. Typos here produce 503s that look like app failures.", "difficulty": 2, "domain_id": "routes-networking", "id": "oc-sim-route-review", "kind": "config-check", "points": 12, "steps": {"config": "apiVersion: route.openshift.io/v1\nkind: Route\nmetadata:\n  name: web\nspec:\n  host: web.apps.example.com\n  to:\n    kind: Service\n    name: web-frontend\n  port:\n    targetPort: 8080\n  tls:\n    termination: edgee", "find": 2, "issues": [{"description": "Route points at service 'web-frontend' but the service is named 'web-svc' — traffic would 503", "fix": "name: web-svc", "line": 9}, {"description": "'edgee' is not a valid TLS termination mode; the valid modes are edge, passthrough, reencrypt", "fix": "termination: edge", "line": 13}]}, "title": "Spot the route mistakes"}, {"brief": "A developer asks for production access to debug a live issue. You are the project admin. Decide the access grant.", "debrief": "Least privilege: read-only in the project, time-boxed, and never cluster-admin. Production debugging needs visibility, not control.", "difficulty": 3, "domain_id": "projects-rbac", "id": "oc-sim-access-branch", "kind": "branching", "points": 15, "steps": [{"choices": [{"feedback": "Cluster-admin is never the answer for debugging — it bypasses every guardrail.", "label": "Grant cluster-admin for the day", "next": "END", "outcome": "bad", "points": 0}, {"feedback": "Correct instinct — scope the grant to the project and the minimum verbs.", "label": "Grant a project-scoped role with get/list on pods and logs", "next": "s2", "points": 2}, {"feedback": "Denying outright blocks the incident response; there is a safe middle path.", "label": "Deny all access", "next": "END", "outcome": "bad", "points": 0}], "id": "s1", "text": "The developer needs to debug a production issue. What access do you grant?"}, {"choices": [{"feedback": "Correct — time-boxed, scoped, and reviewed. Least privilege with an audit trail.", "label": "Time-box the role binding to 4 hours and log the grant", "next": "END", "outcome": "good", "points": 2}, {"feedback": "Permanent grants accumulate into standing privilege — the opposite of least privilege.", "label": "Make the role binding permanent for convenience", "next": "END", "outcome": "bad", "points": 0}], "id": "s2", "text": "Scoped read access granted. How do you bound it?"}], "title": "Production access request"}], "consoleSims": [{"brief": "Deploy the web frontend to the team project using the OpenShift/Kubernetes dashboard form.", "console": "k8s-dashboard", "debrief": "Dashboards codify the same objects as YAML: a Deployment for pods, a replica count for availability, and an explicit project/namespace scope so workloads land in the right tenant.", "difficulty": 2, "domain_id": "projects-rbac", "id": "oc-console-deploy-1", "tasks": [{"hint": "Create a workload of type deployment.", "id": "t1", "instruction": "Create a new deployment in the dashboard.", "validate": {"action": "create", "params": {"name": "web", "type": "deployment"}}}, {"hint": "Set the replicas field to 2.", "id": "t2", "instruction": "Set the replica count to 2.", "validate": {"action": "set-field", "params": {"field": "replicas", "value": "2"}}}, {"hint": "Set the container image field.", "id": "t3", "instruction": "Set the container image to nginx:1.27.", "validate": {"action": "set-field", "params": {"field": "image", "value": "nginx:1.27"}}}, {"hint": "Click the deploy button to submit.", "id": "t4", "instruction": "Submit the deployment.", "validate": {"action": "click", "params": {"target": "deploy"}}}], "title": "Deploy via the dashboard"}, {"brief": "Scale the api deployment up to handle a traffic spike, then confirm the new replica count.", "console": "k8s-dashboard", "debrief": "Scaling changes desired state; the platform reconciles reality. Always verify the rollout actually reached the new count instead of assuming the click worked.", "difficulty": 2, "domain_id": "platform-concepts", "id": "oc-console-scale-1", "tasks": [{"hint": "Set the replicas field to 3 for the api deployment.", "id": "t1", "instruction": "Change the api deployment replica count to 3.", "validate": {"action": "set-field", "params": {"field": "api-replicas", "value": "3"}}}, {"hint": "Click the scale button.", "id": "t2", "instruction": "Apply the scaling change.", "validate": {"action": "click", "params": {"target": "scale"}}}, {"hint": "Click rollout status to verify.", "id": "t3", "instruction": "Verify the rollout completed.", "validate": {"action": "click", "params": {"target": "rollout-status"}}}], "title": "Scale the api deployment"}], "terminalMissions": [{"brief": "List the pods in the default project and confirm they are Running.", "checks": [{"command_pattern": "^kubectl\\s+get\\s+pods", "expect_contains": "Running", "hint": "Type: kubectl get pods"}], "difficulty": 1, "domain_id": "platform-concepts", "id": "openshift-mission-1", "objectives": ["Run kubectl get pods and read the STATUS column"], "success_message": "All default pods Running.", "title": "List the pods"}, {"brief": "Check the prod project for the 2/2-ready api pod.", "checks": [{"command_pattern": "^kubectl\\s+get\\s+pods", "expect_contains": "2/2", "hint": "Type: kubectl get pods -n prod"}], "difficulty": 1, "domain_id": "projects-rbac", "id": "openshift-mission-2", "objectives": ["List pods in the prod namespace", "Find the 2/2 READY pod"], "success_message": "Prod api pod found at 2/2.", "title": "Inspect the prod project"}, {"brief": "Describe an api pod and read its status, IP, and node.", "checks": [{"command_pattern": "^kubectl\\s+describe\\s+pod/api-7d9f8c6b4-x2kzq", "expect_contains": "Status:", "hint": "Type: kubectl describe pod/api-7d9f8c6b4-x2kzq"}], "difficulty": 2, "domain_id": "platform-concepts", "id": "openshift-mission-3", "objectives": ["Describe the pod", "Read Status, IP, and Node fields"], "success_message": "Pod described — Running on node-1.", "title": "Describe a pod"}, {"brief": "Pull the logs of an api pod and find the Redis error.", "checks": [{"command_pattern": "^kubectl\\s+logs\\s+api-7d9f8c6b4-x2kzq", "expect_contains": "connection refused", "hint": "Type: kubectl logs api-7d9f8c6b4-x2kzq"}], "difficulty": 2, "domain_id": "platform-concepts", "id": "openshift-mission-4", "objectives": ["Fetch pod logs", "Find the connection refused error"], "success_message": "Log error found — Redis refused the connection.", "title": "Read the pod logs"}, {"brief": "Apply a manifest and confirm the new deployment appears.", "checks": [{"command_pattern": "^kubectl\\s+apply", "expect_contains": "created", "hint": "Type: kubectl apply -f worker.yaml"}, {"command_pattern": "^kubectl\\s+get\\s+deploy", "expect_contains": "worker", "hint": "Type: kubectl get deployments"}], "difficulty": 3, "domain_id": "builds-imagestreams", "id": "openshift-mission-5", "objectives": ["Apply worker.yaml", "Confirm the worker deployment exists"], "success_message": "worker deployment applied and listed.", "title": "Apply a manifest"}, {"brief": "Switch to the staging context and confirm the switch.", "checks": [{"command_pattern": "^kubectl\\s+config\\s+use-context\\s+ilb-staging", "expect_contains": "Switched to context", "hint": "Type: kubectl config use-context ilb-staging"}, {"command_pattern": "^kubectl\\s+config\\s+current-context", "expect_contains": "ilb-staging", "hint": "Type: kubectl config current-context"}], "difficulty": 3, "domain_id": "projects-rbac", "id": "openshift-mission-6", "objectives": ["Switch context to ilb-staging", "Verify with current-context"], "success_message": "Now operating in ilb-staging.", "title": "Switch contexts"}], "media": [{"id": "openshift-platform-concepts-diag", "kind": "diagram", "title": "OpenShift Platform", "svg": "assets/diagrams/openshift-platform-concepts.svg", "lesson_ref": "c-platform-concepts", "caption": "Kubernetes plus enterprise opinion.", "alt": "OpenShift Platform. Tiers: Control plane, Compute, Workloads."}, {"id": "openshift-projects-rbac-diag", "kind": "diagram", "title": "Projects & RBAC", "svg": "assets/diagrams/openshift-projects-rbac.svg", "lesson_ref": "c-projects-rbac", "caption": "Projects are namespaces with guardrails.", "alt": "Projects & RBAC. Shows: Projects, Roles, Bindings, oc adm policy."}, {"id": "openshift-builds-imagestreams-diag", "kind": "diagram", "title": "Builds & ImageStreams", "svg": "assets/diagrams/openshift-builds-imagestreams.svg", "lesson_ref": "c-builds-imagestreams", "caption": "Source to runnable image, in-cluster.", "alt": "Builds & ImageStreams. Shows: BuildConfig, Source, Build, ImageStream, Deploy."}, {"id": "openshift-routes-networking-diag", "kind": "diagram", "title": "Route → Service → Pod", "svg": "assets/diagrams/openshift-routes-networking.svg", "lesson_ref": "c-routes-networking", "caption": "External traffic finds your app.", "alt": "Route → Service → Pod. Shows: External, Route, Service, Pod."}, {"id": "openshift-operators-diag", "kind": "diagram", "title": "Operators", "svg": "assets/diagrams/openshift-operators.svg", "lesson_ref": "c-operators", "caption": "Encode operational knowledge as code.", "alt": "Operators. Shows: OLM, CRDs, Reconcile loop, OperatorHub."}, {"id": "openshift-pipelines-diag", "kind": "diagram", "title": "OpenShift Pipelines (Tekton)", "svg": "assets/diagrams/openshift-pipelines.svg", "lesson_ref": "c-pipelines", "caption": "K8s-native CI as custom resources.", "alt": "OpenShift Pipelines (Tekton). Shows: Pipeline, Task, PipelineRun, Workspace, Trigger."}], "resources": {"cheatsheet": {"title": "OpenShift — Cheat Sheet", "sections": [{"heading": "Platform Concepts", "items": ["Platform model — openShift is Kubernetes plus an opinionated platform layer: SCCs (admission control on pod security — containers don't run as root by default), Routes for external access, BuildConfigs/ImageStreams for image workflows, and Operators managing the platform it…", "OpenShift vs Kubernetes — routes are OpenShift's native external-access object, served by the built-in router (HAProxy, managed by the Ingress Operator). OpenShift runs its core as Cluster Version Operator-managed operators so upgrades, config changes, and day-2 operations happen de…", "Projects — 'oc projects' lists the ones you can access.", "Routes — openShift also supports standard Ingress, but Routes predate it and add features like edge/passthrough/re-encrypt TLS termination modes.", "Common trap — openShift is byte-for-byte identical to upstream Kubernetes.", "Common trap — operators are only for third-party apps, never platform components.", "Common trap — UPI means Red Hat provisions it for you remotely.", "Common trap — oc expose is just an alias for kubectl's ingress creation.", "Read — Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."]}, {"heading": "Projects & RBAC", "items": ["RBAC — groups are first-class RBAC subjects: bind 'edit' to group 'team-a' once in the project, then manage membership centrally. OpenShift RBAC: 'oc adm policy add-role-to-user <role> <user> -n <project>' binds a namespaced Role (edit = full access within the pro…", "RoleBindings — clusterRoleBindings (cluster-admin) are cluster-wide — never for routine onboarding.", "SCCs are admission controllers — a Pod must be admittable by at least one SCC available to its service account.", "ResourceQuota caps aggregates per project (e.g., requests.cpu — 20, pods: 50) and rejects creations that would exceed them.", "LimitRange — LimitRange sets defaults and min/max per Pod/container so every container gets sane requests/limits.", "Common trap — add the anyuid SCC to the service account immediately.", "Common trap — one shared 'dev' user per team with the password in chat.", "Common trap — create a human user 'ci-bot' with a password in the pipeline.", "Common trap — oc adm policy add-cluster-role-to-user cluster-admin ana."]}, {"heading": "Builds & ImageStreams", "items": ["S2I — buildConfigs support strategies: Source (S2I injects code into a builder image), Docker (Dockerfile build), Custom. S2I looks for .s2i/bin/assemble (build) and .s2i/bin/run (runtime) in your source to override the builder's defaults, and .s2i/environment fo…", "BuildConfigs — BuildConfigs with binary source accept 'oc start-build <bc> --from-dir=.', --from-file, or --from-archive — uploading local content for the build without a git round-trip.", "Image triggers — triggers: webhook (GitHub/GitLab push → rebuild), image change (rebuild when base image updates), config change. Image change triggers fire when the watched ImageStreamTag updates.", "Binary builds — 'oc start-build' kicks off manual/binary builds. The BuildConfig must exist first (strategy docker or source with binary: {}).", "Common trap — imageStreams store the image bytes themselves.", "Common trap — edit the builder image in the registry directly.", "Common trap — environment variables aren't supported in S2I.", "Common trap — docker strategy with manual builds."]}, {"heading": "Routes & Networking", "items": ["Routes — label tenant Routes accordingly.", "TLS modes — edge (router terminates TLS, traffic to Pod is HTTP), passthrough (router passes TLS through to the Pod — Pod terminates), re-encrypt (router terminates then re-encrypts to the Pod). Passthrough: the router uses SNI to route without decrypting — the app Pod…", "Router sharding — this gives compliance isolation, per-shard tuning, and internal vs external router separation (the default internal/external pattern).", "IngressController — openShift supports multiple IngressControllers (router shards), each with namespaceSelector or routeSelector choosing which Routes/namespaces it serves.", "EgressIP — EgressIP allocates stable IPs from an admin-reserved pool to namespaces/Pods; outbound traffic from those workloads SNATs to the EgressIP (hosted on a chosen node, with failover).", "Outbound traffic — related: EgressFirewall for L3/L4 outbound rules per project.", "Common trap — use the router's default cert for Services too.", "Common trap — the router decrypts and re-encrypts, which satisfies 'no decryption'.", "Common trap — pod traffic always SNATs to the node IP.", "Common trap — the router decrypts but promises not to look."]}, {"heading": "Operators", "items": ["Operator pattern — MCO is the canonical platform operator: MachineConfig CRs declare node desired-state; the controller renders, applies, drains, and reboots nodes pool by pool — upgrades, config changes, and drift correction as reconciliation.", "CRD + controller — operator = running controller (continuous reconcile: detect failed primary → promote replica, run upgrade steps in order, schedule backups).", "OLM — channels are OLM's release streams per package: stable (vetted), fast (newer, less baked), candidate (pre-release).", "Subscriptions — Subscriptions pin a channel; moving channels is a deliberate upgrade action.", "CSV phases — Pending → InstallReady → Succeeded (or Failed).", "Common trap — operators replace Helm entirely.", "Common trap — install the operator YAML with oc apply.", "Common trap — operators are only for Red Hat products.", "Common trap — a shell script run by cron."]}, {"heading": "Pipelines", "items": ["Tekton — pipelines (Tekton) build and push; GitOps (Argo CD) deploys — the standard split: CI builds images, CD syncs desired state.", "Workspaces — Workspaces abstract shared storage (volumeClaimTemplate for dynamic PVCs). Workspaces are the named shared-storage contract: the Pipeline declares 'source' workspace; Tasks declare they need it (mountPath); the PipelineRun binds it (volumeClaimTemplate crea…", "Principle — tekton model: Task = reusable step template (or ClusterTask for shared), Pipeline = DAG of Tasks with params/results wiring, TaskRun/PipelineRun = executions.", "Common trap — add the cleanup as the last DAG Task.", "Common trap — install upstream Argo CD YAML manually.", "Common trap — write to a shared PVC path by convention.", "Common trap — tasks share a filesystem automatically."]}]}, "glossary": [{"term": "TLS", "def": "TLS modes: edge (router terminates TLS, traffic to Pod is HTTP), passthrough (router passes TLS through to the Pod — Pod terminates), re-encrypt (router terminates then re-encrypts to the Pod). Passthrough: the router uses SNI to route w…"}, {"term": "RBAC", "def": "RBAC: groups are first-class RBAC subjects: bind 'edit' to group 'team-a' once in the project, then manage membership centrally. OpenShift RBAC: 'oc adm policy add-role-to-user <role> <user> -n <project>' binds a namespaced Role (edit =…"}, {"term": "OpenShift", "def": "OpenShift vs Kubernetes: routes are OpenShift's native external-access object, served by the built-in router (HAProxy, managed by the Ingress Operator). OpenShift runs its core as Cluster Version Operator-managed operators so upgrades, c…"}, {"term": "API", "def": "An operator = CustomResourceDefinition (the desired-state API) + controller (the reconcile loop). OpenShift runs its core as Cluster Version Operator-managed operators so upgrades, config changes, and day-2 operations happen declarativel…"}, {"term": "OLM", "def": "OLM: channels are OLM's release streams per package: stable (vetted), fast (newer, less baked), candidate (pre-release)."}, {"term": "Routes", "def": "Routes: openShift also supports standard Ingress, but Routes predate it and add features like edge/passthrough/re-encrypt TLS termination modes."}, {"term": "Pod", "def": "TLS modes: edge (router terminates TLS, traffic to Pod is HTTP), passthrough (router passes TLS through to the Pod — Pod terminates), re-encrypt (router terminates then re-encrypts to the Pod). Passthrough: the router uses SNI to route w…"}, {"term": "MCO", "def": "Operator pattern: MCO is the canonical platform operator: MachineConfig CRs declare node desired-state; the controller renders, applies, drains, and reboots nodes pool by pool — upgrades, config changes, and drift correction as reconcili…"}, {"term": "CSV", "def": "CSV phases: Pending → InstallReady → Succeeded (or Failed). Pending usually means OLM can't satisfy requirements: required CRDs not present, insufficient RBAC, no matching OperatorGroup, or version conflicts."}, {"term": "Kubernetes", "def": "OpenShift vs Kubernetes: routes are OpenShift's native external-access object, served by the built-in router (HAProxy, managed by the Ingress Operator). OpenShift runs its core as Cluster Version Operator-managed operators so upgrades, c…"}, {"term": "CI", "def": "Tekton model: Task = reusable step template (or ClusterTask for shared), Pipeline = DAG of Tasks with params/results wiring, TaskRun/PipelineRun = executions. Workspaces abstract shared storage (volumeClaimTemplate for dynamic PVCs)."}, {"term": "CD", "def": "Tekton model: Task = reusable step template (or ClusterTask for shared), Pipeline = DAG of Tasks with params/results wiring, TaskRun/PipelineRun = executions. Workspaces abstract shared storage (volumeClaimTemplate for dynamic PVCs)."}, {"term": "SSH", "def": "RHEL CoreOS is an immutable container-optimized OS: /usr is read-only and the system is managed as a unit. The Machine Config Operator applies MachineConfig CRs (files, systemd units, kernel args) across machine pools, draining and reboo…"}, {"term": "Pods", "def": "'oc create secret docker-registry' makes the credential Secret; linking it to the 'builder' SA with --for=pull attaches it to build Pods' imagePullSecrets. (--for=mount is for pushing.) The integrated registry is pre-authenticated; exter…"}, {"term": "S2I", "def": "S2I: buildConfigs support strategies: Source (S2I injects code into a builder image), Docker (Dockerfile build), Custom. S2I looks for .s2i/bin/assemble (build) and .s2i/bin/run (runtime) in your source to override the builder's defaults…"}, {"term": "UPI", "def": "Common trap: UPI means Red Hat provisions it for you remotely."}, {"term": "SCCs", "def": "SCCs are admission controllers: a Pod must be admittable by at least one SCC available to its service account."}, {"term": "Operator", "def": "Operator pattern: MCO is the canonical platform operator: MachineConfig CRs declare node desired-state; the controller renders, applies, drains, and reboots nodes pool by pool — upgrades, config changes, and drift correction as reconcili…"}, {"term": "BuildConfigs", "def": "BuildConfigs support strategies: Source (S2I injects code into a builder image), Docker (Dockerfile build), Custom. Triggers: webhook (GitHub/GitLab push → rebuild), image change (rebuild when base image updates), config change."}, {"term": "Tekton", "def": "Tekton: pipelines (Tekton) build and push; GitOps (Argo CD) deploys — the standard split: CI builds images, CD syncs desired state."}, {"term": "Workspaces", "def": "Workspaces abstract shared storage (volumeClaimTemplate for dynamic PVCs). Workspaces are the named shared-storage contract: the Pipeline declares 'source' workspace; Tasks declare they need it (mountPath); the PipelineRun binds it (volu…"}, {"term": "Argo CD", "def": "Which operator packages Argo CD for OpenShift?"}, {"term": "MachineConfig CRs", "def": "MCO is the canonical platform operator: MachineConfig CRs declare node desired-state; the controller renders, applies, drains, and reboots nodes pool by pool — upgrades, config changes, and drift correction as reconciliation. Same patter…"}, {"term": "OS", "def": "RHEL CoreOS is an immutable container-optimized OS: /usr is read-only and the system is managed as a unit. The Machine Config Operator applies MachineConfig CRs (files, systemd units, kernel args) across machine pools, draining and reboo…"}, {"term": "CA", "def": "OpenShift runs an internal service CA: annotating a Service auto-provisions a Secret with a serving certificate (rotated automatically), and the CA bundle is injectable into client Pods via the service-ca ConfigMap annotation. It covers…"}], "links": [{"label": "Red Hat — official site", "url": "https://www.redhat.com", "note": "Official vendor documentation and certification information"}, {"label": "Kubernetes documentation", "url": "https://kubernetes.io/docs/home/", "note": "Official Kubernetes docs"}, {"label": "Kubernetes API reference", "url": "https://kubernetes.io/docs/reference/", "note": "Official API reference"}, {"label": "Cloud Native Computing Foundation", "url": "https://www.cncf.io/", "note": "Cloud-native project home"}, {"label": "Red Hat training and certification", "url": "https://www.redhat.com/en/services/training-and-certification", "note": "Official Red Hat training"}], "checklist": ["Get 7–8 hours of sleep the night before — fatigue destroys recall faster than any topic gap.", "Bring valid government-issued photo ID and arrive at the test center 30 minutes early.", "Eat a real meal beforehand; bring water and a light snack if the center allows them.", "Read every question twice before scanning the answer choices.", "Flag uncertain questions and move on — return with fresh eyes at the end.", "Eliminate the obviously wrong answers first, then compare the survivors.", "Budget your time: answer steadily and keep a 10–15 minute review buffer.", "Re-run your weakest-domain drill until mastery is at least 80%.", "For Platform Concepts: restate the 'why' behind each scenario answer in your own words — if you can't explain it, you don't own it.", "Redo one Projects & RBAC lab from scratch without looking at the steps.", "Recite the key Builds & ImageStreams terms from the glossary aloud from memory."]}}
+{
+ "slug": "openshift",
+ "title": "OpenShift",
+ "tagline": "Red Hat's Kubernetes distribution: routes for external traffic, source-to-image builds, operators, security context constraints, and pipeline delivery. Independent training content; this course confer",
+ "vendor": {
+  "name": "Independent interview prep (not affiliated with ThreatLocker)",
+  "certs": "",
+  "docs": "https://www.threatlocker.com"
+ },
+ "disclaimer": "Independent interview-prep material by Interstitium Labs. Not affiliated with, endorsed by, or sponsored by ThreatLocker or any vendor mentioned. Confers no certificate. All scenarios are original practice content; no exam or vendor-training content is reproduced.",
+ "accent": "#e5484d",
+ "domains": [
+  {
+   "id": "openshift",
+   "name": "OpenShift",
+   "summary": "Red Hat's Kubernetes distribution: routes for external traffic, source-to-image builds, operators, security context constraints, and pipeline delivery. Independent training content; this course confers no certificate.",
+   "scenarios": [
+    {
+     "id": "openshift-sc1",
+     "title": "Route vs Service",
+     "situation": "An app is reachable inside the cluster via its Service, but external users get nothing. A teammate suggests creating a NodePort Service and giving out node IPs.",
+     "prompt": "What is the idiomatic OpenShift approach?",
+     "evidence": [
+      [
+       "oc get svc web",
+       "NAME   TYPE        CLUSTER-IP\nweb    ClusterIP   172.30.0.44"
+      ]
+     ],
+     "choices": [
+      "Expose the Service with an OpenShift Route (`oc expose svc/web`) — Routes are the platform's L7 ingress mechanism with hostname-based routing and TLS termination, replacing the need for manual NodePort/IP management",
+      "NodePort is correct; Routes are only for internal traffic",
+      "Change the Service to `type: LoadBalancer` and wait for the cloud provider",
+      "Add an `externalIPs` entry pointing at a node address"
+     ],
+     "answer": 0,
+     "why": "OpenShift Routes are the first-class way to expose HTTP(S) services externally: the router (HAProxy-based) maps hostnames to Services, handles TLS edge/re-encrypt/passthrough termination, and needs no node IPs or cloud load balancers. NodePort with raw node IPs is fragile and bypasses the platform's routing layer.",
+     "hint": "What OpenShift object exists specifically to map a public hostname to a Service?",
+     "objectives": [
+      "routes",
+      "exposing services",
+      "TLS termination"
+     ],
+     "mins": 5,
+     "difficulty": 1
+    },
+    {
+     "id": "openshift-sc2",
+     "title": "BuildConfig Fails on npm",
+     "situation": "An S2I (source-to-image) BuildConfig fails during the assemble phase with `npm ERR! code EACCES` writing to the cache directory.",
+     "prompt": "What is the most likely root cause?",
+     "evidence": [
+      [
+       "oc logs bc/web",
+       "STEP: npm ci\nnpm ERR! code EACCES\nnpm ERR! syscall mkdir\nnpm ERR! path /opt/app-root/.npm"
+      ]
+     ],
+     "choices": [
+      "The builder image runs as an arbitrary UID (OpenShift's default SCC behavior) and the S2I scripts expect a writable home — set `HOME` to a writable dir or use an image/assemble script prepared for arbitrary user IDs",
+      "S2I builds cannot run npm; switch to a Docker build strategy",
+      "The Git repository needs to be public for the builder to clone it",
+      "Increase the build pod's memory limit; EACCES is caused by memory pressure"
+     ],
+     "answer": 0,
+     "why": "OpenShift runs containers with arbitrary UIDs by default (restricted SCC), so builder images must not assume a fixed UID with a pre-created home. The `EACCES` on `.npm` means npm's cache dir isn't writable for the assigned UID. Fixes: point `NPM_CONFIG_CACHE`/`HOME` at a writable path, or use S2I images built for arbitrary UIDs.",
+     "hint": "Who is running the build — a named user, or an arbitrary UID? What does that imply for home directories?",
+     "objectives": [
+      "buildconfigs",
+      "S2I",
+      "arbitrary UIDs"
+     ],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "openshift-sc3",
+     "title": "Pod Rejected by SCC",
+     "situation": "A pod from an upstream Helm chart fails to create: `unable to validate against any security context constraint: [spec.containers[0].securityContext.runAsUser: Invalid value: 0: must be in the ranges allocated]`.",
+     "prompt": "What is the right fix?",
+     "evidence": [
+      [
+       "oc describe scc restricted",
+       "runAsUser:\n  type: MustRunAsRange\n  uidRangeMin: 1000600000"
+      ],
+      [
+       "pod spec",
+       "securityContext:\n  runAsUser: 0"
+      ]
+     ],
+     "choices": [
+      "Remove the `runAsUser: 0` (root) requirement — the restricted SCC forbids root; either run as the assigned UID range or grant a less restrictive SCC to the pod's service account only if the workload genuinely needs it",
+      "Grant the `anyuid` SCC to the `default` service account in every namespace",
+      "Edit the `restricted` SCC to allow UID 0 cluster-wide",
+      "Add `privileged: true`; SCC validation is skipped for privileged pods"
+     ],
+     "answer": 0,
+     "why": "SCCs are admission control: the restricted SCC (default for authenticated users) requires non-root UIDs from the namespace's allocated range. Running as root needs the `anyuid` SCC granted deliberately to a specific service account — never by loosening the default SCC or granting anyuid broadly. The first fix is to make the workload rootless, which most apps can do.",
+     "hint": "The cluster is telling you exactly which value is illegal. Is root actually required by this app, or just assumed by the chart?",
+     "objectives": [
+      "SCCs",
+      "security contexts",
+      "admission control"
+     ],
+     "mins": 7,
+     "difficulty": 2
+    },
+    {
+     "id": "openshift-sc4",
+     "title": "Operator Stuck Upgrading",
+     "situation": "After approving an Operator upgrade via OLM, the new CSV stays `Pending` and the old version keeps running. `oc get csv` shows `INSTALLPLAN FAILED: no operators found`.",
+     "prompt": "What should you check first?",
+     "evidence": [
+      [
+       "oc get ip -n operators",
+       "NAME   CSV   APPROVAL   APPROVED\ninstall-x  myop.v2  Manual     false"
+      ],
+      [
+       "oc get csv",
+       "myop.v1   Succeeded\nmyop.v2   Pending"
+      ]
+     ],
+     "choices": [
+      "The InstallPlan requires manual approval (`APPROVED: false`) — approve it with `oc patch installplan <name> --type merge -p '{\"spec\":{\"approved\":true}}'` or set the Subscription's `installPlanApproval` to Automatic",
+      "Delete the old CSV; OLM cannot run two CSVs and the old one blocks the new",
+      "The Operator catalog source is down; mirror the entire catalog to the cluster",
+      "Operators upgrade themselves; wait 24 hours for the automatic retry"
+     ],
+     "answer": 0,
+     "why": "OLM with manual approval pauses upgrades at the InstallPlan until a human approves — `APPROVED: false` is the smoking gun. This is by design for controlled rollouts. Approving the plan (or switching the Subscription to Automatic) lets OLM proceed. Deleting the old CSV would break the running operator.",
+     "hint": "Read the InstallPlan row carefully. What does APPROVED say, and what does the Subscription's approval mode imply?",
+     "objectives": [
+      "operators",
+      "OLM",
+      "installplans"
+     ],
+     "mins": 7,
+     "difficulty": 1
+    },
+    {
+     "id": "openshift-sc5",
+     "title": "ImageStream Tag Drift",
+     "situation": "A DeploymentConfig triggers on the `latest` ImageStreamTag. After pushing a fixed image to the external registry, the app redeploys — but with the OLD image. `oc describe imagestream app` shows the tag still points at the previous digest.",
+     "prompt": "What is the correct remediation?",
+     "evidence": [
+      [
+       "oc get istag app:latest -o yaml",
+       "image: sha256:aaaa...  # old digest\ntag:\n  from:\n    kind: DockerImage\n    name: registry.example.com/team/app:latest"
+      ],
+      [
+       "oc describe is app",
+       "scheduled: false"
+      ]
+     ],
+     "choices": [
+      "Import the new image (`oc import-image app:latest` or enable `scheduled: true` / `importPolicy.scheduled`) — ImageStreamTags pointing at external registries are only refreshed on import, not by registry pushes",
+      "Delete the ImageStream and recreate it; tags cache forever",
+      "Change the DeploymentConfig trigger to poll the registry directly",
+      "Push with a new tag name each time; `latest` is immutable in OpenShift"
+     ],
+     "answer": 0,
+     "why": "An ImageStreamTag referencing an external DockerImage is a snapshot: OpenShift resolves it at import time and caches the digest. Pushing a new `latest` to the external registry changes nothing in the cluster until `oc import-image` re-resolves the tag (or scheduled imports are enabled). The DeploymentConfig then fires on the updated tag.",
+     "hint": "Who told the cluster that the registry's `latest` changed? Nobody — so how does the cluster find out?",
+     "objectives": [
+      "imagestreams",
+      "deployment triggers",
+      "image imports"
+     ],
+     "mins": 8,
+     "difficulty": 3
+    },
+    {
+     "id": "openshift-sc6",
+     "title": "Pipeline Needs Cluster Permissions",
+     "situation": "A Tekton PipelineRun fails at the deploy task: `services is forbidden: User \"system:serviceaccount:ci:pipeline\" cannot create services in namespace \"prod\"`. The pipeline SA has edit rights in `ci` but nothing in `prod`.",
+     "prompt": "What is the secure fix?",
+     "evidence": [
+      [
+       "oc adm policy who-can create services -n prod",
+       "pipeline SA: no"
+      ],
+      [
+       "pipeline serviceaccount",
+       "name: pipeline\nnamespace: ci"
+      ]
+     ],
+     "choices": [
+      "Grant the pipeline's service account a Role/RoleBinding in `prod` limited to exactly the verbs/resources the deploy task needs (least privilege, scoped to the target namespace)",
+      "Bind `cluster-admin` to the pipeline SA; pipelines must be omnipotent to be useful",
+      "Run the PipelineRun in the `prod` namespace instead; namespace of the SA determines permissions",
+      "Add the SA to the `system:masters` group via the OAuth config"
+     ],
+     "answer": 0,
+     "why": "Cross-namespace deployment is normal for pipelines, but the grant must be explicit and minimal: a Role in `prod` with only the needed verbs, bound to the pipeline SA. Broad grants (cluster-admin, system:masters) turn a compromised pipeline into a cluster compromise. The SA's home namespace is irrelevant to what it can do elsewhere — bindings decide.",
+     "hint": "The pipeline legitimately needs to write to prod. How do you give it exactly that — and nothing more?",
+     "objectives": [
+      "pipelines",
+      "RBAC",
+      "least privilege"
+     ],
+     "mins": 8,
+     "difficulty": 3
+    }
+   ]
+  }
+ ],
+ "lessons": [
+  {
+   "domain_id": "openshift",
+   "title": "OpenShift — Core concepts",
+   "concepts": [
+    "Routes are OpenShift's L7 ingress: the router maps public hostnames to Services with edge, re-encrypt, or passthrough TLS termination — no manual NodePort or node IPs needed.",
+    "BuildConfigs turn source into images inside the cluster. S2I (source-to-image) assembles code into a builder image; builds run as arbitrary UIDs, so images must not assume a fixed user or home.",
+    "Security Context Constraints are admission control: the restricted SCC (default) forbids root and requires UIDs from the namespace's allocated range. Running as root needs an explicit, narrowly-scoped SCC grant.",
+    "Operators extend the cluster via OLM: Subscriptions track channels, InstallPlans stage CSV upgrades (manual approval pauses for human sign-off), and CRDs define the custom APIs.",
+    "ImageStreams are local references to image digests; tags pointing at external registries only refresh on `oc import-image` (or scheduled imports) — registry pushes alone don't update the cluster."
+   ],
+   "example": {
+    "lang": "shell",
+    "code": "oc new-project demo\noc new-app https://github.com/example/app.git\noc expose svc/app --hostname=app.apps.cluster.example.com\noc get routes",
+    "walkthrough": "The classic OpenShift flow: create a project, build from source with S2I, expose via a Route. Three commands from git repo to public URL — that's the platform's value proposition."
+   },
+   "pitfalls": [
+    "Common trap: upstream Helm charts that run as root — they fail SCC admission; remove runAsUser: 0 or grant anyuid narrowly.",
+    "Common trap: expecting `latest` ImageStreamTags to track registry pushes without import-image or scheduled imports.",
+    "Common trap: manual-approval Subscriptions silently stalling upgrades at the InstallPlan.",
+    "Common trap: granting anyuid to the default service account broadly instead of the one SA that needs it."
+   ],
+   "try_it": "Work through this in the Labs tab."
+  },
+  {
+   "domain_id": "openshift",
+   "title": "OpenShift Core Concepts — Projects, Builds, Routes",
+   "concepts": [
+    "A Project is OpenShift's namespaced tenancy boundary: `oc new-project` wraps a Kubernetes namespace with additional annotations and resource controls; most `oc` commands operate in the current project context.",
+    "BuildConfigs and ImageStreams automate image builds inside the cluster: a BuildConfig (source-to-image, Docker, or pipeline strategy) produces images that land in an ImageStream, and Deployments trigger on ImageStream tag changes.",
+    "A Route is OpenShift's Ingress equivalent with first-class TLS: `oc expose svc/api` creates a Route, and edge/reencrypt/passthrough termination modes control where TLS ends.",
+    "SecurityContextConstraints (SCCs) are the admission gate: pods are checked against SCCs at admission, and the default `restricted` SCC blocks running as root — the classic cause of 'pod rejected' errors for charts written for vanilla Kubernetes.",
+    "The `oc` CLI is kubectl plus OpenShift verbs: `oc new-app`, `oc start-build`, `oc rollout`, and `oc adm policy` cover the PaaS workflows that plain kubectl doesn't."
+   ],
+   "example": {
+    "lang": "shell",
+    "code": "oc new-project shop\noc new-app --name=api https://github.com/acme/api --strategy=source\noc start-build api --follow\noc expose svc/api --hostname=api.example.com\noc get route api -o yaml | grep -A3 tls:",
+    "walkthrough": "Create an isolated project, build from source with S2I, follow the build logs, expose the service through a Route with a custom hostname, and verify the TLS termination settings. This is the core OpenShift deploy loop."
+   },
+   "pitfalls": [
+    "Common trap: applying vanilla Kubernetes YAML that runs as root — the restricted SCC rejects it; set runAsNonRoot / drop capabilities or request the right SCC.",
+    "Common trap: expecting an Ingress controller — OpenShift uses Routes; an Ingress object without the ingress controller configured does nothing.",
+    "Common trap: `oc expose` on the wrong Service port — the Route targets the Service port, not the container port; check `oc describe svc` first.",
+    "Common trap: ImageStream tag drift — `:latest` in an ImageStream follows new builds; pin tags or trigger policies when you need immutable deploys."
+   ],
+   "try_it": "Work through this in the Labs tab."
+  }
+ ],
+ "labs": [
+  {
+   "id": "openshift-lab1",
+   "domain_id": "openshift",
+   "title": "Source to Route in Three Commands",
+   "objective": "Take a git repo to a public HTTPS route using S2I builds and OpenShift Routes.",
+   "steps": [
+    "Create a project: `oc new-project s2i-demo`.",
+    "Build from source: `oc new-app https://github.com/openshift/nodejs-ex --name=hello`.",
+    "Follow the build with `oc logs -f bc/hello` until the image push completes.",
+    "Expose it: `oc expose svc/hello` and fetch the route hostname with `oc get route hello`.",
+    "Curl the route over HTTPS and confirm the app responds; then trigger a rebuild with `oc start-build hello`."
+   ],
+   "checks": [
+    {
+     "command_pattern": "^oc\\s+get\\s+route",
+     "expect_contains": "hello",
+     "hint": "List routes and find the hostname."
+    },
+    {
+     "command_pattern": "^oc\\s+get\\s+build",
+     "expect_contains": "Complete",
+     "hint": "Check that the build finished successfully."
+    }
+   ]
+  },
+  {
+   "id": "openshift-lab2",
+   "domain_id": "openshift",
+   "title": "SCC: Run Rootless or Grant Narrowly",
+   "objective": "Fix an SCC admission rejection by making a workload run as an arbitrary UID instead of root.",
+   "steps": [
+    "Try to apply the provided root-requiring pod manifest and capture the SCC denial message.",
+    "Remove `runAsUser: 0` from the pod's securityContext (and ensure the image supports arbitrary UIDs).",
+    "Re-apply and confirm the pod is admitted and running under an assigned UID (`oc exec <pod> -- id`).",
+    "For contrast, create a dedicated service account and grant it `anyuid` ONLY in this project — then revoke it.",
+    "Document in one sentence when a narrow anyuid grant is justified versus fixing the image."
+   ],
+   "checks": [
+    {
+     "command_pattern": "^oc\\s+get\\s+pod",
+     "expect_contains": "Running",
+     "hint": "Confirm the fixed pod runs."
+    },
+    {
+     "command_pattern": "^oc\\s+exec",
+     "expect_contains": "uid=",
+     "hint": "Exec `id` in the pod and check the UID is non-root."
+    }
+   ]
+  },
+  {
+   "id": "openshift-lab3",
+   "domain_id": "openshift",
+   "title": "Deploy with the oc CLI",
+   "objective": "Deploy an application end-to-end using oc: project, new-app build, and rollout verification.",
+   "steps": [
+    "Create an isolated project: `oc new-project lab-shop`.",
+    "Deploy from source: `oc new-app --name=api <git-url> --strategy=source` and follow the build with `oc start-build api --follow` (or `oc logs -f bc/api`).",
+    "Verify the ImageStream received the built image: `oc get is api`.",
+    "Check the rollout: `oc rollout status deploy/api` until complete.",
+    "Confirm the pods run under the restricted SCC: `oc get pod <pod> -o yaml | grep -i scc`."
+   ],
+   "checks": [
+    {
+     "command_pattern": "^oc\\s+get\\s+is",
+     "expect_contains": "api",
+     "hint": "List the ImageStreams — did the build push the image?"
+    },
+    {
+     "command_pattern": "^oc\\s+rollout\\s+status",
+     "expect_contains": "successfully rolled out",
+     "hint": "Check rollout status for the success message."
+    }
+   ]
+  },
+  {
+   "id": "openshift-lab4",
+   "domain_id": "openshift",
+   "title": "Routes and TLS Termination",
+   "objective": "Expose a Service through a Route and configure edge TLS termination.",
+   "steps": [
+    "Expose the service: `oc expose svc/api --hostname=api.lab.example.com`.",
+    "Inspect the Route: `oc get route api -o yaml` and note the default termination.",
+    "Set edge termination with a redirect: `oc patch route api --type=merge -p '{\"spec\":{\"tls\":{\"termination\":\"edge\",\"insecureEdgeTerminationPolicy\":\"Redirect\"}}}'`.",
+    "Verify: `oc describe route api` shows edge termination and the redirect policy.",
+    "Test reachability: `curl -sI https://api.lab.example.com` (in the lab sandbox)."
+   ],
+   "checks": [
+    {
+     "command_pattern": "^oc\\s+get\\s+route",
+     "expect_contains": "api.lab.example.com",
+     "hint": "List the routes — is your hostname there?"
+    },
+    {
+     "command_pattern": "^oc\\s+describe\\s+route",
+     "expect_contains": "Edge",
+     "hint": "Describe the route and check the TLS termination type."
+    }
+   ]
+  }
+ ],
+ "simulations": [],
+ "consoleSims": [],
+ "terminalMissions": [],
+ "sections": [
+  {
+   "id": "sec-full-spectrum",
+   "title": "Full Spectrum Dominance — core path",
+   "kind": "core",
+   "lectures": [],
+   "lab_ids": [
+    "fsd-tl-lab-1",
+    "fsd-tl-lab-2",
+    "fsd-tl-lab-3",
+    "fsd-sg-lab-1",
+    "fsd-sg-lab-2",
+    "fsd-sg-lab-3",
+    "fsd-ai-lab-1",
+    "fsd-ai-lab-2",
+    "fsd-ai-lab-3"
+   ],
+   "drill_domain_ids": [
+    "tl-interview",
+    "tl-endpoint-ops",
+    "sec-graphs",
+    "graph-defense",
+    "ml-defense",
+    "ai-agent-sec"
+   ]
+  }
+ ],
+ "behavioral": [
+  {
+   "prompt": "Tell me about the most technically difficult problem you have run into — a homelab, a broken environment, anything — and how you solved it.",
+   "framework": "STAR",
+   "points": [
+    "Pick ONE problem with a real evidence trail: the symptom, what you measured, the hypothesis you tested",
+    "Show the loop: scope, observe, hypothesize, smallest safe change, validate — interviewers score the method, not just the fix",
+    "Name the tools (VM build, networking, logs) and the lesson it taught you",
+    "Close with the result in concrete terms: what works now that did not before"
+   ],
+   "pitfalls": [
+    "Choosing a story with no real obstacle (“I Googled it” is not a story)",
+    "Skipping validation — saying it worked without proving it",
+    "Rambling past two minutes without reaching the result"
+   ]
+  },
+  {
+   "prompt": "Tell me about a time you dealt with a frustrated customer or user while something was broken.",
+   "framework": "STAR",
+   "points": [
+    "Lead with empathy and ownership: acknowledge the impact before the technical detail",
+    "Show translation: what you told them, in their language, plus the timeline you committed to",
+    "Show judgment: the narrow fix you chose and what you refused to do (e.g., disabling the control to clear the symptom)",
+    "Close with the relationship outcome, not just the technical one"
+   ],
+   "pitfalls": [
+    "Badmouthing the customer to sound decisive",
+    "Promising a timeline you could not keep",
+    "Framing the user as the problem rather than the situation"
+   ]
+  },
+  {
+   "prompt": "Why ThreatLocker, and why cybersecurity?",
+   "framework": "STAR",
+   "points": [
+    "Connect prevention to something concrete: a moment you saw detection arrive too late, or a system you hardened",
+    "Tie their model to your instincts: deny-by-default matches how you already think about trust",
+    "Show service orientation: the Cyber Hero culture rewards the 2 a.m. helper — give an example of being one",
+    "Name one forward-looking reason: Zero Trust, the MSP mission, or the bootcamp community investment"
+   ],
+   "pitfalls": [
+    "Generic flattery with no specifics about the company",
+    "Leading with compensation, title, or location convenience",
+    "Claiming expertise in products you have only read about — frame it as studied, not mastered"
+   ]
+  },
+  {
+   "framework": "STAR",
+   "pitfalls": [
+    "Staying vague ('I analyzed the data') instead of naming what you connected.",
+    "Skipping your own role: what did YOU see that others missed?",
+    "No outcome: what changed because you joined the dots?"
+   ],
+   "points": [
+    "The scattered signals and why nobody had connected them yet",
+    "The specific links you drew between them (shared host, time, infrastructure)",
+    "What the bigger picture turned out to be and what action it drove",
+    "What the experience taught you about investigating"
+   ],
+   "prompt": "Tell me about a time you connected scattered clues into a bigger picture that others had missed."
+  },
+  {
+   "framework": "STAR",
+   "pitfalls": [
+    "Claiming you fixed everything: credibility comes from trade-offs, not heroics.",
+    "Hiding the constraint: the limitation is what makes the prioritization story real.",
+    "No metric: 'better' needs a before-and-after."
+   ],
+   "points": [
+    "The constraint (time, budget, staff) and the size of the backlog",
+    "How you decided what mattered most (what was reachable, what was critical)",
+    "What you did first and what you deliberately deferred",
+    "The measurable result of the prioritization"
+   ],
+   "prompt": "Describe a time you had to prioritize risks or fixes with limited time or resources. How did you decide what came first?"
+  },
+  {
+   "framework": "STAR",
+   "pitfalls": [
+    "Reciting jargon to a non-technical audience and calling it communication.",
+    "Skipping the audience's reaction: did they actually understand and act?",
+    "Making yourself the hero instead of the translator."
+   ],
+   "points": [
+    "The technical finding and why it mattered",
+    "Who the audience was and what they cared about",
+    "How you reframed it (a picture, an analogy, a story)",
+    "What decision or action the audience took because they understood"
+   ],
+   "prompt": "Tell me about a time you explained a complex technical finding to a non-technical audience and it changed a decision."
+  },
+  {
+   "prompt": "Tell me about a time you used automation or AI to solve a security problem.",
+   "framework": "STAR",
+   "points": [
+    "The repetitive security task and what it cost in analyst time",
+    "The automation or AI approach you built and how you validated it",
+    "Measured outcome: time saved, detection gained, false positives changed"
+   ],
+   "pitfalls": [
+    "Describing the tool but never the validation",
+    "No measurable outcome"
+   ]
+  },
+  {
+   "prompt": "Describe a time you had to decide whether to trust an automated security decision.",
+   "framework": "STAR",
+   "points": [
+    "The stakes of the automated action and its blast radius",
+    "How you verified before acting (or the gate you built)",
+    "What happened and what you would automate differently next time"
+   ],
+   "pitfalls": [
+    "Saying you always trust the tool",
+    "No mention of blast radius or reversibility"
+   ]
+  }
+ ],
+ "resources": {
+  "cheatsheet": {
+   "title": "Full Spectrum Dominance — field reference",
+   "sections": [
+    {
+     "heading": "Company facts (verified)",
+     "items": [
+      "Founded 2017 in Orlando, FL — Danny Jenkins (CEO), Sami Jenkins (COO), John Carolan (QA)",
+      "Philosophy: deny-by-default / default-deny — approve known-good, deny the rest",
+      "Customers: 70,000+ organizations, sold heavily through the MSP channel",
+      "Funding: $190M Series F, July 2026 (Elephant-led); ~730 employees",
+      "Interview address: 1901 Summit Tower Blvd, Orlando, FL 32810",
+      "Culture: in-office 5 days/week; free lunch; post-offer background + drug screening"
+     ]
+    },
+    {
+     "heading": "Product stack",
+     "items": [
+      "Allowlisting — default-deny execution control for apps, DLLs, scripts, installers",
+      "Ringfencing — constrains allowed apps: app-to-app, file, registry, network",
+      "Storage Control — USB/device policy by serial, user, file type, encryption",
+      "Elevation Control — just-in-time per-app admin, no standing rights",
+      "Network Control — host firewall; port/IP/dynamic-ACL rules; ZTNA foundation",
+      "Web Control — agent-based DNS/URL category filtering, works off-network",
+      "Cyber Hero MDR — 24/7/365 US-based response, ~60-second average",
+      "Testing Environment — one-button VDI sandbox; checks AV flags, canary files, registry changes"
+     ]
+    },
+    {
+     "heading": "Rule strength (strongest to weakest)",
+     "items": [
+      "Certificate/publisher rules — survive version updates",
+      "Hash rules — precise but break on every new version",
+      "Path rules — weakest; never in user-writable locations",
+      "Learning Mode catalogs before enforcement; Installation Mode pauses blocking — scope and time-box both"
+     ]
+    },
+    {
+     "heading": "Terminal evidence commands",
+     "items": [
+      "nmap <host> — which ports answer (22/80/443 open)",
+      "dig <name> — ANSWER SECTION with the A record",
+      "ss — listening sockets",
+      "systemctl status <svc> — unit state",
+      "journalctl -u <svc> — service logs",
+      "sha256sum <file> — real SHA-256 identity",
+      "grep <pattern> <file> — search the record",
+      "ps — what is actually running"
+     ]
+    },
+    {
+     "heading": "Graph vocabulary",
+     "items": [
+      "node — any entity tracked in the model (user, host, IP, domain, file hash, vulnerability)",
+      "edge — a labeled relationship between two nodes (logged into, resolved to, downloaded)",
+      "degree — number of edges on a node; high-degree nodes are attacker highways",
+      "centrality — how much traffic or how many paths flow through a node",
+      "directed edge — a relationship with a direction (A downloaded FROM B)",
+      "security graph — the living model of your whole environment as nodes and edges",
+      "attack graph — the subgraph of exploitable paths to your targets",
+      "knowledge graph — threat-intel indicators linked to campaigns and actors"
+     ]
+    },
+    {
+     "heading": "Attack-graph playbook",
+     "items": [
+      "inventory first — you cannot graph what you have not discovered",
+      "model flaws AND misconfigs as exploit edges",
+      "compute shortest paths to the crown jewels",
+      "find the choke point (highest betweenness on those paths)",
+      "break the path: patch, segment, or remove the edge",
+      "re-scan and re-run the graph to prove the path is gone",
+      "never trust yesterday's graph — redeployments redraw the map"
+     ]
+    },
+    {
+     "heading": "Zero Trust + graphs",
+     "items": [
+      "never trust, always verify — re-evaluate every access decision",
+      "assume breach — treat unexpected edges as hostile until proven otherwise",
+      "microsegmentation — allow-list approved edges, alert on new ones",
+      "ReBAC — policies are path queries on the identity graph",
+      "continuous verification — device/location/behavior edges change, trust follows",
+      "anomalous edge — a first-seen connection between strangers is the classic signal"
+     ]
+    },
+    {
+     "heading": "ML detection vocabulary",
+     "items": [
+      "Supervised learning — learns from labeled examples; strong on known threats, blind to novel ones",
+      "Unsupervised learning — finds structure without labels; clustering and dimensionality reduction",
+      "Anomaly detection — models 'normal' and flags deviations; the workhorse for novel threats",
+      "UEBA — user and entity behavior analytics: per-user baselines plus peer-group comparison",
+      "Feature engineering — encoding raw logs into model inputs (login velocity, rare processes, domain entropy)",
+      "Concept drift — model decay as attacker behavior and legitimate traffic shift over time"
+     ]
+    },
+    {
+     "heading": "Detection metrics",
+     "items": [
+      "Precision — of all flagged alerts, how many were real",
+      "Recall — of all real attacks, how many were flagged",
+      "Threshold tuning — sliding the decision cutoff trades precision against recall",
+      "Alert fatigue — when false positives train analysts to ignore the queue",
+      "DGA — domain generation algorithm; detected via character entropy of domain names"
+     ]
+    },
+    {
+     "heading": "Agent and LLM security",
+     "items": [
+      "Direct prompt injection — attacker input overrides app instructions (OWASP LLM01:2025, the #1 LLM risk)",
+      "Indirect prompt injection — hidden instructions inside retrieved data (email, web, docs)",
+      "Jailbreak — defeating the model's own safety policy; distinct from hijacking app behavior",
+      "Tool poisoning — malicious tool descriptions or metadata steer an agent to misuse its tools (MCP ecosystem risk)",
+      "Insecure output handling — executing or trusting model output without validation",
+      "Least-privilege tools — grant each tool only the scope its task requires"
+     ]
+    },
+    {
+     "heading": "Adversarial ML and governance",
+     "items": [
+      "Evasion — perturbing inputs at inference time to dodge a classifier",
+      "Poisoning — corrupting training data to corrupt the model",
+      "Extraction — querying a model to steal its behavior or parameters",
+      "MITRE ATLAS — knowledge base of adversarial ML tactics and techniques",
+      "Red-teaming and evals — adversarial testing of AI systems before deployment",
+      "Human-in-the-loop — required approval for high-impact or irreversible agent actions",
+      "SOAR — security orchestration, automation and response; automate enrichment, gate containment"
+     ]
+    }
+   ]
+  },
+  "glossary": [
+   {
+    "term": "Allowlisting",
+    "def": "Default-deny execution control: only explicitly approved applications, scripts, and installers may run."
+   },
+   {
+    "term": "Blocklisting",
+    "def": "Default-allow model: everything runs except recognized-bad items — the window zero-days live in."
+   },
+   {
+    "term": "Default-deny",
+    "def": "Deny-by-default posture: unknown code, devices, or connections are refused unless explicitly approved."
+   },
+   {
+    "term": "Ringfencing",
+    "def": "Containment applied on top of allowlisting; restricts what a permitted app may do across app-to-app, file, registry, and network dimensions."
+   },
+   {
+    "term": "Learning Mode",
+    "def": "Agent mode that catalogs applications and dependencies and auto-builds policies before enforcement; temporarily disables file blocking."
+   },
+   {
+    "term": "Installation Mode",
+    "def": "Temporary mode that pauses file blocking for installs — must be tightly scoped and time-boxed."
+   },
+   {
+    "term": "Elevation Control",
+    "def": "Grants specific approved applications admin rights for standard users — just-in-time, per-app, time-boxed — without standing admin rights."
+   },
+   {
+    "term": "Application hopping",
+    "def": "An elevated or trusted process spawning another tool (e.g., PowerShell) to inherit its privileges — countered by ringfencing the elevated process."
+   },
+   {
+    "term": "Storage Control",
+    "def": "Device and path policy: USB approved by serial, user, file type, time, and encryption; unapproved devices do not connect."
+   },
+   {
+    "term": "Network Control",
+    "def": "Centrally managed host firewall; rules by port, source IP, and dynamic ACLs; egress allowlisting pins apps to approved destinations."
+   },
+   {
+    "term": "ZTNA",
+    "def": "Zero Trust Network Access: per-session, per-application brokered connections (commonly over port 443) with no open inbound ports — deny-by-default for network access."
+   },
+   {
+    "term": "Approval Center",
+    "def": "Portal queue where end-user software requests arrive for admin review and decision."
+   },
+   {
+    "term": "Unified Audit",
+    "def": "Real-time audit showing what was allowed or denied across endpoints — and why; the evidence layer for triage."
+   },
+   {
+    "term": "Testing Environment",
+    "def": "One-button cloud VDI sandbox launched from an approval request; logs AV flags, canary-file access, and registry/system changes."
+   },
+   {
+    "term": "Cyber Hero MDR",
+    "def": "24/7/365 US-based managed detection and response team; validates alerts, isolates hosts, acts on customer runbooks; ~60-second average response."
+   },
+   {
+    "term": "Assume breach",
+    "def": "Design and operate as if the attacker already has a foothold — least privilege, containment, and monitoring everywhere."
+   },
+   {
+    "term": "Living off the land",
+    "def": "Attacks that hijack trusted built-in tools (Word, PowerShell) instead of dropping malware — defeated by behavior containment, not signatures."
+   },
+   {
+    "term": "Change control",
+    "def": "Scoped, ticketed, tested changes with validation and rollback — emergency speed never cancels the process."
+   },
+   {
+    "def": "A node in an attack graph representing a system or weakness, connected by edges that represent steps an attacker could take between them.",
+    "term": "attack graph"
+   },
+   {
+    "def": "How central a node is to paths through the graph (for example, betweenness: how many shortest paths cross it).",
+    "term": "centrality"
+   },
+   {
+    "def": "The most valuable assets in the environment (customer data, finance systems, source code): what attack paths are measured against.",
+    "term": "crown jewels"
+   },
+   {
+    "def": "A labeled connection between two nodes, representing a relationship such as 'logged into' or 'resolved to'.",
+    "term": "edge"
+   },
+   {
+    "def": "A graph of threat indicators (IPs, domains, hashes) linked to campaigns, actors, and each other through shared infrastructure.",
+    "term": "knowledge graph"
+   },
+   {
+    "def": "The practice of mapping relationships in data to reveal hidden associations; rooted in Euler's 1736 graph theory, 1970s paper link charts, and post-2001 intelligence work.",
+    "term": "link analysis"
+   },
+   {
+    "def": "A segment of the network so small that its allowed communications can be enumerated as a graph of approved edges.",
+    "term": "microsegmentation"
+   },
+   {
+    "def": "An entity in the graph: a user, host, IP address, domain, file, or vulnerability.",
+    "term": "node"
+   },
+   {
+    "def": "Access control where policy is evaluated by traversing relationships on a graph (for example: user reports_to manager who owns the resource's project).",
+    "term": "ReBAC"
+   },
+   {
+    "def": "A machine-learning model that operates directly on graph structure to classify nodes or subgraphs, for example labeling attack vs normal behavior.",
+    "term": "graph neural network (GNN)"
+   },
+   {
+    "def": "Monitoring user and entity behavior by modeling their normal relationship patterns and flagging structural anomalies.",
+    "term": "UEBA"
+   },
+   {
+    "term": "Supervised learning",
+    "def": "ML trained on labeled examples; classifies new inputs into known categories."
+   },
+   {
+    "term": "Anomaly detection",
+    "def": "ML approach that models normal behavior and flags statistically rare deviations."
+   },
+   {
+    "term": "Feature engineering",
+    "def": "Turning raw telemetry into numeric model inputs, e.g. login velocity or domain entropy."
+   },
+   {
+    "term": "Precision",
+    "def": "Share of flagged alerts that were real; the false-positive economics of the queue."
+   },
+   {
+    "term": "Recall",
+    "def": "Share of real attacks the detector flagged; the miss rate's complement."
+   },
+   {
+    "term": "Concept drift",
+    "def": "Decay of model performance as the data distribution shifts over time."
+   },
+   {
+    "term": "Prompt injection",
+    "def": "Attacker-crafted instructions that override an LLM application's intended behavior; direct (user input) or indirect (retrieved data)."
+   },
+   {
+    "term": "Jailbreak",
+    "def": "Crafted input that defeats an LLM's own safety policy or refusal behavior."
+   },
+   {
+    "term": "Tool poisoning",
+    "def": "Malicious tool descriptions or metadata that manipulate an AI agent into misusing its tools."
+   },
+   {
+    "term": "Insecure output handling",
+    "def": "Failing to validate LLM output before acting on it, e.g. executing generated commands."
+   },
+   {
+    "term": "Evasion attack",
+    "def": "Adversarial ML technique: perturbing inputs to cross a classifier's decision boundary."
+   },
+   {
+    "term": "MITRE ATLAS",
+    "def": "Adversarial Threat Landscape for AI Systems; MITRE's knowledge base of AI attack tactics."
+   },
+   {
+    "term": "SOAR",
+    "def": "Security orchestration, automation and response; playbooks that enrich automatically and gate containment on humans."
+   },
+   {
+    "term": "Human-in-the-loop",
+    "def": "Required human approval before high-impact or irreversible automated actions."
+   }
+  ],
+  "links": [
+   {
+    "label": "ThreatLocker Zero Trust platform explainer (official)",
+    "url": "https://www.threatlocker.com/blog/edr-xdr-vs-zero-trust-prevention",
+    "note": "EDR/XDR vs Zero Trust prevention — the deny-by-default argument in their own words."
+   },
+   {
+    "label": "ThreatLocker Bootcamp page (official)",
+    "url": "https://www.threatlocker.com/bootcamp",
+    "note": "Free six-week program: phases, format, and what completion leads to."
+   },
+   {
+    "label": "ThreatLocker Careers (official)",
+    "url": "https://www.threatlocker.com/company/careers",
+    "note": "Open roles and the hiring-event listing; roles are in-office in Orlando."
+   },
+   {
+    "label": "Elevation Control (official)",
+    "url": "https://www.threatlocker.com/secure-privileges-without-sacrificing-agility",
+    "note": "Just-in-time privilege without standing admin."
+   },
+   {
+    "label": "Storage Control (official)",
+    "url": "https://www.threatlocker.com/capabilities/external-storage-device-control",
+    "note": "USB/device policy by serial, user, file type, encryption."
+   },
+   {
+    "label": "Web Control (official)",
+    "url": "https://www.threatlocker.com/capabilities/web-content-control",
+    "note": "Agent-based DNS/URL filtering, including off-network."
+   },
+   {
+    "label": "Cyber Hero MDR (official)",
+    "url": "https://www.threatlocker.com/get-threat-response-in-minutes",
+    "note": "24/7/365 managed response positioning."
+   },
+   {
+    "label": "MDR capabilities (official)",
+    "url": "https://www.threatlocker.com/capabilities/managed-detection-and-response",
+    "note": "Detection and response capability detail."
+   },
+   {
+    "label": "NIST SP 800-207 — Zero Trust Architecture",
+    "url": "https://csrc.nist.gov/pubs/sp/800/207/final",
+    "note": "The canonical Zero Trust reference: tenets, deployment models, policy engine trust algorithm."
+   },
+   {
+    "label": "CISA Zero Trust Maturity Model",
+    "url": "https://www.cisa.gov/zero-trust-maturity-model",
+    "note": "Federal maturity steps across identity, devices, networks, applications, and data."
+   },
+   {
+    "label": "MITRE ATT&CK",
+    "note": "The adversary-tactics framework; codify its tactic chains as subgraphs to hunt for in your security graph.",
+    "url": "https://attack.mitre.org/"
+   },
+   {
+    "label": "CISA — Cybersecurity and Infrastructure Security Agency",
+    "note": "US government advisories, alerts, and guidance frequently referenced in threat-intel work.",
+    "url": "https://www.cisa.gov/"
+   },
+   {
+    "label": "Neo4j getting started",
+    "note": "A widely used graph database; the book's call to action suggests piloting graph queries on exported security data with tools like this.",
+    "url": "https://neo4j.com/docs/getting-started/"
+   },
+   {
+    "label": "OWASP GenAI Security Project",
+    "url": "https://genai.owasp.org/",
+    "note": "Home of the LLM Top 10 and GenAI security guidance"
+   },
+   {
+    "label": "OWASP Top 10 for LLM Applications",
+    "url": "https://genai.owasp.org/llm-top-10/",
+    "note": "The ranked LLM risk list — prompt injection is #1"
+   },
+   {
+    "label": "NIST AI Risk Management Framework",
+    "url": "https://www.nist.gov/itl/ai-risk-management-framework",
+    "note": "The standard governance framework for managing AI risk"
+   },
+   {
+    "label": "MITRE ATLAS",
+    "url": "https://atlas.mitre.org/",
+    "note": "Adversarial Threat Landscape for AI Systems — tactics and techniques"
+   },
+   {
+    "label": "CISA AI guidance",
+    "url": "https://www.cisa.gov/ai",
+    "note": "CISA's AI security resources and guidance"
+   }
+  ],
+  "checklist": [
+   "Sixty-second company brief rehearsed out loud: year, city, philosophy, three products, one milestone",
+   "Two STAR stories ready: hardest technical problem; a frustrated customer or user",
+   "“Why ThreatLocker / why cybersecurity” answer tied to prevention and service, not slogans",
+   "Ringfencing explained in one plain-English sentence (the Word-on-a-leash version)",
+   "Elevation Control answer ready: just-in-time, per-app, time-boxed, ringfenced, logged",
+   "Triage loop memorized: scope → observe → hypothesize → smallest safe change → validate → explain",
+   "Three questions to ask them: team on-call shape, approval SLA expectations, what “most helpful” looks like on the team",
+   "Logistics: 1901 Summit Tower Blvd, Orlando FL; in-office role; ID and references ready",
+   "Define your crown jewels before you model anything.",
+   "Build the asset-and-access graph from live sources (scans, configs, identity), not from the CMDB alone.",
+   "Model vulnerabilities AND misconfigurations as exploit edges.",
+   "Compute shortest attack paths to each crown jewel; name the choke points.",
+   "Prioritize remediation by path risk, not by raw severity score.",
+   "Express at least one access policy as a relationship path (ReBAC pilot).",
+   "Baseline approved communication edges per segment; alert on first-seen edges.",
+   "Brief the next incident or risk review with the graph, not a spreadsheet.",
+   "Can you explain supervised vs unsupervised vs anomaly detection with a security example for each?",
+   "Can you name three log features you would engineer for a C2 detector and why?",
+   "Can you walk through a UEBA alert (baseline, deviation, verification) end to end?",
+   "Can you explain the precision/recall tradeoff and how you would set a threshold for a fatigued SOC?",
+   "Can you define concept drift and describe a retraining process?",
+   "Can you distinguish direct vs indirect prompt injection and jailbreaking?",
+   "Can you explain tool poisoning in the MCP ecosystem and three controls against it?",
+   "Can you describe insecure output handling and how you would validate agent output?",
+   "Can you name the three adversarial ML attack classes and one defense for evasion?",
+   "Can you design a SOAR playbook gate: what automates freely, what needs human approval?"
+  ]
+ },
+ "chat": {
+  "persona": "You are a rigorous but encouraging interviewer preparing a candidate for a Zero Trust endpoint security role. Probe with 'why' and 'how would you explain that' follow-ups. Stay on topic: ThreatLocker-style endpoint defense, security graphs, and AI-powered security. All practice is original; never reproduce vendor material.",
+  "topics": [
+   {
+    "id": "tl-interview",
+    "name": "ThreatLocker Interview Prep",
+    "key_points": [
+     "allowlisting",
+     "ringfencing",
+     "default-deny",
+     "cyber hero",
+     "zero trust tenets",
+     "STAR stories"
+    ],
+    "followups": [
+     "Can you give an example?",
+     "How would you explain that to a CFO?"
+    ]
+   },
+   {
+    "id": "tl-endpoint-ops",
+    "name": "Zero Trust Endpoint Operations",
+    "key_points": [
+     "default-deny",
+     "ringfencing dimensions",
+     "elevation control",
+     "storage control",
+     "network control",
+     "change control"
+    ],
+    "followups": [
+     "Walk me through the triage order.",
+     "When would you deny outright?"
+    ]
+   },
+   {
+    "followups": [
+     "Can you walk through an example?",
+     "How does this change patch prioritization?",
+     "What is the difference between a security graph and an attack graph?"
+    ],
+    "id": "sec-graphs",
+    "key_points": [
+     "nodes",
+     "edges",
+     "attack graphs",
+     "kill chain",
+     "link analysis",
+     "threat intel graphs"
+    ],
+    "name": "Security Graphs: Think Like an Attacker"
+   },
+   {
+    "followups": [
+     "How do graphs change patch prioritization?",
+     "What is ReBAC and how is it different from RBAC?",
+     "How would a small team start with graphs?"
+    ],
+    "id": "graph-defense",
+    "key_points": [
+     "attack-path analysis",
+     "insider threat",
+     "vulnerability graphs",
+     "Zero Trust",
+     "microsegmentation",
+     "blast radius"
+    ],
+    "name": "Graph-Powered Defense Operations"
+   },
+   {
+    "id": "ml-defense",
+    "name": "ML-Powered Threat Defense",
+    "key_points": [
+     "anomaly detection",
+     "UEBA",
+     "alert fatigue",
+     "concept drift",
+     "threat hunting",
+     "precision recall"
+    ],
+    "followups": [
+     "Walk me through an example.",
+     "How do you handle false positives?"
+    ]
+   },
+   {
+    "id": "ai-agent-sec",
+    "name": "Securing AI Systems & Agents",
+    "key_points": [
+     "prompt injection",
+     "tool poisoning",
+     "MCP risks",
+     "insecure output handling",
+     "SOAR gates",
+     "adversarial ML"
+    ],
+    "followups": [
+     "Walk me through an example.",
+     "How do you secure an AI agent end to end?"
+    ]
+   }
+  ]
+ },
+ "simulation": {
+  "items": 12,
+  "minutes": 180,
+  "evidence_cost_mins": 2
+ },
+ "media": [
+  {
+   "id": "tl-allowlist-vs-blocklist",
+   "kind": "diagram",
+   "title": "Allowlisting vs blocklisting: default-deny vs default-allow",
+   "svg": "assets/diagrams/tl-allowlist-vs-blocklist.svg",
+   "lesson_ref": "c-tl-endpoint-ops",
+   "caption": "Default-deny stops unknown code without a signature; default-allow runs it until one exists.",
+   "alt": "Side-by-side comparison: on the left, a default-deny gate runs known-good payroll software and denies unknown ransomware with no signature needed; on the right, a default-allow gate runs both until the ransomware is recognized as bad."
+  },
+  {
+   "id": "tl-ringfencing",
+   "kind": "diagram",
+   "title": "Ringfencing: four leashes on an allowed application",
+   "svg": "assets/diagrams/tl-ringfencing.svg",
+   "lesson_ref": "c-tl-endpoint-ops",
+   "caption": "Word stays approved, but it cannot spawn PowerShell, read the credential store, or reach the internet — while opening its document is allowed.",
+   "alt": "An approved Word application inside a dashed containment ring: arrows show PowerShell launch denied, credential-store registry access denied, external network denied, and document file access allowed."
+  },
+  {
+   "id": "tl-zero-trust-stack",
+   "kind": "diagram",
+   "title": "The Zero Trust endpoint stack",
+   "svg": "assets/diagrams/tl-zero-trust-stack.svg",
+   "lesson_ref": "c-tl-interview",
+   "caption": "Five deny-by-default layers — Allowlisting, Ringfencing, Elevation, Storage, Network — watched by Web Control, the Testing Environment, Unified Audit, and the Cyber Hero MDR team.",
+   "alt": "A vertical stack of five layers from Allowlisting at the foundation up through Ringfencing, Elevation Control, Storage Control, and Network Control, with side boxes for Web Control, Testing Environment, Unified Audit, and Cyber Hero MDR."
+  },
+  {
+   "id": "tl-triage-flow",
+   "kind": "diagram",
+   "title": "Application-request triage flow",
+   "svg": "assets/diagrams/tl-triage-flow.svg",
+   "lesson_ref": "c-tl-endpoint-ops",
+   "caption": "Gather evidence first, then branch: trusted gets a scoped rule, unknown goes to the sandbox, malicious gets a documented deny.",
+   "alt": "Flowchart from request arrival through evidence gathering to a decision diamond branching into three outcomes: approve with a scoped rule, detonate in the Testing Environment then ringfence, or deny with documented evidence."
+  },
+  {
+   "alt": "Diagram of four labeled nodes (user, host, file, domain, IP) joined by labeled directed edges such as logged into, downloaded, and resolved to, illustrating graph vocabulary.",
+   "caption": "Nodes are the things; edges are the relationships. Attackers move along the edges.",
+   "id": "sg-graph-vocabulary",
+   "kind": "diagram",
+   "lesson_ref": "c-sec-graphs",
+   "svg": "assets/diagrams/sg-graph-vocabulary.svg",
+   "title": "Graph vocabulary: nodes and edges"
+  },
+  {
+   "alt": "Attack graph with four nodes in a chain: external attacker to VPN gateway to file server to customer database, with a dead-end branch to a printer, showing the shortest path to the crown jewel.",
+   "caption": "The shortest path to the crown jewel is length 3. Break the choke point and the campaign dies.",
+   "id": "sg-attack-path",
+   "kind": "diagram",
+   "lesson_ref": "c-sec-graphs",
+   "svg": "assets/diagrams/sg-attack-path.svg",
+   "title": "Attack graph: shortest path to the crown jewels"
+  },
+  {
+   "alt": "Seven kill-chain stages as connected graph nodes: reconnaissance, weaponization, delivery, exploitation, installation, command and control, actions. Three alerts are annotated at delivery, installation, and command and control.",
+   "caption": "Three 'unrelated' alerts, one kill-chain subgraph. Correlate by shared entities, not by severity.",
+   "id": "sg-kill-chain",
+   "kind": "diagram",
+   "lesson_ref": "c-sec-graphs",
+   "svg": "assets/diagrams/sg-kill-chain.svg",
+   "title": "Kill chain as a graph"
+  },
+  {
+   "alt": "A policy engine at the center of a small graph evaluates an access request from a finance user on an untrusted laptop to an R and D code server. The request is denied because there is no prior relationship edge and the device is untrusted.",
+   "caption": "Valid credentials are not enough. The graph checks device trust, history, and relationships on every request.",
+   "id": "sg-zero-trust",
+   "kind": "diagram",
+   "lesson_ref": "c-graph-defense",
+   "svg": "assets/diagrams/sg-zero-trust.svg",
+   "title": "Zero Trust runs on relationships"
+  },
+  {
+   "id": "ai-ml-pipeline",
+   "kind": "diagram",
+   "title": "ML detection pipeline: telemetry to triage",
+   "svg": "assets/diagrams/ai-ml-pipeline.svg",
+   "lesson_ref": "c-ml-defense",
+   "caption": "How raw telemetry becomes scored alerts: features feed the model, the model scores, analysts triage top-down — and analyst verdicts feed retraining.",
+   "alt": "Flow diagram: telemetry sources feed feature extraction, which feeds an ML model, which outputs scored alerts into an analyst triage queue, with a feedback arrow for retraining."
+  },
+  {
+   "id": "ai-ueba-baseline-diagram",
+   "kind": "diagram",
+   "title": "UEBA: baseline vs deviation",
+   "svg": "assets/diagrams/ai-ueba-baseline.svg",
+   "lesson_ref": "c-ml-defense",
+   "caption": "UEBA learns each user's normal hours, locations, and volumes, then scores deviations from that baseline.",
+   "alt": "24-hour timeline showing a shaded normal login window from 8 AM to 6 PM with normal logins inside it, and a red anomaly marker at 2:47 AM for a foreign login scoring 97 out of 100."
+  },
+  {
+   "id": "ai-injection-flow",
+   "kind": "diagram",
+   "title": "Indirect prompt injection attack flow",
+   "svg": "assets/diagrams/ai-injection-flow.svg",
+   "lesson_ref": "c-ai-agent-sec",
+   "caption": "An attacker hides instructions in data the agent retrieves; the agent mistakes data for instructions and misuses its tools.",
+   "alt": "Attack flow diagram: hidden instruction in an email is read by an AI agent, which mistakes it for a command and calls a privileged tool, causing fraud; three defense boxes below: sanitize content, least-privilege tools, human approval."
+  }
+ ],
+ "foundations": [
+  {
+   "track": "linux-cli",
+   "why_needed": "Terminal labs and missions run in a simulated Linux shell; command-line fluency is required to complete them."
+  },
+  {
+   "track": "security-basics",
+   "why_needed": "Security-graph and ML-detection lessons assume baseline vocabulary (CIA triad, malware types, incident response phases)."
+  }
+ ],
+ "math": [
+  "stats",
+  "probability"
+ ]
+}

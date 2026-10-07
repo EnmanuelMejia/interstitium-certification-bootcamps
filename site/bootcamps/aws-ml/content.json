@@ -1,1 +1,1048 @@
-{"disclaimer": "Independent practice material by Interstitium Labs. Not affiliated with, endorsed by, or sponsored by Amazon Web Services. Confers no certificate. All scenarios are original; no exam content is reproduced.", "domains": [{"id": "ml-concepts", "name": "ML Concepts", "scenarios": [{"answer": 1, "choices": ["Supervised learning", "Unsupervised learning", "Reinforcement learning", "Deep learning (as a category)"], "evidence": [["prob.txt", "Data: customer records with\nlabels: churned / stayed.\nGoal: predict churn for\nnew customers."]], "hint": "Labeled examples predicting a label — which paradigm?", "id": "ml-mc-01", "mins": 5, "objectives": ["ML paradigms", "Supervised learning"], "prompt": "Which ML paradigm fits?", "situation": "Customer records labeled churned/stayed must predict churn for new customers.", "title": "Learning from labeled history", "why": "Supervised learning trains on labeled examples to predict labels for new data — exactly the churn problem. Unsupervised finds structure without labels; reinforcement learns from rewards; deep learning is an implementation approach, not the paradigm here."}, {"answer": 2, "choices": ["Accuracy", "Precision", "Recall", "F1 score (balancing both)"], "evidence": [["fraud2.txt", "Fraud: 0.1% of transactions.\nMissing fraud costs $500 each.\nFalse alarms cost $0.50 review."]], "hint": "Missing positives is 1000x costlier than false alarms — which error matters?", "id": "ml-mc-02", "mins": 6, "objectives": ["Metrics", "Precision vs recall"], "prompt": "Which metric should guide model selection?", "situation": "Fraud is 0.1% of transactions; missing fraud costs $500, false alarms cost $0.50.", "title": "The $500 miss vs the $0.50 alarm", "why": "Recall (catching actual fraud) dominates because misses cost 1000x false alarms — but F1 balances both so precision doesn't collapse entirely. Accuracy is meaningless at 0.1% prevalence (99.9% by guessing 'not fraud'); precision alone would miss fraud."}, {"answer": 0, "choices": ["Overfitting — regularize, get more data, or simplify", "Underfitting — add more layers", "Data leakage — remove the test set", "Good fit — ship it"], "evidence": [["fit.txt", "Train accuracy: 99%.\nValidation accuracy: 61%.\nGap widening with epochs."]], "hint": "Huge train/validation gap — what is the model doing?", "id": "ml-mc-03", "mins": 6, "objectives": ["Overfitting", "Generalization"], "prompt": "What is happening and what fixes it?", "situation": "Training accuracy is 99% but validation is 61%, with the gap widening.", "title": "99% on training, 61% on reality", "why": "The classic overfitting signature: the model memorizes training data instead of generalizing. Fixes: regularization, more/diverse data, simpler model, early stopping. Underfitting shows low training accuracy too; the test set isn't the problem; shipping a 38-point gap is not an option."}, {"answer": 3, "choices": ["Training set", "Validation set", "Test set", "All data at once"], "evidence": [["split.txt", "Data: 100k labeled rows.\nNeed: train, tune hyperparameters,\nand get an unbiased final estimate."]], "hint": "Which split must stay untouched until the very end?", "id": "ml-mc-04", "mins": 5, "objectives": ["Train/validation/test splits"], "prompt": "Which split gives the unbiased final estimate?", "situation": "100k labeled rows must support training, hyperparameter tuning, and an unbiased final estimate.", "title": "Three splits, three jobs", "why": "The test set stays locked until final evaluation, giving the unbiased estimate; validation tunes hyperparameters; training fits parameters. Tuning on the test set leaks it; training on everything leaves no honest estimate."}, {"answer": 1, "choices": ["Classification", "Regression", "Clustering", "Anomaly detection"], "evidence": [["reg.txt", "Goal: predict house prices\n(a continuous value) from\nfeatures like size and location."]], "hint": "Continuous target value — which task type?", "id": "ml-mc-05", "mins": 4, "objectives": ["Regression vs classification"], "prompt": "Which ML task is this?", "situation": "Predicting house prices (a continuous value) from features like size and location.", "title": "Predicting a number, not a label", "why": "Regression predicts continuous values like prices. Classification predicts discrete labels; clustering groups unlabeled data; anomaly detection finds outliers — none fit a continuous price target."}, {"answer": 2, "choices": ["More training data always fixes it", "The model is biased — audit features, rebalance, and add fairness metrics", "Accuracy is all that matters", "Remove all demographic features and declare victory"], "evidence": [["bias.txt", "Loan model: 92% accuracy overall,\nbut 40% false-rejection rate for\none demographic group."]], "hint": "High overall accuracy hiding group harm — what must be measured?", "id": "ml-mc-06", "mins": 7, "objectives": ["Model bias", "Fairness"], "prompt": "What is the right response?", "situation": "A loan model shows 92% overall accuracy but a 40% false-rejection rate for one demographic group.", "title": "92% accurate, still unfair", "why": "Aggregate accuracy hides group-level harm; the response is auditing features/labels for bias, rebalancing data, and tracking fairness metrics (e.g., equalized odds) alongside accuracy. More data alone doesn't fix biased labels; removing demographic features doesn't remove proxies; accuracy-only thinking caused this."}]}, {"id": "sagemaker", "name": "SageMaker", "scenarios": [{"answer": 0, "choices": ["SageMaker Studio notebooks + Training jobs", "EC2 with manual setup", "A laptop", "Bare metal servers"], "evidence": [["sm.txt", "Team: 5 data scientists.\nNeed: shared notebooks, managed\ntraining, experiment tracking."]], "hint": "Which AWS service is the managed ML platform?", "id": "ml-sm-01", "mins": 5, "objectives": ["SageMaker Studio", "Managed ML"], "prompt": "Which platform fits the team?", "situation": "Five data scientists need shared notebooks, managed training, and experiment tracking.", "title": "The ML platform, managed", "why": "SageMaker provides Studio notebooks, managed training jobs, and experiment tracking as one platform. Manual EC2/laptop/bare-metal setups reintroduce ops and don't scale collaboration."}, {"answer": 1, "choices": ["SageMaker Data Wrangler", "SageMaker Feature Store", "S3 alone", "A spreadsheet"], "evidence": [["feat.txt", "Features computed 3 ways by\n3 teams; training/serving skew\ncausing bad predictions."]], "hint": "Which service is the central feature repository for training and serving?", "id": "ml-sm-02", "mins": 6, "objectives": ["Feature Store", "Training-serving skew"], "prompt": "What eliminates the training/serving skew?", "situation": "Three teams compute features three ways; training/serving skew is degrading predictions.", "title": "One definition of each feature", "why": "SageMaker Feature Store centralizes feature definitions with online (low-latency serving) and offline (training) stores — one definition, no skew. Data Wrangler prepares data; S3 alone has no feature semantics; spreadsheets aren't infrastructure."}, {"answer": 2, "choices": ["Manual grid search", "SageMaker Hyperparameter Tuning (automatic model tuning)", "Guessing", "Default hyperparameters forever"], "evidence": [["hpo.txt", "Model sensitive to 8 hyperparameters.\nManual tuning: 3 weeks, still\nunderperforming."]], "hint": "Which SageMaker feature searches hyperparameters automatically?", "id": "ml-sm-03", "mins": 5, "objectives": ["Automatic model tuning"], "prompt": "What tunes the hyperparameters efficiently?", "situation": "A model sensitive to 8 hyperparameters; manual tuning took 3 weeks and still underperforms.", "title": "Eight knobs, three weeks", "why": "SageMaker automatic model tuning (hyperparameter optimization) searches the space systematically with strategies like Bayesian optimization — far more efficient than manual grids. Guessing and defaults leave performance on the table."}, {"answer": 0, "choices": ["SageMaker Model Monitor", "Manual spot-checks", "No monitoring", "Retraining on a fixed schedule only"], "evidence": [["drift.txt", "Model in prod 8 months.\nAccuracy decaying; input\ndistribution shifted."]], "hint": "Which service watches for data and prediction drift in production?", "id": "ml-sm-04", "mins": 6, "objectives": ["Model Monitor", "Drift detection"], "prompt": "What catches the decay?", "situation": "A production model's accuracy is decaying as input distribution shifts.", "title": "The model that went stale", "why": "SageMaker Model Monitor continuously watches endpoints for data drift, concept drift, and quality decay, alerting before damage compounds. Manual spot-checks miss gradual decay; fixed-schedule retraining may be too late or wasteful; no monitoring is blindness."}, {"answer": 3, "choices": ["One giant notebook", "SageMaker Pipelines", "Bash scripts", "Manual console clicks"], "evidence": [["pipe2.txt", "ML workflow: prepare -> train ->\nevaluate -> register -> deploy.\nNeed: repeatable, auditable."]], "hint": "Which SageMaker service makes ML workflows into CI/CD pipelines?", "id": "ml-sm-05", "mins": 6, "objectives": ["SageMaker Pipelines", "MLOps"], "prompt": "What makes the ML workflow repeatable?", "situation": "A 5-stage ML workflow must be repeatable and auditable.", "title": "CI/CD for machine learning", "why": "SageMaker Pipelines defines ML workflows as code with steps, caching, and lineage — the MLOps equivalent of CI/CD. Giant notebooks aren't repeatable; bash scripts lack lineage; console clicks aren't auditable."}, {"answer": 1, "choices": ["SageMaker Training Compiler", "SageMaker distributed training (data/model parallelism)", "A single GPU", "CPU-only training"], "evidence": [["dist.txt", "LLM fine-tune: 70B params.\nSingle GPU: OOM.\nNeed: finish this week."]], "hint": "70B parameters can't fit one GPU — which SageMaker capability splits the work?", "id": "ml-sm-06", "mins": 7, "objectives": ["Distributed training"], "prompt": "What makes the 70B fine-tune feasible?", "situation": "Fine-tuning a 70B-parameter model OOMs on a single GPU; it must finish this week.", "title": "Seventy billion parameters, one week", "why": "SageMaker distributed training (data and model parallelism libraries) shards the model and data across many GPUs, making 70B-parameter training feasible on a deadline. A single GPU can't hold it; CPU-only would take months; the compiler optimizes but doesn't shard."}]}, {"id": "data-prep", "name": "Data Prep", "scenarios": [{"answer": 2, "choices": ["Training on raw data", "SageMaker Data Wrangler for visual prep + Processing jobs for production", "Manual Excel cleaning", "No prep; hope the model copes"], "evidence": [["prep.txt", "Raw data: missing values,\nmixed formats, 50M rows.\nNeed: repeatable prep at scale."]], "hint": "Visual exploration plus scalable production jobs — which SageMaker combination?", "id": "ml-dp-01", "mins": 6, "objectives": ["Data Wrangler", "Data preparation"], "prompt": "What prepares the data repeatably?", "situation": "50M rows of messy data need repeatable preparation at scale.", "title": "Fifty million messy rows", "why": "Data Wrangler provides visual data preparation and exports the flow to SageMaker Processing jobs for repeatable production-scale execution. Raw-data training degrades models; Excel doesn't scale to 50M rows; hope isn't a strategy."}, {"answer": 0, "choices": ["AWS Glue DataBrew", "Hand-written scripts per analyst", "No profiling", "Production pipelines only"], "evidence": [["brew.txt", "Analysts need to profile and clean\ndatasets visually, no code,\nthen operationalize."]], "hint": "Which no-code visual data-prep service integrates with Glue jobs?", "id": "ml-dp-02", "mins": 5, "objectives": ["DataBrew", "No-code prep"], "prompt": "What serves the no-code analysts?", "situation": "Analysts need visual, no-code data profiling and cleaning that can be operationalized.", "title": "Data prep without code", "why": "Glue DataBrew provides visual no-code data preparation with profiling, and recipes convert to Glue jobs for production. Hand scripts per analyst don't scale; no profiling is blindness; production-only skips exploration."}, {"answer": 1, "choices": ["Ignoring it", "Stratified sampling / class weights / SMOTE-style resampling", "Deleting the minority class", "Accuracy-only evaluation"], "evidence": [["imb.txt", "Fraud labels: 0.1% positive.\nModel predicts 'not fraud'\nfor everything: 99.9% accuracy."]], "hint": "0.1% positives — what makes the model actually learn the minority class?", "id": "ml-dp-03", "mins": 6, "objectives": ["Imbalanced data"], "prompt": "What fixes the 'predict everything negative' model?", "situation": "With 0.1% fraud labels, the model predicts 'not fraud' for everything and scores 99.9% accuracy.", "title": "The model that learned nothing", "why": "Imbalanced data needs stratified sampling, class weights, or resampling so the model actually learns the minority class — plus proper metrics (precision/recall/F1). Deleting the minority class removes the target; accuracy-only evaluation is what hid the failure."}, {"answer": 3, "choices": ["Mean imputation for everything", "Dropping all rows with any missing value", "Analysis-driven strategy: understand missingness, then impute or model appropriately", "Filling with zeros"], "evidence": [["miss.txt", "30% of income field missing.\nMissingness correlates with\nthe target variable."]], "hint": "Missingness correlates with the target — what does that tell you about blind imputation?", "id": "ml-dp-04", "mins": 7, "objectives": ["Missing data"], "prompt": "What handles the missing income field correctly?", "situation": "30% of the income field is missing, and the missingness correlates with the target.", "title": "The missingness is the signal", "why": "When missingness correlates with the target (MNAR), blind imputation or deletion biases the model; the correct approach analyzes the mechanism first, then chooses imputation/modeling that accounts for it (possibly including missingness indicators). Mean/zero imputation and wholesale deletion all distort."}, {"answer": 0, "choices": ["One-hot encoding for low-cardinality categories; embeddings/target encoding for high-cardinality", "Label encoding for everything", "Ignoring categoricals", "Hashing everything"], "evidence": [["cat.txt", "Features: 200 zip codes,\n10 product categories,\n5 regions."]], "hint": "Match the encoding to the cardinality — what's the standard pairing?", "id": "ml-dp-05", "mins": 6, "objectives": ["Categorical encoding"], "prompt": "What encodes the categoricals correctly?", "situation": "Features include 200 zip codes, 10 product categories, and 5 regions.", "title": "Two hundred zip codes", "why": "One-hot suits low-cardinality features (regions, categories); high-cardinality features like zip codes need embeddings or target encoding to avoid 200 sparse columns. Label encoding imposes false ordinality; ignoring loses signal; blind hashing loses interpretability."}, {"answer": 1, "choices": ["Training on unscaled features", "Feature scaling (standardization/normalization) for distance- and gradient-based models", "Scaling only the target", "No scaling ever"], "evidence": [["scale2.txt", "KNN model: income ($0-500k)\ndominates age (0-100).\nPredictions poor."]], "hint": "Distance-based models compare raw magnitudes — what equalizes the scales?", "id": "ml-dp-06", "mins": 5, "objectives": ["Feature scaling"], "prompt": "What fixes the dominated distance metric?", "situation": "A KNN model's distance metric is dominated by income ($0–500k) over age (0–100).", "title": "When income drowns out age", "why": "Feature scaling (standardization/normalization) puts features on comparable scales so distance- and gradient-based models treat them fairly. Unscaled training lets large-magnitude features dominate; scaling only the target doesn't fix feature distances."}]}, {"id": "model-training", "name": "Model Training", "scenarios": [{"answer": 2, "choices": ["Training on the full dataset every time", "Spot Instances for fault-tolerant training with checkpoints", "On-Demand only", "Training on a laptop"], "evidence": [["cost3.txt", "Training: 48h on 8 GPUs.\nBudget tight. Job checkpoints\nhourly; restarts are fine."]], "hint": "Checkpointed, restart-tolerant — which pricing cuts GPU cost deeply?", "id": "ml-mt-01", "mins": 6, "objectives": ["Spot training", "Cost optimization"], "prompt": "What cuts the training cost?", "situation": "A 48-hour 8-GPU training job checkpoints hourly and tolerates restarts; budget is tight.", "title": "Cheap GPUs that can be interrupted", "why": "SageMaker Managed Spot Training uses Spot Instances for up to ~70% savings; hourly checkpoints make interruptions harmless. On-Demand wastes the discount; full retrains without checkpoints are fragile; laptops can't do this."}, {"answer": 0, "choices": ["SageMaker Experiments to track runs, metrics, and lineage", "A spreadsheet", "Memory", "No tracking"], "evidence": [["exp.txt", "50 training runs.\nCan't reproduce the best one.\nNobody knows which data\nand code produced it."]], "hint": "Which SageMaker feature tracks the full lineage of every run?", "id": "ml-mt-02", "mins": 5, "objectives": ["Experiment tracking"], "prompt": "What makes runs reproducible?", "situation": "50 training runs; the best one can't be reproduced — data, code, and parameters are unknown.", "title": "The run nobody can reproduce", "why": "SageMaker Experiments tracks runs with parameters, metrics, data, and code lineage — making the best run reproducible. Spreadsheets drift; memory fades; no tracking guarantees irreproducibility."}, {"answer": 1, "choices": ["Default settings", "Early stopping + learning-rate scheduling", "More epochs always", "Bigger model always"], "evidence": [["overfit.txt", "Validation loss decreasing then\nrising; training loss still falling.\nCompute budget limited."]], "hint": "Validation rising while training falls — what stops the waste?", "id": "ml-mt-03", "mins": 6, "objectives": ["Early stopping", "Training efficiency"], "prompt": "What stops the wasted compute?", "situation": "Validation loss rises while training loss falls; the compute budget is limited.", "title": "Stop when it stops learning", "why": "Early stopping halts training when validation stops improving (saving compute and preventing overfitting), and learning-rate scheduling improves convergence. More epochs worsen overfitting; bigger models cost more without fixing it."}, {"answer": 3, "choices": ["Training from scratch", "Transfer learning: fine-tune a pre-trained model", "No model; rules engine", "Random weights, no training"], "evidence": [["transfer.txt", "Task: classify support tickets.\nLabeled data: 2,000 tickets.\nNeed: good accuracy, fast."]], "hint": "2,000 labels isn't much — what leverages knowledge from larger datasets?", "id": "ml-mt-04", "mins": 6, "objectives": ["Transfer learning"], "prompt": "What achieves good accuracy with 2,000 labels?", "situation": "Support-ticket classification with only 2,000 labeled tickets needs good accuracy fast.", "title": "Two thousand labels, big ambitions", "why": "Transfer learning fine-tunes a pre-trained model, leveraging representations learned from massive data — effective with small labeled sets. Training from scratch on 2k labels underfits; rules engines don't generalize; random weights aren't a model."}, {"answer": 0, "choices": ["SageMaker Debugger / profiler to catch bad tensors and bottlenecks", "Print statements", "No debugging", "Guessing hyperparameters"], "evidence": [["debug.txt", "Training loss: NaN at epoch 3.\nNo idea which layer or\nwhich batch caused it."]], "hint": "Which SageMaker feature inspects tensors during training?", "id": "ml-mt-05", "mins": 6, "objectives": ["SageMaker Debugger"], "prompt": "What finds the NaN's origin?", "situation": "Training loss goes NaN at epoch 3; the failing layer and batch are unknown.", "title": "Loss went NaN", "why": "SageMaker Debugger inspects tensors during training with built-in rules that catch NaNs, vanishing gradients, and bottlenecks automatically. Print statements don't scale to tensor internals; guessing wastes runs."}, {"answer": 1, "choices": ["FP32 everywhere", "Mixed-precision training", "INT8 training from scratch", "No GPUs"], "evidence": [["prec.txt", "Training too slow on budget GPUs.\nModel supports AMP.\nNeed: 2x speed, same accuracy."]], "hint": "Which technique mixes FP16 and FP32 for speed without accuracy loss?", "id": "ml-mt-06", "mins": 6, "objectives": ["Mixed precision"], "prompt": "What doubles training speed safely?", "situation": "Training is too slow on budget GPUs; the model supports automatic mixed precision.", "title": "Twice the speed, same accuracy", "why": "Mixed-precision training (FP16 compute with FP32 master weights via AMP) roughly doubles throughput on modern GPUs with negligible accuracy impact. FP32-everywhere is the slow baseline; INT8 training from scratch risks accuracy; no GPUs is slower still."}]}, {"id": "deployment-mlops", "name": "Deployment & MLOps", "scenarios": [{"answer": 2, "choices": ["A notebook", "SageMaker real-time endpoints with auto-scaling", "Batch transform for real-time", "Emailing predictions"], "evidence": [["rt.txt", "API needs predictions in\n<100ms, 24/7, spiky traffic."]], "hint": "Sub-100ms, always-on, spiky — which SageMaker inference option?", "id": "ml-do-01", "mins": 6, "objectives": ["Real-time endpoints"], "prompt": "What serves the predictions?", "situation": "An API needs <100ms predictions 24/7 with spiky traffic.", "title": "Predictions in under 100ms", "why": "SageMaker real-time endpoints with auto-scaling serve low-latency predictions 24/7 and scale with spikes. Notebooks aren't production; batch transform is for offline; email isn't an API."}, {"answer": 0, "choices": ["SageMaker Batch Transform", "Real-time endpoints", "Lambda", "Training jobs"], "evidence": [["batch3.txt", "Need: score 100M records\nonce a night. No latency\nrequirement."]], "hint": "100M records, no latency SLA — which option is cheapest?", "id": "ml-do-02", "mins": 5, "objectives": ["Batch Transform"], "prompt": "What scores the 100M records cheapest?", "situation": "100M records need scoring once nightly with no latency requirement.", "title": "One hundred million, overnight", "why": "Batch Transform is the cost-effective choice for large offline inference — no always-on endpoint needed. Real-time endpoints idle between batches; Lambda has payload/time limits unsuited to 100M records."}, {"answer": 1, "choices": ["All-at-once endpoint updates", "SageMaker endpoint variants: canary/shadow (A/B) testing", "Manual swaps", "Two separate accounts"], "evidence": [["ab.txt", "New model version.\nNeed: 5% live traffic, compare\nmetrics, instant rollback."]], "hint": "Which endpoint feature splits traffic between variants?", "id": "ml-do-03", "mins": 6, "objectives": ["A/B testing", "Endpoint variants"], "prompt": "What validates the new version safely?", "situation": "A new model version needs 5% live traffic with metric comparison and instant rollback.", "title": "Five percent of traffic, zero regret", "why": "Endpoint production variants enable canary and A/B (shadow) testing with traffic splitting and instant rollback. All-at-once updates risk 100% of traffic; manual swaps are slow; separate accounts don't split traffic."}, {"answer": 3, "choices": ["Deploying the full model", "Model optimization: quantization/distillation/pruning for edge", "No optimization", "Bigger model for edge"], "evidence": [["edge.txt", "Need: run vision model on\nwarehouse cameras (limited\ncompute, intermittent network)."]], "hint": "Limited compute, intermittent network — what shrinks the model for the edge?", "id": "ml-do-04", "mins": 7, "objectives": ["Edge deployment", "Model optimization"], "prompt": "What makes edge deployment feasible?", "situation": "A vision model must run on warehouse cameras with limited compute and intermittent connectivity.", "title": "AI on a camera", "why": "Model optimization (quantization, distillation, pruning via SageMaker Neo/Edge) shrinks models for edge devices, and edge deployment runs offline. Full-size models don't fit; no optimization fails the constraints; bigger models worsen them."}, {"answer": 0, "choices": ["SageMaker Model Registry", "A shared drive", "Model files in email", "No registry"], "evidence": [["reg.txt", "12 model versions in prod\nhistory. Audit asks: which version\nis live, approved by whom?"]], "hint": "Which SageMaker feature versions models with approval workflows?", "id": "ml-do-05", "mins": 5, "objectives": ["Model Registry"], "prompt": "What answers the auditor?", "situation": "Twelve model versions exist; the audit needs to know which is live and who approved it.", "title": "Which model is live?", "why": "The SageMaker Model Registry versions models with metadata, approval workflows, and deployment tracking — the auditable answer. Shared drives and email lack versioning and approvals; no registry is unauditable."}, {"answer": 1, "choices": ["Retraining blindly on schedule", "Closed-loop MLOps: monitor -> trigger retraining -> validate -> deploy via pipelines", "Never retraining", "Manual retraining when someone notices"], "evidence": [["loop.txt", "Data drifts seasonally.\nNeed: detect drift, retrain,\nvalidate, redeploy — automatically."]], "hint": "Which pattern closes the loop from monitoring to redeployment?", "id": "ml-do-06", "mins": 7, "objectives": ["MLOps loop", "Continuous training"], "prompt": "What automates the retraining loop?", "situation": "Seasonal data drift requires automatic detect-retrain-validate-redeploy.", "title": "Closing the loop", "why": "Closed-loop MLOps (Model Monitor → retraining trigger → Pipelines validation → deployment) automates the full cycle. Blind scheduled retraining wastes compute and may deploy worse models; never/manual retraining lets drift compound."}]}, {"id": "genai-on-aws", "name": "GenAI on AWS", "scenarios": [{"answer": 1, "choices": ["Training an LLM from scratch", "Amazon Bedrock: managed foundation models via API", "Building your own data center", "Fine-tuning on a laptop"], "evidence": [["bedrock.txt", "Need: summarization + Q&A over\ndocs. No ML team. Data must\nstay private. Budget: moderate."]], "hint": "Which service offers foundation models as a managed API?", "id": "ml-ga-01", "mins": 6, "objectives": ["Bedrock", "Foundation models"], "prompt": "What delivers the capability fastest?", "situation": "Document summarization and Q&A needed with no ML team; data must stay private.", "title": "GenAI without an ML team", "why": "Bedrock provides managed foundation models via API — no training infrastructure, with data-privacy commitments (inputs not used for training). Training from scratch needs an ML team and massive budget; laptops can't do it."}, {"answer": 0, "choices": ["RAG: retrieve relevant chunks, then generate with Bedrock", "Fine-tuning on every document", "Bigger prompts with the whole corpus", "Hoping the model knows"], "evidence": [["rag.txt", "Q&A over 10k internal docs.\nModel hallucinates internal facts.\nDocs update weekly."]], "hint": "Hallucinations + changing docs — what grounds the model in your data?", "id": "ml-ga-02", "mins": 7, "objectives": ["RAG", "Grounding"], "prompt": "What grounds answers in the actual documents?", "situation": "Q&A over 10k internal docs; the model hallucinates internal facts and docs update weekly.", "title": "Stop the hallucinations", "why": "Retrieval-Augmented Generation retrieves relevant chunks (e.g., via Knowledge Bases for Bedrock with OpenSearch/vector store) and grounds generation in them — handling weekly updates without retraining. Fine-tuning weekly is expensive; whole-corpus prompts don't fit context windows; hope isn't engineering."}, {"answer": 2, "choices": ["Full fine-tuning of a 70B model", "Bedrock fine-tuning / continued pre-training for smaller adaptations; prompt engineering first", "No customization", "Training from scratch"], "evidence": [["ft.txt", "Need: model speaks in the\ncompany's support tone.\nBudget: small. Data: 500 examples."]], "hint": "Small budget, 500 examples, tone adaptation — what's the lightest effective customization?", "id": "ml-ga-03", "mins": 6, "objectives": ["Fine-tuning", "Customization"], "prompt": "What customizes the tone affordably?", "situation": "The model must adopt the company's support tone; budget is small with 500 examples.", "title": "Teaching the model your tone", "why": "Prompt engineering first, then Bedrock fine-tuning for the tone adaptation — the lightest effective path for 500 examples on a small budget. Full 70B fine-tuning is overkill; training from scratch is infeasible; no customization misses the requirement."}, {"answer": 3, "choices": ["No guardrails", "Bedrock Guardrails: content filters, PII redaction, denied topics", "Trusting the model", "Manual review of every output"], "evidence": [["guard2.txt", "Customer-facing chatbot.\nRequirement: block harmful content,\nredact PII, refuse off-topic\nrequests."]], "hint": "Which Bedrock feature enforces content policies?", "id": "ml-ga-04", "mins": 6, "objectives": ["Guardrails", "Responsible AI"], "prompt": "What enforces the content policies?", "situation": "A customer-facing chatbot must block harmful content, redact PII, and refuse off-topic requests.", "title": "Guardrails for the chatbot", "why": "Bedrock Guardrails enforce content filters, PII redaction, and denied topics consistently at the API layer. Trusting the model is the current risk; manual review of every output doesn't scale; no guardrails fails the requirement."}, {"answer": 1, "choices": ["Longer prompts", "Amazon Bedrock Agents / agentic workflows with tool use", "A bigger model only", "More fine-tuning"], "evidence": [["agent.txt", "Task: book travel = search flights,\ncheck calendar, confirm, notify.\nMulti-step with tools."]], "hint": "Multi-step tasks with tool calls — which pattern orchestrates them?", "id": "ml-ga-05", "mins": 6, "objectives": ["Agents", "Tool use"], "prompt": "What orchestrates the multi-step task?", "situation": "Booking travel requires searching flights, checking calendars, confirming, and notifying — multi-step with tools.", "title": "The agent that books travel", "why": "Bedrock Agents (agentic workflows) let foundation models plan multi-step tasks and call tools/APIs — the pattern for this use case. Longer prompts don't add tool use; a bigger model alone doesn't orchestrate; fine-tuning doesn't create agency."}, {"answer": 0, "choices": ["SageMaker JumpStart", "Training from scratch", "A laptop", "Manual infrastructure"], "evidence": [["jump.txt", "Need: evaluate 5 open models\nquickly for a classification task.\nTeam: 2 engineers."]], "hint": "Which SageMaker feature offers pre-trained models deployable in clicks?", "id": "ml-ga-06", "mins": 5, "objectives": ["JumpStart"], "prompt": "What lets the small team evaluate models fast?", "situation": "Two engineers need to evaluate 5 open models quickly for a classification task.", "title": "Five models, one afternoon", "why": "SageMaker JumpStart provides pre-trained and foundation models deployable/evaluable quickly — ideal for small-team evaluation. Training from scratch wastes the evaluation goal; laptops can't serve these models; manual infra slows everything."}]}], "lessons": [{"domain_id": "ml-concepts", "title": "ML Concepts — Core concepts", "concepts": ["Supervised learning trains on labeled examples to predict labels for new data — exactly the churn problem.", "Metrics: aggregate accuracy hides group-level harm; the response is auditing features/labels for bias, rebalancing data, and tracking fairness metrics (e.g., equalized odds) alongside accuracy.", "Precision vs recall: recall (catching actual fraud) dominates because misses cost 1000x false alarms — but F1 balances both so precision doesn't collapse entirely.", "Overfitting: the classic overfitting signature: the model memorizes training data instead of generalizing."], "example": {"lang": "text", "code": "Loan model: 92% accuracy overall,\nbut 40% false-rejection rate for\none demographic group.", "walkthrough": "Aggregate accuracy hides group-level harm; the response is auditing features/labels for bias, rebalancing data, and tracking fairness metrics (e.g., equalized odds) alongside accuracy. More data alone doesn't fix biased labels; removing demographic features doesn't remove proxies; accuracy-only thinking caused this."}, "pitfalls": ["Common trap: audit features, rebalance, and add fairness metrics.", "Common trap: remove all demographic features and declare victory."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "sagemaker", "title": "SageMaker — Core concepts", "concepts": ["SageMaker provides Studio notebooks, managed training jobs, and experiment tracking as one platform. SageMaker Feature Store centralizes feature definitions with online (low-latency serving) and offline (training) stores — one definition, no skew.", "Feature Store: data Wrangler prepares data; S3 alone has no feature semantics; spreadsheets aren't infrastructure.", "Automatic model tuning: sageMaker automatic model tuning (hyperparameter optimization) searches the space systematically with strategies like Bayesian optimization — far more efficient than manual grids.", "Model Monitor: sageMaker distributed training (data and model parallelism libraries) shards the model and data across many GPUs, making 70B-parameter training feasible on a deadline."], "example": {"lang": "text", "code": "Model sensitive to 8 hyperparameters.\nManual tuning: 3 weeks, still\nunderperforming.", "walkthrough": "SageMaker automatic model tuning (hyperparameter optimization) searches the space systematically with strategies like Bayesian optimization — far more efficient than manual grids. Guessing and defaults leave performance on the table."}, "pitfalls": ["Common trap: sageMaker Hyperparameter Tuning (automatic model tuning).", "Skipping the key question: which AWS service is the managed ML platform.", "Skipping the key question: which service is the central feature repository for training and serving."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "data-prep", "title": "Data Prep — Core concepts", "concepts": ["Data Wrangler provides visual data preparation and exports the flow to SageMaker Processing jobs for repeatable production-scale execution. Glue DataBrew provides visual no-code data preparation with profiling, and recipes convert to Glue jobs for production.", "Data preparation: imbalanced data needs stratified sampling, class weights, or resampling so the model actually learns the minority class — plus proper metrics (precision/recall/F1).", "Principle: raw-data training degrades models; Excel doesn't scale to 50M rows; hope isn't a strategy."], "example": {"lang": "text", "code": "Raw data: missing values,\nmixed formats, 50M rows.\nNeed: repeatable prep at scale.", "walkthrough": "Data Wrangler provides visual data preparation and exports the flow to SageMaker Processing jobs for repeatable production-scale execution. Raw-data training degrades models; Excel doesn't scale to 50M rows; hope isn't a strategy."}, "pitfalls": ["Common trap: sageMaker Data Wrangler for visual prep + Processing jobs for production.", "Common trap: no prep; hope the model copes.", "Common trap: dropping all rows with any missing value.", "Common trap: analysis-driven strategy: understand missingness, then impute or model appropriately."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "model-training", "title": "Model Training — Core concepts", "concepts": ["Spot training: sageMaker Managed Spot Training uses Spot Instances for up to ~70% savings; hourly checkpoints make interruptions harmless. Early stopping halts training when validation stops improving (saving compute and preventing overfitting), and learning-rate scheduling improves convergence.", "Cost optimization: more epochs worsen overfitting; bigger models cost more without fixing it.", "Experiment tracking: spreadsheets drift; memory fades; no tracking guarantees irreproducibility.", "Training efficiency: sageMaker Debugger inspects tensors during training with built-in rules that catch NaNs, vanishing gradients, and bottlenecks automatically. Training from scratch on 2k labels underfits; rules engines don't generalize; random weights aren't a model.", "Transfer learning fine-tunes a pre-trained model, leveraging representations learned from massive data — effective with small labeled sets."], "example": {"lang": "text", "code": "Training: 48h on 8 GPUs.\nBudget tight. Job checkpoints\nhourly; restarts are fine.", "walkthrough": "SageMaker Managed Spot Training uses Spot Instances for up to ~70% savings; hourly checkpoints make interruptions harmless. On-Demand wastes the discount; full retrains without checkpoints are fragile; laptops can't do this."}, "pitfalls": ["Common trap: transfer learning: fine-tune a pre-trained model.", "Common trap: spot Instances for fault-tolerant training with checkpoints.", "Common trap: training on the full dataset every time."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "deployment-mlops", "title": "Deployment & MLOps — Core concepts", "concepts": ["Real-time endpoints: sageMaker real-time endpoints with auto-scaling serve low-latency predictions 24/7 and scale with spikes. Real-time endpoints idle between batches; Lambda has payload/time limits unsuited to 100M records.", "Batch Transform is the cost-effective choice for large offline inference — no always-on endpoint needed. Notebooks aren't production; batch transform is for offline; email isn't an API.", "A/B testing: endpoint production variants enable canary and A/B (shadow) testing with traffic splitting and instant rollback.", "Edge deployment: model optimization (quantization, distillation, pruning via SageMaker Neo/Edge) shrinks models for edge devices, and edge deployment runs offline. The SageMaker Model Registry versions models with metadata, approval workflows, and deployment tracking — the auditable answer.", "Model optimization: closed-loop MLOps (Model Monitor → retraining trigger → Pipelines validation → deployment) automates the full cycle. Full-size models don't fit; no optimization fails the constraints; bigger models worsen them."], "example": {"lang": "text", "code": "API needs predictions in\n<100ms, 24/7, spiky traffic.", "walkthrough": "SageMaker real-time endpoints with auto-scaling serve low-latency predictions 24/7 and scale with spikes. Notebooks aren't production; batch transform is for offline; email isn't an API."}, "pitfalls": ["Common trap: model optimization: quantization/distillation/pruning for edge.", "Common trap: sageMaker real-time endpoints with auto-scaling.", "Common trap: manual retraining when someone notices."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "genai-on-aws", "title": "GenAI on AWS — Core concepts", "concepts": ["Bedrock Agents (agentic workflows) let foundation models plan multi-step tasks and call tools/APIs — the pattern for this use case. Bedrock provides managed foundation models via API — no training infrastructure, with data-privacy commitments (inputs not used for training).", "Foundation models: sageMaker JumpStart provides pre-trained and foundation models deployable/evaluable quickly — ideal for small-team evaluation.", "Fine-tuning: longer prompts don't add tool use; a bigger model alone doesn't orchestrate; fine-tuning doesn't create agency. Prompt engineering first, then Bedrock fine-tuning for the tone adaptation — the lightest effective path for 500 examples on a small budget.", "Customization: full 70B fine-tuning is overkill; training from scratch is infeasible; no customization misses the requirement."], "example": {"lang": "text", "code": "Need: evaluate 5 open models\nquickly for a classification task.\nTeam: 2 engineers.", "walkthrough": "SageMaker JumpStart provides pre-trained and foundation models deployable/evaluable quickly — ideal for small-team evaluation. Training from scratch wastes the evaluation goal; laptops can't serve these models; manual infra slows everything."}, "pitfalls": ["Common trap: bedrock fine-tuning / continued pre-training for smaller adaptations; prompt engineering first.", "Common trap: bedrock Guardrails: content filters, PII redaction, denied topics.", "Common trap: bigger prompts with the whole corpus."], "try_it": "Work through this in the Terminal tab →"}], "sections": [{"id": "foundations", "title": "Foundations", "kind": "foundation", "lectures": ["m-stats", "m-probability", "m-linalg", "f-python-0", "f-python-1", "f-python-2", "f-cloud-concepts-0", "f-cloud-concepts-1", "f-cloud-concepts-2"], "lab_ids": [], "drill_domain_ids": []}, {"id": "core", "title": "Core", "kind": "core", "lectures": ["c-ml-concepts", "c-sagemaker", "c-data-prep"], "lab_ids": ["aws-ml-lab-1", "aws-ml-lab-2"], "drill_domain_ids": ["ml-concepts", "sagemaker", "data-prep"]}, {"id": "advanced", "title": "Advanced", "kind": "advanced", "lectures": ["c-model-training", "c-deployment-mlops", "c-genai-on-aws"], "lab_ids": ["aws-ml-lab-3", "aws-ml-lab-4"], "drill_domain_ids": ["model-training", "deployment-mlops", "genai-on-aws"]}, {"id": "exam-prep", "title": "Exam Prep", "kind": "exam-prep", "lectures": [], "lab_ids": [], "drill_domain_ids": ["ml-concepts", "sagemaker", "data-prep", "model-training", "deployment-mlops", "genai-on-aws"]}], "behavioral": [{"prompt": "Tell me about a time you built or deployed a machine learning model.", "framework": "STAR", "points": ["The problem and data", "Your modeling choices", "How it performed in production"], "pitfalls": ["Ignoring the business problem", "No production monitoring"]}, {"prompt": "Describe a time your model didn't perform as expected.", "framework": "STAR", "points": ["How you diagnosed it", "The root cause", "The fix"], "pitfalls": ["Blaming the data", "No systematic diagnosis"]}, {"prompt": "Tell me about a time you had to explain ML results to non-technical stakeholders.", "framework": "STAR", "points": ["The audience", "How you made it concrete", "The decision it enabled"], "pitfalls": ["Hiding behind metrics", "Overclaiming certainty"]}, {"prompt": "Describe a time you dealt with biased or problematic model behavior.", "framework": "STAR", "points": ["How you detected it", "Your remediation", "How you prevent recurrence"], "pitfalls": ["Downplaying the harm", "One-time fix"]}, {"prompt": "Tell me about a time you worked with GenAI or LLMs in a product.", "framework": "STAR", "points": ["The use case", "How you handled hallucinations/safety", "The outcome"], "pitfalls": ["Shipping without guardrails", "No evaluation"]}, {"prompt": "Describe a time you optimized ML cost or latency.", "framework": "STAR", "points": ["The constraint", "What you changed", "Before/after numbers"], "pitfalls": ["Sacrificing quality silently", "No measurement"]}, {"prompt": "Tell me about a time you set up MLOps or retraining automation.", "framework": "STAR", "points": ["The manual pain", "What you automated", "How reliability improved"], "pitfalls": ["Automation without validation", "No rollback"]}, {"prompt": "Describe a time you had to choose between ML approaches.", "framework": "STAR", "points": ["The options", "Your evaluation criteria", "Why the winner fit"], "pitfalls": ["Choosing the fanciest model", "Ignoring operational cost"]}], "chat": {"persona": "You are a thoughtful AWS AI/ML interviewer running a mock MLA-C02/AIF-C01 assessment. Cover ML fundamentals and GenAI on AWS. Probe for responsible AI thinking and ask how they'd validate claims.", "topics": [{"id": "ml-concepts", "name": "ML Concepts", "key_points": ["supervised vs unsupervised", "precision vs recall", "overfitting", "train/validation/test", "model bias and fairness"], "followups": ["Which metric matters here and why?", "How do you know it's not overfitting?"]}, {"id": "sagemaker", "name": "SageMaker", "key_points": ["Studio and Training jobs", "Feature Store", "automatic tuning", "Model Monitor", "Pipelines"], "followups": ["How do you prevent training/serving skew?", "How do you catch model decay?"]}, {"id": "data-prep", "name": "Data Prep", "key_points": ["Data Wrangler", "imbalanced data", "missing data", "categorical encoding", "feature scaling"], "followups": ["How do you handle the missing values?", "Why this encoding?"]}, {"id": "model-training", "name": "Model Training", "key_points": ["Spot training", "experiment tracking", "early stopping", "transfer learning", "mixed precision"], "followups": ["How do you reproduce the best run?", "How do you cut training cost?"]}, {"id": "deployment-mlops", "name": "Deployment & MLOps", "key_points": ["real-time endpoints", "Batch Transform", "A/B testing", "edge deployment", "Model Registry", "closed-loop MLOps"], "followups": ["How do you validate a new version?", "What triggers retraining?"]}, {"id": "genai-on-aws", "name": "GenAI on AWS", "key_points": ["Bedrock", "RAG", "fine-tuning vs prompting", "Guardrails", "agents", "JumpStart"], "followups": ["How do you stop hallucinations?", "When do you fine-tune vs use RAG?"]}]}, "slug": "aws-ml", "title": "AWS AI/ML", "tagline": "MLA-C02 & AIF-C01: ML engineering and AI foundations on AWS", "vendor": {"certs": "MLA-C02, AIF-C01", "docs": "https://aws.amazon.com/certification", "name": "Amazon Web Services"}, "labs": [{"id": "aws-ml-lab-1", "title": "ML paradigms — AWS CLI drill", "objective": "Run a short sequence of AWS CLI commands that demonstrates ML paradigms, then verify each result against the expected output.", "steps": ["This lab reworks the ML Concepts practice scenario \"Learning from labeled history\" into commands you run yourself — same concept, hands-on instead of multiple choice.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: aws s3 ls — the listing names your lab buckets", "Type exactly: aws sts get-caller-identity — the identity document includes your Account id", "Type exactly: aws iam list-users — the user list carries the UserName field", "In your own words, say what each command's output taught you about ML paradigms."], "checks": [{"command_pattern": "aws s3 ls", "expect_contains": "bucket", "hint": "In the Terminal tab, run `aws s3 ls`. If the check fails, confirm you typed it exactly and that the output contains \"bucket\"."}, {"command_pattern": "aws sts get-caller-identity", "expect_contains": "Account", "hint": "In the Terminal tab, run `aws sts get-caller-identity`. If the check fails, confirm you typed it exactly and that the output contains \"Account\"."}, {"command_pattern": "aws iam list-users", "expect_contains": "UserName", "hint": "In the Terminal tab, run `aws iam list-users`. If the check fails, confirm you typed it exactly and that the output contains \"UserName\"."}], "success_message": "Lab complete — ML paradigms practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"id": "aws-ml-lab-2", "title": "SageMaker Studio — AWS CLI drill", "objective": "Use the AWS CLI to explore sageMaker Studio hands-on: type each command, read what comes back, and connect the output to the concept.", "steps": ["Inspired by the SageMaker scenario \"The ML platform, managed\": take its core idea and prove it live in the terminal instead of answering on paper.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: aws iam list-users — the user list carries the UserName field", "Type exactly: aws ec2 describe-instances — the reservation output includes the Instances block", "Type exactly: aws s3 ls — the listing names your lab buckets", "In your own words, say what each command's output taught you about sageMaker Studio."], "checks": [{"command_pattern": "aws iam list-users", "expect_contains": "UserName", "hint": "In the Terminal tab, run `aws iam list-users`. If the check fails, confirm you typed it exactly and that the output contains \"UserName\"."}, {"command_pattern": "aws ec2 describe-instances", "expect_contains": "Instances", "hint": "In the Terminal tab, run `aws ec2 describe-instances`. If the check fails, confirm you typed it exactly and that the output contains \"Instances\"."}, {"command_pattern": "aws s3 ls", "expect_contains": "bucket", "hint": "In the Terminal tab, run `aws s3 ls`. If the check fails, confirm you typed it exactly and that the output contains \"bucket\"."}], "success_message": "Lab complete — sageMaker Studio practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"id": "aws-ml-lab-3", "title": "Data Wrangler — AWS CLI drill", "objective": "Prove you can apply data Wrangler in the AWS CLI — follow the steps, watch the output, and confirm every check passes.", "steps": ["The Data Prep scenario \"Fifty million messy rows\" tests this concept as a question. This lab makes you demonstrate it with real commands.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: aws s3 ls — the listing names your lab buckets", "Type exactly: aws sts get-caller-identity — the identity document includes your Account id", "Type exactly: aws iam list-users — the user list carries the UserName field", "In your own words, say what each command's output taught you about data Wrangler."], "checks": [{"command_pattern": "aws s3 ls", "expect_contains": "bucket", "hint": "In the Terminal tab, run `aws s3 ls`. If the check fails, confirm you typed it exactly and that the output contains \"bucket\"."}, {"command_pattern": "aws sts get-caller-identity", "expect_contains": "Account", "hint": "In the Terminal tab, run `aws sts get-caller-identity`. If the check fails, confirm you typed it exactly and that the output contains \"Account\"."}, {"command_pattern": "aws iam list-users", "expect_contains": "UserName", "hint": "In the Terminal tab, run `aws iam list-users`. If the check fails, confirm you typed it exactly and that the output contains \"UserName\"."}], "success_message": "Lab complete — data Wrangler practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"id": "aws-ml-lab-4", "title": "Spot training — AWS CLI drill", "objective": "Run a short sequence of AWS CLI commands that demonstrates spot training, then verify each result against the expected output.", "steps": ["This lab reworks the Model Training practice scenario \"Cheap GPUs that can be interrupted\" into commands you run yourself — same concept, hands-on instead of multiple choice.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: aws iam list-users — the user list carries the UserName field", "Type exactly: aws ec2 describe-instances — the reservation output includes the Instances block", "Type exactly: aws s3 ls — the listing names your lab buckets", "In your own words, say what each command's output taught you about spot training."], "checks": [{"command_pattern": "aws iam list-users", "expect_contains": "UserName", "hint": "In the Terminal tab, run `aws iam list-users`. If the check fails, confirm you typed it exactly and that the output contains \"UserName\"."}, {"command_pattern": "aws ec2 describe-instances", "expect_contains": "Instances", "hint": "In the Terminal tab, run `aws ec2 describe-instances`. If the check fails, confirm you typed it exactly and that the output contains \"Instances\"."}, {"command_pattern": "aws s3 ls", "expect_contains": "bucket", "hint": "In the Terminal tab, run `aws s3 ls`. If the check fails, confirm you typed it exactly and that the output contains \"bucket\"."}], "success_message": "Lab complete — spot training practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"id": "aws-ml-lab-datasets", "title": "Dataset inventory", "objective": "ML starts with data. Inventory the artifact bucket that stages the training datasets.", "difficulty": 1, "steps": ["Open the Terminal tab for this bootcamp.", "Type exactly: aws s3 ls s3://ilb-artifacts — the staged datasets and builds", "Type exactly: aws s3 ls s3://ilb-artifacts/builds — versioned training inputs", "In your own words, say why training data is versioned like code."], "checks": [{"command_pattern": "^aws s3 ls s3://ilb-artifacts$", "expect_contains": "builds/bootcamp-v3.zip", "hint": "In the Terminal tab, run `aws s3 ls s3://ilb-artifacts`. If the check fails, confirm you typed it exactly and that the output contains \"builds/bootcamp-v3.zip\"."}, {"command_pattern": "^aws s3 ls s3://ilb-artifacts/builds$", "expect_contains": "bootcamp-v4.zip", "hint": "In the Terminal tab, run `aws s3 ls s3://ilb-artifacts/builds`. If the check fails, confirm you typed it exactly and that the output contains \"bootcamp-v4.zip\"."}], "success_message": "Lab complete — you inventoried the training data."}, {"id": "aws-ml-lab-fetch", "title": "Fetch the training input", "objective": "Pull a versioned input locally, the way a training job's data channel stages it.", "difficulty": 1, "steps": ["Open the Terminal tab for this bootcamp.", "Type exactly: aws s3 cp s3://ilb-artifacts/builds/bootcamp-v3.zip . — stage the v3 input locally", "Type exactly: aws s3 ls s3://ilb-artifacts/reports — confirm the evaluation report is staged", "In your own words, say what a training job does with the staged input."], "checks": [{"command_pattern": "^aws s3 cp s3://ilb-artifacts/builds/bootcamp-v3.zip \\.$", "expect_contains": "download:", "hint": "In the Terminal tab, run `aws s3 cp s3://ilb-artifacts/builds/bootcamp-v3.zip .`. If the check fails, confirm you typed it exactly and that the output contains \"download:\"."}, {"command_pattern": "^aws s3 ls s3://ilb-artifacts/reports$", "expect_contains": "q3.pdf", "hint": "In the Terminal tab, run `aws s3 ls s3://ilb-artifacts/reports`. If the check fails, confirm you typed it exactly and that the output contains \"q3.pdf\"."}], "success_message": "Lab complete — you staged training input like a data channel."}, {"id": "aws-ml-lab-registry", "title": "Model registry — version the artifact", "objective": "Trained models are versioned artifacts. Create a registry bucket and publish a model version into it.", "difficulty": 2, "steps": ["Open the Terminal tab for this bootcamp.", "Type exactly: aws s3 mb s3://ilb-ml-registry — create the model registry", "Type exactly: aws s3 cp ./notes.txt s3://ilb-ml-registry/model-v1.txt — publish model version 1", "Type exactly: aws s3 ls s3://ilb-ml-registry — confirm the version is registered", "In your own words, say why only the registry — never a laptop — is the source of truth for models."], "checks": [{"command_pattern": "^aws s3 mb s3://ilb-ml-registry$", "expect_contains": "make_bucket: ilb-ml-registry", "hint": "In the Terminal tab, run `aws s3 mb s3://ilb-ml-registry`. If the check fails, confirm you typed it exactly and that the output contains \"make_bucket: ilb-ml-registry\"."}, {"command_pattern": "^aws s3 cp \\./notes.txt s3://ilb-ml-registry/model-v1.txt$", "expect_contains": "upload:", "hint": "In the Terminal tab, run `aws s3 cp ./notes.txt s3://ilb-ml-registry/model-v1.txt`. If the check fails, confirm you typed it exactly and that the output contains \"upload:\"."}], "success_message": "Lab complete — model v1 is registered and reproducible."}, {"id": "aws-ml-lab-capacity", "title": "Training capacity check", "objective": "Training jobs need the right instance types. Inspect the fleet, start the standby host for a capacity test, then park it.", "difficulty": 3, "steps": ["Open the Terminal tab for this bootcamp.", "Type exactly: aws ec2 describe-instances — note each instance type and state", "Type exactly: aws ec2 start-instances --instance-ids i-0f9e8d7c6b5a43210 — bring the memory-optimized host up", "Type exactly: aws ec2 stop-instances --instance-ids i-0f9e8d7c6b5a43210 — park it again (leave the lab clean)", "In your own words, say why you match instance type to workload instead of defaulting to one size."], "checks": [{"command_pattern": "^aws ec2 describe-instances$", "expect_contains": "r6g.large", "hint": "In the Terminal tab, run `aws ec2 describe-instances`. If the check fails, confirm you typed it exactly and that the output contains \"r6g.large\"."}, {"command_pattern": "^aws ec2 start-instances --instance-ids i-0f9e8d7c6b5a43210$", "expect_contains": "now running", "hint": "In the Terminal tab, run `aws ec2 start-instances --instance-ids i-0f9e8d7c6b5a43210`. If the check fails, confirm you typed it exactly and that the output contains \"now running\"."}, {"command_pattern": "^aws ec2 stop-instances --instance-ids i-0f9e8d7c6b5a43210$", "expect_contains": "now stopped", "hint": "In the Terminal tab, run `aws ec2 stop-instances --instance-ids i-0f9e8d7c6b5a43210`. If the check fails, confirm you typed it exactly and that the output contains \"now stopped\"."}], "success_message": "Lab complete — capacity verified and the lab left clean."}], "foundations": [{"track": "python", "why_needed": "SageMaker, notebooks, and training scripts are Python. Learn to read and write scripts before the ML engineering."}, {"track": "cloud-concepts", "why_needed": "Training clusters, endpoints, and storage live in regions and AZs. Learn the cloud geography first."}], "math": ["stats", "probability", "linalg"], "simulations": [{"id": "aws-ml-sim-model-choice", "title": "Pick the model for the job", "kind": "branching", "domain_id": "ml-concepts", "difficulty": 2, "brief": "Three candidate approaches for customer-churn prediction. The data and the business constraint decide — not the hype.", "steps": [{"id": "s1", "text": "You have 4,000 labeled rows, tabular features, and the business needs an explanation for every prediction. Your pick?", "choices": [{"label": "A deep neural network — most powerful", "next": "s2a", "points": 0, "feedback": "A neural net on 4k rows with an explainability requirement is the wrong tool twice over."}, {"label": "Gradient-boosted trees — strong on tabular data, explainable", "next": "s2", "points": 2, "feedback": "Correct — boosted trees dominate small tabular problems and support feature-importance explanations."}]}, {"id": "s2a", "text": "The model overfits and nobody can explain its decisions to compliance. Reconsider:", "choices": [{"label": "Gradient-boosted trees", "next": "s2", "points": 1, "feedback": "Right — match the model to the data size and the explainability constraint."}]}, {"id": "s2", "text": "Now the CTO asks for a generative-AI chatbot on the support docs. Same model?", "choices": [{"label": "Yes — boosted trees for everything", "next": "END", "points": 0, "outcome": "bad", "feedback": "Boosted trees cannot generate language. Different task, different model family."}, {"label": "No — a language model (Bedrock) fits the generative task", "next": "END", "points": 2, "outcome": "good", "feedback": "Correct — the task dictates the model. Tabular prediction gets trees; generation gets language models."}]}], "debrief": "You matched models to tasks: boosted trees for small tabular prediction with explainability, language models for generation. No hype, just fit.", "points": 15}, {"id": "aws-ml-sim-mlops-order", "title": "Ship the model safely", "kind": "ordering", "domain_id": "deployment-mlops", "difficulty": 2, "brief": "The model beats the baseline in the notebook. Order the MLOps path from experiment to production.", "steps": {"context": "MLOps: from a winning experiment to a monitored production model.", "items": ["Register the model version in the model registry", "Deploy behind an endpoint with shadow traffic", "Evaluate on the held-out test set", "Promote to full production traffic with monitoring", "Retrain pipeline on a schedule with fresh data"], "correct_order": [2, 0, 1, 3, 4]}, "debrief": "You ordered the safe path: test-set evaluation, registry, shadow deploy, promote with monitoring, then scheduled retraining. Notebooks do not go to production.", "points": 10}, {"id": "aws-ml-sim-training-fail", "title": "The training job that died at epoch 40", "kind": "troubleshoot", "domain_id": "model-training", "difficulty": 3, "brief": "The overnight training job died 6 hours in. The logs end abruptly — no Python traceback. Diagnose before you burn another 6 hours.", "steps": [{"symptom": "Training job terminated at epoch 40 of 100 with no traceback; the instance was reclaimed.", "evidence": [["training.log", "epoch 38/100 - loss: 0.214\nepoch 39/100 - loss: 0.209\nepoch 40/100 - loss: 0.207\n[job terminated: instance reclaimed]"]], "options": ["The model diverged — lower the learning rate and restart", "The instance was a Spot instance that got reclaimed — use checkpointing and on-demand or diversified capacity", "The dataset is corrupt at the 40% mark — clean the data", "Increase the batch size — the job ran out of memory"], "correct": 1, "explain": "No traceback plus 'instance reclaimed' is the signature of Spot interruption, not a model or data bug. The fix is operational: checkpoint regularly so training resumes, and diversify capacity."}, {"symptom": "Confirmed: Spot interruption. The team wants the next run to survive it.", "evidence": [["aws ec2 describe-instances", "i-0a1b2c3d4e5f60718  ilb-web-01  running  t3.medium  us-east-1a"]], "options": ["Checkpoint every epoch to durable storage and enable automatic resume", "Never use Spot again — only on-demand, whatever the cost", "Reduce epochs to 40 so the job finishes before interruption", "Train on the smallest possible instance to save money"], "correct": 0, "explain": "Checkpointing plus resume turns Spot from a risk into a discount: interruptions become restarts, not restarts-from-zero. Banning Spot or shrinking the job dodges the engineering."}], "debrief": "You diagnosed an infrastructure failure, not a model failure: Spot reclamation needs checkpointing and resume, not hyperparameter tuning.", "points": 15}, {"id": "aws-ml-sim-training-config", "title": "The training job config", "kind": "config-check", "domain_id": "model-training", "difficulty": 3, "brief": "A training job config is submitted for review. Click the lines that would waste money or break reproducibility.", "steps": {"config": "TrainingJob: churn-v7\n1. instance_type: ml.p4d.24xlarge\n2. instance_count: 1\n3. dataset: s3://ilb-artifacts/builds/latest.zip\n4. hyperparameters: {lr: 0.01}\n5. checkpoint: none\n6. max_runtime: 72h", "find": 2, "issues": [{"line": 3, "description": "'latest.zip' is a moving target — the same config trains on different data tomorrow.", "fix": "Pin the dataset to a versioned object (e.g. builds/bootcamp-v4.zip)."}, {"line": 5, "description": "No checkpointing on a 72-hour run means any interruption restarts from zero.", "fix": "Checkpoint to S3 every epoch and enable resume."}]}, "debrief": "You caught the reproducibility killer (unversioned data) and the cost killer (no checkpoints). A p4d instance without checkpoints is a budget fire.", "points": 10}], "consoleSims": [{"id": "aws-ml-console-iam-1", "title": "Execution role for training", "console": "aws-iam", "domain_id": "sagemaker", "difficulty": 2, "brief": "Training jobs need S3 read access and nothing else. Create the execution role with that scope.", "tasks": [{"id": "t1", "instruction": "Create a role named ilb-sagemaker-exec trusted by the SageMaker service.", "validate": {"action": "create", "params": {"type": "role", "name": "ilb-sagemaker-exec", "service": "sagemaker"}}, "hint": "Create a role (not a user) with the SageMaker service principal."}, {"id": "t2", "instruction": "Grant the role read access to the artifact bucket only.", "validate": {"action": "set-field", "params": {"field": "role.ilb-sagemaker-exec.policy", "value": "s3:GetObject/ilb-artifacts"}}, "hint": "Attach the narrowest read policy — training reads data, it never writes to the data bucket."}], "debrief": "You built the training execution role with least privilege: read the data bucket, nothing more."}, {"id": "aws-ml-console-vpc-1", "title": "Isolated training subnet", "console": "aws-vpc", "domain_id": "deployment-mlops", "difficulty": 3, "brief": "Training jobs handling customer data must run isolated. Carve a dedicated subnet for the training fleet.", "tasks": [{"id": "t1", "instruction": "Create subnet ilb-ml-train with CIDR 10.0.20.0/24 inside vpc-0a1b2c3d.", "validate": {"action": "create", "params": {"type": "subnet", "vpc": "vpc-0a1b2c3d", "name": "ilb-ml-train", "cidr": "10.0.20.0/24"}}, "hint": "Create the subnet inside the existing VPC with the exact CIDR."}, {"id": "t2", "instruction": "Tag the subnet Workload=ml-training and Tier=private.", "validate": {"action": "set-field", "params": {"field": "subnet.ilb-ml-train.tags", "value": "Workload=ml-training,Tier=private"}}, "hint": "Tag it so network automation keeps training traffic isolated."}], "debrief": "You isolated the training network: dedicated subnet, private tier, tagged for automation."}], "terminalMissions": [{"id": "aws-ml-mission-backups", "title": "List the data buckets", "domain_id": "data-prep", "difficulty": 1, "brief": "Inventory the buckets holding data the ML pipeline can consume.", "objectives": ["List all S3 buckets"], "checks": [{"command_pattern": "^aws s3 ls$", "expect_contains": "ilb-backups-2026", "hint": "In the Terminal tab, run `aws s3 ls`. If the check fails, confirm you typed it exactly and that the output contains \"ilb-backups-2026\"."}], "success_message": "Data buckets inventoried."}, {"id": "aws-ml-mission-fetch", "title": "Stage a training input", "domain_id": "data-prep", "difficulty": 1, "brief": "Download a versioned build to stage it for training.", "objectives": ["Download s3://ilb-artifacts/builds/bootcamp-v3.zip"], "checks": [{"command_pattern": "^aws s3 cp s3://ilb-artifacts/builds/bootcamp-v3.zip \\.$", "expect_contains": "download:", "hint": "In the Terminal tab, run `aws s3 cp s3://ilb-artifacts/builds/bootcamp-v3.zip .`. If the check fails, confirm you typed it exactly and that the output contains \"download:\"."}], "success_message": "Training input staged."}, {"id": "aws-ml-mission-registry", "title": "Create the registry", "domain_id": "deployment-mlops", "difficulty": 2, "brief": "Create the model-registry bucket for this mission.", "objectives": ["Create s3://ilb-ml-mission"], "checks": [{"command_pattern": "^aws s3 mb s3://ilb-ml-mission$", "expect_contains": "make_bucket: ilb-ml-mission", "hint": "In the Terminal tab, run `aws s3 mb s3://ilb-ml-mission`. If the check fails, confirm you typed it exactly and that the output contains \"make_bucket: ilb-ml-mission\"."}], "success_message": "Registry bucket created."}, {"id": "aws-ml-mission-compute", "title": "Inspect the training host", "domain_id": "model-training", "difficulty": 2, "brief": "Describe the web host that doubles as the experiment box and read its instance type.", "objectives": ["Describe ilb-web-01 by instance id"], "checks": [{"command_pattern": "^aws ec2 describe-instances --instance-ids i-0a1b2c3d4e5f60718$", "expect_contains": "t3.medium", "hint": "In the Terminal tab, run `aws ec2 describe-instances --instance-ids i-0a1b2c3d4e5f60718`. If the check fails, confirm you typed it exactly and that the output contains \"t3.medium\"."}], "success_message": "Experiment host inspected."}, {"id": "aws-ml-mission-users", "title": "List the automation users", "domain_id": "genai-on-aws", "difficulty": 2, "brief": "List the IAM users — automation principals included.", "objectives": ["List all IAM users"], "checks": [{"command_pattern": "^aws iam list-users$", "expect_contains": "UserName", "hint": "In the Terminal tab, run `aws iam list-users`. If the check fails, confirm you typed it exactly and that the output contains \"UserName\"."}], "success_message": "Principals listed."}, {"id": "aws-ml-mission-simulated", "title": "Read the simulator banner", "domain_id": "ml-concepts", "difficulty": 3, "brief": "Every identity document in this lab carries a simulator banner. Retrieve it and read it carefully.", "objectives": ["Retrieve the STS caller identity", "Find the simulator notice"], "checks": [{"command_pattern": "^aws sts get-caller-identity$", "expect_contains": "(simulated)", "hint": "In the Terminal tab, run `aws sts get-caller-identity`. If the check fails, confirm you typed it exactly and that the output contains \"(simulated)\"."}], "success_message": "Banner read — this terminal is a sandbox, never the real cloud."}], "media": [{"id": "aws-ml-ml-concepts-diag", "kind": "diagram", "title": "ML Workflow on AWS", "svg": "assets/diagrams/aws-ml-ml-concepts.svg", "lesson_ref": "c-ml-concepts", "caption": "The standard machine-learning lifecycle.", "alt": "ML Workflow on AWS. Shows: Prepare, Train, Validate, Test, Deploy, Monitor."}, {"id": "aws-ml-sagemaker-diag", "kind": "diagram", "title": "Amazon SageMaker Platform", "svg": "assets/diagrams/aws-ml-sagemaker.svg", "lesson_ref": "c-sagemaker", "caption": "Managed ML from labeling to hosting.", "alt": "Amazon SageMaker Platform. Tiers: Prepare, Build + Train, Deploy."}, {"id": "aws-ml-data-prep-diag", "kind": "diagram", "title": "Data Prep for ML", "svg": "assets/diagrams/aws-ml-data-prep.svg", "lesson_ref": "c-data-prep", "caption": "Models are only as good as their training data.", "alt": "Data Prep for ML. Shows: Data Wrangler, Feature Store, Ground Truth, Class balance."}, {"id": "aws-ml-model-training-diag", "kind": "diagram", "title": "Training on SageMaker", "svg": "assets/diagrams/aws-ml-model-training.svg", "lesson_ref": "c-model-training", "caption": "Managed training with experiment tracking.", "alt": "Training on SageMaker. Shows: Training jobs, Hyperparameter tuning, Distributed, Experiments."}, {"id": "aws-ml-deployment-mlops-diag", "kind": "diagram", "title": "Deploying Models (MLOps)", "svg": "assets/diagrams/aws-ml-deployment-mlops.svg", "lesson_ref": "c-deployment-mlops", "caption": "From trained artifact to monitored endpoint.", "alt": "Deploying Models (MLOps). Shows: Model registry, Endpoint, Batch Transform, Model Monitor."}, {"id": "aws-ml-genai-on-aws-diag", "kind": "diagram", "title": "Generative AI on AWS (Bedrock)", "svg": "assets/diagrams/aws-ml-genai-on-aws.svg", "lesson_ref": "c-genai-on-aws", "caption": "Foundation models as a managed API.", "alt": "Generative AI on AWS (Bedrock). Tiers: Models, Customize, Consume."}], "resources": {"cheatsheet": {"title": "AWS AI/ML — Cheat Sheet", "sections": [{"heading": "ML Concepts", "items": ["Supervised — Supervised learning trains on labeled examples to predict labels for new data — exactly the churn problem.", "Metrics — aggregate accuracy hides group-level harm; the response is auditing features/labels for bias, rebalancing data, and tracking fairness metrics (e.g., equalized odds) alongside accuracy.", "Precision vs recall — recall (catching actual fraud) dominates because misses cost 1000x false alarms — but F1 balances both so precision doesn't collapse entirely.", "Overfitting — the classic overfitting signature: the model memorizes training data instead of generalizing.", "Common trap — audit features, rebalance, and add fairness metrics.", "Common trap — remove all demographic features and declare victory.", "Aggregate — Aggregate accuracy hides group-level harm; the response is auditing features/labels for bias, rebalancing data, and tracking fairness metrics (e.g., equalized odds) alongside accuracy. More data alone doesn't fix biased labels; removing demographic features…"]}, {"heading": "SageMaker", "items": ["SageMaker — provides Studio notebooks, managed training jobs, and experiment tracking as one platform. SageMaker Feature Store centralizes feature definitions with online (low-latency serving) and offline (training) stores — one definition, no skew.", "Feature Store — data Wrangler prepares data; S3 alone has no feature semantics; spreadsheets aren't infrastructure.", "Automatic model tuning — sageMaker automatic model tuning (hyperparameter optimization) searches the space systematically with strategies like Bayesian optimization — far more efficient than manual grids.", "Model Monitor — sageMaker distributed training (data and model parallelism libraries) shards the model and data across many GPUs, making 70B-parameter training feasible on a deadline.", "Common trap — sageMaker Hyperparameter Tuning (automatic model tuning).", "Skipping the key question — which AWS service is the managed ML platform.", "Skipping the key question — which service is the central feature repository for training and serving.", "SageMaker — SageMaker automatic model tuning (hyperparameter optimization) searches the space systematically with strategies like Bayesian optimization — far more efficient than manual grids. Guessing and defaults leave performance on the table."]}, {"heading": "Data Prep", "items": ["Data Wrangler — provides visual data preparation and exports the flow to SageMaker Processing jobs for repeatable production-scale execution. Glue DataBrew provides visual no-code data preparation with profiling, and recipes convert to Glue jobs for production.", "Data preparation — imbalanced data needs stratified sampling, class weights, or resampling so the model actually learns the minority class — plus proper metrics (precision/recall/F1).", "Principle — raw-data training degrades models; Excel doesn't scale to 50M rows; hope isn't a strategy.", "Common trap — sageMaker Data Wrangler for visual prep + Processing jobs for production.", "Common trap — no prep; hope the model copes.", "Common trap — dropping all rows with any missing value.", "Common trap — analysis-driven strategy: understand missingness, then impute or model appropriately.", "Data Wrangler — provides visual data preparation and exports the flow to SageMaker Processing jobs for repeatable production-scale execution. Raw-data training degrades models; Excel doesn't scale to 50M rows; hope isn't a strategy."]}, {"heading": "Model Training", "items": ["Spot training — sageMaker Managed Spot Training uses Spot Instances for up to ~70% savings; hourly checkpoints make interruptions harmless. Early stopping halts training when validation stops improving (saving compute and preventing overfitting), and learning-rate scheduli…", "Cost optimization — more epochs worsen overfitting; bigger models cost more without fixing it.", "Experiment tracking — spreadsheets drift; memory fades; no tracking guarantees irreproducibility.", "Training efficiency — sageMaker Debugger inspects tensors during training with built-in rules that catch NaNs, vanishing gradients, and bottlenecks automatically. Training from scratch on 2k labels underfits; rules engines don't generalize; random weights aren't a model.", "Transfer — Transfer learning fine-tunes a pre-trained model, leveraging representations learned from massive data — effective with small labeled sets.", "Common trap — transfer learning: fine-tune a pre-trained model.", "Common trap — spot Instances for fault-tolerant training with checkpoints.", "Common trap — training on the full dataset every time.", "SageMaker Managed Spot Training — uses Spot Instances for up to ~70% savings; hourly checkpoints make interruptions harmless. On-Demand wastes the discount; full retrains without checkpoints are fragile; laptops can't do this."]}, {"heading": "Deployment & MLOps", "items": ["Real-time endpoints — sageMaker real-time endpoints with auto-scaling serve low-latency predictions 24/7 and scale with spikes. Real-time endpoints idle between batches; Lambda has payload/time limits unsuited to 100M records.", "Batch Transform — is the cost-effective choice for large offline inference — no always-on endpoint needed. Notebooks aren't production; batch transform is for offline; email isn't an API.", "A/B testing — endpoint production variants enable canary and A/B (shadow) testing with traffic splitting and instant rollback.", "Edge deployment — model optimization (quantization, distillation, pruning via SageMaker Neo/Edge) shrinks models for edge devices, and edge deployment runs offline. The SageMaker Model Registry versions models with metadata, approval workflows, and deployment tracking — the…", "Model optimization — closed-loop MLOps (Model Monitor → retraining trigger → Pipelines validation → deployment) automates the full cycle. Full-size models don't fit; no optimization fails the constraints; bigger models worsen them.", "Common trap — model optimization: quantization/distillation/pruning for edge.", "Common trap — sageMaker real-time endpoints with auto-scaling.", "Common trap — manual retraining when someone notices.", "SageMaker — SageMaker real-time endpoints with auto-scaling serve low-latency predictions 24/7 and scale with spikes. Notebooks aren't production; batch transform is for offline; email isn't an API."]}, {"heading": "GenAI on AWS", "items": ["Bedrock Agents — Bedrock Agents (agentic workflows) let foundation models plan multi-step tasks and call tools/APIs — the pattern for this use case. Bedrock provides managed foundation models via API — no training infrastructure, with data-privacy commitments (inputs not us…", "Foundation models — sageMaker JumpStart provides pre-trained and foundation models deployable/evaluable quickly — ideal for small-team evaluation.", "Fine-tuning — longer prompts don't add tool use; a bigger model alone doesn't orchestrate; fine-tuning doesn't create agency. Prompt engineering first, then Bedrock fine-tuning for the tone adaptation — the lightest effective path for 500 examples on a small budget.", "Customization — full 70B fine-tuning is overkill; training from scratch is infeasible; no customization misses the requirement.", "Common trap — bedrock fine-tuning / continued pre-training for smaller adaptations; prompt engineering first.", "Common trap — bedrock Guardrails: content filters, PII redaction, denied topics.", "Common trap — bigger prompts with the whole corpus.", "SageMaker JumpStart — provides pre-trained and foundation models deployable/evaluable quickly — ideal for small-team evaluation. Training from scratch wastes the evaluation goal; laptops can't serve these models; manual infra slows everything."]}]}, "glossary": [{"term": "API", "def": "Bedrock Guardrails enforce content filters, PII redaction, and denied topics consistently at the API layer. Trusting the model is the current risk; manual review of every output doesn't scale; no guardrails fails the requirement."}, {"term": "SageMaker", "def": "SageMaker provides Studio notebooks, managed training jobs, and experiment tracking as one platform. SageMaker Feature Store centralizes feature definitions with online (low-latency serving) and offline (training) stores — one definition…"}, {"term": "Bedrock", "def": "Bedrock Agents (agentic workflows) let foundation models plan multi-step tasks and call tools/APIs — the pattern for this use case. Bedrock provides managed foundation models via API — no training infrastructure, with data-privacy commit…"}, {"term": "Training", "def": "SageMaker Managed Spot Training uses Spot Instances for up to ~70% savings; hourly checkpoints make interruptions harmless. On-Demand wastes the discount; full retrains without checkpoints are fragile; laptops can't do this."}, {"term": "ML", "def": "Which AWS service is the managed ML platform?"}, {"term": "Data Wrangler", "def": "Data Wrangler provides visual data preparation and exports the flow to SageMaker Processing jobs for repeatable production-scale execution. Glue DataBrew provides visual no-code data preparation with profiling, and recipes convert to Glu…"}, {"term": "AWS", "def": "Skipping the key question: which AWS service is the managed ML platform."}, {"term": "Glue", "def": "Glue DataBrew provides visual no-code data preparation with profiling, and recipes convert to Glue jobs for production. Hand scripts per analyst don't scale; no profiling is blindness; production-only skips exploration."}, {"term": "Model Monitor", "def": "Model Monitor: sageMaker distributed training (data and model parallelism libraries) shards the model and data across many GPUs, making 70B-parameter training feasible on a deadline."}, {"term": "GPUs", "def": "Mixed-precision training (FP16 compute with FP32 master weights via AMP) roughly doubles throughput on modern GPUs with negligible accuracy impact. FP32-everywhere is the slow baseline; INT8 training from scratch risks accuracy; no GPUs…"}, {"term": "Fine-tuning", "def": "Fine-tuning: longer prompts don't add tool use; a bigger model alone doesn't orchestrate; fine-tuning doesn't create agency. Prompt engineering first, then Bedrock fine-tuning for the tone adaptation — the lightest effective path for 500…"}, {"term": "A/B", "def": "A/B testing: endpoint production variants enable canary and A/B (shadow) testing with traffic splitting and instant rollback."}, {"term": "SLA", "def": "100M records, no latency SLA — which option is cheapest?"}, {"term": "Skipping", "def": "Skipping the key question: which AWS service is the managed ML platform."}, {"term": "Registry", "def": "The SageMaker Model Registry versions models with metadata, approval workflows, and deployment tracking — the auditable answer. Shared drives and email lack versioning and approvals; no registry is unauditable."}, {"term": "Glue DataBrew", "def": "Glue DataBrew provides visual no-code data preparation with profiling, and recipes convert to Glue jobs for production. Hand scripts per analyst don't scale; no profiling is blindness; production-only skips exploration."}, {"term": "Batch Transform", "def": "Batch Transform is the cost-effective choice for large offline inference — no always-on endpoint needed. Notebooks aren't production; batch transform is for offline; email isn't an API."}, {"term": "APIs", "def": "Bedrock Agents (agentic workflows) let foundation models plan multi-step tasks and call tools/APIs — the pattern for this use case. Bedrock provides managed foundation models via API — no training infrastructure, with data-privacy commit…"}, {"term": "FP32", "def": "Mixed-precision training (FP16 compute with FP32 master weights via AMP) roughly doubles throughput on modern GPUs with negligible accuracy impact. FP32-everywhere is the slow baseline; INT8 training from scratch risks accuracy; no GPUs…"}, {"term": "Notebooks", "def": "Batch Transform is the cost-effective choice for large offline inference — no always-on endpoint needed. Notebooks aren't production; batch transform is for offline; email isn't an API."}, {"term": "Real-time", "def": "Real-time endpoints: sageMaker real-time endpoints with auto-scaling serve low-latency predictions 24/7 and scale with spikes. Real-time endpoints idle between batches; Lambda has payload/time limits unsuited to 100M records."}, {"term": "Spot Instances", "def": "SageMaker Managed Spot Training uses Spot Instances for up to ~70% savings; hourly checkpoints make interruptions harmless. On-Demand wastes the discount; full retrains without checkpoints are fragile; laptops can't do this."}, {"term": "Bedrock Agents", "def": "Bedrock Agents (agentic workflows) let foundation models plan multi-step tasks and call tools/APIs — the pattern for this use case. Bedrock provides managed foundation models via API — no training infrastructure, with data-privacy commit…"}, {"term": "SageMaker Feature Store", "def": "SageMaker Feature Store centralizes feature definitions with online (low-latency serving) and offline (training) stores — one definition, no skew. Data Wrangler prepares data; S3 alone has no feature semantics; spreadsheets aren't infras…"}, {"term": "Customization", "def": "Customization: full 70B fine-tuning is overkill; training from scratch is infeasible; no customization misses the requirement."}], "links": [{"label": "Amazon Web Services — official site", "url": "https://aws.amazon.com/certification", "note": "Official vendor documentation and certification information"}, {"label": "AWS documentation", "url": "https://docs.aws.amazon.com/", "note": "Official service documentation"}, {"label": "AWS Well-Architected Framework", "url": "https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html", "note": "Official architecture best practices"}, {"label": "AWS Architecture Center", "url": "https://aws.amazon.com/architecture/", "note": "Official AWS architecture guidance"}, {"label": "AWS whitepapers", "url": "https://aws.amazon.com/whitepapers/", "note": "Official AWS whitepapers"}], "checklist": ["Get 7–8 hours of sleep the night before — fatigue destroys recall faster than any topic gap.", "Bring valid government-issued photo ID and arrive at the test center 30 minutes early.", "Eat a real meal beforehand; bring water and a light snack if the center allows them.", "Read every question twice before scanning the answer choices.", "Flag uncertain questions and move on — return with fresh eyes at the end.", "Eliminate the obviously wrong answers first, then compare the survivors.", "Budget your time: answer steadily and keep a 10–15 minute review buffer.", "Re-run your weakest-domain drill until mastery is at least 80%.", "For ML Concepts: restate the 'why' behind each scenario answer in your own words — if you can't explain it, you don't own it.", "Redo one SageMaker lab from scratch without looking at the steps.", "Recite the key Data Prep terms from the glossary aloud from memory."]}}
+{
+ "slug": "aws-ml",
+ "title": "AWS Machine Learning",
+ "tagline": "ML on AWS: SageMaker for training and deployment, pre-built AI services (Rekognition, Comprehend, Lex), and feature engineering for reliable models. Vendor-neutral study aid. Not affiliated with AWS; ",
+ "vendor": {
+  "name": "Independent interview prep (not affiliated with ThreatLocker)",
+  "certs": "",
+  "docs": "https://www.threatlocker.com"
+ },
+ "disclaimer": "Independent interview-prep material by Interstitium Labs. Not affiliated with, endorsed by, or sponsored by ThreatLocker or any vendor mentioned. Confers no certificate. All scenarios are original practice content; no exam or vendor-training content is reproduced.",
+ "accent": "#e5484d",
+ "domains": [
+  {
+   "id": "aws-ml",
+   "name": "AWS Machine Learning",
+   "summary": "ML on AWS: SageMaker for training and deployment, pre-built AI services (Rekognition, Comprehend, Lex), and feature engineering for reliable models. Vendor-neutral study aid. Not affiliated with AWS; this course confers no certification.",
+   "scenarios": [
+    {
+     "id": "aws-ml-sc1",
+     "title": "Build vs Buy",
+     "situation": "A startup needs to detect inappropriate content in user-uploaded images before they go live. They have 200 labeled images, no ML engineers, and a two-week deadline.",
+     "prompt": "What is the right approach?",
+     "evidence": [
+      [
+       "Options",
+       "Amazon Rekognition: pre-trained image/video analysis (moderation labels, faces, objects) via API \u2014 no training needed. SageMaker: full platform to build, train, and deploy custom models \u2014 powerful but requires data and expertise."
+      ]
+     ],
+     "choices": [
+      "Use Rekognition's DetectModerationLabels API: pre-trained, pay-per-image, working in days with no training data or ML staff required.",
+      "Train a custom CNN on SageMaker with the 200 images; custom models always outperform APIs.",
+      "Hire an ML team and collect 100k labeled images before launching the feature.",
+      "Skip moderation; user reports after publication are sufficient."
+     ],
+     "answer": 0,
+     "why": "Pre-built AI services exist for exactly this gap: common perception tasks are already solved to production quality behind an API, while 200 images cannot train a reliable custom model and hiring a team blows the deadline. Build custom only when the problem is genuinely differentiated.",
+     "hint": "Is image moderation your company's differentiator, or a solved commodity?",
+     "objectives": [
+      "Rekognition",
+      "Build vs buy"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "aws-ml-sc2",
+     "title": "Chatbot, Fast",
+     "situation": "Support wants a chatbot that answers order-status questions, escalates to humans on confusion, and works in the mobile app and on the website. Timeline: one month.",
+     "prompt": "Which service combination fits?",
+     "evidence": [
+      [
+       "Conversational AI",
+       "Amazon Lex: build conversational interfaces with intents, slots, and fulfillment hooks (Lambda). Integrates with Connect for voice and with web/mobile SDKs. Polly adds text-to-speech; Transcribe adds speech-to-text."
+      ]
+     ],
+     "choices": [
+      "Amazon Lex for the conversational interface (intents/slots for order status, fallback to human handoff), with Lambda fulfillment calling the orders API, deployed to web and mobile.",
+      "Train a large language model from scratch on SageMaker for maximum conversational quality.",
+      "Hardcode a decision tree in the mobile app with no backend \u2014 fastest to ship.",
+      "Use Comprehend to classify messages; classification alone is a chatbot."
+     ],
+     "answer": 0,
+     "why": "Lex provides the conversational machinery \u2014 intent recognition, slot filling, multi-channel deployment, human handoff \u2014 while Lambda fulfillment connects conversation to real business data. Training a foundation model is orders of magnitude beyond the need, and classification without dialogue management isn't a chatbot.",
+     "hint": "What does the bot need besides understanding words \u2014 memory, data, channels, escalation?",
+     "objectives": [
+      "Lex",
+      "Conversational AI"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "aws-ml-sc3",
+     "title": "Sentiment at Scale",
+     "situation": "Marketing wants sentiment and trending topics from 2 million product reviews across five languages, refreshed weekly. No ML team, but data engineers are available.",
+     "prompt": "What is the practical solution?",
+     "evidence": [
+      [
+       "NLP services",
+       "Amazon Comprehend: pre-trained NLP \u2014 sentiment, entities, key phrases, topic modeling, custom classification \u2014 with batch APIs over S3, multilingual support, no model training required."
+      ]
+     ],
+     "choices": [
+      "Comprehend batch APIs over the reviews in S3: managed sentiment, entity, and topic modeling across languages with no training, refreshed on a weekly Glue-triggered schedule.",
+      "Build a multilingual transformer pipeline on SageMaker from scratch for full control.",
+      "Sample 500 reviews and have interns label sentiment manually each week.",
+      "Use keyword counting (count 'good' vs 'bad') \u2014 simple and transparent."
+     ],
+     "answer": 0,
+     "why": "Comprehend's pre-trained multilingual models cover exactly this workload \u2014 sentiment, entities, topics \u2014 at batch scale with no ML expertise, while data engineers wire the weekly refresh. Custom transformers are overkill for standard sentiment, manual labeling doesn't scale to millions, and keyword counting misses negation, sarcasm, and four of the five languages.",
+     "hint": "How many languages does the keyword list cover, and who maintains it?",
+     "objectives": [
+      "Comprehend",
+      "NLP"
+     ],
+     "mins": 7,
+     "difficulty": 2
+    },
+    {
+     "id": "aws-ml-sc4",
+     "title": "Feature Engineering Done Right",
+     "situation": "A fraud model's offline accuracy is great but production performance degrades: the training pipeline and the serving code compute features differently (training-serving skew), and two teams maintain duplicate feature logic.",
+     "prompt": "How should feature engineering be organized?",
+     "evidence": [
+      [
+       "Feature Store",
+       "SageMaker Feature Store: central repository for features with an offline store (training) and online store (low-latency serving) \u2014 one definition, consistent values in training and inference, with point-in-time correctness for training data."
+      ]
+     ],
+     "choices": [
+      "Centralize features in SageMaker Feature Store: one definition feeding both the offline store for training and the online store for serving, eliminating duplicate logic and skew.",
+      "Copy the training feature code into the serving service and keep both updated by convention.",
+      "Retrain the model nightly so skew never accumulates for long.",
+      "Remove feature engineering and train on raw transaction fields directly."
+     ],
+     "answer": 0,
+     "why": "Training-serving skew is a consistency problem, and consistency needs a single source of truth: Feature Store guarantees the serving path reads the same feature definitions (and point-in-time-correct values) the model trained on. Duplicated code drifts, nightly retraining masks the bug instead of fixing it, and raw fields discard the engineered signal.",
+     "hint": "Where does the model's view of a feature and production's view diverge \u2014 and what would force them to agree?",
+     "objectives": [
+      "SageMaker Feature Store",
+      "Training-serving skew"
+     ],
+     "mins": 7,
+     "difficulty": 2
+    },
+    {
+     "id": "aws-ml-sc5",
+     "title": "The Model Went Stale",
+     "situation": "A demand-forecasting model's accuracy has decayed over six months as buying patterns shifted post-launch. Nobody noticed until finance flagged the misses. Retraining is manual and takes a week.",
+     "prompt": "What production ML practice prevents this?",
+     "evidence": [
+      [
+       "Model monitoring",
+       "SageMaker Model Monitor: continuous monitoring of data quality, model quality, bias, and feature drift against baselines, with CloudWatch alarms on violations. Pipelines automate retraining when drift is detected."
+      ]
+     ],
+     "choices": [
+      "SageMaker Model Monitor with baselines and drift alarms feeding an automated retraining pipeline: detect distribution shift early, retrain on fresh data, validate, and redeploy without manual heroics.",
+      "Retrain on a fixed yearly schedule; drift between retrains is acceptable noise.",
+      "Add more features to the original model; richer models resist drift.",
+      "Monitor business metrics only \u2014 model metrics are the data science team's concern."
+     ],
+     "answer": 0,
+     "why": "Models decay as the world changes, so production ML needs the same observe-and-respond loop as software: baselines define 'normal,' drift alarms fire before finance notices, and automated retraining closes the loop in hours not weeks. Fixed schedules ignore actual drift timing, and more features don't fix a shifted world.",
+     "hint": "Who noticed the decay \u2014 and how many weeks late?",
+     "objectives": [
+      "Model Monitor",
+      "Data drift",
+      "MLOps"
+     ],
+     "mins": 9,
+     "difficulty": 3
+    },
+    {
+     "id": "aws-ml-sc6",
+     "title": "Inference Economics",
+     "situation": "A document-classification model serves three patterns: interactive uploads needing sub-second responses, nightly batches of 500k documents, and rare ad-hoc requests a few times a day. One real-time endpoint serves all three today and costs a fortune idle.",
+     "prompt": "How should inference be architected for cost?",
+     "evidence": [
+      [
+       "Inference options",
+       "SageMaker real-time endpoints: always-on, sub-second latency, billed while provisioned. Batch Transform: scheduled large-scale inference, no persistent endpoint. Serverless Inference: auto-scales from zero, pay per invocation, for intermittent traffic with tolerance for cold starts."
+      ]
+     ],
+     "choices": [
+      "Real-time endpoint only for interactive uploads; Batch Transform for the nightly 500k; Serverless Inference for the rare ad-hoc requests \u2014 each pattern on its cheapest fitting option.",
+      "Keep one large real-time endpoint for everything; operational simplicity beats cost.",
+      "Three separate real-time endpoints, one per pattern, for isolation.",
+      "Run all inference on the training instances after hours to reuse capacity."
+     ],
+     "answer": 0,
+     "why": "Inference cost follows utilization: always-on endpoints bill for idle hours, so intermittent and batch patterns belong on serverless and batch options that scale to zero. Matching each pattern to its cheapest suitable option cuts most of the waste; a single endpoint forces every pattern to pay real-time prices.",
+     "hint": "What does the endpoint cost at 3 AM when nobody uploads anything?",
+     "objectives": [
+      "SageMaker inference",
+      "Batch Transform",
+      "Serverless Inference"
+     ],
+     "mins": 9,
+     "difficulty": 3
+    }
+   ]
+  }
+ ],
+ "lessons": [
+  {
+   "domain_id": "aws-ml",
+   "title": "AWS Machine Learning \u2014 Core concepts",
+   "concepts": [
+    "Default to pre-built AI services for commodity problems: Rekognition (vision), Comprehend (NLP), Lex (conversational), Polly (speech), Transcribe (speech-to-text), Translate. They are production-grade behind an API \u2014 build custom models only for genuinely differentiated problems.",
+    "SageMaker is the full ML platform: Processing for data prep, Training (built-in algorithms or custom containers), Feature Store for consistent features, and multiple inference options. Use managed pieces instead of assembling infrastructure by hand.",
+    "Feature engineering decides model quality more than algorithm choice: centralize features in Feature Store with offline (training) and online (serving) stores to kill training-serving skew, and enforce point-in-time correctness so training never peeks at the future.",
+    "Production ML is MLOps: version data, code, and models together; monitor data quality, drift, and prediction quality with Model Monitor; automate retraining pipelines so decay triggers a response, not a quarterly surprise.",
+    "Match inference to the traffic pattern: real-time endpoints for latency-sensitive interactive use, Batch Transform for scheduled bulk scoring, Serverless or Asynchronous Inference for intermittent traffic. Idle endpoints are the classic ML cost leak."
+   ],
+   "example": {
+    "lang": "shell",
+    "code": "aws rekognition detect-moderation-labels \\\n  --image 'S3Object={Bucket=user-uploads,Name=img-1042.jpg}' \\\n  --min-confidence 80",
+    "walkthrough": "One API call returns moderation labels with confidence scores \u2014 no training, no cluster. This is the build-vs-buy decision in action: commodity perception via API, custom modeling reserved for problems no API solves."
+   },
+   "pitfalls": [
+    "Common trap: training a custom model for a problem Rekognition/Comprehend already solves \u2014 months of work for a worse result.",
+    "Common trap: training-serving skew from duplicated feature code \u2014 centralize features in Feature Store instead.",
+    "Common trap: leaving real-time endpoints provisioned for batch or sporadic traffic \u2014 idle endpoint hours dominate the ML bill.",
+    "Common trap: shipping a model with no monitoring \u2014 data drift is silent until the business feels it; baseline and alarm from day one."
+   ],
+   "try_it": "Work through this in the Labs tab."
+  }
+ ],
+ "labs": [
+  {
+   "id": "aws-ml-lab1",
+   "domain_id": "aws-ml",
+   "title": "Classify Text with Comprehend",
+   "objective": "Call Comprehend's batch APIs on sample text and interpret sentiment and entity results.",
+   "steps": [
+    "Prepare a few sample review strings covering positive, negative, and mixed sentiment.",
+    "Run `aws comprehend batch-detect-sentiment --text-list '[...]' --language-code en`.",
+    "Run `aws comprehend batch-detect-entities` on the same input and note entity types.",
+    "Compare the API output against your own reading and note where multilingual or sarcastic text would challenge it."
+   ],
+   "checks": [
+    {
+     "command_pattern": "^aws\\s",
+     "expect_contains": "ResultList",
+     "hint": "Batch APIs return a ResultList \u2014 check each item's Sentiment and SentimentScore."
+    }
+   ]
+  },
+  {
+   "id": "aws-ml-lab2",
+   "domain_id": "aws-ml",
+   "title": "Inspect a SageMaker Endpoint's Cost Profile",
+   "objective": "Describe SageMaker endpoints and training jobs to connect configuration choices to cost.",
+   "steps": [
+    "List endpoints with `aws sagemaker list-endpoints` and describe one with `describe-endpoint`.",
+    "Note the instance type, count, and creation time \u2014 estimate the idle cost.",
+    "List training jobs with `aws sagemaker list-training-jobs` and check their final status and duration.",
+    "Decide for a hypothetical batch workload whether Batch Transform would be cheaper than the endpoint, and why."
+   ],
+   "checks": [
+    {
+     "command_pattern": "^aws\\s",
+     "expect_contains": "EndpointStatus",
+     "hint": "describe-endpoint returns EndpointStatus \u2014 confirm it is InService before costing it."
+    }
+   ]
+  }
+ ],
+ "simulations": [],
+ "consoleSims": [],
+ "terminalMissions": [],
+ "sections": [
+  {
+   "id": "sec-full-spectrum",
+   "title": "Full Spectrum Dominance \u2014 core path",
+   "kind": "core",
+   "lectures": [],
+   "lab_ids": [
+    "fsd-tl-lab-1",
+    "fsd-tl-lab-2",
+    "fsd-tl-lab-3",
+    "fsd-sg-lab-1",
+    "fsd-sg-lab-2",
+    "fsd-sg-lab-3",
+    "fsd-ai-lab-1",
+    "fsd-ai-lab-2",
+    "fsd-ai-lab-3"
+   ],
+   "drill_domain_ids": [
+    "tl-interview",
+    "tl-endpoint-ops",
+    "sec-graphs",
+    "graph-defense",
+    "ml-defense",
+    "ai-agent-sec"
+   ]
+  }
+ ],
+ "behavioral": [
+  {
+   "prompt": "Tell me about the most technically difficult problem you have run into \u2014 a homelab, a broken environment, anything \u2014 and how you solved it.",
+   "framework": "STAR",
+   "points": [
+    "Pick ONE problem with a real evidence trail: the symptom, what you measured, the hypothesis you tested",
+    "Show the loop: scope, observe, hypothesize, smallest safe change, validate \u2014 interviewers score the method, not just the fix",
+    "Name the tools (VM build, networking, logs) and the lesson it taught you",
+    "Close with the result in concrete terms: what works now that did not before"
+   ],
+   "pitfalls": [
+    "Choosing a story with no real obstacle (\u201cI Googled it\u201d is not a story)",
+    "Skipping validation \u2014 saying it worked without proving it",
+    "Rambling past two minutes without reaching the result"
+   ]
+  },
+  {
+   "prompt": "Tell me about a time you dealt with a frustrated customer or user while something was broken.",
+   "framework": "STAR",
+   "points": [
+    "Lead with empathy and ownership: acknowledge the impact before the technical detail",
+    "Show translation: what you told them, in their language, plus the timeline you committed to",
+    "Show judgment: the narrow fix you chose and what you refused to do (e.g., disabling the control to clear the symptom)",
+    "Close with the relationship outcome, not just the technical one"
+   ],
+   "pitfalls": [
+    "Badmouthing the customer to sound decisive",
+    "Promising a timeline you could not keep",
+    "Framing the user as the problem rather than the situation"
+   ]
+  },
+  {
+   "prompt": "Why ThreatLocker, and why cybersecurity?",
+   "framework": "STAR",
+   "points": [
+    "Connect prevention to something concrete: a moment you saw detection arrive too late, or a system you hardened",
+    "Tie their model to your instincts: deny-by-default matches how you already think about trust",
+    "Show service orientation: the Cyber Hero culture rewards the 2 a.m. helper \u2014 give an example of being one",
+    "Name one forward-looking reason: Zero Trust, the MSP mission, or the bootcamp community investment"
+   ],
+   "pitfalls": [
+    "Generic flattery with no specifics about the company",
+    "Leading with compensation, title, or location convenience",
+    "Claiming expertise in products you have only read about \u2014 frame it as studied, not mastered"
+   ]
+  },
+  {
+   "framework": "STAR",
+   "pitfalls": [
+    "Staying vague ('I analyzed the data') instead of naming what you connected.",
+    "Skipping your own role: what did YOU see that others missed?",
+    "No outcome: what changed because you joined the dots?"
+   ],
+   "points": [
+    "The scattered signals and why nobody had connected them yet",
+    "The specific links you drew between them (shared host, time, infrastructure)",
+    "What the bigger picture turned out to be and what action it drove",
+    "What the experience taught you about investigating"
+   ],
+   "prompt": "Tell me about a time you connected scattered clues into a bigger picture that others had missed."
+  },
+  {
+   "framework": "STAR",
+   "pitfalls": [
+    "Claiming you fixed everything: credibility comes from trade-offs, not heroics.",
+    "Hiding the constraint: the limitation is what makes the prioritization story real.",
+    "No metric: 'better' needs a before-and-after."
+   ],
+   "points": [
+    "The constraint (time, budget, staff) and the size of the backlog",
+    "How you decided what mattered most (what was reachable, what was critical)",
+    "What you did first and what you deliberately deferred",
+    "The measurable result of the prioritization"
+   ],
+   "prompt": "Describe a time you had to prioritize risks or fixes with limited time or resources. How did you decide what came first?"
+  },
+  {
+   "framework": "STAR",
+   "pitfalls": [
+    "Reciting jargon to a non-technical audience and calling it communication.",
+    "Skipping the audience's reaction: did they actually understand and act?",
+    "Making yourself the hero instead of the translator."
+   ],
+   "points": [
+    "The technical finding and why it mattered",
+    "Who the audience was and what they cared about",
+    "How you reframed it (a picture, an analogy, a story)",
+    "What decision or action the audience took because they understood"
+   ],
+   "prompt": "Tell me about a time you explained a complex technical finding to a non-technical audience and it changed a decision."
+  },
+  {
+   "prompt": "Tell me about a time you used automation or AI to solve a security problem.",
+   "framework": "STAR",
+   "points": [
+    "The repetitive security task and what it cost in analyst time",
+    "The automation or AI approach you built and how you validated it",
+    "Measured outcome: time saved, detection gained, false positives changed"
+   ],
+   "pitfalls": [
+    "Describing the tool but never the validation",
+    "No measurable outcome"
+   ]
+  },
+  {
+   "prompt": "Describe a time you had to decide whether to trust an automated security decision.",
+   "framework": "STAR",
+   "points": [
+    "The stakes of the automated action and its blast radius",
+    "How you verified before acting (or the gate you built)",
+    "What happened and what you would automate differently next time"
+   ],
+   "pitfalls": [
+    "Saying you always trust the tool",
+    "No mention of blast radius or reversibility"
+   ]
+  }
+ ],
+ "resources": {
+  "cheatsheet": {
+   "title": "Full Spectrum Dominance \u2014 field reference",
+   "sections": [
+    {
+     "heading": "Company facts (verified)",
+     "items": [
+      "Founded 2017 in Orlando, FL \u2014 Danny Jenkins (CEO), Sami Jenkins (COO), John Carolan (QA)",
+      "Philosophy: deny-by-default / default-deny \u2014 approve known-good, deny the rest",
+      "Customers: 70,000+ organizations, sold heavily through the MSP channel",
+      "Funding: $190M Series F, July 2026 (Elephant-led); ~730 employees",
+      "Interview address: 1901 Summit Tower Blvd, Orlando, FL 32810",
+      "Culture: in-office 5 days/week; free lunch; post-offer background + drug screening"
+     ]
+    },
+    {
+     "heading": "Product stack",
+     "items": [
+      "Allowlisting \u2014 default-deny execution control for apps, DLLs, scripts, installers",
+      "Ringfencing \u2014 constrains allowed apps: app-to-app, file, registry, network",
+      "Storage Control \u2014 USB/device policy by serial, user, file type, encryption",
+      "Elevation Control \u2014 just-in-time per-app admin, no standing rights",
+      "Network Control \u2014 host firewall; port/IP/dynamic-ACL rules; ZTNA foundation",
+      "Web Control \u2014 agent-based DNS/URL category filtering, works off-network",
+      "Cyber Hero MDR \u2014 24/7/365 US-based response, ~60-second average",
+      "Testing Environment \u2014 one-button VDI sandbox; checks AV flags, canary files, registry changes"
+     ]
+    },
+    {
+     "heading": "Rule strength (strongest to weakest)",
+     "items": [
+      "Certificate/publisher rules \u2014 survive version updates",
+      "Hash rules \u2014 precise but break on every new version",
+      "Path rules \u2014 weakest; never in user-writable locations",
+      "Learning Mode catalogs before enforcement; Installation Mode pauses blocking \u2014 scope and time-box both"
+     ]
+    },
+    {
+     "heading": "Terminal evidence commands",
+     "items": [
+      "nmap <host> \u2014 which ports answer (22/80/443 open)",
+      "dig <name> \u2014 ANSWER SECTION with the A record",
+      "ss \u2014 listening sockets",
+      "systemctl status <svc> \u2014 unit state",
+      "journalctl -u <svc> \u2014 service logs",
+      "sha256sum <file> \u2014 real SHA-256 identity",
+      "grep <pattern> <file> \u2014 search the record",
+      "ps \u2014 what is actually running"
+     ]
+    },
+    {
+     "heading": "Graph vocabulary",
+     "items": [
+      "node \u2014 any entity tracked in the model (user, host, IP, domain, file hash, vulnerability)",
+      "edge \u2014 a labeled relationship between two nodes (logged into, resolved to, downloaded)",
+      "degree \u2014 number of edges on a node; high-degree nodes are attacker highways",
+      "centrality \u2014 how much traffic or how many paths flow through a node",
+      "directed edge \u2014 a relationship with a direction (A downloaded FROM B)",
+      "security graph \u2014 the living model of your whole environment as nodes and edges",
+      "attack graph \u2014 the subgraph of exploitable paths to your targets",
+      "knowledge graph \u2014 threat-intel indicators linked to campaigns and actors"
+     ]
+    },
+    {
+     "heading": "Attack-graph playbook",
+     "items": [
+      "inventory first \u2014 you cannot graph what you have not discovered",
+      "model flaws AND misconfigs as exploit edges",
+      "compute shortest paths to the crown jewels",
+      "find the choke point (highest betweenness on those paths)",
+      "break the path: patch, segment, or remove the edge",
+      "re-scan and re-run the graph to prove the path is gone",
+      "never trust yesterday's graph \u2014 redeployments redraw the map"
+     ]
+    },
+    {
+     "heading": "Zero Trust + graphs",
+     "items": [
+      "never trust, always verify \u2014 re-evaluate every access decision",
+      "assume breach \u2014 treat unexpected edges as hostile until proven otherwise",
+      "microsegmentation \u2014 allow-list approved edges, alert on new ones",
+      "ReBAC \u2014 policies are path queries on the identity graph",
+      "continuous verification \u2014 device/location/behavior edges change, trust follows",
+      "anomalous edge \u2014 a first-seen connection between strangers is the classic signal"
+     ]
+    },
+    {
+     "heading": "ML detection vocabulary",
+     "items": [
+      "Supervised learning \u2014 learns from labeled examples; strong on known threats, blind to novel ones",
+      "Unsupervised learning \u2014 finds structure without labels; clustering and dimensionality reduction",
+      "Anomaly detection \u2014 models 'normal' and flags deviations; the workhorse for novel threats",
+      "UEBA \u2014 user and entity behavior analytics: per-user baselines plus peer-group comparison",
+      "Feature engineering \u2014 encoding raw logs into model inputs (login velocity, rare processes, domain entropy)",
+      "Concept drift \u2014 model decay as attacker behavior and legitimate traffic shift over time"
+     ]
+    },
+    {
+     "heading": "Detection metrics",
+     "items": [
+      "Precision \u2014 of all flagged alerts, how many were real",
+      "Recall \u2014 of all real attacks, how many were flagged",
+      "Threshold tuning \u2014 sliding the decision cutoff trades precision against recall",
+      "Alert fatigue \u2014 when false positives train analysts to ignore the queue",
+      "DGA \u2014 domain generation algorithm; detected via character entropy of domain names"
+     ]
+    },
+    {
+     "heading": "Agent and LLM security",
+     "items": [
+      "Direct prompt injection \u2014 attacker input overrides app instructions (OWASP LLM01:2025, the #1 LLM risk)",
+      "Indirect prompt injection \u2014 hidden instructions inside retrieved data (email, web, docs)",
+      "Jailbreak \u2014 defeating the model's own safety policy; distinct from hijacking app behavior",
+      "Tool poisoning \u2014 malicious tool descriptions or metadata steer an agent to misuse its tools (MCP ecosystem risk)",
+      "Insecure output handling \u2014 executing or trusting model output without validation",
+      "Least-privilege tools \u2014 grant each tool only the scope its task requires"
+     ]
+    },
+    {
+     "heading": "Adversarial ML and governance",
+     "items": [
+      "Evasion \u2014 perturbing inputs at inference time to dodge a classifier",
+      "Poisoning \u2014 corrupting training data to corrupt the model",
+      "Extraction \u2014 querying a model to steal its behavior or parameters",
+      "MITRE ATLAS \u2014 knowledge base of adversarial ML tactics and techniques",
+      "Red-teaming and evals \u2014 adversarial testing of AI systems before deployment",
+      "Human-in-the-loop \u2014 required approval for high-impact or irreversible agent actions",
+      "SOAR \u2014 security orchestration, automation and response; automate enrichment, gate containment"
+     ]
+    }
+   ]
+  },
+  "glossary": [
+   {
+    "term": "Allowlisting",
+    "def": "Default-deny execution control: only explicitly approved applications, scripts, and installers may run."
+   },
+   {
+    "term": "Blocklisting",
+    "def": "Default-allow model: everything runs except recognized-bad items \u2014 the window zero-days live in."
+   },
+   {
+    "term": "Default-deny",
+    "def": "Deny-by-default posture: unknown code, devices, or connections are refused unless explicitly approved."
+   },
+   {
+    "term": "Ringfencing",
+    "def": "Containment applied on top of allowlisting; restricts what a permitted app may do across app-to-app, file, registry, and network dimensions."
+   },
+   {
+    "term": "Learning Mode",
+    "def": "Agent mode that catalogs applications and dependencies and auto-builds policies before enforcement; temporarily disables file blocking."
+   },
+   {
+    "term": "Installation Mode",
+    "def": "Temporary mode that pauses file blocking for installs \u2014 must be tightly scoped and time-boxed."
+   },
+   {
+    "term": "Elevation Control",
+    "def": "Grants specific approved applications admin rights for standard users \u2014 just-in-time, per-app, time-boxed \u2014 without standing admin rights."
+   },
+   {
+    "term": "Application hopping",
+    "def": "An elevated or trusted process spawning another tool (e.g., PowerShell) to inherit its privileges \u2014 countered by ringfencing the elevated process."
+   },
+   {
+    "term": "Storage Control",
+    "def": "Device and path policy: USB approved by serial, user, file type, time, and encryption; unapproved devices do not connect."
+   },
+   {
+    "term": "Network Control",
+    "def": "Centrally managed host firewall; rules by port, source IP, and dynamic ACLs; egress allowlisting pins apps to approved destinations."
+   },
+   {
+    "term": "ZTNA",
+    "def": "Zero Trust Network Access: per-session, per-application brokered connections (commonly over port 443) with no open inbound ports \u2014 deny-by-default for network access."
+   },
+   {
+    "term": "Approval Center",
+    "def": "Portal queue where end-user software requests arrive for admin review and decision."
+   },
+   {
+    "term": "Unified Audit",
+    "def": "Real-time audit showing what was allowed or denied across endpoints \u2014 and why; the evidence layer for triage."
+   },
+   {
+    "term": "Testing Environment",
+    "def": "One-button cloud VDI sandbox launched from an approval request; logs AV flags, canary-file access, and registry/system changes."
+   },
+   {
+    "term": "Cyber Hero MDR",
+    "def": "24/7/365 US-based managed detection and response team; validates alerts, isolates hosts, acts on customer runbooks; ~60-second average response."
+   },
+   {
+    "term": "Assume breach",
+    "def": "Design and operate as if the attacker already has a foothold \u2014 least privilege, containment, and monitoring everywhere."
+   },
+   {
+    "term": "Living off the land",
+    "def": "Attacks that hijack trusted built-in tools (Word, PowerShell) instead of dropping malware \u2014 defeated by behavior containment, not signatures."
+   },
+   {
+    "term": "Change control",
+    "def": "Scoped, ticketed, tested changes with validation and rollback \u2014 emergency speed never cancels the process."
+   },
+   {
+    "def": "A node in an attack graph representing a system or weakness, connected by edges that represent steps an attacker could take between them.",
+    "term": "attack graph"
+   },
+   {
+    "def": "How central a node is to paths through the graph (for example, betweenness: how many shortest paths cross it).",
+    "term": "centrality"
+   },
+   {
+    "def": "The most valuable assets in the environment (customer data, finance systems, source code): what attack paths are measured against.",
+    "term": "crown jewels"
+   },
+   {
+    "def": "A labeled connection between two nodes, representing a relationship such as 'logged into' or 'resolved to'.",
+    "term": "edge"
+   },
+   {
+    "def": "A graph of threat indicators (IPs, domains, hashes) linked to campaigns, actors, and each other through shared infrastructure.",
+    "term": "knowledge graph"
+   },
+   {
+    "def": "The practice of mapping relationships in data to reveal hidden associations; rooted in Euler's 1736 graph theory, 1970s paper link charts, and post-2001 intelligence work.",
+    "term": "link analysis"
+   },
+   {
+    "def": "A segment of the network so small that its allowed communications can be enumerated as a graph of approved edges.",
+    "term": "microsegmentation"
+   },
+   {
+    "def": "An entity in the graph: a user, host, IP address, domain, file, or vulnerability.",
+    "term": "node"
+   },
+   {
+    "def": "Access control where policy is evaluated by traversing relationships on a graph (for example: user reports_to manager who owns the resource's project).",
+    "term": "ReBAC"
+   },
+   {
+    "def": "A machine-learning model that operates directly on graph structure to classify nodes or subgraphs, for example labeling attack vs normal behavior.",
+    "term": "graph neural network (GNN)"
+   },
+   {
+    "def": "Monitoring user and entity behavior by modeling their normal relationship patterns and flagging structural anomalies.",
+    "term": "UEBA"
+   },
+   {
+    "term": "Supervised learning",
+    "def": "ML trained on labeled examples; classifies new inputs into known categories."
+   },
+   {
+    "term": "Anomaly detection",
+    "def": "ML approach that models normal behavior and flags statistically rare deviations."
+   },
+   {
+    "term": "Feature engineering",
+    "def": "Turning raw telemetry into numeric model inputs, e.g. login velocity or domain entropy."
+   },
+   {
+    "term": "Precision",
+    "def": "Share of flagged alerts that were real; the false-positive economics of the queue."
+   },
+   {
+    "term": "Recall",
+    "def": "Share of real attacks the detector flagged; the miss rate's complement."
+   },
+   {
+    "term": "Concept drift",
+    "def": "Decay of model performance as the data distribution shifts over time."
+   },
+   {
+    "term": "Prompt injection",
+    "def": "Attacker-crafted instructions that override an LLM application's intended behavior; direct (user input) or indirect (retrieved data)."
+   },
+   {
+    "term": "Jailbreak",
+    "def": "Crafted input that defeats an LLM's own safety policy or refusal behavior."
+   },
+   {
+    "term": "Tool poisoning",
+    "def": "Malicious tool descriptions or metadata that manipulate an AI agent into misusing its tools."
+   },
+   {
+    "term": "Insecure output handling",
+    "def": "Failing to validate LLM output before acting on it, e.g. executing generated commands."
+   },
+   {
+    "term": "Evasion attack",
+    "def": "Adversarial ML technique: perturbing inputs to cross a classifier's decision boundary."
+   },
+   {
+    "term": "MITRE ATLAS",
+    "def": "Adversarial Threat Landscape for AI Systems; MITRE's knowledge base of AI attack tactics."
+   },
+   {
+    "term": "SOAR",
+    "def": "Security orchestration, automation and response; playbooks that enrich automatically and gate containment on humans."
+   },
+   {
+    "term": "Human-in-the-loop",
+    "def": "Required human approval before high-impact or irreversible automated actions."
+   }
+  ],
+  "links": [
+   {
+    "label": "ThreatLocker Zero Trust platform explainer (official)",
+    "url": "https://www.threatlocker.com/blog/edr-xdr-vs-zero-trust-prevention",
+    "note": "EDR/XDR vs Zero Trust prevention \u2014 the deny-by-default argument in their own words."
+   },
+   {
+    "label": "ThreatLocker Bootcamp page (official)",
+    "url": "https://www.threatlocker.com/bootcamp",
+    "note": "Free six-week program: phases, format, and what completion leads to."
+   },
+   {
+    "label": "ThreatLocker Careers (official)",
+    "url": "https://www.threatlocker.com/company/careers",
+    "note": "Open roles and the hiring-event listing; roles are in-office in Orlando."
+   },
+   {
+    "label": "Elevation Control (official)",
+    "url": "https://www.threatlocker.com/secure-privileges-without-sacrificing-agility",
+    "note": "Just-in-time privilege without standing admin."
+   },
+   {
+    "label": "Storage Control (official)",
+    "url": "https://www.threatlocker.com/capabilities/external-storage-device-control",
+    "note": "USB/device policy by serial, user, file type, encryption."
+   },
+   {
+    "label": "Web Control (official)",
+    "url": "https://www.threatlocker.com/capabilities/web-content-control",
+    "note": "Agent-based DNS/URL filtering, including off-network."
+   },
+   {
+    "label": "Cyber Hero MDR (official)",
+    "url": "https://www.threatlocker.com/get-threat-response-in-minutes",
+    "note": "24/7/365 managed response positioning."
+   },
+   {
+    "label": "MDR capabilities (official)",
+    "url": "https://www.threatlocker.com/capabilities/managed-detection-and-response",
+    "note": "Detection and response capability detail."
+   },
+   {
+    "label": "NIST SP 800-207 \u2014 Zero Trust Architecture",
+    "url": "https://csrc.nist.gov/pubs/sp/800/207/final",
+    "note": "The canonical Zero Trust reference: tenets, deployment models, policy engine trust algorithm."
+   },
+   {
+    "label": "CISA Zero Trust Maturity Model",
+    "url": "https://www.cisa.gov/zero-trust-maturity-model",
+    "note": "Federal maturity steps across identity, devices, networks, applications, and data."
+   },
+   {
+    "label": "MITRE ATT&CK",
+    "note": "The adversary-tactics framework; codify its tactic chains as subgraphs to hunt for in your security graph.",
+    "url": "https://attack.mitre.org/"
+   },
+   {
+    "label": "CISA \u2014 Cybersecurity and Infrastructure Security Agency",
+    "note": "US government advisories, alerts, and guidance frequently referenced in threat-intel work.",
+    "url": "https://www.cisa.gov/"
+   },
+   {
+    "label": "Neo4j getting started",
+    "note": "A widely used graph database; the book's call to action suggests piloting graph queries on exported security data with tools like this.",
+    "url": "https://neo4j.com/docs/getting-started/"
+   },
+   {
+    "label": "OWASP GenAI Security Project",
+    "url": "https://genai.owasp.org/",
+    "note": "Home of the LLM Top 10 and GenAI security guidance"
+   },
+   {
+    "label": "OWASP Top 10 for LLM Applications",
+    "url": "https://genai.owasp.org/llm-top-10/",
+    "note": "The ranked LLM risk list \u2014 prompt injection is #1"
+   },
+   {
+    "label": "NIST AI Risk Management Framework",
+    "url": "https://www.nist.gov/itl/ai-risk-management-framework",
+    "note": "The standard governance framework for managing AI risk"
+   },
+   {
+    "label": "MITRE ATLAS",
+    "url": "https://atlas.mitre.org/",
+    "note": "Adversarial Threat Landscape for AI Systems \u2014 tactics and techniques"
+   },
+   {
+    "label": "CISA AI guidance",
+    "url": "https://www.cisa.gov/ai",
+    "note": "CISA's AI security resources and guidance"
+   }
+  ],
+  "checklist": [
+   "Sixty-second company brief rehearsed out loud: year, city, philosophy, three products, one milestone",
+   "Two STAR stories ready: hardest technical problem; a frustrated customer or user",
+   "\u201cWhy ThreatLocker / why cybersecurity\u201d answer tied to prevention and service, not slogans",
+   "Ringfencing explained in one plain-English sentence (the Word-on-a-leash version)",
+   "Elevation Control answer ready: just-in-time, per-app, time-boxed, ringfenced, logged",
+   "Triage loop memorized: scope \u2192 observe \u2192 hypothesize \u2192 smallest safe change \u2192 validate \u2192 explain",
+   "Three questions to ask them: team on-call shape, approval SLA expectations, what \u201cmost helpful\u201d looks like on the team",
+   "Logistics: 1901 Summit Tower Blvd, Orlando FL; in-office role; ID and references ready",
+   "Define your crown jewels before you model anything.",
+   "Build the asset-and-access graph from live sources (scans, configs, identity), not from the CMDB alone.",
+   "Model vulnerabilities AND misconfigurations as exploit edges.",
+   "Compute shortest attack paths to each crown jewel; name the choke points.",
+   "Prioritize remediation by path risk, not by raw severity score.",
+   "Express at least one access policy as a relationship path (ReBAC pilot).",
+   "Baseline approved communication edges per segment; alert on first-seen edges.",
+   "Brief the next incident or risk review with the graph, not a spreadsheet.",
+   "Can you explain supervised vs unsupervised vs anomaly detection with a security example for each?",
+   "Can you name three log features you would engineer for a C2 detector and why?",
+   "Can you walk through a UEBA alert (baseline, deviation, verification) end to end?",
+   "Can you explain the precision/recall tradeoff and how you would set a threshold for a fatigued SOC?",
+   "Can you define concept drift and describe a retraining process?",
+   "Can you distinguish direct vs indirect prompt injection and jailbreaking?",
+   "Can you explain tool poisoning in the MCP ecosystem and three controls against it?",
+   "Can you describe insecure output handling and how you would validate agent output?",
+   "Can you name the three adversarial ML attack classes and one defense for evasion?",
+   "Can you design a SOAR playbook gate: what automates freely, what needs human approval?"
+  ]
+ },
+ "chat": {
+  "persona": "You are a rigorous but encouraging interviewer preparing a candidate for a Zero Trust endpoint security role. Probe with 'why' and 'how would you explain that' follow-ups. Stay on topic: ThreatLocker-style endpoint defense, security graphs, and AI-powered security. All practice is original; never reproduce vendor material.",
+  "topics": [
+   {
+    "id": "tl-interview",
+    "name": "ThreatLocker Interview Prep",
+    "key_points": [
+     "allowlisting",
+     "ringfencing",
+     "default-deny",
+     "cyber hero",
+     "zero trust tenets",
+     "STAR stories"
+    ],
+    "followups": [
+     "Can you give an example?",
+     "How would you explain that to a CFO?"
+    ]
+   },
+   {
+    "id": "tl-endpoint-ops",
+    "name": "Zero Trust Endpoint Operations",
+    "key_points": [
+     "default-deny",
+     "ringfencing dimensions",
+     "elevation control",
+     "storage control",
+     "network control",
+     "change control"
+    ],
+    "followups": [
+     "Walk me through the triage order.",
+     "When would you deny outright?"
+    ]
+   },
+   {
+    "followups": [
+     "Can you walk through an example?",
+     "How does this change patch prioritization?",
+     "What is the difference between a security graph and an attack graph?"
+    ],
+    "id": "sec-graphs",
+    "key_points": [
+     "nodes",
+     "edges",
+     "attack graphs",
+     "kill chain",
+     "link analysis",
+     "threat intel graphs"
+    ],
+    "name": "Security Graphs: Think Like an Attacker"
+   },
+   {
+    "followups": [
+     "How do graphs change patch prioritization?",
+     "What is ReBAC and how is it different from RBAC?",
+     "How would a small team start with graphs?"
+    ],
+    "id": "graph-defense",
+    "key_points": [
+     "attack-path analysis",
+     "insider threat",
+     "vulnerability graphs",
+     "Zero Trust",
+     "microsegmentation",
+     "blast radius"
+    ],
+    "name": "Graph-Powered Defense Operations"
+   },
+   {
+    "id": "ml-defense",
+    "name": "ML-Powered Threat Defense",
+    "key_points": [
+     "anomaly detection",
+     "UEBA",
+     "alert fatigue",
+     "concept drift",
+     "threat hunting",
+     "precision recall"
+    ],
+    "followups": [
+     "Walk me through an example.",
+     "How do you handle false positives?"
+    ]
+   },
+   {
+    "id": "ai-agent-sec",
+    "name": "Securing AI Systems & Agents",
+    "key_points": [
+     "prompt injection",
+     "tool poisoning",
+     "MCP risks",
+     "insecure output handling",
+     "SOAR gates",
+     "adversarial ML"
+    ],
+    "followups": [
+     "Walk me through an example.",
+     "How do you secure an AI agent end to end?"
+    ]
+   }
+  ]
+ },
+ "simulation": {
+  "items": 12,
+  "minutes": 180,
+  "evidence_cost_mins": 2
+ },
+ "media": [
+  {
+   "id": "tl-allowlist-vs-blocklist",
+   "kind": "diagram",
+   "title": "Allowlisting vs blocklisting: default-deny vs default-allow",
+   "svg": "assets/diagrams/tl-allowlist-vs-blocklist.svg",
+   "lesson_ref": "c-tl-endpoint-ops",
+   "caption": "Default-deny stops unknown code without a signature; default-allow runs it until one exists.",
+   "alt": "Side-by-side comparison: on the left, a default-deny gate runs known-good payroll software and denies unknown ransomware with no signature needed; on the right, a default-allow gate runs both until the ransomware is recognized as bad."
+  },
+  {
+   "id": "tl-ringfencing",
+   "kind": "diagram",
+   "title": "Ringfencing: four leashes on an allowed application",
+   "svg": "assets/diagrams/tl-ringfencing.svg",
+   "lesson_ref": "c-tl-endpoint-ops",
+   "caption": "Word stays approved, but it cannot spawn PowerShell, read the credential store, or reach the internet \u2014 while opening its document is allowed.",
+   "alt": "An approved Word application inside a dashed containment ring: arrows show PowerShell launch denied, credential-store registry access denied, external network denied, and document file access allowed."
+  },
+  {
+   "id": "tl-zero-trust-stack",
+   "kind": "diagram",
+   "title": "The Zero Trust endpoint stack",
+   "svg": "assets/diagrams/tl-zero-trust-stack.svg",
+   "lesson_ref": "c-tl-interview",
+   "caption": "Five deny-by-default layers \u2014 Allowlisting, Ringfencing, Elevation, Storage, Network \u2014 watched by Web Control, the Testing Environment, Unified Audit, and the Cyber Hero MDR team.",
+   "alt": "A vertical stack of five layers from Allowlisting at the foundation up through Ringfencing, Elevation Control, Storage Control, and Network Control, with side boxes for Web Control, Testing Environment, Unified Audit, and Cyber Hero MDR."
+  },
+  {
+   "id": "tl-triage-flow",
+   "kind": "diagram",
+   "title": "Application-request triage flow",
+   "svg": "assets/diagrams/tl-triage-flow.svg",
+   "lesson_ref": "c-tl-endpoint-ops",
+   "caption": "Gather evidence first, then branch: trusted gets a scoped rule, unknown goes to the sandbox, malicious gets a documented deny.",
+   "alt": "Flowchart from request arrival through evidence gathering to a decision diamond branching into three outcomes: approve with a scoped rule, detonate in the Testing Environment then ringfence, or deny with documented evidence."
+  },
+  {
+   "alt": "Diagram of four labeled nodes (user, host, file, domain, IP) joined by labeled directed edges such as logged into, downloaded, and resolved to, illustrating graph vocabulary.",
+   "caption": "Nodes are the things; edges are the relationships. Attackers move along the edges.",
+   "id": "sg-graph-vocabulary",
+   "kind": "diagram",
+   "lesson_ref": "c-sec-graphs",
+   "svg": "assets/diagrams/sg-graph-vocabulary.svg",
+   "title": "Graph vocabulary: nodes and edges"
+  },
+  {
+   "alt": "Attack graph with four nodes in a chain: external attacker to VPN gateway to file server to customer database, with a dead-end branch to a printer, showing the shortest path to the crown jewel.",
+   "caption": "The shortest path to the crown jewel is length 3. Break the choke point and the campaign dies.",
+   "id": "sg-attack-path",
+   "kind": "diagram",
+   "lesson_ref": "c-sec-graphs",
+   "svg": "assets/diagrams/sg-attack-path.svg",
+   "title": "Attack graph: shortest path to the crown jewels"
+  },
+  {
+   "alt": "Seven kill-chain stages as connected graph nodes: reconnaissance, weaponization, delivery, exploitation, installation, command and control, actions. Three alerts are annotated at delivery, installation, and command and control.",
+   "caption": "Three 'unrelated' alerts, one kill-chain subgraph. Correlate by shared entities, not by severity.",
+   "id": "sg-kill-chain",
+   "kind": "diagram",
+   "lesson_ref": "c-sec-graphs",
+   "svg": "assets/diagrams/sg-kill-chain.svg",
+   "title": "Kill chain as a graph"
+  },
+  {
+   "alt": "A policy engine at the center of a small graph evaluates an access request from a finance user on an untrusted laptop to an R and D code server. The request is denied because there is no prior relationship edge and the device is untrusted.",
+   "caption": "Valid credentials are not enough. The graph checks device trust, history, and relationships on every request.",
+   "id": "sg-zero-trust",
+   "kind": "diagram",
+   "lesson_ref": "c-graph-defense",
+   "svg": "assets/diagrams/sg-zero-trust.svg",
+   "title": "Zero Trust runs on relationships"
+  },
+  {
+   "id": "ai-ml-pipeline",
+   "kind": "diagram",
+   "title": "ML detection pipeline: telemetry to triage",
+   "svg": "assets/diagrams/ai-ml-pipeline.svg",
+   "lesson_ref": "c-ml-defense",
+   "caption": "How raw telemetry becomes scored alerts: features feed the model, the model scores, analysts triage top-down \u2014 and analyst verdicts feed retraining.",
+   "alt": "Flow diagram: telemetry sources feed feature extraction, which feeds an ML model, which outputs scored alerts into an analyst triage queue, with a feedback arrow for retraining."
+  },
+  {
+   "id": "ai-ueba-baseline-diagram",
+   "kind": "diagram",
+   "title": "UEBA: baseline vs deviation",
+   "svg": "assets/diagrams/ai-ueba-baseline.svg",
+   "lesson_ref": "c-ml-defense",
+   "caption": "UEBA learns each user's normal hours, locations, and volumes, then scores deviations from that baseline.",
+   "alt": "24-hour timeline showing a shaded normal login window from 8 AM to 6 PM with normal logins inside it, and a red anomaly marker at 2:47 AM for a foreign login scoring 97 out of 100."
+  },
+  {
+   "id": "ai-injection-flow",
+   "kind": "diagram",
+   "title": "Indirect prompt injection attack flow",
+   "svg": "assets/diagrams/ai-injection-flow.svg",
+   "lesson_ref": "c-ai-agent-sec",
+   "caption": "An attacker hides instructions in data the agent retrieves; the agent mistakes data for instructions and misuses its tools.",
+   "alt": "Attack flow diagram: hidden instruction in an email is read by an AI agent, which mistakes it for a command and calls a privileged tool, causing fraud; three defense boxes below: sanitize content, least-privilege tools, human approval."
+  }
+ ],
+ "foundations": [
+  {
+   "track": "linux-cli",
+   "why_needed": "Terminal labs and missions run in a simulated Linux shell; command-line fluency is required to complete them."
+  },
+  {
+   "track": "security-basics",
+   "why_needed": "Security-graph and ML-detection lessons assume baseline vocabulary (CIA triad, malware types, incident response phases)."
+  }
+ ],
+ "math": [
+  "stats",
+  "probability"
+ ]
+}

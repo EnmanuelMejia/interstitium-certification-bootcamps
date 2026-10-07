@@ -1,0 +1,1252 @@
+{
+ "slug": "iac-terraform-gitops",
+ "title": "GitOps with Terraform and Kubernetes",
+ "tagline": "GitOps principles — declarative desired state, drift detection, app-of-apps — applied with ArgoCD/Flux and Terraform-managed infrastructure. Taught independently; this course confers no certificate.",
+ "vendor": {
+  "name": "Independent interview prep (not affiliated with ThreatLocker)",
+  "certs": "",
+  "docs": "https://www.threatlocker.com"
+ },
+ "disclaimer": "Independent interview-prep material by Interstitium Labs. Not affiliated with, endorsed by, or sponsored by ThreatLocker or any vendor mentioned. Confers no certificate. All scenarios are original practice content; no exam or vendor-training content is reproduced.",
+ "accent": "#e5484d",
+ "domains": [
+  {
+   "id": "iac-terraform-gitops",
+   "name": "GitOps with Terraform and Kubernetes",
+   "summary": "GitOps principles — declarative desired state, drift detection, app-of-apps — applied with ArgoCD/Flux and Terraform-managed infrastructure. Taught independently; this course confers no certificate.",
+   "scenarios": [
+    {
+     "id": "iac-terraform-gitops-sc1",
+     "title": "kubectl apply from a laptop",
+     "situation": "Your team deploys Kubernetes apps by running 'kubectl apply' from engineers' laptops. Last Tuesday two engineers applied different versions within minutes; nobody knows which version is actually running, and there's no record of who changed what.",
+     "prompt": "What GitOps change fixes the auditability problem?",
+     "evidence": [
+      [
+       "terminal",
+       "kubectl get deploy web -o jsonpath='{.spec.template.spec.containers[0].image}'\nregistry/app:1.4.2\n# git history shows 1.4.1 as latest merged; someone applied 1.4.2 by hand"
+      ]
+     ],
+     "choices": [
+      "Make git the single source of truth: all manifests live in a repo, and an agent (ArgoCD/Flux) continuously reconciles the cluster toward the git state — every change is a reviewed commit.",
+      "Have engineers announce their kubectl applies in chat so there's a record.",
+      "Give only one engineer kubectl access so applies are serialized.",
+      "Run 'kubectl apply' from a shared jump host instead of laptops."
+     ],
+     "answer": 0,
+     "why": "GitOps replaces imperative, untracked applies with declarative desired state in git plus continuous reconciliation — the cluster converges to what's committed, and every change has an author, review, and timestamp. Chat announcements and access restrictions don't create a verifiable record; the jump host just moves the problem.",
+     "hint": "The cluster and git disagree, and there's no log of the change. What if the cluster could only ever match what's committed?",
+     "objectives": [
+      "GitOps",
+      "declarative state"
+     ],
+     "mins": 5,
+     "difficulty": 1
+    },
+    {
+     "id": "iac-terraform-gitops-sc2",
+     "title": "Drift that nobody noticed",
+     "situation": "Someone scaled a deployment to 10 replicas via kubectl during an incident and never scaled back. Cloud bills rose for a month before anyone noticed the git manifests still said 3.",
+     "prompt": "How does a GitOps agent handle this drift?",
+     "evidence": [
+      [
+       "terminal",
+       "kubectl get deploy web -o jsonpath='{.spec.replicas}'\n10\ngrep replicas gitops/apps/web/deploy.yaml\n  replicas: 3"
+      ]
+     ],
+     "choices": [
+      "The agent detects the difference between live state and git and automatically syncs the cluster back to 3 replicas (or alerts, depending on sync policy), closing the loop without human intervention.",
+      "The agent updates the git repo to say 10 replicas so they match.",
+      "The agent ignores replica counts because they change at runtime.",
+      "You must delete the deployment and let the agent recreate it."
+     ],
+     "answer": 0,
+     "why": "Continuous reconciliation is the core GitOps loop: detect drift, then converge live state toward desired state (auto-sync) or surface it (manual sync with diff). Git is the source of truth, so the agent corrects the cluster, not the repo. Replica count is exactly the kind of field reconciliation watches.",
+     "hint": "In GitOps, git is the desired state and the cluster is actual state. When they differ, which one changes?",
+     "objectives": [
+      "drift detection",
+      "reconciliation"
+     ],
+     "mins": 5,
+     "difficulty": 1
+    },
+    {
+     "id": "iac-terraform-gitops-sc3",
+     "title": "Fifty apps, one repo, total chaos",
+     "situation": "All 50 microservices' manifests live in one flat GitOps repo directory. Every team's PR touches shared files, merge conflicts are constant, and one bad commit took down twelve apps because the sync applied everything at once.",
+     "prompt": "What is the best structural fix?",
+     "evidence": [
+      [
+       "terminal",
+       "ls gitops/\napp1.yaml app2.yaml ... app50.yaml   # flat, 2000+ lines each team edits\nargocd app list | wc -l\n1   # one Application syncing everything"
+      ]
+     ],
+     "choices": [
+      "Adopt the app-of-apps pattern: a parent Application per team/environment that composes child Applications, with per-app directories, so teams own their sync scope and a bad commit is blast-radius-limited.",
+      "Put all 50 apps in one giant Helm chart so there's only one file to review.",
+      "Give each app its own cluster so they can't affect each other.",
+      "Stop using GitOps and go back to kubectl apply per team."
+     ],
+     "answer": 0,
+     "why": "App-of-apps hierarchically composes Applications: teams get their own Applications (own sync waves, policies, rollback scope) while a parent bootstraps the set. Blast radius shrinks to the broken app. A mega-chart couples all 50 apps' lifecycles; separate clusters are wildly expensive.",
+     "hint": "The failure mode is one sync scope covering everything. How can you nest scopes so each team owns its own?",
+     "objectives": [
+      "app-of-apps",
+      "structure"
+     ],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "iac-terraform-gitops-sc4",
+     "title": "Secrets in the GitOps repo",
+     "situation": "The GitOps repo contains base64-encoded database passwords in Kubernetes Secrets. A new engineer cloned the repo on their first day and now has every credential — base64 is just encoding, not encryption.",
+     "prompt": "What is the correct approach for secrets in GitOps?",
+     "evidence": [
+      [
+       "yaml",
+       "apiVersion: v1\nkind: Secret\ndata:\n  password: U3VwZXJTZWNyZXQxMjM=   # decodes trivially"
+      ]
+     ],
+     "choices": [
+      "Keep only references in git (e.g. ExternalSecrets or Vault Agent) so the cluster fetches real secrets from Vault at runtime — git holds a pointer, never the value.",
+      "Encrypt the whole repo with git-crypt so the base64 values are protected.",
+      "Use stronger base64 by encoding twice.",
+      "Move the Secrets to a private repo that only senior engineers can clone."
+     ],
+     "answer": 0,
+     "why": "GitOps demands everything in git be safe to share — so secrets must not be in git at all, only references that a cluster-side operator resolves from a real secrets manager (Vault via External Secrets Operator or Vault Agent injector). git-crypt breaks the pull-based model (the agent can't decrypt without keys); a private repo still spreads plaintext secrets to everyone with access.",
+     "hint": "Git history is forever and broadly readable. What belongs in git: the secret, or instructions for fetching it?",
+     "objectives": [
+      "secrets",
+      "ExternalSecrets",
+      "GitOps"
+     ],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "iac-terraform-gitops-sc5",
+     "title": "ArgoCD vs Flux for a regulated bank",
+     "situation": "A bank needs GitOps on Kubernetes with strict requirements: every sync must be explicitly approved by a second engineer (four-eyes), full audit of who approved what, and no automatic changes to production — ever.",
+     "prompt": "Which design fits best?",
+     "evidence": [
+      [
+       "requirements",
+       "- four-eyes approval on every production change\n- immutable audit trail of approvals\n- zero automatic mutation of prod"
+      ]
+     ],
+     "choices": [
+      "Use manual sync mode (ArgoCD manual sync or Flux with suspended automation): git PRs provide review and the audit trail, and a second engineer triggers each sync explicitly — automation proposes, humans dispose.",
+      "Enable auto-sync with self-heal on everything for maximum consistency; approvals slow things down.",
+      "Run both ArgoCD and Flux simultaneously so they check each other's work.",
+      "Deploy with CI pushing images directly and skip GitOps to keep a human in the loop."
+     ],
+     "answer": 0,
+     "why": "GitOps tools support manual sync precisely for regulated flows: the PR is the proposal and four-eyes review, the sync is the approved execution, and the tool records who synced what when. Auto-sync would violate the no-automatic-changes rule. CI-push reintroduces the untracked-mutation problem GitOps solves.",
+     "hint": "The requirement is human approval before any production mutation. Which sync mode makes the tool wait for a human?",
+     "objectives": [
+      "ArgoCD",
+      "Flux",
+      "sync policy",
+      "compliance"
+     ],
+     "mins": 7,
+     "difficulty": 3
+    },
+    {
+     "id": "iac-terraform-gitops-sc6",
+     "title": "Image tags: latest strikes again",
+     "situation": "The GitOps repo pins deployments to image tag 'latest'. ArgoCD shows everything synced and healthy, but production is running a three-week-old image while the registry's 'latest' moved on — and rollbacks are impossible because no one knows which digest ran when.",
+     "prompt": "What is the correct image strategy for GitOps?",
+     "evidence": [
+      [
+       "yaml",
+       "image: registry/app:latest   # in git\n# registry/app:latest now points to a different digest than what's running"
+      ]
+     ],
+     "choices": [
+      "Pin immutable digests (or semantic version tags) in git and update them via automated image-update PRs (Flux image automation / ArgoCD Image Updater) — every running version is a commit, and rollback is 'git revert'.",
+      "Keep 'latest' but make ArgoCD poll the registry continuously so it always deploys the newest.",
+      "Tag every build 'latest' and also 'stable' and switch between them manually.",
+      "Stop pinning versions and let Kubernetes pull whatever is newest at pod restart."
+     ],
+     "answer": 0,
+     "why": "Mutable tags break GitOps' core promise: git no longer describes what's running, so diffs lie and rollbacks are guesswork. Immutable references (digests or version tags) updated by automation PRs keep every deployment a reviewed commit — rollback is just reverting the commit. Polling 'latest' makes deployments non-reproducible.",
+     "hint": "The tag moved but git didn't change, so GitOps saw nothing to do. What kind of reference can't move out from under git?",
+     "objectives": [
+      "image pinning",
+      "immutability",
+      "rollbacks"
+     ],
+     "mins": 7,
+     "difficulty": 3
+    }
+   ]
+  },
+  {
+   "id": "iac-terraform-gitops-d2",
+   "name": "GitOps with ArgoCD",
+   "summary": "Operating GitOps with ArgoCD: install and architecture, Applications and Projects, sync policies and strategies, App of Apps, and progressive delivery hooks. Independent training content; this course confers no certificate.",
+   "scenarios": [
+    {
+     "id": "iac-terraform-gitops-d2-sc1",
+     "title": "Git as the Source of Truth",
+     "situation": "Leadership asks what makes the new deployment process 'GitOps' rather than 'CI with extra steps'. The pipeline currently builds images and runs `kubectl apply` from Jenkins.",
+     "prompt": "What is the GitOps correction?",
+     "evidence": [
+      [
+       "current",
+       "Jenkins builds image → kubectl apply → cluster (push-based)"
+      ],
+      [
+       "repo",
+       "k8s YAML committed after the fact"
+      ]
+     ],
+     "choices": [
+      "Declare the entire desired state in Git and let an in-cluster agent (ArgoCD) continuously pull and reconcile toward it — Git becomes the single source of truth, changes are PR-reviewed, and the cluster converges automatically including drift correction",
+      "Keep the Jenkins push but commit YAML first; order is what matters",
+      "GitOps just means storing YAML in Git; the Jenkins flow already qualifies",
+      "Replace Jenkins with a bigger Jenkins"
+     ],
+     "answer": 0,
+     "why": "GitOps = declarative desired state in Git + pull-based reconciliation by an agent + continuous convergence. Push-from-CI leaves the cluster writable from outside and can't self-heal drift. The agent pattern is what makes the repo authoritative.",
+     "hint": "If someone hand-edits the cluster, who puts it back?",
+     "objectives": [
+      "GitOps principles",
+      "pull vs push",
+      "reconciliation"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "iac-terraform-gitops-d2-sc2",
+     "title": "First Contact with ArgoCD",
+     "situation": "ArgoCD is installed but the team can't log in: the docs mention an initial admin password in a Secret, and nobody knows which namespace or secret name.",
+     "prompt": "What is the correct bootstrap?",
+     "evidence": [
+      [
+       "install",
+       "kubectl create namespace argocd; kubectl apply -n argocd -f install.yaml"
+      ],
+      [
+       "symptom",
+       "argocd-server pod running; login fails with generated guesses"
+      ]
+     ],
+     "choices": [
+      "Read the auto-generated password from `argocd-initial-admin-secret` in the `argocd` namespace (`kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d`), log in as `admin`, then immediately rotate it and set up SSO/RBAC",
+      "Reinstall ArgoCD with a custom admin password flag",
+      "Exec into the argocd-server pod and reset the password in its local config",
+      "Delete the secret; ArgoCD falls back to no-auth mode"
+     ],
+     "answer": 0,
+     "why": "The official install creates `argocd-initial-admin-secret` holding the bootstrap password — it's the documented entry point. Deleting it doesn't disable auth; exec-hacking the server bypasses the intended flow. Rotation + SSO is the day-2 hardening.",
+     "hint": "What did the install manifest create for bootstrapping?",
+     "objectives": [
+      "ArgoCD install",
+      "bootstrap",
+      "admin secret"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "iac-terraform-gitops-d2-sc3",
+     "title": "The App That Won't Stay Synced",
+     "situation": "An ArgoCD Application shows OutOfSync forever: every manual sync is reverted within minutes by an autoscaler changing replica counts.",
+     "prompt": "What is the correct sync configuration?",
+     "evidence": [
+      [
+       "app",
+       "syncPolicy: automated: {prune: false, selfHeal: false}"
+      ],
+      [
+       "diff",
+       "replicas: 3 (git) vs 8 (cluster, set by HPA)"
+      ]
+     ],
+     "choices": [
+      "Enable `selfHeal: true` so ArgoCD reverts drift — but add an `ignoreDifferences` rule for `replicas` (or sync only the fields you own): the HPA legitimately owns replica count, Git owns the rest",
+      "Disable the HPA; GitOps means Git controls everything including replicas",
+      "Set sync to manual and have someone click Sync after every HPA change",
+      "Delete the Application; HPA and ArgoCD are incompatible"
+     ],
+     "answer": 0,
+     "why": "selfHeal makes the agent the enforcer, but fields owned by other controllers (HPA replicas, autoscaler annotations) must be excluded via ignoreDifferences — otherwise you get a permanent sync war. Manual sync doesn't scale; deleting the app abandons GitOps.",
+     "hint": "Which controller legitimately owns the replica count here?",
+     "objectives": [
+      "sync policy",
+      "selfHeal",
+      "ignoreDifferences"
+     ],
+     "mins": 7,
+     "difficulty": 2
+    },
+    {
+     "id": "iac-terraform-gitops-d2-sc4",
+     "title": "Fifty Apps, One Cluster, No Guardrails",
+     "situation": "Every team can now create ArgoCD Applications pointing at any repo and deploying to any namespace — including `kube-system`. Audit flags it.",
+     "prompt": "What is the correct governance construct?",
+     "evidence": [
+      [
+       "current",
+       "all Applications in the default project"
+      ],
+      [
+       "finding",
+       "team-a app deployed a DaemonSet into kube-system"
+      ]
+     ],
+     "choices": [
+      "Create an ArgoCD Project per team with `sourceRepos` restricted to their Git repos and `destinations` restricted to their namespaces/clusters, and require Applications to reference their project",
+      "Tell teams to be careful; trust but verify",
+      "Run one ArgoCD instance per team to isolate them",
+      "Disable Application creation; only admins deploy"
+     ],
+     "answer": 0,
+     "why": "Projects are ArgoCD's tenancy boundary: they scope which repos and destinations an Application may use, plus RBAC roles per project. Per-team instances multiply operational cost; 'be careful' isn't a control.",
+     "hint": "What scopes an Application's allowed sources and destinations?",
+     "objectives": [
+      "Projects",
+      "multi-tenancy",
+      "RBAC"
+     ],
+     "mins": 7,
+     "difficulty": 2
+    },
+    {
+     "id": "iac-terraform-gitops-d2-sc5",
+     "title": "Bootstrapping the Bootstrap",
+     "situation": "The platform team manages 40 Applications via YAML in Git but still creates each Application object by hand with `argocd app create`. New services take days to onboard.",
+     "prompt": "What is the correct pattern?",
+     "evidence": [
+      [
+       "current",
+       "40 hand-created Applications; onboarding = ticket + manual CLI"
+      ],
+      [
+       "repo",
+       "gitops/apps/*.yaml already holds per-app definitions"
+      ]
+     ],
+     "choices": [
+      "Adopt the App of Apps pattern: one parent Application syncs a directory of child Application manifests — onboarding becomes a PR adding a YAML file, fully GitOps",
+      "Write a shell script looping `argocd app create`; automation is automation",
+      "Use ApplicationSets with a git-directory generator to template the 40 apps from the repo layout",
+      "Both the App of Apps pattern and ApplicationSets solve this; pick one and standardize"
+     ],
+     "answer": 0,
+     "why": "Both answers converge: manage Applications declaratively (App of Apps parent, or ApplicationSets generators) so onboarding is a Git PR, not a ticket. A shell loop keeps the imperative step. (Accepting either pattern — the key insight is declarative app management.)",
+     "hint": "How do you create an Application the GitOps way?",
+     "objectives": [
+      "App of Apps",
+      "ApplicationSets",
+      "declarative"
+     ],
+     "mins": 8,
+     "difficulty": 3
+    },
+    {
+     "id": "iac-terraform-gitops-d2-sc6",
+     "title": "Migrations Before the New Version",
+     "situation": "A release needs a database migration Job to run exactly once *before* the new app version rolls out, and roll back if the migration fails.",
+     "prompt": "How do you order this in ArgoCD?",
+     "evidence": [
+      [
+       "constraint",
+       "plain `kubectl apply` ordering is alphabetical and unreliable"
+      ],
+      [
+       "app",
+       "Deployment + migration Job in one Application"
+      ]
+     ],
+     "choices": [
+      "Use ArgoCD sync waves (`argocd.argoproj.io/sync-wave`) to run the migration Job in an earlier wave, plus a `PreSync` hook with `hook.delete.policy` so the Job is cleaned up; failed hooks block the sync — giving you ordering plus rollback gating",
+      "Put the migration in a separate Application and sync it by hand first",
+      "Use initContainers for the migration; they always run first",
+      "Rely on Helm chart hook annotations; ArgoCD ignores sync waves"
+     ],
+     "answer": 0,
+     "why": "Sync waves give deterministic ordering within one sync operation, and PreSync hooks gate the rollout on the migration's success. initContainers run per-pod-start (wrong lifecycle for one-shot migrations); separate apps reintroduce manual sequencing.",
+     "hint": "What runs before the sync completes, and what happens if it fails?",
+     "objectives": [
+      "sync waves",
+      "hooks",
+      "migrations"
+     ],
+     "mins": 8,
+     "difficulty": 3
+    }
+   ]
+  }
+ ],
+ "lessons": [
+  {
+   "domain_id": "iac-terraform-gitops",
+   "title": "GitOps — Core concepts",
+   "concepts": [
+    "GitOps makes git the single source of truth: desired state is declared in version control, and an in-cluster agent (ArgoCD, Flux) continuously reconciles live state toward it.",
+    "Reconciliation is a loop — observe, diff, sync: drift between git and cluster is detected automatically and either corrected (auto-sync) or surfaced for approval (manual sync).",
+    "Pull-based delivery beats push-based: the agent inside the cluster pulls changes, so CI never needs cluster credentials — a major reduction in secret sprawl.",
+    "The app-of-apps pattern composes Applications hierarchically, giving each team its own sync scope, policies, and blast radius instead of one giant sync.",
+    "Secrets don't belong in git — store references (ExternalSecrets, Vault Agent) and let the cluster resolve real values from a secrets manager at runtime.",
+    "Immutable image references (digests or version tags) keep git honest: with mutable tags like 'latest', the repo stops describing what's actually running."
+   ],
+   "example": {
+    "lang": "yaml",
+    "code": "apiVersion: argoproj.io/v1alpha1\nkind: Application\nmetadata:\n  name: web\n  namespace: argocd\nspec:\n  source:\n    repoURL: https://git.example.com/gitops.git\n    path: apps/web\n    targetRevision: main\n  destination:\n    server: https://kubernetes.default.svc\n    namespace: web",
+    "walkthrough": "This ArgoCD Application points at the apps/web directory of the gitops repo on main and the web namespace in-cluster. The agent continuously compares the two and syncs differences according to the sync policy."
+   },
+   "pitfalls": [
+    "Common trap: committing Secrets with base64 'encryption' — base64 is encoding; use external secret references.",
+    "Common trap: using ':latest' image tags — the repo stops describing reality and rollbacks become impossible.",
+    "Common trap: one Application syncing everything — a bad commit has unlimited blast radius; use app-of-apps.",
+    "Common trap: CI pushing directly to the cluster alongside GitOps — two writers fight; let the agent be the only writer."
+   ],
+   "try_it": "Work through this in the Labs tab."
+  }
+ ],
+ "labs": [
+  {
+   "id": "iac-terraform-gitops-lab1",
+   "domain_id": "iac-terraform-gitops",
+   "title": "Stand up a GitOps reconciliation loop",
+   "objective": "Deploy an app via ArgoCD or Flux from git and observe automatic drift correction.",
+   "steps": [
+    "Install ArgoCD (or Flux) on a test cluster and point an Application at a repo directory you control.",
+    "Commit a Deployment manifest with replicas: 3 and confirm the app syncs.",
+    "Introduce drift manually: 'kubectl scale deploy web --replicas=10'.",
+    "Watch the agent detect drift (OutOfSync) and sync back to 3 (or trigger manual sync).",
+    "Change replicas to 5 via a git commit and observe the cluster converge without kubectl."
+   ],
+   "checks": [
+    {
+     "command_pattern": "^kubectl\\s",
+     "expect_contains": "5",
+     "hint": "Verify the replica count converged to the git value."
+    }
+   ]
+  },
+  {
+   "id": "iac-terraform-gitops-lab2",
+   "domain_id": "iac-terraform-gitops",
+   "title": "Externalize a secret from the GitOps repo",
+   "objective": "Replace a committed Secret with an ExternalSecret referencing Vault.",
+   "steps": [
+    "Install the External Secrets Operator and configure a Vault-backed SecretStore.",
+    "Write the real credential into Vault (KV) — never into git.",
+    "Replace the in-repo Secret manifest with an ExternalSecret referencing the Vault path.",
+    "Sync and verify the resulting Kubernetes Secret exists with the correct value.",
+    "Confirm 'git log' shows no commit ever contained the plaintext credential."
+   ],
+   "checks": [
+    {
+     "command_pattern": "^kubectl\\s",
+     "expect_contains": "Opaque",
+     "hint": "Describe the synced Secret and check its type."
+    }
+   ]
+  }
+ ],
+ "simulations": [],
+ "consoleSims": [],
+ "terminalMissions": [],
+ "sections": [
+  {
+   "id": "sec-full-spectrum",
+   "title": "Full Spectrum Dominance — core path",
+   "kind": "core",
+   "lectures": [],
+   "lab_ids": [
+    "fsd-tl-lab-1",
+    "fsd-tl-lab-2",
+    "fsd-tl-lab-3",
+    "fsd-sg-lab-1",
+    "fsd-sg-lab-2",
+    "fsd-sg-lab-3",
+    "fsd-ai-lab-1",
+    "fsd-ai-lab-2",
+    "fsd-ai-lab-3"
+   ],
+   "drill_domain_ids": [
+    "tl-interview",
+    "tl-endpoint-ops",
+    "sec-graphs",
+    "graph-defense",
+    "ml-defense",
+    "ai-agent-sec"
+   ]
+  }
+ ],
+ "behavioral": [
+  {
+   "prompt": "Tell me about the most technically difficult problem you have run into — a homelab, a broken environment, anything — and how you solved it.",
+   "framework": "STAR",
+   "points": [
+    "Pick ONE problem with a real evidence trail: the symptom, what you measured, the hypothesis you tested",
+    "Show the loop: scope, observe, hypothesize, smallest safe change, validate — interviewers score the method, not just the fix",
+    "Name the tools (VM build, networking, logs) and the lesson it taught you",
+    "Close with the result in concrete terms: what works now that did not before"
+   ],
+   "pitfalls": [
+    "Choosing a story with no real obstacle (“I Googled it” is not a story)",
+    "Skipping validation — saying it worked without proving it",
+    "Rambling past two minutes without reaching the result"
+   ]
+  },
+  {
+   "prompt": "Tell me about a time you dealt with a frustrated customer or user while something was broken.",
+   "framework": "STAR",
+   "points": [
+    "Lead with empathy and ownership: acknowledge the impact before the technical detail",
+    "Show translation: what you told them, in their language, plus the timeline you committed to",
+    "Show judgment: the narrow fix you chose and what you refused to do (e.g., disabling the control to clear the symptom)",
+    "Close with the relationship outcome, not just the technical one"
+   ],
+   "pitfalls": [
+    "Badmouthing the customer to sound decisive",
+    "Promising a timeline you could not keep",
+    "Framing the user as the problem rather than the situation"
+   ]
+  },
+  {
+   "prompt": "Why ThreatLocker, and why cybersecurity?",
+   "framework": "STAR",
+   "points": [
+    "Connect prevention to something concrete: a moment you saw detection arrive too late, or a system you hardened",
+    "Tie their model to your instincts: deny-by-default matches how you already think about trust",
+    "Show service orientation: the Cyber Hero culture rewards the 2 a.m. helper — give an example of being one",
+    "Name one forward-looking reason: Zero Trust, the MSP mission, or the bootcamp community investment"
+   ],
+   "pitfalls": [
+    "Generic flattery with no specifics about the company",
+    "Leading with compensation, title, or location convenience",
+    "Claiming expertise in products you have only read about — frame it as studied, not mastered"
+   ]
+  },
+  {
+   "framework": "STAR",
+   "pitfalls": [
+    "Staying vague ('I analyzed the data') instead of naming what you connected.",
+    "Skipping your own role: what did YOU see that others missed?",
+    "No outcome: what changed because you joined the dots?"
+   ],
+   "points": [
+    "The scattered signals and why nobody had connected them yet",
+    "The specific links you drew between them (shared host, time, infrastructure)",
+    "What the bigger picture turned out to be and what action it drove",
+    "What the experience taught you about investigating"
+   ],
+   "prompt": "Tell me about a time you connected scattered clues into a bigger picture that others had missed."
+  },
+  {
+   "framework": "STAR",
+   "pitfalls": [
+    "Claiming you fixed everything: credibility comes from trade-offs, not heroics.",
+    "Hiding the constraint: the limitation is what makes the prioritization story real.",
+    "No metric: 'better' needs a before-and-after."
+   ],
+   "points": [
+    "The constraint (time, budget, staff) and the size of the backlog",
+    "How you decided what mattered most (what was reachable, what was critical)",
+    "What you did first and what you deliberately deferred",
+    "The measurable result of the prioritization"
+   ],
+   "prompt": "Describe a time you had to prioritize risks or fixes with limited time or resources. How did you decide what came first?"
+  },
+  {
+   "framework": "STAR",
+   "pitfalls": [
+    "Reciting jargon to a non-technical audience and calling it communication.",
+    "Skipping the audience's reaction: did they actually understand and act?",
+    "Making yourself the hero instead of the translator."
+   ],
+   "points": [
+    "The technical finding and why it mattered",
+    "Who the audience was and what they cared about",
+    "How you reframed it (a picture, an analogy, a story)",
+    "What decision or action the audience took because they understood"
+   ],
+   "prompt": "Tell me about a time you explained a complex technical finding to a non-technical audience and it changed a decision."
+  },
+  {
+   "prompt": "Tell me about a time you used automation or AI to solve a security problem.",
+   "framework": "STAR",
+   "points": [
+    "The repetitive security task and what it cost in analyst time",
+    "The automation or AI approach you built and how you validated it",
+    "Measured outcome: time saved, detection gained, false positives changed"
+   ],
+   "pitfalls": [
+    "Describing the tool but never the validation",
+    "No measurable outcome"
+   ]
+  },
+  {
+   "prompt": "Describe a time you had to decide whether to trust an automated security decision.",
+   "framework": "STAR",
+   "points": [
+    "The stakes of the automated action and its blast radius",
+    "How you verified before acting (or the gate you built)",
+    "What happened and what you would automate differently next time"
+   ],
+   "pitfalls": [
+    "Saying you always trust the tool",
+    "No mention of blast radius or reversibility"
+   ]
+  }
+ ],
+ "resources": {
+  "cheatsheet": {
+   "title": "Full Spectrum Dominance — field reference",
+   "sections": [
+    {
+     "heading": "Company facts (verified)",
+     "items": [
+      "Founded 2017 in Orlando, FL — Danny Jenkins (CEO), Sami Jenkins (COO), John Carolan (QA)",
+      "Philosophy: deny-by-default / default-deny — approve known-good, deny the rest",
+      "Customers: 70,000+ organizations, sold heavily through the MSP channel",
+      "Funding: $190M Series F, July 2026 (Elephant-led); ~730 employees",
+      "Interview address: 1901 Summit Tower Blvd, Orlando, FL 32810",
+      "Culture: in-office 5 days/week; free lunch; post-offer background + drug screening"
+     ]
+    },
+    {
+     "heading": "Product stack",
+     "items": [
+      "Allowlisting — default-deny execution control for apps, DLLs, scripts, installers",
+      "Ringfencing — constrains allowed apps: app-to-app, file, registry, network",
+      "Storage Control — USB/device policy by serial, user, file type, encryption",
+      "Elevation Control — just-in-time per-app admin, no standing rights",
+      "Network Control — host firewall; port/IP/dynamic-ACL rules; ZTNA foundation",
+      "Web Control — agent-based DNS/URL category filtering, works off-network",
+      "Cyber Hero MDR — 24/7/365 US-based response, ~60-second average",
+      "Testing Environment — one-button VDI sandbox; checks AV flags, canary files, registry changes"
+     ]
+    },
+    {
+     "heading": "Rule strength (strongest to weakest)",
+     "items": [
+      "Certificate/publisher rules — survive version updates",
+      "Hash rules — precise but break on every new version",
+      "Path rules — weakest; never in user-writable locations",
+      "Learning Mode catalogs before enforcement; Installation Mode pauses blocking — scope and time-box both"
+     ]
+    },
+    {
+     "heading": "Terminal evidence commands",
+     "items": [
+      "nmap <host> — which ports answer (22/80/443 open)",
+      "dig <name> — ANSWER SECTION with the A record",
+      "ss — listening sockets",
+      "systemctl status <svc> — unit state",
+      "journalctl -u <svc> — service logs",
+      "sha256sum <file> — real SHA-256 identity",
+      "grep <pattern> <file> — search the record",
+      "ps — what is actually running"
+     ]
+    },
+    {
+     "heading": "Graph vocabulary",
+     "items": [
+      "node — any entity tracked in the model (user, host, IP, domain, file hash, vulnerability)",
+      "edge — a labeled relationship between two nodes (logged into, resolved to, downloaded)",
+      "degree — number of edges on a node; high-degree nodes are attacker highways",
+      "centrality — how much traffic or how many paths flow through a node",
+      "directed edge — a relationship with a direction (A downloaded FROM B)",
+      "security graph — the living model of your whole environment as nodes and edges",
+      "attack graph — the subgraph of exploitable paths to your targets",
+      "knowledge graph — threat-intel indicators linked to campaigns and actors"
+     ]
+    },
+    {
+     "heading": "Attack-graph playbook",
+     "items": [
+      "inventory first — you cannot graph what you have not discovered",
+      "model flaws AND misconfigs as exploit edges",
+      "compute shortest paths to the crown jewels",
+      "find the choke point (highest betweenness on those paths)",
+      "break the path: patch, segment, or remove the edge",
+      "re-scan and re-run the graph to prove the path is gone",
+      "never trust yesterday's graph — redeployments redraw the map"
+     ]
+    },
+    {
+     "heading": "Zero Trust + graphs",
+     "items": [
+      "never trust, always verify — re-evaluate every access decision",
+      "assume breach — treat unexpected edges as hostile until proven otherwise",
+      "microsegmentation — allow-list approved edges, alert on new ones",
+      "ReBAC — policies are path queries on the identity graph",
+      "continuous verification — device/location/behavior edges change, trust follows",
+      "anomalous edge — a first-seen connection between strangers is the classic signal"
+     ]
+    },
+    {
+     "heading": "ML detection vocabulary",
+     "items": [
+      "Supervised learning — learns from labeled examples; strong on known threats, blind to novel ones",
+      "Unsupervised learning — finds structure without labels; clustering and dimensionality reduction",
+      "Anomaly detection — models 'normal' and flags deviations; the workhorse for novel threats",
+      "UEBA — user and entity behavior analytics: per-user baselines plus peer-group comparison",
+      "Feature engineering — encoding raw logs into model inputs (login velocity, rare processes, domain entropy)",
+      "Concept drift — model decay as attacker behavior and legitimate traffic shift over time"
+     ]
+    },
+    {
+     "heading": "Detection metrics",
+     "items": [
+      "Precision — of all flagged alerts, how many were real",
+      "Recall — of all real attacks, how many were flagged",
+      "Threshold tuning — sliding the decision cutoff trades precision against recall",
+      "Alert fatigue — when false positives train analysts to ignore the queue",
+      "DGA — domain generation algorithm; detected via character entropy of domain names"
+     ]
+    },
+    {
+     "heading": "Agent and LLM security",
+     "items": [
+      "Direct prompt injection — attacker input overrides app instructions (OWASP LLM01:2025, the #1 LLM risk)",
+      "Indirect prompt injection — hidden instructions inside retrieved data (email, web, docs)",
+      "Jailbreak — defeating the model's own safety policy; distinct from hijacking app behavior",
+      "Tool poisoning — malicious tool descriptions or metadata steer an agent to misuse its tools (MCP ecosystem risk)",
+      "Insecure output handling — executing or trusting model output without validation",
+      "Least-privilege tools — grant each tool only the scope its task requires"
+     ]
+    },
+    {
+     "heading": "Adversarial ML and governance",
+     "items": [
+      "Evasion — perturbing inputs at inference time to dodge a classifier",
+      "Poisoning — corrupting training data to corrupt the model",
+      "Extraction — querying a model to steal its behavior or parameters",
+      "MITRE ATLAS — knowledge base of adversarial ML tactics and techniques",
+      "Red-teaming and evals — adversarial testing of AI systems before deployment",
+      "Human-in-the-loop — required approval for high-impact or irreversible agent actions",
+      "SOAR — security orchestration, automation and response; automate enrichment, gate containment"
+     ]
+    }
+   ]
+  },
+  "glossary": [
+   {
+    "term": "Allowlisting",
+    "def": "Default-deny execution control: only explicitly approved applications, scripts, and installers may run."
+   },
+   {
+    "term": "Blocklisting",
+    "def": "Default-allow model: everything runs except recognized-bad items — the window zero-days live in."
+   },
+   {
+    "term": "Default-deny",
+    "def": "Deny-by-default posture: unknown code, devices, or connections are refused unless explicitly approved."
+   },
+   {
+    "term": "Ringfencing",
+    "def": "Containment applied on top of allowlisting; restricts what a permitted app may do across app-to-app, file, registry, and network dimensions."
+   },
+   {
+    "term": "Learning Mode",
+    "def": "Agent mode that catalogs applications and dependencies and auto-builds policies before enforcement; temporarily disables file blocking."
+   },
+   {
+    "term": "Installation Mode",
+    "def": "Temporary mode that pauses file blocking for installs — must be tightly scoped and time-boxed."
+   },
+   {
+    "term": "Elevation Control",
+    "def": "Grants specific approved applications admin rights for standard users — just-in-time, per-app, time-boxed — without standing admin rights."
+   },
+   {
+    "term": "Application hopping",
+    "def": "An elevated or trusted process spawning another tool (e.g., PowerShell) to inherit its privileges — countered by ringfencing the elevated process."
+   },
+   {
+    "term": "Storage Control",
+    "def": "Device and path policy: USB approved by serial, user, file type, time, and encryption; unapproved devices do not connect."
+   },
+   {
+    "term": "Network Control",
+    "def": "Centrally managed host firewall; rules by port, source IP, and dynamic ACLs; egress allowlisting pins apps to approved destinations."
+   },
+   {
+    "term": "ZTNA",
+    "def": "Zero Trust Network Access: per-session, per-application brokered connections (commonly over port 443) with no open inbound ports — deny-by-default for network access."
+   },
+   {
+    "term": "Approval Center",
+    "def": "Portal queue where end-user software requests arrive for admin review and decision."
+   },
+   {
+    "term": "Unified Audit",
+    "def": "Real-time audit showing what was allowed or denied across endpoints — and why; the evidence layer for triage."
+   },
+   {
+    "term": "Testing Environment",
+    "def": "One-button cloud VDI sandbox launched from an approval request; logs AV flags, canary-file access, and registry/system changes."
+   },
+   {
+    "term": "Cyber Hero MDR",
+    "def": "24/7/365 US-based managed detection and response team; validates alerts, isolates hosts, acts on customer runbooks; ~60-second average response."
+   },
+   {
+    "term": "Assume breach",
+    "def": "Design and operate as if the attacker already has a foothold — least privilege, containment, and monitoring everywhere."
+   },
+   {
+    "term": "Living off the land",
+    "def": "Attacks that hijack trusted built-in tools (Word, PowerShell) instead of dropping malware — defeated by behavior containment, not signatures."
+   },
+   {
+    "term": "Change control",
+    "def": "Scoped, ticketed, tested changes with validation and rollback — emergency speed never cancels the process."
+   },
+   {
+    "def": "A node in an attack graph representing a system or weakness, connected by edges that represent steps an attacker could take between them.",
+    "term": "attack graph"
+   },
+   {
+    "def": "How central a node is to paths through the graph (for example, betweenness: how many shortest paths cross it).",
+    "term": "centrality"
+   },
+   {
+    "def": "The most valuable assets in the environment (customer data, finance systems, source code): what attack paths are measured against.",
+    "term": "crown jewels"
+   },
+   {
+    "def": "A labeled connection between two nodes, representing a relationship such as 'logged into' or 'resolved to'.",
+    "term": "edge"
+   },
+   {
+    "def": "A graph of threat indicators (IPs, domains, hashes) linked to campaigns, actors, and each other through shared infrastructure.",
+    "term": "knowledge graph"
+   },
+   {
+    "def": "The practice of mapping relationships in data to reveal hidden associations; rooted in Euler's 1736 graph theory, 1970s paper link charts, and post-2001 intelligence work.",
+    "term": "link analysis"
+   },
+   {
+    "def": "A segment of the network so small that its allowed communications can be enumerated as a graph of approved edges.",
+    "term": "microsegmentation"
+   },
+   {
+    "def": "An entity in the graph: a user, host, IP address, domain, file, or vulnerability.",
+    "term": "node"
+   },
+   {
+    "def": "Access control where policy is evaluated by traversing relationships on a graph (for example: user reports_to manager who owns the resource's project).",
+    "term": "ReBAC"
+   },
+   {
+    "def": "A machine-learning model that operates directly on graph structure to classify nodes or subgraphs, for example labeling attack vs normal behavior.",
+    "term": "graph neural network (GNN)"
+   },
+   {
+    "def": "Monitoring user and entity behavior by modeling their normal relationship patterns and flagging structural anomalies.",
+    "term": "UEBA"
+   },
+   {
+    "term": "Supervised learning",
+    "def": "ML trained on labeled examples; classifies new inputs into known categories."
+   },
+   {
+    "term": "Anomaly detection",
+    "def": "ML approach that models normal behavior and flags statistically rare deviations."
+   },
+   {
+    "term": "Feature engineering",
+    "def": "Turning raw telemetry into numeric model inputs, e.g. login velocity or domain entropy."
+   },
+   {
+    "term": "Precision",
+    "def": "Share of flagged alerts that were real; the false-positive economics of the queue."
+   },
+   {
+    "term": "Recall",
+    "def": "Share of real attacks the detector flagged; the miss rate's complement."
+   },
+   {
+    "term": "Concept drift",
+    "def": "Decay of model performance as the data distribution shifts over time."
+   },
+   {
+    "term": "Prompt injection",
+    "def": "Attacker-crafted instructions that override an LLM application's intended behavior; direct (user input) or indirect (retrieved data)."
+   },
+   {
+    "term": "Jailbreak",
+    "def": "Crafted input that defeats an LLM's own safety policy or refusal behavior."
+   },
+   {
+    "term": "Tool poisoning",
+    "def": "Malicious tool descriptions or metadata that manipulate an AI agent into misusing its tools."
+   },
+   {
+    "term": "Insecure output handling",
+    "def": "Failing to validate LLM output before acting on it, e.g. executing generated commands."
+   },
+   {
+    "term": "Evasion attack",
+    "def": "Adversarial ML technique: perturbing inputs to cross a classifier's decision boundary."
+   },
+   {
+    "term": "MITRE ATLAS",
+    "def": "Adversarial Threat Landscape for AI Systems; MITRE's knowledge base of AI attack tactics."
+   },
+   {
+    "term": "SOAR",
+    "def": "Security orchestration, automation and response; playbooks that enrich automatically and gate containment on humans."
+   },
+   {
+    "term": "Human-in-the-loop",
+    "def": "Required human approval before high-impact or irreversible automated actions."
+   }
+  ],
+  "links": [
+   {
+    "label": "ThreatLocker Zero Trust platform explainer (official)",
+    "url": "https://www.threatlocker.com/blog/edr-xdr-vs-zero-trust-prevention",
+    "note": "EDR/XDR vs Zero Trust prevention — the deny-by-default argument in their own words."
+   },
+   {
+    "label": "ThreatLocker Bootcamp page (official)",
+    "url": "https://www.threatlocker.com/bootcamp",
+    "note": "Free six-week program: phases, format, and what completion leads to."
+   },
+   {
+    "label": "ThreatLocker Careers (official)",
+    "url": "https://www.threatlocker.com/company/careers",
+    "note": "Open roles and the hiring-event listing; roles are in-office in Orlando."
+   },
+   {
+    "label": "Elevation Control (official)",
+    "url": "https://www.threatlocker.com/secure-privileges-without-sacrificing-agility",
+    "note": "Just-in-time privilege without standing admin."
+   },
+   {
+    "label": "Storage Control (official)",
+    "url": "https://www.threatlocker.com/capabilities/external-storage-device-control",
+    "note": "USB/device policy by serial, user, file type, encryption."
+   },
+   {
+    "label": "Web Control (official)",
+    "url": "https://www.threatlocker.com/capabilities/web-content-control",
+    "note": "Agent-based DNS/URL filtering, including off-network."
+   },
+   {
+    "label": "Cyber Hero MDR (official)",
+    "url": "https://www.threatlocker.com/get-threat-response-in-minutes",
+    "note": "24/7/365 managed response positioning."
+   },
+   {
+    "label": "MDR capabilities (official)",
+    "url": "https://www.threatlocker.com/capabilities/managed-detection-and-response",
+    "note": "Detection and response capability detail."
+   },
+   {
+    "label": "NIST SP 800-207 — Zero Trust Architecture",
+    "url": "https://csrc.nist.gov/pubs/sp/800/207/final",
+    "note": "The canonical Zero Trust reference: tenets, deployment models, policy engine trust algorithm."
+   },
+   {
+    "label": "CISA Zero Trust Maturity Model",
+    "url": "https://www.cisa.gov/zero-trust-maturity-model",
+    "note": "Federal maturity steps across identity, devices, networks, applications, and data."
+   },
+   {
+    "label": "MITRE ATT&CK",
+    "note": "The adversary-tactics framework; codify its tactic chains as subgraphs to hunt for in your security graph.",
+    "url": "https://attack.mitre.org/"
+   },
+   {
+    "label": "CISA — Cybersecurity and Infrastructure Security Agency",
+    "note": "US government advisories, alerts, and guidance frequently referenced in threat-intel work.",
+    "url": "https://www.cisa.gov/"
+   },
+   {
+    "label": "Neo4j getting started",
+    "note": "A widely used graph database; the book's call to action suggests piloting graph queries on exported security data with tools like this.",
+    "url": "https://neo4j.com/docs/getting-started/"
+   },
+   {
+    "label": "OWASP GenAI Security Project",
+    "url": "https://genai.owasp.org/",
+    "note": "Home of the LLM Top 10 and GenAI security guidance"
+   },
+   {
+    "label": "OWASP Top 10 for LLM Applications",
+    "url": "https://genai.owasp.org/llm-top-10/",
+    "note": "The ranked LLM risk list — prompt injection is #1"
+   },
+   {
+    "label": "NIST AI Risk Management Framework",
+    "url": "https://www.nist.gov/itl/ai-risk-management-framework",
+    "note": "The standard governance framework for managing AI risk"
+   },
+   {
+    "label": "MITRE ATLAS",
+    "url": "https://atlas.mitre.org/",
+    "note": "Adversarial Threat Landscape for AI Systems — tactics and techniques"
+   },
+   {
+    "label": "CISA AI guidance",
+    "url": "https://www.cisa.gov/ai",
+    "note": "CISA's AI security resources and guidance"
+   }
+  ],
+  "checklist": [
+   "Sixty-second company brief rehearsed out loud: year, city, philosophy, three products, one milestone",
+   "Two STAR stories ready: hardest technical problem; a frustrated customer or user",
+   "“Why ThreatLocker / why cybersecurity” answer tied to prevention and service, not slogans",
+   "Ringfencing explained in one plain-English sentence (the Word-on-a-leash version)",
+   "Elevation Control answer ready: just-in-time, per-app, time-boxed, ringfenced, logged",
+   "Triage loop memorized: scope → observe → hypothesize → smallest safe change → validate → explain",
+   "Three questions to ask them: team on-call shape, approval SLA expectations, what “most helpful” looks like on the team",
+   "Logistics: 1901 Summit Tower Blvd, Orlando FL; in-office role; ID and references ready",
+   "Define your crown jewels before you model anything.",
+   "Build the asset-and-access graph from live sources (scans, configs, identity), not from the CMDB alone.",
+   "Model vulnerabilities AND misconfigurations as exploit edges.",
+   "Compute shortest attack paths to each crown jewel; name the choke points.",
+   "Prioritize remediation by path risk, not by raw severity score.",
+   "Express at least one access policy as a relationship path (ReBAC pilot).",
+   "Baseline approved communication edges per segment; alert on first-seen edges.",
+   "Brief the next incident or risk review with the graph, not a spreadsheet.",
+   "Can you explain supervised vs unsupervised vs anomaly detection with a security example for each?",
+   "Can you name three log features you would engineer for a C2 detector and why?",
+   "Can you walk through a UEBA alert (baseline, deviation, verification) end to end?",
+   "Can you explain the precision/recall tradeoff and how you would set a threshold for a fatigued SOC?",
+   "Can you define concept drift and describe a retraining process?",
+   "Can you distinguish direct vs indirect prompt injection and jailbreaking?",
+   "Can you explain tool poisoning in the MCP ecosystem and three controls against it?",
+   "Can you describe insecure output handling and how you would validate agent output?",
+   "Can you name the three adversarial ML attack classes and one defense for evasion?",
+   "Can you design a SOAR playbook gate: what automates freely, what needs human approval?"
+  ]
+ },
+ "chat": {
+  "persona": "You are a rigorous but encouraging interviewer preparing a candidate for a Zero Trust endpoint security role. Probe with 'why' and 'how would you explain that' follow-ups. Stay on topic: ThreatLocker-style endpoint defense, security graphs, and AI-powered security. All practice is original; never reproduce vendor material.",
+  "topics": [
+   {
+    "id": "tl-interview",
+    "name": "ThreatLocker Interview Prep",
+    "key_points": [
+     "allowlisting",
+     "ringfencing",
+     "default-deny",
+     "cyber hero",
+     "zero trust tenets",
+     "STAR stories"
+    ],
+    "followups": [
+     "Can you give an example?",
+     "How would you explain that to a CFO?"
+    ]
+   },
+   {
+    "id": "tl-endpoint-ops",
+    "name": "Zero Trust Endpoint Operations",
+    "key_points": [
+     "default-deny",
+     "ringfencing dimensions",
+     "elevation control",
+     "storage control",
+     "network control",
+     "change control"
+    ],
+    "followups": [
+     "Walk me through the triage order.",
+     "When would you deny outright?"
+    ]
+   },
+   {
+    "followups": [
+     "Can you walk through an example?",
+     "How does this change patch prioritization?",
+     "What is the difference between a security graph and an attack graph?"
+    ],
+    "id": "sec-graphs",
+    "key_points": [
+     "nodes",
+     "edges",
+     "attack graphs",
+     "kill chain",
+     "link analysis",
+     "threat intel graphs"
+    ],
+    "name": "Security Graphs: Think Like an Attacker"
+   },
+   {
+    "followups": [
+     "How do graphs change patch prioritization?",
+     "What is ReBAC and how is it different from RBAC?",
+     "How would a small team start with graphs?"
+    ],
+    "id": "graph-defense",
+    "key_points": [
+     "attack-path analysis",
+     "insider threat",
+     "vulnerability graphs",
+     "Zero Trust",
+     "microsegmentation",
+     "blast radius"
+    ],
+    "name": "Graph-Powered Defense Operations"
+   },
+   {
+    "id": "ml-defense",
+    "name": "ML-Powered Threat Defense",
+    "key_points": [
+     "anomaly detection",
+     "UEBA",
+     "alert fatigue",
+     "concept drift",
+     "threat hunting",
+     "precision recall"
+    ],
+    "followups": [
+     "Walk me through an example.",
+     "How do you handle false positives?"
+    ]
+   },
+   {
+    "id": "ai-agent-sec",
+    "name": "Securing AI Systems & Agents",
+    "key_points": [
+     "prompt injection",
+     "tool poisoning",
+     "MCP risks",
+     "insecure output handling",
+     "SOAR gates",
+     "adversarial ML"
+    ],
+    "followups": [
+     "Walk me through an example.",
+     "How do you secure an AI agent end to end?"
+    ]
+   }
+  ]
+ },
+ "simulation": {
+  "items": 12,
+  "minutes": 180,
+  "evidence_cost_mins": 2
+ },
+ "media": [
+  {
+   "id": "tl-allowlist-vs-blocklist",
+   "kind": "diagram",
+   "title": "Allowlisting vs blocklisting: default-deny vs default-allow",
+   "svg": "assets/diagrams/tl-allowlist-vs-blocklist.svg",
+   "lesson_ref": "c-tl-endpoint-ops",
+   "caption": "Default-deny stops unknown code without a signature; default-allow runs it until one exists.",
+   "alt": "Side-by-side comparison: on the left, a default-deny gate runs known-good payroll software and denies unknown ransomware with no signature needed; on the right, a default-allow gate runs both until the ransomware is recognized as bad."
+  },
+  {
+   "id": "tl-ringfencing",
+   "kind": "diagram",
+   "title": "Ringfencing: four leashes on an allowed application",
+   "svg": "assets/diagrams/tl-ringfencing.svg",
+   "lesson_ref": "c-tl-endpoint-ops",
+   "caption": "Word stays approved, but it cannot spawn PowerShell, read the credential store, or reach the internet — while opening its document is allowed.",
+   "alt": "An approved Word application inside a dashed containment ring: arrows show PowerShell launch denied, credential-store registry access denied, external network denied, and document file access allowed."
+  },
+  {
+   "id": "tl-zero-trust-stack",
+   "kind": "diagram",
+   "title": "The Zero Trust endpoint stack",
+   "svg": "assets/diagrams/tl-zero-trust-stack.svg",
+   "lesson_ref": "c-tl-interview",
+   "caption": "Five deny-by-default layers — Allowlisting, Ringfencing, Elevation, Storage, Network — watched by Web Control, the Testing Environment, Unified Audit, and the Cyber Hero MDR team.",
+   "alt": "A vertical stack of five layers from Allowlisting at the foundation up through Ringfencing, Elevation Control, Storage Control, and Network Control, with side boxes for Web Control, Testing Environment, Unified Audit, and Cyber Hero MDR."
+  },
+  {
+   "id": "tl-triage-flow",
+   "kind": "diagram",
+   "title": "Application-request triage flow",
+   "svg": "assets/diagrams/tl-triage-flow.svg",
+   "lesson_ref": "c-tl-endpoint-ops",
+   "caption": "Gather evidence first, then branch: trusted gets a scoped rule, unknown goes to the sandbox, malicious gets a documented deny.",
+   "alt": "Flowchart from request arrival through evidence gathering to a decision diamond branching into three outcomes: approve with a scoped rule, detonate in the Testing Environment then ringfence, or deny with documented evidence."
+  },
+  {
+   "alt": "Diagram of four labeled nodes (user, host, file, domain, IP) joined by labeled directed edges such as logged into, downloaded, and resolved to, illustrating graph vocabulary.",
+   "caption": "Nodes are the things; edges are the relationships. Attackers move along the edges.",
+   "id": "sg-graph-vocabulary",
+   "kind": "diagram",
+   "lesson_ref": "c-sec-graphs",
+   "svg": "assets/diagrams/sg-graph-vocabulary.svg",
+   "title": "Graph vocabulary: nodes and edges"
+  },
+  {
+   "alt": "Attack graph with four nodes in a chain: external attacker to VPN gateway to file server to customer database, with a dead-end branch to a printer, showing the shortest path to the crown jewel.",
+   "caption": "The shortest path to the crown jewel is length 3. Break the choke point and the campaign dies.",
+   "id": "sg-attack-path",
+   "kind": "diagram",
+   "lesson_ref": "c-sec-graphs",
+   "svg": "assets/diagrams/sg-attack-path.svg",
+   "title": "Attack graph: shortest path to the crown jewels"
+  },
+  {
+   "alt": "Seven kill-chain stages as connected graph nodes: reconnaissance, weaponization, delivery, exploitation, installation, command and control, actions. Three alerts are annotated at delivery, installation, and command and control.",
+   "caption": "Three 'unrelated' alerts, one kill-chain subgraph. Correlate by shared entities, not by severity.",
+   "id": "sg-kill-chain",
+   "kind": "diagram",
+   "lesson_ref": "c-sec-graphs",
+   "svg": "assets/diagrams/sg-kill-chain.svg",
+   "title": "Kill chain as a graph"
+  },
+  {
+   "alt": "A policy engine at the center of a small graph evaluates an access request from a finance user on an untrusted laptop to an R and D code server. The request is denied because there is no prior relationship edge and the device is untrusted.",
+   "caption": "Valid credentials are not enough. The graph checks device trust, history, and relationships on every request.",
+   "id": "sg-zero-trust",
+   "kind": "diagram",
+   "lesson_ref": "c-graph-defense",
+   "svg": "assets/diagrams/sg-zero-trust.svg",
+   "title": "Zero Trust runs on relationships"
+  },
+  {
+   "id": "ai-ml-pipeline",
+   "kind": "diagram",
+   "title": "ML detection pipeline: telemetry to triage",
+   "svg": "assets/diagrams/ai-ml-pipeline.svg",
+   "lesson_ref": "c-ml-defense",
+   "caption": "How raw telemetry becomes scored alerts: features feed the model, the model scores, analysts triage top-down — and analyst verdicts feed retraining.",
+   "alt": "Flow diagram: telemetry sources feed feature extraction, which feeds an ML model, which outputs scored alerts into an analyst triage queue, with a feedback arrow for retraining."
+  },
+  {
+   "id": "ai-ueba-baseline-diagram",
+   "kind": "diagram",
+   "title": "UEBA: baseline vs deviation",
+   "svg": "assets/diagrams/ai-ueba-baseline.svg",
+   "lesson_ref": "c-ml-defense",
+   "caption": "UEBA learns each user's normal hours, locations, and volumes, then scores deviations from that baseline.",
+   "alt": "24-hour timeline showing a shaded normal login window from 8 AM to 6 PM with normal logins inside it, and a red anomaly marker at 2:47 AM for a foreign login scoring 97 out of 100."
+  },
+  {
+   "id": "ai-injection-flow",
+   "kind": "diagram",
+   "title": "Indirect prompt injection attack flow",
+   "svg": "assets/diagrams/ai-injection-flow.svg",
+   "lesson_ref": "c-ai-agent-sec",
+   "caption": "An attacker hides instructions in data the agent retrieves; the agent mistakes data for instructions and misuses its tools.",
+   "alt": "Attack flow diagram: hidden instruction in an email is read by an AI agent, which mistakes it for a command and calls a privileged tool, causing fraud; three defense boxes below: sanitize content, least-privilege tools, human approval."
+  }
+ ],
+ "foundations": [
+  {
+   "track": "linux-cli",
+   "why_needed": "Terminal labs and missions run in a simulated Linux shell; command-line fluency is required to complete them."
+  },
+  {
+   "track": "security-basics",
+   "why_needed": "Security-graph and ML-detection lessons assume baseline vocabulary (CIA triad, malware types, incident response phases)."
+  }
+ ],
+ "math": [
+  "stats",
+  "probability"
+ ]
+}

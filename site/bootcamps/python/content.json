@@ -1,1 +1,1287 @@
-{"slug": "python", "title": "Python Programming", "tagline": "Language fundamentals through debugging — PCEP/PCAP-concept prep", "vendor": {"name": "Python Institute", "certs": "PCEP, PCAP", "docs": "https://pythoninstitute.org"}, "disclaimer": "Independent practice material by Interstitium Labs. Not affiliated with, endorsed by, or sponsored by the Python Institute. Confers no certificate. All scenarios are original; no exam content is reproduced.", "domains": [{"id": "fundamentals", "name": "Language Fundamentals", "scenarios": [{"id": "py-loop-closure", "title": "Every button does the same thing", "situation": "A teammate generates five callbacks in a loop. Every callback prints 4, no matter which one is called.", "prompt": "Why do all the callbacks behave identically, and how do you fix it?", "evidence": [["callbacks.py", "handlers = [lambda: print(i) for i in range(5)]\nhandlers[0]()  # prints 4\nhandlers[2]()  # prints 4"]], "choices": ["The lambda captures the variable i itself, not its value at creation — bind it with a default argument", "List comprehensions share one lambda object — use a for loop with append instead", "print buffers output — flush after each call", "range(5) yields the same object five times — use list(range(5))"], "answer": 0, "why": "Closures capture variables by reference, not values. When any handler runs, it looks up the current value of i, which is 4 after the loop finished. Binding the value at definition time — lambda i=i: print(i) — gives each callback its own copy.", "hint": "When is the value of i actually looked up: when the lambda is defined, or when it is called?", "objectives": ["Closures", "Late binding"], "mins": 6}, {"id": "py-int-division", "title": "The disappearing cent", "situation": "A billing helper splits a dollar amount in cents evenly, but the ledger is off by a cent on some invoices.", "prompt": "What is wrong with the split, and which operator fixes it?", "evidence": [["billing.py", "def split_cents(total_cents, n):\n    share = total_cents / n\n    return [round(share)] * n\n\nsplit_cents(100, 3)  # [33, 33, 33] -> sums to 99"]], "choices": ["round() uses banker's rounding — use math.ceil instead", "/ produces a float and the remainder cent is silently dropped — use divmod for quotient and remainder", "List multiplication shares one int object — build the list with a comprehension", "Integers are immutable — the shares cannot be adjusted after creation"], "answer": 1, "why": "Floating-point division plus rounding discards the remainder: 100/3 rounds to 33 three times, totaling 99. divmod(100, 3) returns (33, 1), letting you distribute the leftover cent explicitly so the shares always sum to the original total.", "hint": "Where does the missing cent go? Which builtin returns both the quotient and the remainder at once?", "objectives": ["Numeric types", "Division semantics"], "mins": 5}, {"id": "py-is-vs-eq", "title": "Works in the REPL, fails in production", "situation": "A role check passes during manual testing but rejects admin users when the value comes from an HTTP request body.", "prompt": "Why does the check behave differently, and what is the correct comparison?", "evidence": [["auth.py", "role = request.json[\"role\"]  # the string \"admin\"\nif role is \"admin\":\n    grant_access()  # never runs for real requests"]], "choices": ["is compares object identity, not value — runtime-built strings are different objects, so use ==", "JSON strings are bytes — decode before comparing", "Request data is lazily evaluated — call request.get_json(force=True)", "String interning is disabled in production — enable it with sys.intern"], "answer": 0, "why": "The is operator tests whether two names point to the same object in memory. CPython interns some string literals, which is why the check accidentally works in the REPL, but a string parsed from JSON is a distinct object with equal value. Value comparison with == is the correct test.", "hint": "What exactly does is test — the characters in the string, or something about the objects themselves?", "objectives": ["Identity vs equality", "String interning"], "mins": 5}, {"id": "py-falsy-cache", "title": "The cache that never hits", "situation": "A lookup helper accepts an optional cache dict. Profiling shows the expensive computation runs on every call even when a cache is passed.", "prompt": "What is the bug in the cache check?", "evidence": [["cache.py", "def lookup(key, cache=None):\n    if not cache:\n        cache = {}\n    if key not in cache:\n        cache[key] = expensive(key)\n    return cache[key]"]], "choices": ["not cache is True for an empty dict, so a legitimately empty cache is thrown away every call — test cache is None instead", "Default arguments are evaluated once — use a module-level dict", "Dicts are unordered — the key lookup misses on ordering", "None is falsy — the check should be if cache == {}"], "answer": 0, "why": "Empty containers are falsy, so `not cache` is True both when no cache was passed (None) and when an empty dict was passed. The caller's empty dict gets discarded and replaced, so entries never accumulate. Testing `cache is None` distinguishes 'not provided' from 'provided but empty'.", "hint": "List every value that makes `not cache` True. Which of those are legitimate caches?", "objectives": ["Truthiness", "None handling"], "mins": 5}, {"id": "py-float-money", "title": "2.67 is not 2.67", "situation": "A totals report formats currency with round(x, 2), but a price of 2.675 renders as 2.67 and reconciliation fails.", "prompt": "Why does rounding misbehave here, and what type should money use?", "evidence": [["totals.py", ">>> round(2.675, 2)\n2.67\n>>> f\"{2.675:.2f}\"\n'2.67'"]], "choices": ["round() has a bug with .5 fractions — file an issue and use string slicing", "2.675 cannot be represented exactly in binary floating point (it stores as 2.67499...) — use decimal.Decimal for money", "f-strings truncate instead of rounding — use format(x, '.2f')", "Python rounds toward zero — use math.floor with an offset"], "answer": 1, "why": "Binary floating point cannot represent most decimal fractions exactly; the stored value of 2.675 is actually slightly less, so it rounds down. This is inherent to IEEE 754 doubles, not a bug. The decimal module represents decimal fractions exactly and is the standard choice for currency.", "hint": "What base does a float use internally, and can 2.675 be written exactly in that base?", "objectives": ["Floating point", "decimal module"], "mins": 6}, {"id": "py-none-return", "title": "The condition that never fires", "situation": "A notification helper is only supposed to escalate when sending fails, but the escalation branch never executes.", "prompt": "Why is the failure branch dead code?", "evidence": [["notify.py", "def send_alert(msg):\n    print(f\"ALERT: {msg}\")  # no return statement\n\nif send_alert(\"disk full\"):\n    escalate()  # never runs"]], "choices": ["Functions without a return statement return None, which is falsy — the helper must return a success flag", "print returns the string — compare against the message instead", "if treats missing returns as True — invert the condition", "The function raises before returning — wrap the call in try/except"], "answer": 0, "why": "Every Python function returns None unless it executes a return with a value. The if statement therefore always sees a falsy value. Side-effect helpers should either return an explicit status the caller can test, or be called for their effect alone without a condition.", "hint": "What value does a function produce when execution simply falls off the end of the body?", "objectives": ["Return semantics", "None"], "mins": 4}]}, {"id": "data-structures", "name": "Data Structures", "scenarios": [{"id": "py-counter", "title": "Counting words the slow way", "situation": "A log analyzer counts word frequencies with a hand-rolled loop and an if/else on every word. It works but is verbose and slow to read.", "prompt": "Which stdlib tool replaces the manual loop most idiomatically?", "evidence": [["analyze.py", "counts = {}\nfor word in words:\n    if word in counts:\n        counts[word] += 1\n    else:\n        counts[word] = 1\ntop = sorted(counts.items(), key=lambda kv: kv[1], reverse=True)[:10]"]], "choices": ["collections.Counter — counts = Counter(words), then counts.most_common(10)", "collections.deque — popleft is O(1) for the top words", "array.array — stores the counts in a typed C array", "functools.reduce — fold the words into a dict in one expression"], "answer": 0, "why": "Counter is a dict subclass built exactly for frequency counting; its constructor consumes an iterable and most_common(n) returns the n highest counts without a manual sort. The hand-rolled loop reimplements what the stdlib already provides, tested and optimized.", "hint": "Which collections class is literally a dict subclass designed for counting hashable items?", "objectives": ["collections.Counter", "Idiomatic stdlib"], "mins": 5}, {"id": "py-generator-memory", "title": "The 2 GB list nobody needed", "situation": "A CSV pipeline loads every row into a list, transforms it, then iterates once to write output. The job OOMs on large files.", "prompt": "What is the minimal change that fixes the memory blowup?", "evidence": [["pipeline.py", "rows = [transform(r) for r in read_csv(\"huge.csv\")]  # 2 GB in RAM\nfor r in rows:\n    write_out(r)"]], "choices": ["Replace the list comprehension with a generator expression so rows are produced lazily, one at a time", "Call gc.collect() inside the loop to free each row sooner", "Convert rows to a tuple — tuples use less memory than lists", "Read the file in binary mode to halve the memory footprint"], "answer": 0, "why": "A list comprehension materializes every element at once, while a generator expression — (transform(r) for r in read_csv(...)) — yields each row on demand and discards it after use. Since the pipeline consumes rows exactly once, laziness cuts peak memory from O(n) to O(1) per row.", "hint": "The data is consumed exactly once, in order. Does it all need to exist in memory at the same time?", "objectives": ["Generators", "Memory efficiency"], "mins": 6}, {"id": "py-unhashable-key", "title": "TypeError: unhashable type", "situation": "A config loader builds a dict keyed by coordinate pairs, but crashes with TypeError: unhashable type: 'list'.", "prompt": "Why does the key fail, and what is the correct key type?", "evidence": [["config.py", "grid = {}\nfor x, y in points:\n    grid[[x, y]] = lookup(x, y)  # TypeError: unhashable type: 'list'"]], "choices": ["Dict keys must be hashable and immutable in practice — use the tuple (x, y) as the key", "Dict keys must be strings — use f\"{x},{y}\"", "Lists cannot be dict keys on 64-bit Python — switch to a 32-bit build", "The dict needs a default factory — use defaultdict(list)"], "answer": 0, "why": "Dict lookup hashes the key, and lists are mutable so Python makes them unhashable — a key whose hash could change would corrupt the table. Tuples are immutable and hashable (when their contents are), so (x, y) is the natural key for a coordinate pair.", "hint": "What property must a dict key have so its hash stays valid for the lifetime of the entry?", "objectives": ["Hashability", "Dict keys"], "mins": 5}, {"id": "py-deque-queue", "title": "The queue that gets slower as it grows", "situation": "A task queue is a plain list; workers pop(0) to take the next job. Latency climbs linearly with queue length.", "prompt": "Why does pop(0) degrade, and which structure fixes it?", "evidence": [["queue.py", "jobs = [...100k items...]\nwhile jobs:\n    job = jobs.pop(0)  # gets slower over time\n    handle(job)"]], "choices": ["pop(0) shifts every remaining element, making it O(n) — use collections.deque, whose popleft() is O(1)", "Lists store pointers — convert to array.array for contiguous storage", "pop(0) triggers a full garbage collection — disable gc during the loop", "While loops are slow — rewrite with a for loop over the list"], "answer": 0, "why": "Removing from the front of a list memmoves all remaining elements down one slot, so each pop costs O(n) and the whole drain costs O(n²). A deque is a doubly-linked block structure with O(1) appends and pops on both ends — the right tool for FIFO queues.", "hint": "What has to physically happen to the other 99,999 elements when the first one is removed from a contiguous array?", "objectives": ["deque", "Algorithmic complexity of list ops"], "mins": 6}, {"id": "py-ordered-dedup", "title": "Dedup that scrambles the order", "situation": "A teammate deduplicates a list of user IDs with set(), but downstream code depends on first-seen order and starts failing.", "prompt": "How do you deduplicate while preserving first-seen order?", "evidence": [["users.py", "ids = [7, 3, 7, 1, 3, 9]\nunique = list(set(ids))  # order lost: [1, 3, 7, 9] or arbitrary"]], "choices": ["list(dict.fromkeys(ids)) — dicts preserve insertion order and drop duplicate keys", "sorted(set(ids)) — sorting restores the original order", "list(ids).remove duplicates with a nested loop checking index()", "Use frozenset instead of set — frozensets preserve order"], "answer": 0, "why": "Sets are unordered by design, so converting through one discards the original sequence. Since Python 3.7 dicts preserve insertion order, dict.fromkeys(ids) keeps the first occurrence of each ID and drops later duplicates, and list() converts back.", "hint": "Which builtin mapping both rejects duplicate keys and remembers the order keys were first inserted?", "objectives": ["Set semantics", "Insertion order"], "mins": 5}, {"id": "py-extended-unpack", "title": "Rows of uneven length", "situation": "A CSV parser unpacks each row into fixed variables, but some rows carry extra trailing columns and crash with ValueError: too many values to unpack.", "prompt": "How do you unpack the first columns and collect the rest without knowing the row length?", "evidence": [["parse.py", "for row in reader:\n    name, age, city = row  # ValueError on rows with 4+ columns"]], "choices": ["Use starred unpacking: name, age, city, *extra = row — extra collects the remainder as a list", "Slice first: name, age, city = row[0], row[1], row[2]", "Wrap in try/except ValueError and skip malformed rows", "Pad every row to the max length with None before unpacking"], "answer": 0, "why": "Extended unpacking with a starred target captures any number of leftover items into a list, so name, age, city, *extra = row works for rows of length 3 or more. It expresses 'first three, plus the rest' directly instead of manual slicing.", "hint": "Which unpacking syntax lets one target absorb a variable number of leftover items?", "objectives": ["Unpacking", "Starred expressions"], "mins": 4}]}, {"id": "functions-modules", "name": "Functions & Modules", "scenarios": [{"id": "py-guard-mutable-default", "title": "The growing default list", "situation": "A helper collects validation errors, defaulting to a fresh list per call — except callers who omit the argument see errors from previous calls.", "prompt": "What is the root cause, and what is the correct fix?", "evidence": [["validate.py", "def validate(record, errors=[]):\n    if bad(record):\n        errors.append(record)\n    return errors\n\nvalidate(r1)  # [r1]\nvalidate(r2)  # [r1, r2] -- surprise"]], "choices": ["Default arguments are evaluated once at def time, so every call shares one list — default to None and create the list inside", "Lists are passed by reference — callers must pass errors[:] to copy", "append is not atomic — protect it with a threading lock", "The function is recursive — the list accumulates across frames"], "answer": 0, "why": "Python evaluates default argument expressions once, when the def statement runs. The single list object is then reused as the default for every call. The standard fix is errors=None with `if errors is None: errors = []` inside the body, creating a fresh list per call.", "hint": "When does Python evaluate a default argument value — each call, or once?", "objectives": ["Function semantics", "Mutable defaults"], "mins": 6}, {"id": "py-kwargs-forward", "title": "The wrapper that drops arguments", "situation": "A timing wrapper works on simple functions but crashes with TypeError when applied to a function that takes keyword arguments.", "prompt": "What is missing from the wrapper?", "evidence": [["timing.py", "def timed(fn):\n    def wrapper(*args):\n        start = time.perf_counter()\n        result = fn(*args)\n        print(time.perf_counter() - start)\n        return result\n    return wrapper\n\n@timed\ndef fetch(url, retries=3): ...\nfetch(\"http://x\", retries=5)  # TypeError"]], "choices": ["The wrapper accepts *args but not **kwargs, so keyword arguments have nowhere to go — add **kwargs and forward them", "Decorators cannot wrap functions with defaults — remove the default value", "time.perf_counter is monotonic — use time.time instead", "The wrapper must be defined with functools.partial, not a nested def"], "answer": 0, "why": "A transparent wrapper must accept everything the wrapped function accepts. *args captures positional arguments only; without **kwargs, any keyword argument raises TypeError. The fix is def wrapper(*args, **kwargs) with fn(*args, **kwargs).", "hint": "Where do the keyword arguments go when the wrapper's signature has no parameter that can receive them?", "objectives": ["*args/**kwargs", "Decorators"], "mins": 5}, {"id": "py-functools-wraps", "title": "The decorator that erases identity", "situation": "After adding a logging decorator, stack traces and help() show wrapper instead of the real function names, confusing on-call debugging.", "prompt": "How do you make a decorator preserve the wrapped function's metadata?", "evidence": [["log.py", "def logged(fn):\n    def wrapper(*args, **kwargs):\n        print(f\"calling {fn.__name__}\")\n        return fn(*args, **kwargs)\n    return wrapper\n\n@logged\ndef process(order): ...\nprocess.__name__  # 'wrapper'"]], "choices": ["Apply @functools.wraps(fn) to the inner wrapper — it copies __name__, __doc__, and __module__", "Assign wrapper.__name__ = fn.__name__ manually at the end of the decorator", "Decorators cannot preserve metadata — remove the decorator in production", "Use a class-based decorator instead of a function-based one"], "answer": 0, "why": "functools.wraps updates the wrapper's __name__, __qualname__, __doc__, __dict__, and __module__ from the wrapped function, so introspection, tracebacks, and documentation tools see the original. Manual assignment works for __name__ alone but misses the rest.", "hint": "Which stdlib decorator exists specifically to copy a wrapped function's metadata onto its wrapper?", "objectives": ["Decorators", "functools.wraps"], "mins": 5}, {"id": "py-import-cycle", "title": "ModuleNotFoundError on a file that exists", "situation": "A script imports a sibling helper module. It runs from the project root but fails with ModuleNotFoundError when launched from a subdirectory.", "prompt": "Why does the import depend on the working directory, and what is the robust fix?", "evidence": [["run", "$ cd scripts && python cleanup.py\nTraceback: ModuleNotFoundError: No module named 'helpers'"]], "choices": ["Python resolves top-level imports against sys.path, which includes the script's directory but not the project root — run as a module (python -m) or structure the code as a package", "Helper modules must be installed with pip before any script can import them", "Python caches imports per directory — delete __pycache__ and retry", "Relative imports are required — change to from . import helpers"], "answer": 0, "why": "The script's own directory is placed on sys.path, not the caller's working directory or the project root. Launching from elsewhere changes what 'helpers' resolves to. Organizing the code as a package and running python -m project.scripts.cleanup from the root makes imports location-independent.", "hint": "Which directories does Python actually search for a top-level import, and which of those changed?", "objectives": ["Import system", "sys.path", "Packages"], "mins": 7}, {"id": "py-recursion-limit", "title": "RecursionError on deep input", "situation": "A recursive tree walker handles test fixtures fine but crashes with RecursionError: maximum recursion depth exceeded on a production dataset.", "prompt": "What is the right response to hitting the recursion limit?", "evidence": [["walk.py", "def walk(node):\n    visit(node)\n    for child in node.children:\n        walk(child)  # RecursionError on 2000-deep chain"]], "choices": ["Rewrite iteratively with an explicit stack — raising the recursion limit just moves the crash to a stack overflow", "Call sys.setrecursionlimit(10**9) at startup to remove the ceiling", "Convert the function to a generator — generators have no recursion limit", "Add @functools.lru_cache so repeated subtrees are not revisited"], "answer": 0, "why": "The limit (default 1000) guards the C stack; each Python frame consumes C stack space, so raising the limit risks a hard segfault instead of a catchable error. An explicit list-based stack converts the traversal to iteration with heap-allocated memory, which scales to arbitrary depth.", "hint": "What resource does each recursive call consume, and does raising the limit create more of it?", "objectives": ["Recursion", "Recursion limit", "Iterative conversion"], "mins": 6}, {"id": "py-partial", "title": "The same three arguments, everywhere", "situation": "Dozens of call sites repeat requests.get(url, timeout=30, headers=AUTH_HEADERS). A teammate wants one place to change the defaults.", "prompt": "Which tool creates the specialized callable with the least boilerplate?", "evidence": [["client.py", "requests.get(url, timeout=30, headers=AUTH_HEADERS)  # repeated 40+ times"]], "choices": ["functools.partial(requests.get, timeout=30, headers=AUTH_HEADERS) — a callable with those arguments pre-filled", "A lambda: lambda url: requests.get(url, timeout=30, headers=AUTH_HEADERS)", "functools.reduce to fold the repeated arguments into one call", "A module-level global TIMEOUT that each call site reads"], "answer": 0, "why": "functools.partial returns a new callable with positional and keyword arguments frozen in, so api_get(url) expands to the full call. It preserves introspection better than a lambda and keeps the preset arguments in exactly one place.", "hint": "Which stdlib helper builds a new callable from an old one with some arguments already filled in?", "objectives": ["functools.partial", "Higher-order functions"], "mins": 4}]}, {"id": "oop", "name": "OOP", "scenarios": [{"id": "py-class-attr-mutable", "title": "Every cart shares one basket", "situation": "A ShoppingCart class defines items = [] at class level. Customers report seeing other shoppers' items in their carts.", "prompt": "Why do instances share state, and how do you give each cart its own list?", "evidence": [["cart.py", "class ShoppingCart:\n    items = []  # class attribute\n    def add(self, item):\n        self.items.append(item)\n\nc1, c2 = ShoppingCart(), ShoppingCart()\nc1.add(\"book\")\nprint(c2.items)  # ['book'] -- leaked"]], "choices": ["items is a class attribute — one list shared by all instances; assign self.items = [] in __init__", "append mutates in place — use self.items = self.items + [item]", "Class attributes are read-only — move the list to a module global", "Instances need deepcopy — copy the list in add()"], "answer": 0, "why": "Attributes defined directly in the class body belong to the class object, and self.items.append mutates that single shared list rather than creating per-instance state. Initializing self.items = [] inside __init__ gives every instance its own list.", "hint": "Whose list is being appended to — the instance's, or an object they all have in common?", "objectives": ["Class vs instance attributes", "__init__"], "mins": 6}, {"id": "py-super-init", "title": "The subclass that forgot its parents", "situation": "A subclass defines its own __init__ and sets new fields, but inherited methods crash with AttributeError on attributes the base class normally sets.", "prompt": "What did the subclass __init__ omit?", "evidence": [["shapes.py", "class Shape:\n    def __init__(self, color):\n        self.color = color\n\nclass Circle(Shape):\n    def __init__(self, color, radius):\n        self.radius = radius  # no super().__init__(color)\n\nc = Circle(\"red\", 5)\nc.describe()  # AttributeError: 'Circle' object has no attribute 'color'"]], "choices": ["The subclass never called super().__init__(color), so the base-class attributes were never initialized", "Subclasses cannot add parameters — remove radius from the signature", "color must be a class attribute — define it on Shape directly", "Python requires __init__ chaining via Shape.__init__(self, color) only, never super()"], "answer": 0, "why": "Defining __init__ in a subclass replaces the base version entirely; base-class initialization only happens if the subclass explicitly cooperates via super().__init__(...). Without it, any attribute the base __init__ sets is missing on subclass instances.", "hint": "What runs when you define __init__ in the subclass — the base version, the subclass version, or both?", "objectives": ["Inheritance", "super()"], "mins": 5}, {"id": "py-eq-hash", "title": "Duplicates in the set", "situation": "A Product class implements __eq__ so equal SKUs compare equal, yet a set of products still holds duplicates.", "prompt": "Why does the set ignore the custom equality?", "evidence": [["product.py", "class Product:\n    def __init__(self, sku): self.sku = sku\n    def __eq__(self, other):\n        return isinstance(other, Product) and self.sku == other.sku\n\nlen({Product(\"a\"), Product(\"a\")})  # 2, expected 1"]], "choices": ["Defining __eq__ sets __hash__ to None, so the objects hash by identity — implement __hash__ consistent with __eq__", "Sets use == only for strings — products need a custom set subclass", "The __eq__ signature is wrong — it must accept *args", "__eq__ is only called by ==, never by containers — use a dict instead"], "answer": 0, "why": "Set membership hashes the object first and only calls __eq__ on hash collisions. When a class defines __eq__ without __hash__, Python sets __hash__ to None, making instances unhashable-by-value — they fall back to identity hashing, so equal SKUs land in different buckets. The rule: objects that compare equal must hash equal.", "hint": "What does a set check before it ever calls __eq__?", "objectives": ["__eq__/__hash__ contract", "Hash-based containers"], "mins": 7}, {"id": "py-property", "title": "Validation that runs once", "situation": "A BankAccount validates the opening balance in __init__, but later assignments like acct.balance = -50 bypass validation silently.", "prompt": "How do you enforce the invariant on every assignment?", "evidence": [["account.py", "class BankAccount:\n    def __init__(self, balance):\n        if balance < 0: raise ValueError\n        self.balance = balance\n\nacct = BankAccount(100)\nacct.balance = -50  # no error -- invalid state"]], "choices": ["Expose balance as a @property with a setter that validates — every assignment routes through the setter", "Override __setattr__ to intercept all attribute writes", "Make balance private and add a set_balance method callers must use", "Validate in __del__ so invalid states are caught at cleanup"], "answer": 0, "why": "A property with a setter keeps attribute-style access (acct.balance = x) while routing every write through validation logic. __init__ should assign via self.balance too, so the single setter guards construction and later mutation alike.", "hint": "Which mechanism lets attribute assignment syntax run custom code on every write?", "objectives": ["Properties", "Encapsulation"], "mins": 5}, {"id": "py-mro", "title": "Which save() runs?", "situation": "A class inherits from two mixins that both define save(). The wrong one executes, and reordering the base classes changes behavior.", "prompt": "How does Python decide which save() runs, and how do you inspect the order?", "evidence": [["models.py", "class AuditMixin:\n    def save(self): ...  # writes audit log\nclass CacheMixin:\n    def save(self): ...  # invalidates cache\nclass Record(AuditMixin, CacheMixin): pass\nRecord().save()  # only the audit version runs"]], "choices": ["Python follows the Method Resolution Order (C3 linearization) — Record.__mro__ shows AuditMixin before CacheMixin, so its save() wins", "The last base class always wins — CacheMixin.save should have run, so this is a bug", "Mixins are merged alphabetically — AuditMixin wins by name", "Both save() methods run — the observation must be a logging error"], "answer": 0, "why": "Attribute lookup walks the class's MRO — the C3 linearization shown by __mro__ — and uses the first match. With (AuditMixin, CacheMixin), audit's save() shadows cache's. Cooperative mixins call super().save() so every mixin in the chain gets its turn.", "hint": "What does Record.__mro__ print, and what does the first match in that sequence determine?", "objectives": ["MRO", "Multiple inheritance", "Mixins"], "mins": 7}, {"id": "py-dataclass", "title": "Boilerplate __init__ and __repr__", "situation": "A simple config holder needs __init__, __repr__, and __eq__. The hand-written versions are 30 lines and already have a copy-paste bug.", "prompt": "Which stdlib feature generates these correctly?", "evidence": [["config.py", "class DbConfig:\n    def __init__(self, host, port=5432, tags=None):\n        self.host = host\n        self.port = port\n        self.tags = tags if tags is not None else []\n    def __repr__(self): ...  # 12 more lines\n    def __eq__(self, other): ...  # 8 more lines"]], "choices": ["@dataclass — generates __init__, __repr__, and __eq__ from annotated fields; use field(default_factory=list) for the mutable default", "@functools.total_ordering — generates the comparison methods from __lt__", "collections.namedtuple — immutable and generates everything needed", "typing.Protocol — declares the structural interface instead"], "answer": 0, "why": "The dataclass decorator synthesizes __init__, __repr__, and __eq__ from field annotations, eliminating the hand-written boilerplate where the bug lived. Mutable defaults must use field(default_factory=...) because a plain [] default would be shared — the same mutable-default rule as functions.", "hint": "Which decorator turns annotated class variables into a generated __init__ and friends?", "objectives": ["dataclasses", "Boilerplate reduction"], "mins": 5}]}, {"id": "stdlib-files", "name": "Stdlib & Files", "scenarios": [{"id": "py-with-file", "title": "The file left open on error", "situation": "A report writer opens a file, writes rows, and closes it at the end — but a mid-loop exception leaves the file handle open and the output truncated.", "prompt": "What construct guarantees the file is closed even when an exception strikes?", "evidence": [["report.py", "f = open(\"report.csv\", \"w\")\nfor row in rows:\n    f.write(format(row))  # raises on row 900 of 1000\nf.close()  # never reached"]], "choices": ["A with statement — the context manager closes the file when the block exits, normally or via exception", "A try/finally around the whole loop with f.close() in the finally", "Opening in append mode so partial writes are preserved", "Calling f.flush() after every write so nothing is lost"], "answer": 0, "why": "with open(...) as f: ties the file's lifetime to the block: __exit__ closes the handle whether the block completes, raises, or returns. The manual open/close pattern leaks the handle on any early exit, and relying on the garbage collector to close files is implementation-specific and unreliable.", "hint": "Which statement runs cleanup code automatically when its block is exited for any reason?", "objectives": ["Context managers", "File I/O"], "mins": 5}, {"id": "py-json-datetime", "title": "TypeError: not JSON serializable", "situation": "An API payload builder crashes when a datetime sneaks into the dict passed to json.dumps.", "prompt": "How do you serialize values the json module does not natively support?", "evidence": [["api.py", "payload = {\"user\": \"amy\", \"at\": datetime.now(timezone.utc)}\njson.dumps(payload)  # TypeError: Object of type datetime is not JSON serializable"]], "choices": ["Pass default=str (or a custom function) to json.dumps so unsupported objects get a fallback conversion", "Convert the payload with str(payload) and send that instead of JSON", "Subclass dict to auto-convert datetimes on insertion", "Use pickle instead of json — it serializes everything"], "answer": 0, "why": "The json module only handles dict, list, str, int, float, bool, and None. Its default parameter is a function called for anything else — default=str converts datetimes via str(), while a custom function can emit isoformat() for precise round-tripping. pickle is not a substitute: it is Python-specific and unsafe on untrusted data.", "hint": "Which json.dumps parameter is consulted exactly when the encoder meets a type it does not know?", "objectives": ["json module", "Serialization"], "mins": 5}, {"id": "py-pathlib", "title": "Paths that break on Windows", "situation": "A script builds file paths with string concatenation and forward slashes. It works on Linux CI but fails on a teammate's Windows machine.", "prompt": "What is the portable way to build paths?", "evidence": [["paths.py", "path = base_dir + \"/\" + subdir + \"/\" + filename  # breaks on Windows"]], "choices": ["pathlib.Path with the / operator — Path(base_dir) / subdir / filename uses the right separator per OS", "os.path.join(base_dir, subdir, filename) — joins with the OS separator", "Both pathlib and os.path.join are correct and portable — pick one and use it consistently", "Hardcode backslashes and run everything under WSL"], "answer": 2, "why": "Manual concatenation bakes in one platform's separator. Both os.path.join and pathlib handle separators, absolute/relative mixing, and normalization per OS. pathlib additionally offers readable method chaining (path.exists(), path.read_text()) and is the modern recommended API.", "hint": "Which two stdlib options join path segments using the current operating system's separator?", "objectives": ["pathlib", "os.path", "Portability"], "mins": 4}, {"id": "py-regex-greedy", "title": "The regex that ate the page", "situation": "A scraper extracts tag contents with <.*>, but on a line with two tags it returns everything from the first < to the last > as one match.", "prompt": "Why does the pattern over-match, and how do you fix it?", "evidence": [["scrape.py", "re.findall(r\"<.*>\", \"<b>hi</b> <i>yo</i>\")\n# ['<b>hi</b> <i>yo</i>'] -- one giant match"]], "choices": [".* is greedy — it consumes as much as possible; use the non-greedy <.*?> or the precise <[^>]*>", "findall returns overlapping matches by default — pass overlapped=False", "Angle brackets need escaping — write \\<.*\\>", "The pattern needs re.MULTILINE to handle multiple tags"], "answer": 0, "why": "Greedy quantifiers match as much text as possible while still allowing the overall pattern to succeed, so <.*> spans from the first < to the last > on the line. The lazy .*? matches as little as possible, and [^>]* (any run of non-> characters) is even more precise and faster.", "hint": "Does .* prefer to match more text or less text when both would satisfy the pattern?", "objectives": ["Regular expressions", "Greedy vs lazy"], "mins": 6}, {"id": "py-datetime-tz", "title": "The meeting that moved an hour", "situation": "Event times stored as naive datetimes shift by an hour for users after a daylight-saving transition, and subtracting two timestamps from different zones gives nonsense.", "prompt": "What is the rule for correct datetime arithmetic across zones?", "evidence": [["events.py", "start = datetime(2026, 3, 8, 1, 30)  # naive\nend = datetime(2026, 3, 8, 3, 30)    # naive\n(end - start).total_seconds() / 3600  # 2.0, but the wall clock skipped an hour"]], "choices": ["Make datetimes timezone-aware (tzinfo=timezone.utc or ZoneInfo) — arithmetic on aware datetimes accounts for DST transitions", "Store times as strings in ISO format and parse only for display", "Always add one hour manually when the date falls in March or November", "Use time.mktime to convert to epoch seconds before subtracting"], "answer": 0, "why": "Naive datetimes carry no zone information, so subtraction assumes a fictional timeline with no DST gaps. Attaching a real tzinfo (via zoneinfo.ZoneInfo) makes the datetimes aware, and aware arithmetic follows actual elapsed time. Mixing naive and aware datetimes raises TypeError, which is the language telling you the comparison is meaningless.", "hint": "What information is missing from a naive datetime that the arithmetic would need to handle a DST transition?", "objectives": ["datetime", "Timezones", "zoneinfo"], "mins": 7}, {"id": "py-itertools", "title": "Nested loops four deep", "situation": "A test harness generates every combination of browser, OS, and locale with triple-nested for loops. Adding a fourth dimension means indenting everything again.", "prompt": "Which itertools tool flattens the combination logic?", "evidence": [["matrix.py", "for browser in browsers:\n    for os in oses:\n        for locale in locales:\n            run(browser, os, locale)"]], "choices": ["itertools.product(browsers, oses, locales) — yields the Cartesian product as tuples in one loop", "itertools.chain to concatenate the three lists into one sequence", "itertools.groupby to cluster the dimensions before iterating", "map() with a lambda over zip(browsers, oses, locales)"], "answer": 0, "why": "itertools.product computes the Cartesian product of its inputs, replacing N nested loops with a single loop over tuples — and adding a dimension is just another argument. chain concatenates sequentially (not combinations), and zip pairs elements positionally instead of combining every possibility.", "hint": "Which itertools function produces every combination of one item from each input iterable?", "objectives": ["itertools", "Combinatorics"], "mins": 5}]}, {"id": "errors-debugging", "name": "Errors & Debugging", "scenarios": [{"id": "py-try-else", "title": "Cleanup in the wrong clause", "situation": "A teammate puts the success-path code in finally and the cleanup in else, and now cleanup is skipped whenever the operation raises.", "prompt": "Which clause runs in which situation?", "evidence": [["flow.py", "try:\n    result = risky()\nexcept NetworkError:\n    retry()\nelse:\n    release(lock)   # intended as cleanup\nfinally:\n    use(result)     # intended as success path"]], "choices": ["The clauses are swapped: else runs only when no exception occurred (the success path), finally always runs (the cleanup)", "else runs when an exception occurred — the code is correct as written", "finally runs only on success — move use(result) into the try block", "except catches everything — the else clause is unreachable"], "answer": 0, "why": "The else clause of try/except runs only if the try block completed without raising — it is the success path. finally runs no matter what, making it the right home for cleanup like releasing locks. Swapping them inverts both guarantees.", "hint": "Under what condition does the else clause execute — when the try raised, or when it did not?", "objectives": ["try/except/else/finally", "Control flow"], "mins": 5}, {"id": "py-raise-from", "title": "The traceback that lost its origin", "situation": "A data loader catches a low-level parse error and raises a domain error, but the logs show only the new error — the original cause is invisible.", "prompt": "How do you preserve the causal chain when translating exceptions?", "evidence": [["loader.py", "try:\n    row = parse(line)\nexcept ValueError:\n    raise LoadError(f\"bad row {n}\")  # original ValueError context hidden"]], "choices": ["Use explicit chaining: raise LoadError(f\"bad row {n}\") from err — the traceback shows both exceptions", "Log the ValueError and re-raise it unchanged instead of translating", "Chain with the cause attribute: raise LoadError(...) .with_cause(err)", "Exceptions cannot be chained in Python — catch at a higher level"], "answer": 0, "why": "raise X from e sets __cause__, and the traceback prints 'The above exception was the direct cause of the following exception', preserving the full chain. (Implicit chaining via __context__ happens automatically, but explicit from documents intent and survives refactoring.)", "hint": "Which three-word addition to a raise statement links it to the exception being handled?", "objectives": ["Exception chaining", "raise from"], "mins": 5}, {"id": "py-bare-except", "title": "The service that would not stop", "situation": "A worker loop wraps its body in a bare except: and logs errors. Operators find Ctrl-C no longer stops the process.", "prompt": "Why does the bare except break KeyboardInterrupt, and what should it catch?", "evidence": [["worker.py", "while True:\n    try:\n        process_one()\n    except:  # bare\n        log(\"job failed\")  # also swallows KeyboardInterrupt"]], "choices": ["Bare except catches BaseException, including KeyboardInterrupt and SystemExit — catch Exception instead", "except: only catches SyntaxError — the real problem is the infinite loop", "KeyboardInterrupt is raised asynchronously and cannot be caught at all", "The loop needs a break in the except block to exit on Ctrl-C"], "answer": 0, "why": "A bare except: catches every exception derived from BaseException — including KeyboardInterrupt (Ctrl-C) and SystemExit — making the process unresponsive to normal shutdown signals. except Exception catches ordinary errors while letting control-flow exceptions propagate.", "hint": "Which exception base class sits above both Exception and the interpreter's own control signals?", "objectives": ["Exception hierarchy", "Bare except pitfalls"], "mins": 5}, {"id": "py-logging", "title": "print() in production", "situation": "A service debugs with print() calls. In production the messages interleave, lack timestamps, and cannot be filtered by severity.", "prompt": "What does the logging module provide that print() cannot?", "evidence": [["svc.py", "print(f\"processing {order_id}\")  # no timestamp, no level\nprint(f\"ERROR: {e}\")       # severity is just text"]], "choices": ["Named loggers, severity levels, timestamps, and configurable handlers/filters — one basicConfig routes and formats everything", "logging is faster than print because it buffers automatically", "print cannot output to stderr — logging can", "logging encrypts messages so they are safe in shared log aggregators"], "answer": 0, "why": "The logging module gives every message a level (DEBUG/INFO/WARNING/ERROR/CRITICAL), a timestamp, and a source logger name, with handlers controlling where records go and filters controlling which pass. print() offers none of that — severity-by-text-convention breaks the moment anyone greps the logs.", "hint": "What four things does every log record carry that a print() call does not?", "objectives": ["logging module", "Observability"], "mins": 4}, {"id": "py-traceback-read", "title": "Reading the traceback backwards", "situation": "A junior developer reads a traceback top-down, investigates the first frame, and wastes an hour — the actual bug is in their own code at the bottom.", "prompt": "How do you read a Python traceback efficiently?", "evidence": [["tb.txt", "Traceback (most recent call last):\n  File \"app.py\", line 12, in <module>\n    main()\n  File \"app.py\", line 8, in main\n    total = calc(items)\n  File \"lib.py\", line 40, in calc\n    return sum(x[\"price\"] for x in items)\nKeyError: 'price'"]], "choices": ["Read bottom-up: the last line names the exception, and the innermost frame (closest to it) is where it was raised — then walk up to find your code", "Read top-down: the first frame is always the bug location", "Only the exception type matters — the frames are interpreter internals", "Tracebacks list calls oldest-first, so the bug is in <module>"], "answer": 0, "why": "'Most recent call last' means the bottom frame is where the exception was raised. The last line gives the exception type and message (KeyError: 'price' — a dict missing a key), and scanning upward finds the first frame in your own code, which is where the fix belongs.", "hint": "What does 'most recent call last' tell you about which frame raised the exception?", "objectives": ["Tracebacks", "Debugging workflow"], "mins": 4}, {"id": "py-assert-prod", "title": "The validation that vanished", "situation": "Input validation written with assert() works in development, but invalid data sails through in production where Python runs with -O.", "prompt": "Why is assert wrong for runtime validation, and what replaces it?", "evidence": [["api.py", "def create_user(age):\n    assert age >= 0, \"age must be non-negative\"\n    ...\n# production: python -O app.py  -> assertion silently skipped"]], "choices": ["The -O flag strips assert statements entirely — validate with an explicit if and raise ValueError", "assert only works in __init__ methods — move the check there", "Assertions are for tests only and cannot carry messages — use print instead", "-O disables exceptions globally, so no validation approach works under it"], "answer": 0, "why": "assert is a debugging aid for internal invariants ('this should be impossible'), and Python's -O/optimize mode removes assert statements at compile time. Validation of external input must be unconditional code — if age < 0: raise ValueError(...) — which runs in every mode.", "hint": "What does the -O flag do to assert statements, and should user-input validation depend on a debug aid?", "objectives": ["assert semantics", "Input validation"], "mins": 5}]}], "lessons": [{"domain_id": "fundamentals", "title": "Language Fundamentals — Core concepts", "concepts": ["Closures capture variables by reference, not values.", "Late binding: binding the value at definition time — lambda i=i: print(i) — gives each callback its own copy.", "Division semantics: floating-point division plus rounding discards the remainder: 100/3 rounds to 33 three times, totaling 99. divmod(100, 3) returns (33, 1), letting you distribute the leftover cent explicitly so the shares always sum to the original total.", "String interning: cPython interns some string literals, which is why the check accidentally works in the REPL, but a string parsed from JSON is a distinct object with equal value."], "example": {"lang": "python", "code": "role = request.json[\"role\"]  # the string \"admin\"\nif role is \"admin\":\n    grant_access()  # never runs for real requests", "walkthrough": "The is operator tests whether two names point to the same object in memory. Value comparison with == is the correct test."}, "pitfalls": ["Common trap: string interning is disabled in production.", "Common trap: list comprehensions share one lambda object.", "Common trap: list multiplication shares one int object.", "Common trap: range(5) yields the same object five times."], "try_it": "Try it now in the Terminal tab →"}, {"domain_id": "data-structures", "title": "Data Structures — Core concepts", "concepts": ["Idiomatic stdlib: the hand-rolled loop reimplements what the stdlib already provides, tested and optimized.", "Memory efficiency: since the pipeline consumes rows exactly once, laziness cuts peak memory from O(n) to O(1) per row.", "Dict keys: counter is a dict subclass built exactly for frequency counting; its constructor consumes an iterable and most_common(n) returns the n highest counts without a manual sort. Dict lookup hashes the key, and lists are mutable so Python makes them unhashable — a key whose hash could change would corrupt the table."], "example": {"lang": "python", "code": "ids = [7, 3, 7, 1, 3, 9]\nunique = list(set(ids))  # order lost: [1, 3, 7, 9] or arbitrary", "walkthrough": "Sets are unordered by design, so converting through one discards the original sequence. Since Python 3.7 dicts preserve insertion order, dict.fromkeys(ids) keeps the first occurrence of each ID and drops later duplicates, and list() converts back."}, "pitfalls": ["Common trap: lists cannot be dict keys on 64-bit Python.", "Common trap: dict keys must be strings.", "Common trap: list(ids).remove duplicates with a nested loop checking index().", "Common trap: read the file in binary mode to halve the memory footprint."], "try_it": "Try it now in the Terminal tab →"}, {"domain_id": "functions-modules", "title": "Functions & Modules — Core concepts", "concepts": ["Function semantics: a transparent wrapper must accept everything the wrapped function accepts. *args captures positional arguments only; without **kwargs, any keyword argument raises TypeError.", "*args/**kwargs: fix it by def wrapper(*args, **kwargs) with fn(*args, **kwargs).", "Principle: python evaluates default argument expressions once, when the def statement runs."], "example": {"lang": "python", "code": "def walk(node):\n    visit(node)\n    for child in node.children:\n        walk(child)  # RecursionError on 2000-deep chain", "walkthrough": "The limit (default 1000) guards the C stack; each Python frame consumes C stack space, so raising the limit risks a hard segfault instead of a catchable error. An explicit list-based stack converts the traversal to iteration with heap-allocated memory, which scales to arbitrary depth."}, "pitfalls": ["Common trap: decorators cannot wrap functions with defaults.", "Common trap: helper modules must be installed with pip before any script can import them.", "Common trap: the wrapper must be defined with functools.partial, not a nested def.", "Common trap: assign wrapper.__name__ = fn.__name__ manually at the end of the decorator."], "try_it": "Try it now in the Terminal tab →"}, {"domain_id": "oop", "title": "OOP — Core concepts", "concepts": ["Class vs instance attributes: attributes defined directly in the class body belong to the class object, and self.items.append mutates that single shared list rather than creating per-instance state. Attribute lookup walks the class's MRO — the C3 linearization shown by __mro__ — and uses the first match.", "__init__: initializing self.items = [] inside __init__ gives every instance its own list. Defining __init__ in a subclass replaces the base version entirely; base-class initialization only happens if the subclass explicitly cooperates via super().__init__(...).", "super(): cooperative mixins call super().save() so every mixin in the chain gets its turn."], "example": {"lang": "python", "code": "class Product:\n    def __init__(self, sku): self.sku = sku\n    def __eq__(self, other):\n        return isinstance(other, Product) and self.sku == other.sku\n\nlen({Product(\"a\"), Product(\"a\")})  # 2, expected 1", "walkthrough": "Set membership hashes the object first and only calls __eq__ on hash collisions. When a class defines __eq__ without __hash__, Python sets __hash__ to None, making instances unhashable-by-value — they fall back to identity hashing, so equal SKUs land in different buckets. The rule: objects that compare equal must hash equal."}, "pitfalls": ["Common trap: python requires __init__ chaining via Shape.__init__(self, color) only, never super().", "Common trap: color must be a class attribute.", "Common trap: the last base class always wins.", "Common trap: make balance private and add a set_balance method callers must use."], "try_it": "Try it now in the Terminal tab →"}, {"domain_id": "stdlib-files", "title": "Stdlib & Files — Core concepts", "concepts": ["File I/O: with open(...) as f: ties the file's lifetime to the block: __exit__ closes the handle whether the block completes, raises, or returns.", "json module: the json module only handles dict, list, str, int, float, bool, and None.", "pathlib: both os.path.join and pathlib handle separators, absolute/relative mixing, and normalization per OS. pathlib additionally offers readable method chaining (path.exists(), path.read_text()) and is the modern recommended API."], "example": {"lang": "python", "code": "payload = {\"user\": \"amy\", \"at\": datetime.now(timezone.utc)}\njson.dumps(payload)  # TypeError: Object of type datetime is not JSON serializable", "walkthrough": "The json module only handles dict, list, str, int, float, bool, and None. Its default parameter is a function called for anything else — default=str converts datetimes via str(), while a custom function can emit isoformat() for precise round-tripping. pickle is not a substitute: it is Python-specific and unsafe on untrusted data."}, "pitfalls": ["Common trap: convert the payload with str(payload) and send that instead of JSON.", "Common trap: use pickle instead of json.", "Common trap: always add one hour manually when the date falls in March or November.", "Common trap: store times as strings in ISO format and parse only for display."], "try_it": "Try it now in the Terminal tab →"}, {"domain_id": "errors-debugging", "title": "Errors & Debugging — Core concepts", "concepts": ["Exception chaining: a bare except: catches every exception derived from BaseException — including KeyboardInterrupt (Ctrl-C) and SystemExit — making the process unresponsive to normal shutdown signals. except Exception catches ordinary errors while letting control-flow exceptions propagate.", "raise from: validation of external input must be unconditional code — if age < 0: raise ValueError(...) — which runs in every mode.", "Exception hierarchy: 'Most recent call last' means the bottom frame is where the exception was raised."], "example": {"lang": "python", "code": "print(f\"processing {order_id}\")  # no timestamp, no level\nprint(f\"ERROR: {e}\")       # severity is just text", "walkthrough": "The logging module gives every message a level (DEBUG/INFO/WARNING/ERROR/CRITICAL), a timestamp, and a source logger name, with handlers controlling where records go and filters controlling which pass. print() offers none of that — severity-by-text-convention breaks the moment anyone greps the logs."}, "pitfalls": ["Common trap: tracebacks list calls oldest-first, so the bug is in <module>.", "Common trap: chain with the cause attribute: raise LoadError(...) .with_cause(err).", "Common trap: the loop needs a break in the except block to exit on Ctrl-C.", "Common trap: logging encrypts messages so they are safe in shared log aggregators."], "try_it": "Try it now in the Terminal tab →"}], "sections": [{"id": "foundations", "title": "Foundations", "kind": "foundation", "lectures": ["f-programming-basics-0", "f-programming-basics-1", "f-programming-basics-2"], "lab_ids": [], "drill_domain_ids": []}, {"id": "core", "title": "Core", "kind": "core", "lectures": ["c-fundamentals", "c-data-structures", "c-functions-modules"], "lab_ids": ["python-lab-1", "python-lab-2"], "drill_domain_ids": ["fundamentals", "data-structures", "functions-modules"]}, {"id": "advanced", "title": "Advanced", "kind": "advanced", "lectures": ["c-oop", "c-stdlib-files", "c-errors-debugging"], "lab_ids": ["python-lab-3", "python-lab-4"], "drill_domain_ids": ["oop", "stdlib-files", "errors-debugging"]}, {"id": "exam-prep", "title": "Exam Prep", "kind": "exam-prep", "lectures": [], "lab_ids": [], "drill_domain_ids": ["fundamentals", "data-structures", "functions-modules", "oop", "stdlib-files", "errors-debugging"]}], "behavioral": [{"prompt": "Tell me about a time you debugged a difficult issue under time pressure.", "framework": "STAR", "points": ["Set the scene in one sentence", "How you narrowed down the cause", "The fix and how you verified it", "Measurable outcome"], "pitfalls": ["Skipping straight to the fix with no diagnosis story", "No outcome or verification stated"]}, {"prompt": "Describe a time you had to learn a new language, framework, or tool quickly for a project.", "framework": "STAR", "points": ["Why the new tech was needed", "Your learning approach", "How you applied it", "Result"], "pitfalls": ["Listing tutorials without showing application", "Claiming mastery after surface exposure"]}, {"prompt": "Tell me about a disagreement with a teammate over a technical approach. How was it resolved?", "framework": "STAR", "points": ["The two positions fairly stated", "How you evaluated the trade-offs", "The resolution", "What you would do differently"], "pitfalls": ["Painting the other person as unreasonable", "No resolution described"]}, {"prompt": "Describe a production incident you helped resolve. What was your role?", "framework": "STAR", "points": ["Your specific responsibilities", "Actions you took during the incident", "How it was resolved", "Follow-ups you drove to prevent recurrence"], "pitfalls": ["Taking credit for the whole team's work", "No preventive follow-up mentioned"]}, {"prompt": "Tell me about a time you refactored or improved existing code that was not strictly part of your assigned work.", "framework": "STAR", "points": ["What was wrong with the code", "Why you decided it was worth fixing", "How you made the change safely", "Impact"], "pitfalls": ["Rewriting without tests or review", "Criticizing the original author"]}, {"prompt": "Describe a time you received critical feedback on your code. How did you respond?", "framework": "STAR", "points": ["The feedback, stated plainly", "Your initial reaction vs. your response", "Changes you made", "What it taught you"], "pitfalls": ["Defensiveness or dismissing the feedback", "Vague lessons with no behavior change"]}, {"prompt": "Tell me about a time you had to explain a technical concept to a non-technical stakeholder.", "framework": "STAR", "points": ["The concept and the audience", "How you adapted the explanation", "How you checked understanding", "Outcome"], "pitfalls": ["Jargon-heavy retelling", "No evidence the audience understood"]}, {"prompt": "Describe a project where requirements were ambiguous or kept changing. How did you handle it?", "framework": "STAR", "points": ["The ambiguity you faced", "How you clarified or hedged", "How you kept delivery on track", "Result"], "pitfalls": ["Blaming stakeholders for the ambiguity", "No concrete coping strategy"]}], "chat": {"persona": "You are a friendly but rigorous Python interviewer running a mock assessment. Probe understanding with follow-ups, give keyword-heuristic feedback on answers, and keep every question grounded in real Python semantics.", "topics": [{"id": "fundamentals", "name": "Language Fundamentals", "key_points": ["late binding in closures", "identity vs equality (is vs ==)", "truthiness of empty containers", "binary floating point limits", "implicit None return"], "followups": ["Can you give a minimal example?", "When would that behavior actually bite in production code?"]}, {"id": "data-structures", "name": "Data Structures", "key_points": ["Counter for frequency counting", "generators vs lists for memory", "hashability rules for dict keys", "deque for O(1) queue ops", "order-preserving dedup via dict.fromkeys"], "followups": ["What is the time complexity of that operation?", "What breaks if the input grows 100x?"]}, {"id": "functions-modules", "name": "Functions & Modules", "key_points": ["mutable default arguments", "*args/**kwargs forwarding", "functools.wraps in decorators", "sys.path and package imports", "recursion limit vs explicit stack"], "followups": ["Walk me through what happens on the second call.", "How would you make that wrapper fully transparent?"]}, {"id": "oop", "name": "OOP", "key_points": ["class vs instance attributes", "super().__init__ cooperation", "__eq__/__hash__ contract", "properties for validated attributes", "MRO in multiple inheritance", "dataclass field defaults"], "followups": ["What does the MRO look like here?", "What invariant must hold between __eq__ and __hash__?"]}, {"id": "stdlib-files", "name": "Stdlib & Files", "key_points": ["with-statement resource cleanup", "json default handler", "pathlib vs os.path", "greedy vs lazy regex", "naive vs aware datetimes", "itertools.product"], "followups": ["What happens when an exception is raised inside the block?", "How would you make that portable across OSes?"]}, {"id": "errors-debugging", "name": "Errors & Debugging", "key_points": ["else vs finally semantics", "raise ... from chaining", "bare except swallowing control signals", "logging levels and handlers", "bottom-up traceback reading", "assert stripped by -O"], "followups": ["Which clause runs if the try block raises?", "How would you preserve the original cause?"]}]}, "labs": [{"id": "python-lab-1", "title": "Closures — REPL drill", "objective": "Run a short sequence of Python REPL commands that demonstrates closures, then verify each result against the expected output.", "steps": ["This lab reworks the Language Fundamentals practice scenario \"Every button does the same thing\" into commands you run yourself — same concept, hands-on instead of multiple choice.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: print(\"closures ready\") — the REPL echoes your concept token back on the next line", "Type exactly: len(\"bootcamp\") — the REPL counts the characters and reports 8", "Type exactly: type(42) — the REPL names the int type for 42", "In your own words, say what each command's output taught you about closures."], "checks": [{"command_pattern": "print\\(", "expect_contains": "closures", "hint": "In the Terminal tab, run `print(\"closures ready\")`. If the check fails, confirm you typed it exactly and that the output contains \"closures\"."}, {"command_pattern": "len\\(", "expect_contains": "8", "hint": "In the Terminal tab, run `len(\"bootcamp\")`. If the check fails, confirm you typed it exactly and that the output contains \"8\"."}, {"command_pattern": "type\\(", "expect_contains": "int", "hint": "In the Terminal tab, run `type(42)`. If the check fails, confirm you typed it exactly and that the output contains \"int\"."}], "success_message": "Lab complete — closures practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"id": "python-lab-2", "title": "collections.Counter — REPL drill", "objective": "Use the Python REPL to explore collections.Counter hands-on: type each command, read what comes back, and connect the output to the concept.", "steps": ["Inspired by the Data Structures scenario \"Counting words the slow way\": take its core idea and prove it live in the terminal instead of answering on paper.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: type(42) — the REPL names the int type for 42", "Type exactly: for i in range(3): print(i) — the loop prints 0, 1, then 2", "Type exactly: math.pi — the math module reports pi (run import math first if needed)", "In your own words, say what each command's output taught you about collections.Counter."], "checks": [{"command_pattern": "type\\(", "expect_contains": "int", "hint": "In the Terminal tab, run `type(42)`. If the check fails, confirm you typed it exactly and that the output contains \"int\"."}, {"command_pattern": "range\\(", "expect_contains": "2", "hint": "In the Terminal tab, run `for i in range(3): print(i)`. If the check fails, confirm you typed it exactly and that the output contains \"2\"."}, {"command_pattern": "math\\.pi", "expect_contains": "3.14", "hint": "In the Terminal tab, run `math.pi`. If the check fails, confirm you typed it exactly and that the output contains \"3.14\"."}], "success_message": "Lab complete — collections.Counter practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"id": "python-lab-3", "title": "Function semantics — REPL drill", "objective": "Prove you can apply function semantics in the Python REPL — follow the steps, watch the output, and confirm every check passes.", "steps": ["The Functions & Modules scenario \"The growing default list\" tests this concept as a question. This lab makes you demonstrate it with real commands.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: math.pi — the math module reports pi (run import math first if needed)", "Type exactly: print(\"function-semantics ready\") — the REPL echoes your concept token back on the next line", "Type exactly: len(\"bootcamp\") — the REPL counts the characters and reports 8", "In your own words, say what each command's output taught you about function semantics."], "checks": [{"command_pattern": "math\\.pi", "expect_contains": "3.14", "hint": "In the Terminal tab, run `math.pi`. If the check fails, confirm you typed it exactly and that the output contains \"3.14\"."}, {"command_pattern": "print\\(", "expect_contains": "function-semantics", "hint": "In the Terminal tab, run `print(\"function-semantics ready\")`. If the check fails, confirm you typed it exactly and that the output contains \"function-semantics\"."}, {"command_pattern": "len\\(", "expect_contains": "8", "hint": "In the Terminal tab, run `len(\"bootcamp\")`. If the check fails, confirm you typed it exactly and that the output contains \"8\"."}], "success_message": "Lab complete — function semantics practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"id": "python-lab-4", "title": "Class vs instance attributes — REPL drill", "objective": "Run a short sequence of Python REPL commands that demonstrates class vs instance attributes, then verify each result against the expected output.", "steps": ["This lab reworks the OOP practice scenario \"Every cart shares one basket\" into commands you run yourself — same concept, hands-on instead of multiple choice.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: len(\"bootcamp\") — the REPL counts the characters and reports 8", "Type exactly: type(42) — the REPL names the int type for 42", "Type exactly: for i in range(3): print(i) — the loop prints 0, 1, then 2", "In your own words, say what each command's output taught you about class vs instance attributes."], "checks": [{"command_pattern": "len\\(", "expect_contains": "8", "hint": "In the Terminal tab, run `len(\"bootcamp\")`. If the check fails, confirm you typed it exactly and that the output contains \"8\"."}, {"command_pattern": "type\\(", "expect_contains": "int", "hint": "In the Terminal tab, run `type(42)`. If the check fails, confirm you typed it exactly and that the output contains \"int\"."}, {"command_pattern": "range\\(", "expect_contains": "2", "hint": "In the Terminal tab, run `for i in range(3): print(i)`. If the check fails, confirm you typed it exactly and that the output contains \"2\"."}], "success_message": "Lab complete — class vs instance attributes practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"id": "python-lab-5", "title": "REPL calculator", "difficulty": 1, "objective": "Evaluate arithmetic expressions and print results in the Python REPL.", "steps": ["Open the Terminal view for this bootcamp (the prompt shows >>>).", "Type print(2 + 3) and press Enter — the REPL prints the result.", "Type print(10 % 3) to see the remainder operator in action.", "Type print(2 ** 10) to raise 2 to the 10th power.", "Try print(7 / 2) and notice the result is a float: 3.5."], "checks": [{"command_pattern": "^print\\(2 \\+ 3\\)$", "expect_contains": "5", "hint": "Type exactly: print(2 + 3)"}, {"command_pattern": "^print\\(10 % 3\\)$", "expect_contains": "1", "hint": "Type exactly: print(10 % 3)"}, {"command_pattern": "^print\\(2 \\*\\* 10\\)$", "expect_contains": "1024", "hint": "Type exactly: print(2 ** 10)"}], "success_message": "Lab complete — you can evaluate expressions and print results in the Python REPL."}, {"id": "python-lab-6", "title": "String surgery", "difficulty": 1, "objective": "Slice, transform, and split strings using real string methods.", "steps": ["Type \"hello\"[1:4] and press Enter — slicing returns a new string.", "Type print(\"Interstitium Labs\".lower()) to normalize case.", "Type print(\"a,b,c\".split(\",\")) to break a CSV-style string into a list.", "Type print(\",\".join([\"a\", \"b\"])) to reverse the operation."], "checks": [{"command_pattern": "^\"hello\"\\[1:4\\]$", "expect_contains": "'ell'", "hint": "Type exactly: \"hello\"[1:4]"}, {"command_pattern": "^print\\(\"Interstitium Labs\"\\.lower\\(\\)\\)$", "expect_contains": "interstitium labs", "hint": "Type exactly: print(\"Interstitium Labs\".lower())"}, {"command_pattern": "^print\\(\"a,b,c\"\\.split\\(\",\"\\)\\)$", "expect_contains": "['a', 'b', 'c']", "hint": "Type exactly: print(\"a,b,c\".split(\",\"))"}], "success_message": "Lab complete — you can slice and transform strings with confidence."}, {"id": "python-lab-7", "title": "Loop tracer", "difficulty": 2, "objective": "Trace for-loop execution by printing values each iteration.", "steps": ["Type for i in range(3): print(i) — the loop body runs once per value.", "Type for i in range(5): print(i * i) to print squares.", "Type total = 0, then for i in range(5): total += i — the variable persists between commands.", "Type print(total) to see the accumulated sum."], "checks": [{"command_pattern": "^for i in range\\(3\\): print\\(i\\)$", "expect_contains": "0\n1\n2", "hint": "Type exactly: for i in range(3): print(i)"}, {"command_pattern": "^for i in range\\(5\\): print\\(i \\* i\\)$", "expect_contains": "16", "hint": "Type exactly: for i in range(5): print(i * i)"}, {"command_pattern": "^print\\(total\\)$", "expect_contains": "10", "hint": "First run total = 0, then the accumulating loop, then print(total)"}], "success_message": "Lab complete — you can trace loops and accumulate values across REPL commands."}, {"id": "python-lab-8", "title": "Math module drill", "difficulty": 3, "objective": "Import the standard math module and call its functions.", "steps": ["Type import math — no output means the import succeeded.", "Type print(math.sqrt(81)).", "Type print(math.factorial(5)).", "Type print(round(math.pi, 3)).", "Type vars to see that math is now a defined name."], "checks": [{"command_pattern": "^print\\(math\\.sqrt\\(81\\)\\)$", "expect_contains": "9.0", "hint": "Type exactly: print(math.sqrt(81))"}, {"command_pattern": "^print\\(math\\.factorial\\(5\\)\\)$", "expect_contains": "120", "hint": "Type exactly: print(math.factorial(5))"}, {"command_pattern": "^print\\(round\\(math\\.pi, 3\\)\\)$", "expect_contains": "3.142", "hint": "Type exactly: print(round(math.pi, 3))"}], "success_message": "Lab complete — you can import stdlib modules and use math functions."}], "foundations": [{"track": "programming-basics", "why_needed": "Python assumes you know what code is. This track teaches programs, variables, and how code runs, so the Python syntax lands on solid ground."}], "math": [], "simulations": [{"id": "py-sim-debug-1", "title": "The growing list", "kind": "troubleshoot", "domain_id": "fundamentals", "difficulty": 2, "brief": "A teammate's collect() helper returns a longer list every time it is called with no arguments. The bug report says results 'leak' between calls.", "steps": [{"symptom": "collect() returns [1] on the first call, [1, 1] on the second, [1, 1, 1] on the third — with no arguments passed.", "evidence": [["app.py", "def collect(items=[]):\n    items.append(1)\n    return items\n\nprint(collect())\nprint(collect())"]], "options": ["Read the function definition and check when the default value is created", "Add a print(items) at the top to watch it grow", "Restart the interpreter — it must be caching output", "Wrap the call in list() to copy the result"], "correct": 0, "explain": "The definition is the crime scene: default arguments are evaluated once at def time, so every call shares the same list object."}, {"symptom": "Confirmed: the default list object is created once and mutated on every call.", "evidence": [["repl", ">>> def f(x=[]):\n...     x.append(1)\n...     return x\n>>> f()\n[1]\n>>> f()\n[1, 1]"]], "options": ["Use None as the default and create a fresh list inside", "Call items.clear() at the end of the function", "Make items a tuple instead", "Define the function inside a loop so the default is re-created"], "correct": 0, "explain": "The None-sentinel pattern is the standard fix: default None, then `if items is None: items = []` inside the body."}, {"symptom": "Fix applied. Verify the behavior is correct.", "evidence": [["app.py", "def collect(items=None):\n    if items is None:\n        items = []\n    items.append(1)\n    return items"]], "options": ["Run collect() twice and confirm both calls return [1]", "Check that collect([9]) still returns [9, 1] — callers may pass their own list", "Both of the above", "Neither — the fix needs no verification"], "correct": 2, "explain": "Verify both: no-arg calls return [1] each time, and an explicitly passed list still gets appended to — the fix must not break the parameter's contract."}], "debrief": "You diagnosed the classic mutable-default-argument bug: defaults evaluate once at def time. The fix is the None sentinel, verified from both the no-arg and explicit-arg paths.", "points": 15}, {"id": "py-sim-order-1", "title": "File handling, in order", "kind": "ordering", "domain_id": "functions-modules", "difficulty": 1, "brief": "A script must open a data file, read its lines, survive a missing file, and always release the handle. Put the operations in the right order.", "steps": {"context": "Arrange these operations into the correct try/except/finally flow for safe file reading.", "items": ["Open the file inside a try block", "Read the lines from the file", "Catch FileNotFoundError and report it", "Close the file in a finally block"], "correct_order": [0, 1, 2, 3]}, "debrief": "Safe file handling follows one flow: attempt the open inside try, do the work, catch the specific failure you can handle, and release the resource in finally. (In real code, `with open(...)` closes the handle for you.)", "points": 10}, {"id": "py-sim-branch-1", "title": "Traceback triage", "kind": "branching", "domain_id": "errors-debugging", "difficulty": 2, "brief": "Your script just died with a traceback. Work the incident like an on-call engineer: read, localize, fix, verify.", "steps": [{"id": "s1", "text": "The terminal shows:\nTraceback (most recent call last):\n  File \"app.py\", line 42, in <module>\n    total = price * quantity\nTypeError: can't multiply sequence by non-int of type 'str'\nWhat is your FIRST move?", "choices": [{"label": "Read the last line of the traceback — it names the error and the operation", "next": "s2", "points": 2, "feedback": "Correct instinct: the last line is the diagnosis; the lines above are the trail."}, {"label": "Restart the interpreter and rerun", "next": "END", "points": 0, "feedback": "Restarting clears the evidence. The traceback already tells you what happened.", "outcome": "bad"}, {"label": "Reinstall Python — the interpreter must be broken", "next": "END", "points": 0, "feedback": "TypeError is your code's doing, not the interpreter's.", "outcome": "bad"}]}, {"id": "s2", "text": "`price * quantity` failed because one operand is a str. Which check localizes it fastest?", "choices": [{"label": "Print type(price) and type(quantity) right before line 42", "next": "s3", "points": 2, "feedback": "type() is the fastest localizer — you see which name holds the string."}, {"label": "Wrap line 42 in try/except and move on", "next": "END", "points": 0, "feedback": "Catching it hides the bug; the str came from somewhere upstream.", "outcome": "bad"}, {"label": "Convert both with int() and hope", "next": "END", "points": 0, "feedback": "Blind conversion can raise ValueError on real data. Localize first.", "outcome": "bad"}]}, {"id": "s3", "text": "`quantity` is the string — it came from input(). What is the correct fix?", "choices": [{"label": "Convert at the boundary: quantity = int(input(...)) where the data enters", "next": "END", "points": 2, "feedback": "Fix at the boundary where untrusted text enters. Verify with a rerun.", "outcome": "good"}, {"label": "Change line 42 to total = price * int(quantity)", "next": "END", "points": 1, "feedback": "Works here, but the string-typed variable remains a trap for later code.", "outcome": "good"}]}], "debrief": "Traceback triage is: read the last line, localize with type(), fix at the data boundary. You never restart away evidence or paper over a type error with a blind cast.", "points": 12}, {"id": "py-sim-config-1", "title": "The logging config that lied", "kind": "config-check", "domain_id": "stdlib-files", "difficulty": 3, "brief": "A teammate's dictConfig silences all warnings. Find the 2 misconfigured lines (12 lines total).", "steps": {"config": "LOGGING = {\n    'version': 1,\n    'disable_existing_loggers': False,\n    'handlers': {\n        'console': {'class': 'logging.StreamHandler'},\n    },\n    'root': {'handlers': ['console'], 'level': 'WARNNG'},\n    'loggers': {\n        'app': {'handlers': ['consol'], 'level': 'INFO'},\n    },\n}\n# applied via logging.config.dictConfig(LOGGING)", "find": 2, "issues": [{"line": 7, "description": "Level 'WARNNG' is a typo — not a valid logging level, so the root logger's level is misconfigured.", "fix": "Change 'WARNNG' to 'WARNING'."}, {"line": 9, "description": "Handler name 'consol' does not match the defined handler 'console' — the app logger's output goes nowhere.", "fix": "Change 'consol' to 'console'."}]}, "debrief": "Config bugs hide in names: a misspelled level silently mangles filtering, a mismatched handler name silently drops output. Read configs character by character.", "points": 10}], "consoleSims": [{"id": "py-console-1", "title": "Fix the loop bound in the editor", "console": "code-editor", "domain_id": "functions-modules", "difficulty": 1, "brief": "app.py should print the numbers 0 through 4, but it stops at 3. Open the file in the simulated IDE, fix the range() call, and run the debugger.", "tasks": [{"id": "t1", "instruction": "Open app.py in the code editor (click the file in the explorer panel).", "validate": {"action": "click", "params": {"target": "explorer:app.py"}}, "hint": "Look for the file explorer panel on the left."}, {"id": "t2", "instruction": "Change the loop line from `for i in range(4):` to `for i in range(5):`.", "validate": {"action": "set-field", "params": {"field": "editor:app.py:line2", "value": "for i in range(5):"}}, "hint": "range(n) stops before n — you need n=5 to reach 4."}, {"id": "t3", "instruction": "Start the debugger and confirm the output ends with 4.", "validate": {"action": "click", "params": {"target": "debugger:run"}}, "hint": "Use the Run and Debug control in the side bar."}], "debrief": "range() is half-open: range(4) yields 0–3. Off-by-one errors live in loop bounds, and the debugger shows you the actual iteration values."}, {"id": "py-console-2", "title": "Catch the crash with a breakpoint", "console": "code-editor", "domain_id": "errors-debugging", "difficulty": 2, "brief": "report.py raises ZeroDivisionError on line 12 when the input file is empty. Set a breakpoint, add a watch, and run.", "tasks": [{"id": "t1", "instruction": "Set a breakpoint on line 12 of report.py.", "validate": {"action": "click", "params": {"target": "editor:report.py:line12:breakpoint"}}, "hint": "Click in the gutter next to line 12."}, {"id": "t2", "instruction": "Add a watch expression for len(rows).", "validate": {"action": "set-field", "params": {"field": "debugger:watch", "value": "len(rows)"}}, "hint": "Watches re-evaluate every step — len(rows) shows 0 before the crash."}, {"id": "t3", "instruction": "Run the debugger and confirm it pauses at line 12.", "validate": {"action": "click", "params": {"target": "debugger:run"}}, "hint": "Start debugging with the empty input file selected."}], "debrief": "Breakpoints freeze time at the crash; watches reveal the guilty state — len(rows) == 0 explains the division by zero."}], "terminalMissions": [{"id": "py-mission-1", "title": "Sanity check", "domain_id": "fundamentals", "difficulty": 1, "brief": "The onboarding checklist asks every new hire to prove the REPL works. Evaluate two expressions.", "objectives": ["Print the product of 7 and 8", "Print the length of the word 'interstitium'"], "checks": [{"command_pattern": "^print\\(7 \\* 8\\)$", "expect_contains": "56", "hint": "Type exactly: print(7 * 8)"}, {"command_pattern": "^print\\(len\\(\"interstitium\"\\)\\)$", "expect_contains": "12", "hint": "Type exactly: print(len(\"interstitium\"))"}], "success_message": "Sanity check passed — the REPL is alive and your arithmetic is correct."}, {"id": "py-mission-2", "title": "Mirror words", "domain_id": "data-structures", "difficulty": 1, "brief": "A word game needs palindrome checks. Prove you can reverse strings with slicing.", "objectives": ["Print 'racecar' reversed with slicing", "Print 'hello' reversed with slicing"], "checks": [{"command_pattern": "^print\\(\"racecar\"\\[\\::-1\\]\\)$", "expect_contains": "racecar", "hint": "Type exactly: print(\"racecar\"[::-1])"}, {"command_pattern": "^print\\(\"hello\"\\[\\::-1\\]\\)$", "expect_contains": "olleh", "hint": "Type exactly: print(\"hello\"[::-1])"}], "success_message": "Mirror words confirmed — slicing with step -1 reverses any string."}, {"id": "py-mission-3", "title": "GCD drill", "domain_id": "stdlib-files", "difficulty": 2, "brief": "The scheduling tool needs greatest common divisors. Use the math module.", "objectives": ["Import the math module", "Print gcd(48, 18)", "Print floor(4.9)"], "checks": [{"command_pattern": "^print\\(math\\.gcd\\(48, 18\\)\\)$", "expect_contains": "6", "hint": "First run: import math, then print(math.gcd(48, 18))"}, {"command_pattern": "^print\\(math\\.floor\\(4\\.9\\)\\)$", "expect_contains": "4", "hint": "Type exactly: print(math.floor(4.9))"}], "success_message": "GCD drill complete — math.gcd and math.floor are in your toolbox."}, {"id": "py-mission-4", "title": "Summation service", "domain_id": "functions-modules", "difficulty": 2, "brief": "Compute two sums the codebase needs: 0 through 10, and a small list.", "objectives": ["Print sum(range(11))", "Print sum([10, 20, 30])"], "checks": [{"command_pattern": "^print\\(sum\\(range\\(11\\)\\)\\)$", "expect_contains": "55", "hint": "Type exactly: print(sum(range(11)))"}, {"command_pattern": "^print\\(sum\\(\\[10, 20, 30\\]\\)\\)$", "expect_contains": "60", "hint": "Type exactly: print(sum([10, 20, 30]))"}], "success_message": "Summations verified — 55 and 60, computed, not guessed."}, {"id": "py-mission-5", "title": "Type detective", "domain_id": "errors-debugging", "difficulty": 3, "brief": "Two values arrive as strings. Convert, compute, and prove the types.", "objectives": ["Print int('42') + 8", "Print the type of 3.0"], "checks": [{"command_pattern": "^print\\(int\\(\"42\"\\) \\+ 8\\)$", "expect_contains": "50", "hint": "Type exactly: print(int(\"42\") + 8)"}, {"command_pattern": "^print\\(type\\(3\\.0\\)\\)$", "expect_contains": "<class 'float'>", "hint": "Type exactly: print(type(3.0))"}], "success_message": "Type detective work closed — conversions explicit, types confirmed."}, {"id": "py-mission-6", "title": "Truthiness audit", "domain_id": "oop", "difficulty": 3, "brief": "Audit which values count as False in boolean context — the permission checks depend on it.", "objectives": ["Print bool([])", "Print bool([0])", "Print the chained comparison 2 < 3 < 4"], "checks": [{"command_pattern": "^print\\(bool\\(\\[\\]\\)\\)$", "expect_contains": "False", "hint": "Type exactly: print(bool([]))"}, {"command_pattern": "^print\\(bool\\(\\[0\\]\\)\\)$", "expect_contains": "True", "hint": "Type exactly: print(bool([0]))"}, {"command_pattern": "^print\\(2 < 3 < 4\\)$", "expect_contains": "True", "hint": "Type exactly: print(2 < 3 < 4)"}], "success_message": "Truthiness audit complete — empty is falsy, non-empty is truthy, chains read naturally."}], "media": [{"id": "python-fundamentals-diag", "kind": "diagram", "title": "Python Core Types", "svg": "assets/diagrams/python-fundamentals.svg", "lesson_ref": "c-fundamentals", "caption": "Mutability decides what you can change in place.", "alt": "Python Core Types. Table with 4 rows."}, {"id": "python-data-structures-diag", "kind": "diagram", "title": "Choosing Data Structures", "svg": "assets/diagrams/python-data-structures.svg", "lesson_ref": "c-data-structures", "caption": "Pick by access pattern and uniqueness needs.", "alt": "Choosing Data Structures. Shows: list, tuple, dict, set, Comprehensions."}, {"id": "python-functions-modules-diag", "kind": "diagram", "title": "Functions & Modules", "svg": "assets/diagrams/python-functions-modules.svg", "lesson_ref": "c-functions-modules", "caption": "Organize code into reusable units.", "alt": "Functions & Modules. Shows: def + return, *args / **kwargs, import, __name__ == \"__main__\", Decorators."}, {"id": "python-oop-diag", "kind": "diagram", "title": "OOP Pillars in Python", "svg": "assets/diagrams/python-oop.svg", "lesson_ref": "c-oop", "caption": "Four ideas that structure object-oriented design.", "alt": "OOP Pillars in Python. Shows: Abstraction, Encapsulation, Inheritance, Polymorphism."}, {"id": "python-stdlib-files-diag", "kind": "diagram", "title": "Stdlib & Files Cheat Sheet", "svg": "assets/diagrams/python-stdlib-files.svg", "lesson_ref": "c-stdlib-files", "caption": "Batteries included — reach for these first.", "alt": "Stdlib & Files Cheat Sheet. Commands: open(\"f.txt\") / pathlib.Path, import json / csv, import os / sys, import shutil / glob, datetime.now()."}, {"id": "python-errors-debugging-diag", "kind": "diagram", "title": "Exception Handling Flow", "svg": "assets/diagrams/python-errors-debugging.svg", "lesson_ref": "c-errors-debugging", "caption": "try → except → else → finally, in order.", "alt": "Exception Handling Flow. Shows: try, except, else, finally."}], "resources": {"cheatsheet": {"title": "Python Programming — Cheat Sheet", "sections": [{"heading": "Language Fundamentals", "items": ["Closures — Closures capture variables by reference, not values.", "Late binding — binding the value at definition time — lambda i=i: print(i) — gives each callback its own copy.", "Division semantics — floating-point division plus rounding discards the remainder: 100/3 rounds to 33 three times, totaling 99. divmod(100, 3) returns (33, 1), letting you distribute the leftover cent explicitly so the shares always sum to the original total.", "String interning — cPython interns some string literals, which is why the check accidentally works in the REPL, but a string parsed from JSON is a distinct object with equal value.", "Common trap — string interning is disabled in production.", "Common trap — list comprehensions share one lambda object.", "Common trap — list multiplication shares one int object.", "Common trap — range(5) yields the same object five times.", "The — is operator tests whether two names point to the same object in memory. Value comparison with == is the correct test."]}, {"heading": "Data Structures", "items": ["Idiomatic stdlib — the hand-rolled loop reimplements what the stdlib already provides, tested and optimized.", "Memory efficiency — since the pipeline consumes rows exactly once, laziness cuts peak memory from O(n) to O(1) per row.", "Dict keys — counter is a dict subclass built exactly for frequency counting; its constructor consumes an iterable and most_common(n) returns the n highest counts without a manual sort. Dict lookup hashes the key, and lists are mutable so Python makes them unhashable —…", "Common trap — lists cannot be dict keys on 64-bit Python.", "Common trap — dict keys must be strings.", "Common trap — list(ids).remove duplicates with a nested loop checking index().", "Common trap — read the file in binary mode to halve the memory footprint.", "Sets — are unordered by design, so converting through one discards the original sequence. Since Python 3.7 dicts preserve insertion order, dict.fromkeys(ids) keeps the first occurrence of each ID and drops later duplicates, and list() converts back."]}, {"heading": "Functions & Modules", "items": ["Function semantics — a transparent wrapper must accept everything the wrapped function accepts. *args captures positional arguments only; without **kwargs, any keyword argument raises TypeError.", "Principle — python evaluates default argument expressions once, when the def statement runs.", "Common trap — decorators cannot wrap functions with defaults.", "Common trap — helper modules must be installed with pip before any script can import them.", "Common trap — the wrapper must be defined with functools.partial, not a nested def.", "Common trap — assign wrapper.__name__ = fn.__name__ manually at the end of the decorator.", "The — The limit (default 1000) guards the C stack; each Python frame consumes C stack space, so raising the limit risks a hard segfault instead of a catchable error. An explicit list-based stack converts the traversal to iteration with heap-allocated memory, whic…"]}, {"heading": "OOP", "items": ["Class vs instance attributes — attributes defined directly in the class body belong to the class object, and self.items.append mutates that single shared list rather than creating per-instance state. Attribute lookup walks the class's MRO — the C3 linearization shown by __mro__ — and use…", "Common trap — python requires __init__ chaining via Shape.__init__(self, color) only, never super().", "Common trap — color must be a class attribute.", "Common trap — the last base class always wins.", "Common trap — make balance private and add a set_balance method callers must use.", "Set — Set membership hashes the object first and only calls __eq__ on hash collisions. When a class defines __eq__ without __hash__, Python sets __hash__ to None, making instances unhashable-by-value — they fall back to identity hashing, so equal SKUs land in dif…"]}, {"heading": "Stdlib & Files", "items": ["File I/O — with open(...) as f: ties the file's lifetime to the block: __exit__ closes the handle whether the block completes, raises, or returns.", "Common trap — convert the payload with str(payload) and send that instead of JSON.", "Common trap — use pickle instead of json.", "Common trap — always add one hour manually when the date falls in March or November.", "Common trap — store times as strings in ISO format and parse only for display.", "The — The json module only handles dict, list, str, int, float, bool, and None. Its default parameter is a function called for anything else — default=str converts datetimes via str(), while a custom function can emit isoformat() for precise round-tripping. pickl…"]}, {"heading": "Errors & Debugging", "items": ["Exception chaining — a bare except: catches every exception derived from BaseException — including KeyboardInterrupt (Ctrl-C) and SystemExit — making the process unresponsive to normal shutdown signals. except Exception catches ordinary errors while letting control-flow excepti…", "Exception hierarchy — 'Most recent call last' means the bottom frame is where the exception was raised.", "Common trap — tracebacks list calls oldest-first, so the bug is in <module>.", "Common trap — chain with the cause attribute: raise LoadError(...) .with_cause(err).", "Common trap — the loop needs a break in the except block to exit on Ctrl-C.", "Common trap — logging encrypts messages so they are safe in shared log aggregators.", "The — The logging module gives every message a level (DEBUG/INFO/WARNING/ERROR/CRITICAL), a timestamp, and a source logger name, with handlers controlling where records go and filters controlling which pass. print() offers none of that — severity-by-text-conventi…"]}]}, "glossary": [{"term": "Python", "def": "Common trap: python requires __init__ chaining via Shape.__init__(self, color) only, never super()."}, {"term": "JSON", "def": "String interning: cPython interns some string literals, which is why the check accidentally works in the REPL, but a string parsed from JSON is a distinct object with equal value."}, {"term": "None", "def": "Python evaluates default argument expressions once, when the def statement runs. The single list object is then reused as the default for every call."}, {"term": "MRO", "def": "Attribute lookup walks the class's MRO — the C3 linearization shown by __mro__ — and uses the first match. With (AuditMixin, CacheMixin), audit's save() shadows cache's."}, {"term": "Exception", "def": "Exception hierarchy: 'Most recent call last' means the bottom frame is where the exception was raised."}, {"term": "REPL", "def": "String interning: cPython interns some string literals, which is why the check accidentally works in the REPL, but a string parsed from JSON is a distinct object with equal value."}, {"term": "not cache", "def": "Empty containers are falsy, so `not cache` is True both when no cache was passed (None) and when an empty dict was passed. The caller's empty dict gets discarded and replaced, so entries never accumulate."}, {"term": "Dict", "def": "Dict keys: counter is a dict subclass built exactly for frequency counting; its constructor consumes an iterable and most_common(n) returns the n highest counts without a manual sort. Dict lookup hashes the key, and lists are mutable so…"}, {"term": "Value", "def": "The is operator tests whether two names point to the same object in memory. Value comparison with == is the correct test."}, {"term": "TypeError", "def": "Naive datetimes carry no zone information, so subtraction assumes a fictional timeline with no DST gaps. Attaching a real tzinfo (via zoneinfo.ZoneInfo) makes the datetimes aware, and aware arithmetic follows actual elapsed time."}, {"term": "OS", "def": "pathlib: both os.path.join and pathlib handle separators, absolute/relative mixing, and normalization per OS. pathlib additionally offers readable method chaining (path.exists(), path.read_text()) and is the modern recommended API."}, {"term": "ISO", "def": "Common trap: store times as strings in ISO format and parse only for display."}, {"term": "Sets", "def": "Sets are unordered by design, so converting through one discards the original sequence. Since Python 3.7 dicts preserve insertion order, dict.fromkeys(ids) keeps the first occurrence of each ID and drops later duplicates, and list() conv…"}, {"term": "Empty", "def": "Empty containers are falsy, so `not cache` is True both when no cache was passed (None) and when an empty dict was passed. The caller's empty dict gets discarded and replaced, so entries never accumulate."}, {"term": "Whose", "def": "Whose list is being appended to — the instance's, or an object they all have in common?"}, {"term": "Naive", "def": "Naive datetimes carry no zone information, so subtraction assumes a fictional timeline with no DST gaps. Attaching a real tzinfo (via zoneinfo.ZoneInfo) makes the datetimes aware, and aware arithmetic follows actual elapsed time."}, {"term": "String", "def": "String interning: cPython interns some string literals, which is why the check accidentally works in the REPL, but a string parsed from JSON is a distinct object with equal value."}, {"term": "Counter", "def": "Counter is a dict subclass built exactly for frequency counting; its constructor consumes an iterable and most_common(n) returns the n highest counts without a manual sort. The hand-rolled loop reimplements what the stdlib already provid…"}, {"term": "File I/O", "def": "File I/O: with open(...) as f: ties the file's lifetime to the block: __exit__ closes the handle whether the block completes, raises, or returns."}, {"term": "Principle", "def": "Principle: python evaluates default argument expressions once, when the def statement runs."}, {"term": "True. Which", "def": "List every value that makes `not cache` True. Which of those are legitimate caches?"}, {"term": "Tuples", "def": "Dict lookup hashes the key, and lists are mutable so Python makes them unhashable — a key whose hash could change would corrupt the table. Tuples are immutable and hashable (when their contents are), so (x, y) is the natural key for a co…"}, {"term": "CPython", "def": "The is operator tests whether two names point to the same object in memory. CPython interns some string literals, which is why the check accidentally works in the REPL, but a string parsed from JSON is a distinct object with equal value."}, {"term": "Testing", "def": "Empty containers are falsy, so `not cache` is True both when no cache was passed (None) and when an empty dict was passed. The caller's empty dict gets discarded and replaced, so entries never accumulate."}, {"term": "Without", "def": "Defining __init__ in a subclass replaces the base version entirely; base-class initialization only happens if the subclass explicitly cooperates via super().__init__(...). Without it, any attribute the base __init__ sets is missing on su…"}], "links": [{"label": "Python Institute — official site", "url": "https://pythoninstitute.org", "note": "Official vendor documentation and certification information"}, {"label": "Python 3 documentation", "url": "https://docs.python.org/3/", "note": "Official Python docs"}, {"label": "Python tutorial", "url": "https://docs.python.org/3/tutorial/", "note": "Official Python tutorial"}, {"label": "Python standard library", "url": "https://docs.python.org/3/library/", "note": "Official standard library reference"}], "checklist": ["Get 7–8 hours of sleep the night before — fatigue destroys recall faster than any topic gap.", "Bring valid government-issued photo ID and arrive at the test center 30 minutes early.", "Eat a real meal beforehand; bring water and a light snack if the center allows them.", "Read every question twice before scanning the answer choices.", "Flag uncertain questions and move on — return with fresh eyes at the end.", "Eliminate the obviously wrong answers first, then compare the survivors.", "Budget your time: answer steadily and keep a 10–15 minute review buffer.", "Re-run your weakest-domain drill until mastery is at least 80%.", "For Language Fundamentals: restate the 'why' behind each scenario answer in your own words — if you can't explain it, you don't own it.", "Redo one Data Structures lab from scratch without looking at the steps.", "Recite the key Functions & Modules terms from the glossary aloud from memory."]}}
+{
+ "slug": "python",
+ "title": "Python",
+ "tagline": "Core Python: data structures, functions, OOP, the standard library, debugging, and virtual environments. This is an independent training course with no vendor affiliation; it confers no certificate.",
+ "vendor": {
+  "name": "Independent interview prep (not affiliated with ThreatLocker)",
+  "certs": "",
+  "docs": "https://www.threatlocker.com"
+ },
+ "disclaimer": "Independent interview-prep material by Interstitium Labs. Not affiliated with, endorsed by, or sponsored by ThreatLocker or any vendor mentioned. Confers no certificate. All scenarios are original practice content; no exam or vendor-training content is reproduced.",
+ "accent": "#e5484d",
+ "domains": [
+  {
+   "id": "python",
+   "name": "Python",
+   "summary": "Core Python: data structures, functions, OOP, the standard library, debugging, and virtual environments. This is an independent training course with no vendor affiliation; it confers no certificate.",
+   "scenarios": [
+    {
+     "id": "python-sc1",
+     "title": "Which collection fits the job?",
+     "situation": "A script must count how many times each HTTP status code appears in a log file, then look up counts by code in O(1) time.",
+     "prompt": "Which built-in type is the natural fit for the counting table?",
+     "evidence": [
+      [
+       "Log sample",
+       "200\n404\n200\n500\n404\n200"
+      ],
+      [
+       "Requirement",
+       "After counting, answer queries like: how many 404s? Answer must be fast."
+      ]
+     ],
+     "choices": [
+      "A dict mapping status code to count, or collections.Counter",
+      "A list of tuples (code, count) scanned linearly",
+      "A set of status codes",
+      "A tuple of all counts in log order"
+     ],
+     "answer": 0,
+     "why": "A dict gives average O(1) lookup by key; collections.Counter is exactly this pattern. A list scan is O(n) per query, a set stores no counts, and a tuple in log order cannot be looked up by code.",
+     "hint": "Which structure lets you jump straight from a code to its count, without scanning?",
+     "objectives": [
+      "dict",
+      "collections.Counter",
+      "hashing"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "python-sc2",
+     "title": "The mutable default argument",
+     "situation": "A teammate's function appends parsed rows to a list defaulted as `def parse(rows=[])` and callers report that rows from previous calls keep reappearing.",
+     "prompt": "What is the cause, and what is the correct fix?",
+     "evidence": [
+      [
+       "Observed",
+       "First call parse() returns 3 rows; second call parse() returns 6 rows, including the first call's data."
+      ]
+     ],
+     "choices": [
+      "Default arguments are evaluated once at function definition time, so the same list object is reused; use `rows=None` and create a new list inside",
+      "Python caches return values between calls; clear the cache with functools.lru_cache_clear",
+      "The callers are sharing one generator; convert the generator to a list before passing it",
+      "List append is not thread-safe; wrap the append in a threading.Lock"
+     ],
+     "answer": 0,
+     "why": "A mutable default is created once when def executes, not per call — the classic Python gotcha. The None-sentinel pattern creates a fresh list each call.",
+     "hint": "When exactly is the default value `[]` created?",
+     "objectives": [
+      "functions",
+      "mutable default arguments",
+      "debugging"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "python-sc3",
+     "title": "venv confusion in production",
+     "situation": "A service was deployed with `python3 -m venv /opt/app/venv` and dependencies installed into it, but at boot it crashes with ModuleNotFoundError for a package that is installed. The systemd unit calls `/usr/bin/python3 /opt/app/main.py`.",
+     "prompt": "What is the most likely cause of the crash?",
+     "evidence": [
+      [
+       "Unit excerpt",
+       "[Service]\nExecStart=/usr/bin/python3 /opt/app/main.py"
+      ],
+      [
+       "Install record",
+       "pip install -r requirements.txt   # run after activating the venv"
+      ]
+     ],
+     "choices": [
+      "The unit launches the system interpreter, which cannot see packages installed in the venv; point ExecStart at /opt/app/venv/bin/python",
+      "The venv was created with the wrong Python version; recreate it with python3.9 explicitly",
+      "requirements.txt was parsed with the system pip; reinstall with the --user flag",
+      "The package needs to be vendored into /usr/lib/python3/dist-packages instead"
+     ],
+     "answer": 0,
+     "why": "Activating a venv only affects that shell; the package lives under /opt/app/venv. The service must invoke the venv's interpreter (or set PATH) so it resolves those site-packages.",
+     "hint": "Which interpreter is actually running the code — and which one has the packages?",
+     "objectives": [
+      "virtualenvs",
+      "deployment",
+      "troubleshooting"
+     ],
+     "mins": 7,
+     "difficulty": 2
+    },
+    {
+     "id": "python-sc4",
+     "title": "Where is the shared state?",
+     "situation": "A Flask dev server runs with multiple threads. Two requests hit an endpoint that does `counter += 1` on a module-level global, and the reported totals are lower than the true number of requests.",
+     "prompt": "Which statement best explains the miscount?",
+     "evidence": [
+      [
+       "Endpoint",
+       "visits = 0\n\n@app.route('/hit')\ndef hit():\n    global visits\n    visits += 1\n    return str(visits)"
+      ],
+      [
+       "Observation",
+       "Under load, the counter skips numbers and totals drift below the request count."
+      ]
+     ],
+     "choices": [
+      "`visits += 1` is three bytecodes (load, add, store), so two threads can interleave and overwrite each other's increment — it is a race condition",
+      "The GIL makes all global increments atomic, so the drift must come from the browser caching responses",
+      "Flask resets module globals between requests; persistent state must live in the session",
+      "CPython integers are immutable, so `+=` on a global silently creates a thread-local copy"
+     ],
+     "answer": 0,
+     "why": "The GIL protects single bytecodes, not whole read-modify-write sequences: thread A can load the old value before thread B stores its increment, losing one count. A lock (or atomic counter / external store) fixes it.",
+     "hint": "Break `visits += 1` into its load, add, and store steps — can two threads interleave them?",
+     "objectives": [
+      "threads",
+      "race conditions",
+      "GIL"
+     ],
+     "mins": 8,
+     "difficulty": 2
+    },
+    {
+     "id": "python-sc5",
+     "title": "Descriptor protocol depth",
+     "situation": "A library exposes a config class where setting `obj.timeout = -5` should raise ValueError, and reading `obj.timeout` from any instance shares one validation rule without storing anything on the class itself.",
+     "prompt": "Which implementation achieves validated attribute access with the least boilerplate per attribute?",
+     "evidence": [
+      [
+       "Options on the table",
+       "A. @property with a getter/setter per attribute\nB. __getattr__/__setattr__ overrides with a name check\nC. A descriptor class implementing __get__/__set__\nD. A metaclass rewriting the class dict"
+      ]
+     ],
+     "choices": [
+      "C — a reusable descriptor implementing __get__ and __set__ centralizes validation in one class reused by every attribute",
+      "A — one @property pair per attribute is the only mechanism Python provides for validated assignment",
+      "B — __setattr__ overrides are the canonical way and descriptors cannot intercept instance assignment",
+      "D — a metaclass is required because descriptors only work on class attributes defined in C extensions"
+     ],
+     "answer": 0,
+     "why": "Descriptors (the protocol behind @property, classmethod, staticmethod) live on the class and intercept instance attribute access via __get__/__set__. One descriptor class serves every validated attribute; @property would duplicate the setter per attribute, and __setattr__ needs manual name dispatch.",
+     "hint": "What protocol do @property and @classmethod themselves rely on?",
+     "objectives": [
+      "descriptors",
+      "OOP",
+      "property"
+     ],
+     "mins": 9,
+     "difficulty": 3
+    },
+    {
+     "id": "python-sc6",
+     "title": "Debugging a Heisenbug with pdb",
+     "situation": "A data pipeline crashes intermittently with KeyError deep in a transform. Logs show the missing key varies per run. You can reproduce it locally about one run in five.",
+     "prompt": "What is the most effective first debugging move?",
+     "evidence": [
+      [
+       "Crash site",
+       "Traceback (most recent call last):\n  File \"etl.py\", line 212, in transform\n    total += row[\"amount\"]\nKeyError: 'amount'"
+      ],
+      [
+       "Context",
+       "Rows come from a dict built by merging three vendor feeds; the merge uses dict.update in feed-arrival order."
+      ]
+     ],
+     "choices": [
+      "Run under pdb with a conditional breakpoint at line 212 (break etl.py:212, row.get('amount') is None), then inspect the row and the feed merge order when it trips",
+      "Wrap line 212 in try/except KeyError and log-and-continue so the pipeline finishes",
+      "Add print(row) before line 212 and rerun until the crash appears",
+      "Rewrite the merge with collections.ChainMap so missing keys fall through silently"
+     ],
+     "answer": 0,
+     "why": "A conditional breakpoint catches the exact failing state without noise or Heisenbug-masking changes; pdb lets you inspect the row, the feed contents, and the merge order live. Swallowing the exception hides data loss, and prints perturb timing.",
+     "hint": "How do you catch the failure in the act without changing the program's behavior?",
+     "objectives": [
+      "pdb",
+      "debugging",
+      "tracebacks"
+     ],
+     "mins": 9,
+     "difficulty": 3
+    }
+   ]
+  },
+  {
+   "id": "python-d2",
+   "name": "Python for Automation",
+   "summary": "Applied Python for DevOps work: dependency isolation, context managers, exception design, module structure, subprocess safety, and HTTP automation with retries. Independent training content; this course confers no certificate.",
+   "scenarios": [
+    {
+     "id": "python-d2-sc1",
+     "title": "It Worked on My Machine",
+     "situation": "A deploy script runs on the author's laptop but fails in CI with `ModuleNotFoundError: No module named 'requests'` — CI installs from `requirements.txt`.",
+     "prompt": "What is the correct dependency hygiene?",
+     "evidence": [
+      [
+       "requirements.txt",
+       "# empty — 'requests is installed on my laptop'"
+      ],
+      [
+       "ci log",
+       "ModuleNotFoundError: No module named 'requests'"
+      ]
+     ],
+     "choices": [
+      "Pin every dependency (`pip freeze > requirements.txt`, or a lock file) and install in a fresh venv in CI — reproducible environments come from declared, pinned dependencies, not laptop state",
+      "pip install requests on the CI runner once; runners persist",
+      "Vendor the requests source into the repo; dependencies shouldn't be declared",
+      "Use `--user` installs; that fixes CI"
+     ],
+     "answer": 0,
+     "why": "Undeclared dependencies are the #1 'works on my machine' cause. Pinned requirements + fresh venv per run make the environment reproducible and auditable. One-off runner installs rot; vendoring forks maintenance.",
+     "hint": "What does CI know about the laptop's site-packages?",
+     "objectives": [
+      "pip",
+      "requirements.txt",
+      "virtualenvs"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "python-d2-sc2",
+     "title": "The File Left Open",
+     "situation": "A long-running agent leaks file descriptors: `open()` calls without `close()` in error paths. `lsof` shows thousands of open handles.",
+     "prompt": "What is the correct resource pattern?",
+     "evidence": [
+      [
+       "code",
+       "f = open(path)\ndata = f.read()\n# exception here -> never closed"
+      ],
+      [
+       "lsof",
+       "python: 4000+ open files"
+      ]
+     ],
+     "choices": [
+      "Use context managers: `with open(path) as f:` — the `with` block guarantees `close()` (via `__exit__`) even on exceptions; extend the pattern to locks, connections, and temp dirs",
+      "Call `gc.collect()` periodically; the GC closes files",
+      "Increase the fd limit with ulimit; leaks are fine if the ceiling is high",
+      "Open files in binary mode; that prevents leaks"
+     ],
+     "answer": 0,
+     "why": "Context managers bind resource lifetime to a block — `__exit__` runs on normal exit AND exceptions. CPython's refcounting often masks the leak until an exception path skips close(); other runtimes (PyPy) make it fatal. ulimit raises the ceiling, not the leak.",
+     "hint": "What guarantees cleanup when an exception flies?",
+     "objectives": [
+      "context managers",
+      "with statement",
+      "resources"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "python-d2-sc3",
+     "title": "Except: Pass, the Silent Killer",
+     "situation": "A data pipeline silently drops 2% of records. The code wraps everything in `try: ... except: pass`.",
+     "prompt": "What is the correct exception design?",
+     "evidence": [
+      [
+       "code",
+       "try:\n    process(record)\nexcept:\n    pass  # 'be resilient'"
+      ],
+      [
+       "symptom",
+       "2% of records vanish with no trace"
+      ]
+     ],
+     "choices": [
+      "Catch specific exceptions, log with context, and let unexpected ones propagate: `except (ValueError, KeyError) as e: log.warning(...)` — bare `except: pass` also swallows KeyboardInterrupt/SystemExit and hides bugs",
+      "Keep bare except but add a comment; resilience needs silence",
+      "Catch `Exception` and pass; that's specific enough",
+      "Remove all try/except; crashing is always better"
+     ],
+     "answer": 0,
+     "why": "Bare `except:` catches everything including control-flow exceptions, and `pass` destroys the evidence. The discipline: narrow exception types, log the record + traceback, decide per-error (retry/skip/dead-letter), and never silence what you don't understand.",
+     "hint": "What did the bare except hide, and from whom?",
+     "objectives": [
+      "exceptions",
+      "logging",
+      "error handling"
+     ],
+     "mins": 7,
+     "difficulty": 2
+    },
+    {
+     "id": "python-d2-sc4",
+     "title": "Import Side Effects",
+     "situation": "Importing `utils.py` starts a database connection and parses CLI args — so the test suite connects to prod DB on collection.",
+     "prompt": "What is the correct module structure?",
+     "evidence": [
+      [
+       "utils.py",
+       "db = connect(PROD_DSN)  # at import time\nargs = parse_args()  # at import time"
+      ],
+      [
+       "tests",
+       "import utils → connects to prod"
+      ]
+     ],
+     "choices": [
+      "Guard execution with `if __name__ == \"__main__\":` and move side effects into functions — import should define, not do; tests then import safely and call functions explicitly",
+      "Import inside try/except; that contains the side effects",
+      "Rename utils.py; the name causes the connection",
+      "Tests shouldn't import utils; copy the functions"
+     ],
+     "answer": 0,
+     "why": "The `__main__` guard separates definition from execution: importing a module must be side-effect free. Module-level connections/arg-parsing make the module untestable and dangerous — every importer pays the side effect.",
+     "hint": "What should happen at import time vs at run time?",
+     "objectives": [
+      "modules",
+      "__main__ guard",
+      "imports"
+     ],
+     "mins": 7,
+     "difficulty": 2
+    },
+    {
+     "id": "python-d2-sc5",
+     "title": "Shell Injection via f-string",
+     "situation": "A helper runs `os.system(f\"ping {host}\")` where `host` comes from user input. A pentest demonstrates `host = \"x; rm -rf /\"`.",
+     "prompt": "What is the correct subprocess pattern?",
+     "evidence": [
+      [
+       "code",
+       "os.system(f\"ping {host}\")  # host is user input"
+      ],
+      [
+       "poc",
+       "host='127.0.0.1; cat /etc/passwd' → executed"
+      ]
+     ],
+     "choices": [
+      "`subprocess.run([\"ping\", \"-c1\", host], capture_output=True, text=True, timeout=10)` — argument lists bypass the shell entirely (no shell=True), so metacharacters are data, not code; add timeouts and avoid os.system",
+      "Sanitize with a regex; blocklists stop injection",
+      "Use `shell=True` with shlex.quote; quoting is sufficient",
+      "os.system is fine; the pentest was unrealistic"
+     ],
+     "answer": 0,
+     "why": "Argument-list subprocess calls never invoke a shell — injection becomes impossible by construction. shlex.quote helps only when a shell is truly needed; blocklists always miss something. os.system always goes through /bin/sh.",
+     "hint": "What executes the string: your program, or a shell?",
+     "objectives": [
+      "subprocess",
+      "shell injection",
+      "security"
+     ],
+     "mins": 8,
+     "difficulty": 3
+    },
+    {
+     "id": "python-d2-sc6",
+     "title": "The Flaky API Client",
+     "situation": "A script calls a REST API in a tight loop with no timeout. When the API hangs, 200 script instances pile up; when it 500s, the script crashes.",
+     "prompt": "What is the correct HTTP client design?",
+     "evidence": [
+      [
+       "code",
+       "requests.get(url)  # no timeout\nresp.json()  # crashes on 500 HTML"
+      ],
+      [
+       "incident",
+       "pile-up during API degradation"
+      ]
+     ],
+     "choices": [
+      "`requests.get(url, timeout=(3, 10))`, `resp.raise_for_status()`, retries with exponential backoff + jitter (urllib3 Retry / tenacity), and idempotency awareness — timeouts bound the pile-up, retries handle transients, raise_for_status surfaces real failures",
+      "Retry immediately in a `while True` loop; speed beats patience",
+      "No timeout is fine; the OS cleans up hung sockets quickly",
+      "Catch all exceptions and continue; the data isn't important"
+     ],
+     "answer": 0,
+     "why": "Timeout-less HTTP is a pile-up machine: every hung call holds a worker forever. (connect, read) timeouts bound it; backoff+jitter retries ride out transients without thundering herds; raise_for_status turns HTTP errors into catchable exceptions instead of mystery crashes on .json().",
+     "hint": "What bounds a hung call, and what distinguishes a 500 from a timeout?",
+     "objectives": [
+      "requests",
+      "timeouts",
+      "retries"
+     ],
+     "mins": 8,
+     "difficulty": 3
+    }
+   ]
+  }
+ ],
+ "lessons": [
+  {
+   "domain_id": "python",
+   "title": "Python — Core concepts",
+   "concepts": [
+    "Lists, dicts, sets, and tuples are the working vocabulary: dicts and sets give average O(1) membership and lookup via hashing, lists give ordered O(1) indexing, and tuples are immutable sequences often used for fixed-shape records.",
+    "Functions are first-class: they can be passed around, returned, and closed over. A closure captures variables from the enclosing scope, which is why a loop variable referenced inside a lambda surprises people — it binds late, at call time.",
+    "Classes define behavior; instances hold state. Special (dunder) methods like __len__, __iter__, and __eq__ let your objects speak the language of the built-ins, and properties give you validated attribute access without breaking the attribute-access API.",
+    "The standard library covers most everyday needs: pathlib for paths, collections (Counter, defaultdict, deque), json, argparse for CLIs, logging instead of print, and unittest/pytest-style testing via the built-in unittest module.",
+    "Virtual environments isolate dependencies per project: `python3 -m venv .venv` creates one, activation puts its bin first on PATH, and pip then installs into the venv's site-packages instead of the system interpreter's.",
+    "Debugging beats guessing: read the traceback bottom-up (exception type, then the frame that raised it), reproduce minimally, and use pdb — `breakpoint()` drops you into an interactive shell at that exact line with the live state."
+   ],
+   "example": {
+    "lang": "python",
+    "code": "from collections import Counter\nfrom pathlib import Path\n\ncounts = Counter()\nfor line in Path(\"access.log\").read_text().splitlines():\n    status = line.split()[8]          # 9th field: HTTP status\n    counts[status] += 1               # missing keys start at 0\n\nprint(counts.most_common(5))",
+    "walkthrough": "Counter is a dict subclass that defaults missing keys to 0, so counts[status] += 1 never raises KeyError. pathlib reads the whole file cleanly, and most_common(5) returns the top five codes as (code, count) pairs."
+   },
+   "pitfalls": [
+    "Common trap: using a mutable default argument (`def f(x=[])`) — the default is created once at def time and shared across calls.",
+    "Common trap: modifying a list while iterating over it — iterate over a copy (`for x in items[:]`) or build a new list.",
+    "Common trap: comparing with `is` instead of `==` — `is` checks identity, and small-int/string interning makes it pass sometimes and fail mysteriously other times.",
+    "Common trap: catching a bare `except:` — it swallows KeyboardInterrupt and SystemExit; catch the specific exception you expect."
+   ],
+   "try_it": "Work through this in the Labs tab."
+  }
+ ],
+ "labs": [
+  {
+   "id": "python-lab1",
+   "domain_id": "python",
+   "title": "Isolated project environment with venv",
+   "objective": "Create a virtual environment, install a package into it, and prove the system interpreter cannot see it.",
+   "steps": [
+    "Run `python3 -m venv /tmp/fsd-venv` to create the environment",
+    "Activate it with `source /tmp/fsd-venv/bin/activate` and confirm the prompt/prefix changed",
+    "Install requests with `pip install requests` while the venv is active",
+    "Run `python -c \"import requests; print(requests.__version__)\"` — it should succeed",
+    "Deactivate, then run `/usr/bin/python3 -c \"import requests\"` and observe the ModuleNotFoundError",
+    "Record which interpreter resolves which packages using `which python` and `pip list` in each state"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^python3\\s+-m\\s+venv",
+     "expect_contains": "",
+     "hint": "Create the venv with: python3 -m venv /tmp/fsd-venv"
+    },
+    {
+     "command_pattern": "^pip\\s+install\\s+requests",
+     "expect_contains": "Successfully installed",
+     "hint": "With the venv active, run: pip install requests"
+    },
+    {
+     "command_pattern": "^/usr/bin/python3\\s+-c",
+     "expect_contains": "ModuleNotFoundError",
+     "hint": "The system python should fail to import requests: /usr/bin/python3 -c \"import requests\""
+    }
+   ]
+  },
+  {
+   "id": "python-lab2",
+   "domain_id": "python",
+   "title": "Hunting a bug with pdb",
+   "objective": "Reproduce a KeyError crash, then use pdb to inspect the live state and pinpoint the bad data.",
+   "steps": [
+    "Write /tmp/fsd-bug.py: build a list of dict rows where one row lacks the 'amount' key, then sum row['amount'] in a loop",
+    "Run it with `python3 /tmp/fsd-bug.py` and read the traceback bottom-up to find the failing line",
+    "Insert `breakpoint()` just before the summing loop and rerun",
+    "At the (Pdb) prompt, use `n` to step, `p row` to print the current row, and `l` to list source",
+    "Identify which row is missing the key and why (e.g., a vendor feed with a different schema)",
+    "Fix the script with `row.get('amount', 0)` or by filtering, remove the breakpoint, and rerun to confirm"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^python3\\s+/tmp/fsd-bug\\.py",
+     "expect_contains": "KeyError",
+     "hint": "First reproduce the crash: python3 /tmp/fsd-bug.py"
+    },
+    {
+     "command_pattern": "^p\\s+row",
+     "expect_contains": "amount",
+     "hint": "Inside pdb, inspect the live row with: p row"
+    }
+   ]
+  }
+ ],
+ "simulations": [],
+ "consoleSims": [],
+ "terminalMissions": [],
+ "sections": [
+  {
+   "id": "sec-full-spectrum",
+   "title": "Full Spectrum Dominance — core path",
+   "kind": "core",
+   "lectures": [],
+   "lab_ids": [
+    "fsd-tl-lab-1",
+    "fsd-tl-lab-2",
+    "fsd-tl-lab-3",
+    "fsd-sg-lab-1",
+    "fsd-sg-lab-2",
+    "fsd-sg-lab-3",
+    "fsd-ai-lab-1",
+    "fsd-ai-lab-2",
+    "fsd-ai-lab-3"
+   ],
+   "drill_domain_ids": [
+    "tl-interview",
+    "tl-endpoint-ops",
+    "sec-graphs",
+    "graph-defense",
+    "ml-defense",
+    "ai-agent-sec"
+   ]
+  }
+ ],
+ "behavioral": [
+  {
+   "prompt": "Tell me about the most technically difficult problem you have run into — a homelab, a broken environment, anything — and how you solved it.",
+   "framework": "STAR",
+   "points": [
+    "Pick ONE problem with a real evidence trail: the symptom, what you measured, the hypothesis you tested",
+    "Show the loop: scope, observe, hypothesize, smallest safe change, validate — interviewers score the method, not just the fix",
+    "Name the tools (VM build, networking, logs) and the lesson it taught you",
+    "Close with the result in concrete terms: what works now that did not before"
+   ],
+   "pitfalls": [
+    "Choosing a story with no real obstacle (“I Googled it” is not a story)",
+    "Skipping validation — saying it worked without proving it",
+    "Rambling past two minutes without reaching the result"
+   ]
+  },
+  {
+   "prompt": "Tell me about a time you dealt with a frustrated customer or user while something was broken.",
+   "framework": "STAR",
+   "points": [
+    "Lead with empathy and ownership: acknowledge the impact before the technical detail",
+    "Show translation: what you told them, in their language, plus the timeline you committed to",
+    "Show judgment: the narrow fix you chose and what you refused to do (e.g., disabling the control to clear the symptom)",
+    "Close with the relationship outcome, not just the technical one"
+   ],
+   "pitfalls": [
+    "Badmouthing the customer to sound decisive",
+    "Promising a timeline you could not keep",
+    "Framing the user as the problem rather than the situation"
+   ]
+  },
+  {
+   "prompt": "Why ThreatLocker, and why cybersecurity?",
+   "framework": "STAR",
+   "points": [
+    "Connect prevention to something concrete: a moment you saw detection arrive too late, or a system you hardened",
+    "Tie their model to your instincts: deny-by-default matches how you already think about trust",
+    "Show service orientation: the Cyber Hero culture rewards the 2 a.m. helper — give an example of being one",
+    "Name one forward-looking reason: Zero Trust, the MSP mission, or the bootcamp community investment"
+   ],
+   "pitfalls": [
+    "Generic flattery with no specifics about the company",
+    "Leading with compensation, title, or location convenience",
+    "Claiming expertise in products you have only read about — frame it as studied, not mastered"
+   ]
+  },
+  {
+   "framework": "STAR",
+   "pitfalls": [
+    "Staying vague ('I analyzed the data') instead of naming what you connected.",
+    "Skipping your own role: what did YOU see that others missed?",
+    "No outcome: what changed because you joined the dots?"
+   ],
+   "points": [
+    "The scattered signals and why nobody had connected them yet",
+    "The specific links you drew between them (shared host, time, infrastructure)",
+    "What the bigger picture turned out to be and what action it drove",
+    "What the experience taught you about investigating"
+   ],
+   "prompt": "Tell me about a time you connected scattered clues into a bigger picture that others had missed."
+  },
+  {
+   "framework": "STAR",
+   "pitfalls": [
+    "Claiming you fixed everything: credibility comes from trade-offs, not heroics.",
+    "Hiding the constraint: the limitation is what makes the prioritization story real.",
+    "No metric: 'better' needs a before-and-after."
+   ],
+   "points": [
+    "The constraint (time, budget, staff) and the size of the backlog",
+    "How you decided what mattered most (what was reachable, what was critical)",
+    "What you did first and what you deliberately deferred",
+    "The measurable result of the prioritization"
+   ],
+   "prompt": "Describe a time you had to prioritize risks or fixes with limited time or resources. How did you decide what came first?"
+  },
+  {
+   "framework": "STAR",
+   "pitfalls": [
+    "Reciting jargon to a non-technical audience and calling it communication.",
+    "Skipping the audience's reaction: did they actually understand and act?",
+    "Making yourself the hero instead of the translator."
+   ],
+   "points": [
+    "The technical finding and why it mattered",
+    "Who the audience was and what they cared about",
+    "How you reframed it (a picture, an analogy, a story)",
+    "What decision or action the audience took because they understood"
+   ],
+   "prompt": "Tell me about a time you explained a complex technical finding to a non-technical audience and it changed a decision."
+  },
+  {
+   "prompt": "Tell me about a time you used automation or AI to solve a security problem.",
+   "framework": "STAR",
+   "points": [
+    "The repetitive security task and what it cost in analyst time",
+    "The automation or AI approach you built and how you validated it",
+    "Measured outcome: time saved, detection gained, false positives changed"
+   ],
+   "pitfalls": [
+    "Describing the tool but never the validation",
+    "No measurable outcome"
+   ]
+  },
+  {
+   "prompt": "Describe a time you had to decide whether to trust an automated security decision.",
+   "framework": "STAR",
+   "points": [
+    "The stakes of the automated action and its blast radius",
+    "How you verified before acting (or the gate you built)",
+    "What happened and what you would automate differently next time"
+   ],
+   "pitfalls": [
+    "Saying you always trust the tool",
+    "No mention of blast radius or reversibility"
+   ]
+  }
+ ],
+ "resources": {
+  "cheatsheet": {
+   "title": "Full Spectrum Dominance — field reference",
+   "sections": [
+    {
+     "heading": "Company facts (verified)",
+     "items": [
+      "Founded 2017 in Orlando, FL — Danny Jenkins (CEO), Sami Jenkins (COO), John Carolan (QA)",
+      "Philosophy: deny-by-default / default-deny — approve known-good, deny the rest",
+      "Customers: 70,000+ organizations, sold heavily through the MSP channel",
+      "Funding: $190M Series F, July 2026 (Elephant-led); ~730 employees",
+      "Interview address: 1901 Summit Tower Blvd, Orlando, FL 32810",
+      "Culture: in-office 5 days/week; free lunch; post-offer background + drug screening"
+     ]
+    },
+    {
+     "heading": "Product stack",
+     "items": [
+      "Allowlisting — default-deny execution control for apps, DLLs, scripts, installers",
+      "Ringfencing — constrains allowed apps: app-to-app, file, registry, network",
+      "Storage Control — USB/device policy by serial, user, file type, encryption",
+      "Elevation Control — just-in-time per-app admin, no standing rights",
+      "Network Control — host firewall; port/IP/dynamic-ACL rules; ZTNA foundation",
+      "Web Control — agent-based DNS/URL category filtering, works off-network",
+      "Cyber Hero MDR — 24/7/365 US-based response, ~60-second average",
+      "Testing Environment — one-button VDI sandbox; checks AV flags, canary files, registry changes"
+     ]
+    },
+    {
+     "heading": "Rule strength (strongest to weakest)",
+     "items": [
+      "Certificate/publisher rules — survive version updates",
+      "Hash rules — precise but break on every new version",
+      "Path rules — weakest; never in user-writable locations",
+      "Learning Mode catalogs before enforcement; Installation Mode pauses blocking — scope and time-box both"
+     ]
+    },
+    {
+     "heading": "Terminal evidence commands",
+     "items": [
+      "nmap <host> — which ports answer (22/80/443 open)",
+      "dig <name> — ANSWER SECTION with the A record",
+      "ss — listening sockets",
+      "systemctl status <svc> — unit state",
+      "journalctl -u <svc> — service logs",
+      "sha256sum <file> — real SHA-256 identity",
+      "grep <pattern> <file> — search the record",
+      "ps — what is actually running"
+     ]
+    },
+    {
+     "heading": "Graph vocabulary",
+     "items": [
+      "node — any entity tracked in the model (user, host, IP, domain, file hash, vulnerability)",
+      "edge — a labeled relationship between two nodes (logged into, resolved to, downloaded)",
+      "degree — number of edges on a node; high-degree nodes are attacker highways",
+      "centrality — how much traffic or how many paths flow through a node",
+      "directed edge — a relationship with a direction (A downloaded FROM B)",
+      "security graph — the living model of your whole environment as nodes and edges",
+      "attack graph — the subgraph of exploitable paths to your targets",
+      "knowledge graph — threat-intel indicators linked to campaigns and actors"
+     ]
+    },
+    {
+     "heading": "Attack-graph playbook",
+     "items": [
+      "inventory first — you cannot graph what you have not discovered",
+      "model flaws AND misconfigs as exploit edges",
+      "compute shortest paths to the crown jewels",
+      "find the choke point (highest betweenness on those paths)",
+      "break the path: patch, segment, or remove the edge",
+      "re-scan and re-run the graph to prove the path is gone",
+      "never trust yesterday's graph — redeployments redraw the map"
+     ]
+    },
+    {
+     "heading": "Zero Trust + graphs",
+     "items": [
+      "never trust, always verify — re-evaluate every access decision",
+      "assume breach — treat unexpected edges as hostile until proven otherwise",
+      "microsegmentation — allow-list approved edges, alert on new ones",
+      "ReBAC — policies are path queries on the identity graph",
+      "continuous verification — device/location/behavior edges change, trust follows",
+      "anomalous edge — a first-seen connection between strangers is the classic signal"
+     ]
+    },
+    {
+     "heading": "ML detection vocabulary",
+     "items": [
+      "Supervised learning — learns from labeled examples; strong on known threats, blind to novel ones",
+      "Unsupervised learning — finds structure without labels; clustering and dimensionality reduction",
+      "Anomaly detection — models 'normal' and flags deviations; the workhorse for novel threats",
+      "UEBA — user and entity behavior analytics: per-user baselines plus peer-group comparison",
+      "Feature engineering — encoding raw logs into model inputs (login velocity, rare processes, domain entropy)",
+      "Concept drift — model decay as attacker behavior and legitimate traffic shift over time"
+     ]
+    },
+    {
+     "heading": "Detection metrics",
+     "items": [
+      "Precision — of all flagged alerts, how many were real",
+      "Recall — of all real attacks, how many were flagged",
+      "Threshold tuning — sliding the decision cutoff trades precision against recall",
+      "Alert fatigue — when false positives train analysts to ignore the queue",
+      "DGA — domain generation algorithm; detected via character entropy of domain names"
+     ]
+    },
+    {
+     "heading": "Agent and LLM security",
+     "items": [
+      "Direct prompt injection — attacker input overrides app instructions (OWASP LLM01:2025, the #1 LLM risk)",
+      "Indirect prompt injection — hidden instructions inside retrieved data (email, web, docs)",
+      "Jailbreak — defeating the model's own safety policy; distinct from hijacking app behavior",
+      "Tool poisoning — malicious tool descriptions or metadata steer an agent to misuse its tools (MCP ecosystem risk)",
+      "Insecure output handling — executing or trusting model output without validation",
+      "Least-privilege tools — grant each tool only the scope its task requires"
+     ]
+    },
+    {
+     "heading": "Adversarial ML and governance",
+     "items": [
+      "Evasion — perturbing inputs at inference time to dodge a classifier",
+      "Poisoning — corrupting training data to corrupt the model",
+      "Extraction — querying a model to steal its behavior or parameters",
+      "MITRE ATLAS — knowledge base of adversarial ML tactics and techniques",
+      "Red-teaming and evals — adversarial testing of AI systems before deployment",
+      "Human-in-the-loop — required approval for high-impact or irreversible agent actions",
+      "SOAR — security orchestration, automation and response; automate enrichment, gate containment"
+     ]
+    }
+   ]
+  },
+  "glossary": [
+   {
+    "term": "Allowlisting",
+    "def": "Default-deny execution control: only explicitly approved applications, scripts, and installers may run."
+   },
+   {
+    "term": "Blocklisting",
+    "def": "Default-allow model: everything runs except recognized-bad items — the window zero-days live in."
+   },
+   {
+    "term": "Default-deny",
+    "def": "Deny-by-default posture: unknown code, devices, or connections are refused unless explicitly approved."
+   },
+   {
+    "term": "Ringfencing",
+    "def": "Containment applied on top of allowlisting; restricts what a permitted app may do across app-to-app, file, registry, and network dimensions."
+   },
+   {
+    "term": "Learning Mode",
+    "def": "Agent mode that catalogs applications and dependencies and auto-builds policies before enforcement; temporarily disables file blocking."
+   },
+   {
+    "term": "Installation Mode",
+    "def": "Temporary mode that pauses file blocking for installs — must be tightly scoped and time-boxed."
+   },
+   {
+    "term": "Elevation Control",
+    "def": "Grants specific approved applications admin rights for standard users — just-in-time, per-app, time-boxed — without standing admin rights."
+   },
+   {
+    "term": "Application hopping",
+    "def": "An elevated or trusted process spawning another tool (e.g., PowerShell) to inherit its privileges — countered by ringfencing the elevated process."
+   },
+   {
+    "term": "Storage Control",
+    "def": "Device and path policy: USB approved by serial, user, file type, time, and encryption; unapproved devices do not connect."
+   },
+   {
+    "term": "Network Control",
+    "def": "Centrally managed host firewall; rules by port, source IP, and dynamic ACLs; egress allowlisting pins apps to approved destinations."
+   },
+   {
+    "term": "ZTNA",
+    "def": "Zero Trust Network Access: per-session, per-application brokered connections (commonly over port 443) with no open inbound ports — deny-by-default for network access."
+   },
+   {
+    "term": "Approval Center",
+    "def": "Portal queue where end-user software requests arrive for admin review and decision."
+   },
+   {
+    "term": "Unified Audit",
+    "def": "Real-time audit showing what was allowed or denied across endpoints — and why; the evidence layer for triage."
+   },
+   {
+    "term": "Testing Environment",
+    "def": "One-button cloud VDI sandbox launched from an approval request; logs AV flags, canary-file access, and registry/system changes."
+   },
+   {
+    "term": "Cyber Hero MDR",
+    "def": "24/7/365 US-based managed detection and response team; validates alerts, isolates hosts, acts on customer runbooks; ~60-second average response."
+   },
+   {
+    "term": "Assume breach",
+    "def": "Design and operate as if the attacker already has a foothold — least privilege, containment, and monitoring everywhere."
+   },
+   {
+    "term": "Living off the land",
+    "def": "Attacks that hijack trusted built-in tools (Word, PowerShell) instead of dropping malware — defeated by behavior containment, not signatures."
+   },
+   {
+    "term": "Change control",
+    "def": "Scoped, ticketed, tested changes with validation and rollback — emergency speed never cancels the process."
+   },
+   {
+    "def": "A node in an attack graph representing a system or weakness, connected by edges that represent steps an attacker could take between them.",
+    "term": "attack graph"
+   },
+   {
+    "def": "How central a node is to paths through the graph (for example, betweenness: how many shortest paths cross it).",
+    "term": "centrality"
+   },
+   {
+    "def": "The most valuable assets in the environment (customer data, finance systems, source code): what attack paths are measured against.",
+    "term": "crown jewels"
+   },
+   {
+    "def": "A labeled connection between two nodes, representing a relationship such as 'logged into' or 'resolved to'.",
+    "term": "edge"
+   },
+   {
+    "def": "A graph of threat indicators (IPs, domains, hashes) linked to campaigns, actors, and each other through shared infrastructure.",
+    "term": "knowledge graph"
+   },
+   {
+    "def": "The practice of mapping relationships in data to reveal hidden associations; rooted in Euler's 1736 graph theory, 1970s paper link charts, and post-2001 intelligence work.",
+    "term": "link analysis"
+   },
+   {
+    "def": "A segment of the network so small that its allowed communications can be enumerated as a graph of approved edges.",
+    "term": "microsegmentation"
+   },
+   {
+    "def": "An entity in the graph: a user, host, IP address, domain, file, or vulnerability.",
+    "term": "node"
+   },
+   {
+    "def": "Access control where policy is evaluated by traversing relationships on a graph (for example: user reports_to manager who owns the resource's project).",
+    "term": "ReBAC"
+   },
+   {
+    "def": "A machine-learning model that operates directly on graph structure to classify nodes or subgraphs, for example labeling attack vs normal behavior.",
+    "term": "graph neural network (GNN)"
+   },
+   {
+    "def": "Monitoring user and entity behavior by modeling their normal relationship patterns and flagging structural anomalies.",
+    "term": "UEBA"
+   },
+   {
+    "term": "Supervised learning",
+    "def": "ML trained on labeled examples; classifies new inputs into known categories."
+   },
+   {
+    "term": "Anomaly detection",
+    "def": "ML approach that models normal behavior and flags statistically rare deviations."
+   },
+   {
+    "term": "Feature engineering",
+    "def": "Turning raw telemetry into numeric model inputs, e.g. login velocity or domain entropy."
+   },
+   {
+    "term": "Precision",
+    "def": "Share of flagged alerts that were real; the false-positive economics of the queue."
+   },
+   {
+    "term": "Recall",
+    "def": "Share of real attacks the detector flagged; the miss rate's complement."
+   },
+   {
+    "term": "Concept drift",
+    "def": "Decay of model performance as the data distribution shifts over time."
+   },
+   {
+    "term": "Prompt injection",
+    "def": "Attacker-crafted instructions that override an LLM application's intended behavior; direct (user input) or indirect (retrieved data)."
+   },
+   {
+    "term": "Jailbreak",
+    "def": "Crafted input that defeats an LLM's own safety policy or refusal behavior."
+   },
+   {
+    "term": "Tool poisoning",
+    "def": "Malicious tool descriptions or metadata that manipulate an AI agent into misusing its tools."
+   },
+   {
+    "term": "Insecure output handling",
+    "def": "Failing to validate LLM output before acting on it, e.g. executing generated commands."
+   },
+   {
+    "term": "Evasion attack",
+    "def": "Adversarial ML technique: perturbing inputs to cross a classifier's decision boundary."
+   },
+   {
+    "term": "MITRE ATLAS",
+    "def": "Adversarial Threat Landscape for AI Systems; MITRE's knowledge base of AI attack tactics."
+   },
+   {
+    "term": "SOAR",
+    "def": "Security orchestration, automation and response; playbooks that enrich automatically and gate containment on humans."
+   },
+   {
+    "term": "Human-in-the-loop",
+    "def": "Required human approval before high-impact or irreversible automated actions."
+   }
+  ],
+  "links": [
+   {
+    "label": "ThreatLocker Zero Trust platform explainer (official)",
+    "url": "https://www.threatlocker.com/blog/edr-xdr-vs-zero-trust-prevention",
+    "note": "EDR/XDR vs Zero Trust prevention — the deny-by-default argument in their own words."
+   },
+   {
+    "label": "ThreatLocker Bootcamp page (official)",
+    "url": "https://www.threatlocker.com/bootcamp",
+    "note": "Free six-week program: phases, format, and what completion leads to."
+   },
+   {
+    "label": "ThreatLocker Careers (official)",
+    "url": "https://www.threatlocker.com/company/careers",
+    "note": "Open roles and the hiring-event listing; roles are in-office in Orlando."
+   },
+   {
+    "label": "Elevation Control (official)",
+    "url": "https://www.threatlocker.com/secure-privileges-without-sacrificing-agility",
+    "note": "Just-in-time privilege without standing admin."
+   },
+   {
+    "label": "Storage Control (official)",
+    "url": "https://www.threatlocker.com/capabilities/external-storage-device-control",
+    "note": "USB/device policy by serial, user, file type, encryption."
+   },
+   {
+    "label": "Web Control (official)",
+    "url": "https://www.threatlocker.com/capabilities/web-content-control",
+    "note": "Agent-based DNS/URL filtering, including off-network."
+   },
+   {
+    "label": "Cyber Hero MDR (official)",
+    "url": "https://www.threatlocker.com/get-threat-response-in-minutes",
+    "note": "24/7/365 managed response positioning."
+   },
+   {
+    "label": "MDR capabilities (official)",
+    "url": "https://www.threatlocker.com/capabilities/managed-detection-and-response",
+    "note": "Detection and response capability detail."
+   },
+   {
+    "label": "NIST SP 800-207 — Zero Trust Architecture",
+    "url": "https://csrc.nist.gov/pubs/sp/800/207/final",
+    "note": "The canonical Zero Trust reference: tenets, deployment models, policy engine trust algorithm."
+   },
+   {
+    "label": "CISA Zero Trust Maturity Model",
+    "url": "https://www.cisa.gov/zero-trust-maturity-model",
+    "note": "Federal maturity steps across identity, devices, networks, applications, and data."
+   },
+   {
+    "label": "MITRE ATT&CK",
+    "note": "The adversary-tactics framework; codify its tactic chains as subgraphs to hunt for in your security graph.",
+    "url": "https://attack.mitre.org/"
+   },
+   {
+    "label": "CISA — Cybersecurity and Infrastructure Security Agency",
+    "note": "US government advisories, alerts, and guidance frequently referenced in threat-intel work.",
+    "url": "https://www.cisa.gov/"
+   },
+   {
+    "label": "Neo4j getting started",
+    "note": "A widely used graph database; the book's call to action suggests piloting graph queries on exported security data with tools like this.",
+    "url": "https://neo4j.com/docs/getting-started/"
+   },
+   {
+    "label": "OWASP GenAI Security Project",
+    "url": "https://genai.owasp.org/",
+    "note": "Home of the LLM Top 10 and GenAI security guidance"
+   },
+   {
+    "label": "OWASP Top 10 for LLM Applications",
+    "url": "https://genai.owasp.org/llm-top-10/",
+    "note": "The ranked LLM risk list — prompt injection is #1"
+   },
+   {
+    "label": "NIST AI Risk Management Framework",
+    "url": "https://www.nist.gov/itl/ai-risk-management-framework",
+    "note": "The standard governance framework for managing AI risk"
+   },
+   {
+    "label": "MITRE ATLAS",
+    "url": "https://atlas.mitre.org/",
+    "note": "Adversarial Threat Landscape for AI Systems — tactics and techniques"
+   },
+   {
+    "label": "CISA AI guidance",
+    "url": "https://www.cisa.gov/ai",
+    "note": "CISA's AI security resources and guidance"
+   }
+  ],
+  "checklist": [
+   "Sixty-second company brief rehearsed out loud: year, city, philosophy, three products, one milestone",
+   "Two STAR stories ready: hardest technical problem; a frustrated customer or user",
+   "“Why ThreatLocker / why cybersecurity” answer tied to prevention and service, not slogans",
+   "Ringfencing explained in one plain-English sentence (the Word-on-a-leash version)",
+   "Elevation Control answer ready: just-in-time, per-app, time-boxed, ringfenced, logged",
+   "Triage loop memorized: scope → observe → hypothesize → smallest safe change → validate → explain",
+   "Three questions to ask them: team on-call shape, approval SLA expectations, what “most helpful” looks like on the team",
+   "Logistics: 1901 Summit Tower Blvd, Orlando FL; in-office role; ID and references ready",
+   "Define your crown jewels before you model anything.",
+   "Build the asset-and-access graph from live sources (scans, configs, identity), not from the CMDB alone.",
+   "Model vulnerabilities AND misconfigurations as exploit edges.",
+   "Compute shortest attack paths to each crown jewel; name the choke points.",
+   "Prioritize remediation by path risk, not by raw severity score.",
+   "Express at least one access policy as a relationship path (ReBAC pilot).",
+   "Baseline approved communication edges per segment; alert on first-seen edges.",
+   "Brief the next incident or risk review with the graph, not a spreadsheet.",
+   "Can you explain supervised vs unsupervised vs anomaly detection with a security example for each?",
+   "Can you name three log features you would engineer for a C2 detector and why?",
+   "Can you walk through a UEBA alert (baseline, deviation, verification) end to end?",
+   "Can you explain the precision/recall tradeoff and how you would set a threshold for a fatigued SOC?",
+   "Can you define concept drift and describe a retraining process?",
+   "Can you distinguish direct vs indirect prompt injection and jailbreaking?",
+   "Can you explain tool poisoning in the MCP ecosystem and three controls against it?",
+   "Can you describe insecure output handling and how you would validate agent output?",
+   "Can you name the three adversarial ML attack classes and one defense for evasion?",
+   "Can you design a SOAR playbook gate: what automates freely, what needs human approval?"
+  ]
+ },
+ "chat": {
+  "persona": "You are a rigorous but encouraging interviewer preparing a candidate for a Zero Trust endpoint security role. Probe with 'why' and 'how would you explain that' follow-ups. Stay on topic: ThreatLocker-style endpoint defense, security graphs, and AI-powered security. All practice is original; never reproduce vendor material.",
+  "topics": [
+   {
+    "id": "tl-interview",
+    "name": "ThreatLocker Interview Prep",
+    "key_points": [
+     "allowlisting",
+     "ringfencing",
+     "default-deny",
+     "cyber hero",
+     "zero trust tenets",
+     "STAR stories"
+    ],
+    "followups": [
+     "Can you give an example?",
+     "How would you explain that to a CFO?"
+    ]
+   },
+   {
+    "id": "tl-endpoint-ops",
+    "name": "Zero Trust Endpoint Operations",
+    "key_points": [
+     "default-deny",
+     "ringfencing dimensions",
+     "elevation control",
+     "storage control",
+     "network control",
+     "change control"
+    ],
+    "followups": [
+     "Walk me through the triage order.",
+     "When would you deny outright?"
+    ]
+   },
+   {
+    "followups": [
+     "Can you walk through an example?",
+     "How does this change patch prioritization?",
+     "What is the difference between a security graph and an attack graph?"
+    ],
+    "id": "sec-graphs",
+    "key_points": [
+     "nodes",
+     "edges",
+     "attack graphs",
+     "kill chain",
+     "link analysis",
+     "threat intel graphs"
+    ],
+    "name": "Security Graphs: Think Like an Attacker"
+   },
+   {
+    "followups": [
+     "How do graphs change patch prioritization?",
+     "What is ReBAC and how is it different from RBAC?",
+     "How would a small team start with graphs?"
+    ],
+    "id": "graph-defense",
+    "key_points": [
+     "attack-path analysis",
+     "insider threat",
+     "vulnerability graphs",
+     "Zero Trust",
+     "microsegmentation",
+     "blast radius"
+    ],
+    "name": "Graph-Powered Defense Operations"
+   },
+   {
+    "id": "ml-defense",
+    "name": "ML-Powered Threat Defense",
+    "key_points": [
+     "anomaly detection",
+     "UEBA",
+     "alert fatigue",
+     "concept drift",
+     "threat hunting",
+     "precision recall"
+    ],
+    "followups": [
+     "Walk me through an example.",
+     "How do you handle false positives?"
+    ]
+   },
+   {
+    "id": "ai-agent-sec",
+    "name": "Securing AI Systems & Agents",
+    "key_points": [
+     "prompt injection",
+     "tool poisoning",
+     "MCP risks",
+     "insecure output handling",
+     "SOAR gates",
+     "adversarial ML"
+    ],
+    "followups": [
+     "Walk me through an example.",
+     "How do you secure an AI agent end to end?"
+    ]
+   }
+  ]
+ },
+ "simulation": {
+  "items": 12,
+  "minutes": 180,
+  "evidence_cost_mins": 2
+ },
+ "media": [
+  {
+   "id": "tl-allowlist-vs-blocklist",
+   "kind": "diagram",
+   "title": "Allowlisting vs blocklisting: default-deny vs default-allow",
+   "svg": "assets/diagrams/tl-allowlist-vs-blocklist.svg",
+   "lesson_ref": "c-tl-endpoint-ops",
+   "caption": "Default-deny stops unknown code without a signature; default-allow runs it until one exists.",
+   "alt": "Side-by-side comparison: on the left, a default-deny gate runs known-good payroll software and denies unknown ransomware with no signature needed; on the right, a default-allow gate runs both until the ransomware is recognized as bad."
+  },
+  {
+   "id": "tl-ringfencing",
+   "kind": "diagram",
+   "title": "Ringfencing: four leashes on an allowed application",
+   "svg": "assets/diagrams/tl-ringfencing.svg",
+   "lesson_ref": "c-tl-endpoint-ops",
+   "caption": "Word stays approved, but it cannot spawn PowerShell, read the credential store, or reach the internet — while opening its document is allowed.",
+   "alt": "An approved Word application inside a dashed containment ring: arrows show PowerShell launch denied, credential-store registry access denied, external network denied, and document file access allowed."
+  },
+  {
+   "id": "tl-zero-trust-stack",
+   "kind": "diagram",
+   "title": "The Zero Trust endpoint stack",
+   "svg": "assets/diagrams/tl-zero-trust-stack.svg",
+   "lesson_ref": "c-tl-interview",
+   "caption": "Five deny-by-default layers — Allowlisting, Ringfencing, Elevation, Storage, Network — watched by Web Control, the Testing Environment, Unified Audit, and the Cyber Hero MDR team.",
+   "alt": "A vertical stack of five layers from Allowlisting at the foundation up through Ringfencing, Elevation Control, Storage Control, and Network Control, with side boxes for Web Control, Testing Environment, Unified Audit, and Cyber Hero MDR."
+  },
+  {
+   "id": "tl-triage-flow",
+   "kind": "diagram",
+   "title": "Application-request triage flow",
+   "svg": "assets/diagrams/tl-triage-flow.svg",
+   "lesson_ref": "c-tl-endpoint-ops",
+   "caption": "Gather evidence first, then branch: trusted gets a scoped rule, unknown goes to the sandbox, malicious gets a documented deny.",
+   "alt": "Flowchart from request arrival through evidence gathering to a decision diamond branching into three outcomes: approve with a scoped rule, detonate in the Testing Environment then ringfence, or deny with documented evidence."
+  },
+  {
+   "alt": "Diagram of four labeled nodes (user, host, file, domain, IP) joined by labeled directed edges such as logged into, downloaded, and resolved to, illustrating graph vocabulary.",
+   "caption": "Nodes are the things; edges are the relationships. Attackers move along the edges.",
+   "id": "sg-graph-vocabulary",
+   "kind": "diagram",
+   "lesson_ref": "c-sec-graphs",
+   "svg": "assets/diagrams/sg-graph-vocabulary.svg",
+   "title": "Graph vocabulary: nodes and edges"
+  },
+  {
+   "alt": "Attack graph with four nodes in a chain: external attacker to VPN gateway to file server to customer database, with a dead-end branch to a printer, showing the shortest path to the crown jewel.",
+   "caption": "The shortest path to the crown jewel is length 3. Break the choke point and the campaign dies.",
+   "id": "sg-attack-path",
+   "kind": "diagram",
+   "lesson_ref": "c-sec-graphs",
+   "svg": "assets/diagrams/sg-attack-path.svg",
+   "title": "Attack graph: shortest path to the crown jewels"
+  },
+  {
+   "alt": "Seven kill-chain stages as connected graph nodes: reconnaissance, weaponization, delivery, exploitation, installation, command and control, actions. Three alerts are annotated at delivery, installation, and command and control.",
+   "caption": "Three 'unrelated' alerts, one kill-chain subgraph. Correlate by shared entities, not by severity.",
+   "id": "sg-kill-chain",
+   "kind": "diagram",
+   "lesson_ref": "c-sec-graphs",
+   "svg": "assets/diagrams/sg-kill-chain.svg",
+   "title": "Kill chain as a graph"
+  },
+  {
+   "alt": "A policy engine at the center of a small graph evaluates an access request from a finance user on an untrusted laptop to an R and D code server. The request is denied because there is no prior relationship edge and the device is untrusted.",
+   "caption": "Valid credentials are not enough. The graph checks device trust, history, and relationships on every request.",
+   "id": "sg-zero-trust",
+   "kind": "diagram",
+   "lesson_ref": "c-graph-defense",
+   "svg": "assets/diagrams/sg-zero-trust.svg",
+   "title": "Zero Trust runs on relationships"
+  },
+  {
+   "id": "ai-ml-pipeline",
+   "kind": "diagram",
+   "title": "ML detection pipeline: telemetry to triage",
+   "svg": "assets/diagrams/ai-ml-pipeline.svg",
+   "lesson_ref": "c-ml-defense",
+   "caption": "How raw telemetry becomes scored alerts: features feed the model, the model scores, analysts triage top-down — and analyst verdicts feed retraining.",
+   "alt": "Flow diagram: telemetry sources feed feature extraction, which feeds an ML model, which outputs scored alerts into an analyst triage queue, with a feedback arrow for retraining."
+  },
+  {
+   "id": "ai-ueba-baseline-diagram",
+   "kind": "diagram",
+   "title": "UEBA: baseline vs deviation",
+   "svg": "assets/diagrams/ai-ueba-baseline.svg",
+   "lesson_ref": "c-ml-defense",
+   "caption": "UEBA learns each user's normal hours, locations, and volumes, then scores deviations from that baseline.",
+   "alt": "24-hour timeline showing a shaded normal login window from 8 AM to 6 PM with normal logins inside it, and a red anomaly marker at 2:47 AM for a foreign login scoring 97 out of 100."
+  },
+  {
+   "id": "ai-injection-flow",
+   "kind": "diagram",
+   "title": "Indirect prompt injection attack flow",
+   "svg": "assets/diagrams/ai-injection-flow.svg",
+   "lesson_ref": "c-ai-agent-sec",
+   "caption": "An attacker hides instructions in data the agent retrieves; the agent mistakes data for instructions and misuses its tools.",
+   "alt": "Attack flow diagram: hidden instruction in an email is read by an AI agent, which mistakes it for a command and calls a privileged tool, causing fraud; three defense boxes below: sanitize content, least-privilege tools, human approval."
+  }
+ ],
+ "foundations": [
+  {
+   "track": "linux-cli",
+   "why_needed": "Terminal labs and missions run in a simulated Linux shell; command-line fluency is required to complete them."
+  },
+  {
+   "track": "security-basics",
+   "why_needed": "Security-graph and ML-detection lessons assume baseline vocabulary (CIA triad, malware types, incident response phases)."
+  }
+ ],
+ "math": [
+  "stats",
+  "probability"
+ ]
+}

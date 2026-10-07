@@ -1,1 +1,1071 @@
-{"behavioral": [{"framework": "STAR", "pitfalls": ["Skipping the root-cause analysis", "No preventive follow-up"], "points": ["Detection and triage steps", "Root cause and fix", "Prevention added"], "prompt": "Tell me about a database outage you resolved under pressure."}, {"framework": "STAR", "pitfalls": ["Vague 'I tuned it'", "No baseline numbers"], "points": ["Baseline measurement", "What you changed and why", "Measured improvement"], "prompt": "Describe a performance problem you diagnosed and fixed."}, {"framework": "STAR", "pitfalls": ["No test restore mentioned", "Skipping the verification"], "points": ["Your backup design", "How you tested restores", "A time it mattered"], "prompt": "Tell me about your backup and recovery strategy at a previous role."}, {"framework": "STAR", "pitfalls": ["Doing it alone with no communication", "No rollback plan"], "points": ["Planning and communication", "Execution steps", "Verification"], "prompt": "Describe a major database upgrade or migration you led."}, {"framework": "STAR", "pitfalls": ["Blaming developers only", "No systemic fix"], "points": ["How you found the contention", "Immediate relief and long-term fix", "Monitoring added"], "prompt": "Tell me about a locking or concurrency crisis you handled."}, {"framework": "STAR", "pitfalls": ["Ignoring the security angle", "No least-privilege mention"], "points": ["The risk you identified", "Controls you implemented", "How you verified"], "prompt": "Describe how you hardened a database environment."}, {"framework": "STAR", "pitfalls": ["No documentation mentioned", "Skipping the handoff"], "points": ["What you documented", "How you transferred knowledge", "How it held up"], "prompt": "Tell me about documentation or runbooks you created for operations."}, {"framework": "STAR", "pitfalls": ["Capacity guess with no data", "No monitoring basis"], "points": ["Data you gathered", "Your projection method", "How it turned out"], "prompt": "Describe a capacity-planning decision you made."}], "chat": {"persona": "You are a friendly but rigorous Oracle DBA interviewer running a mock assessment on database administration concepts.", "topics": [{"followups": ["What is lost when the instance crashes but the database survives?", "Which background process writes dirty buffers?"], "id": "architecture", "key_points": ["instance vs database distinction", "SGA components and PGA", "background processes: DBWn LGWR CKPT", "control files and redo logs", "CDB/PDB multitenant architecture"], "name": "Architecture"}, {"followups": ["What must exist before DBCA runs?", "When would you choose manual creation over DBCA?"], "id": "installation", "key_points": ["prerequisites: OS users, kernel params", "DBCA vs manual CREATE DATABASE", "initialization parameters", "character sets are hard to change", "post-install verification"], "name": "Installation & Creation"}, {"followups": ["When do you add a datafile vs resize?", "What does autoextend protect against?"], "id": "storage", "key_points": ["tablespaces and datafiles", "SYSTEM/SYSAUX/UNDO/TEMP roles", "ASM vs filesystem storage", "segments extents blocks hierarchy", "space monitoring and alerts"], "name": "Storage Management"}, {"followups": ["When was your last successful restore test?", "What does 'recover database' actually replay?"], "id": "backup-recovery", "key_points": ["ARCHIVELOG mode enables point-in-time recovery", "RMAN backup types: full/incremental", "restore vs recover distinction", "flashback vs media recovery", "backup validation and testing"], "name": "Backup & Recovery"}, {"followups": ["Is the wait event the cause or the symptom?", "What does a high buffer-cache hit ratio hide?"], "id": "performance", "key_points": ["AWR/ASH for diagnosis", "wait events point to bottlenecks", "execution plans and the optimizer", "indexes: when they help and hurt", "statistics drive the optimizer"], "name": "Performance"}, {"followups": ["What is lost in async vs sync redo transport?", "How do you verify the standby is actually applying?"], "id": "dataguard", "key_points": ["primary/standby roles and redo shipping", "protection modes: max performance/availability/protection", "switchover vs failover", "gap detection and resolution", "standby types: physical/logical"], "name": "Data Guard Basics"}]}, "disclaimer": "Independent practice material by Interstitium Labs. Not affiliated with, endorsed by, or sponsored by Oracle. Confers no certificate. All scenarios are original; no exam content is reproduced.", "domains": [{"id": "architecture", "name": "Architecture", "scenarios": [{"answer": 0, "choices": ["The instance (SGA + background processes) crashed, but the database (datafiles, redo, control files on disk) is intact — restart the instance; crash recovery replays redo automatically", "The database is corrupted; restore from backup", "Datafiles are gone when the instance dies", "Restarting is unsafe; rebuild the database"], "evidence": [], "hint": "Which parts of 'the database' live in memory, and which live on disk?", "id": "ora-instance-vs-db", "mins": 6, "objectives": ["Instance vs database", "Crash recovery"], "prompt": "What actually failed, and what is the recovery action?", "situation": "A power outage kills the server. The DBA says 'the instance is down but the database is fine.' A manager hears 'database is fine' and asks why anything needs doing.", "title": "The power outage", "why": "Instance = memory (SGA) + background processes; database = physical files (datafiles, control files, redo logs). A crash loses the instance, not the files. On startup, Oracle performs automatic crash recovery: SMON rolls forward committed changes from redo and rolls back uncommitted ones. No backup restore is needed — that's the whole point of redo logging."}, {"answer": 0, "choices": ["DBWn (database writer) — writes dirty buffers to datafiles, lazily; LGWR (log writer) writes redo on commit — which is why commit is fast and datafiles can lag", "LGWR writes datafiles; DBWn writes redo", "CKPT writes user data on every commit", "ARCn writes dirty buffers"], "evidence": [], "hint": "Which process must act before a commit returns, and which one can afford to be lazy?", "id": "ora-dbw-lgwr", "mins": 6, "objectives": ["Background processes", "Write-ahead logging"], "prompt": "Which background processes handle the commit path, and why is commit fast?", "situation": "A developer is surprised that COMMIT returns in milliseconds even with megabytes of changes, yet the datafiles aren't updated for minutes.", "title": "The fast commit", "why": "LGWR writes the redo log buffer to disk on every commit (sequential, fast) — that's the durability guarantee. DBWn writes dirty data buffers lazily in batches (random I/O, deferred). This write-ahead logging means: commit is fast because only redo is forced; datafiles catch up later. CKPT just records checkpoints; ARCn archives redo logs."}, {"answer": 0, "choices": ["PGA — private per-session memory for sorts, hashes, and cursor state; SGA is shared (buffer cache, shared pool, redo buffer)", "SGA — each session gets its own SGA", "PGA is shared across sessions for efficiency", "Sorts happen in datafiles, not memory"], "evidence": [], "hint": "Which memory area is per-server-process, and which is shared by all?", "id": "ora-sga-pga", "mins": 5, "objectives": ["SGA", "PGA", "Memory architecture"], "prompt": "Where does a large sort consume memory, and what is shared vs private?", "situation": "A big ORDER BY spills to temp. The DBA increases PGA_AGGREGATE_TARGET and explains SGA vs PGA to the team.", "title": "The spilling sort", "why": "SGA (System Global Area) is shared: buffer cache, shared pool (parsed SQL, dictionary cache), redo log buffer. PGA (Program Global Area) is per-server-process: sort areas, hash areas, session cursor state. Large sorts/hashes consume PGA; when PGA is insufficient they spill to TEMP. Sizing: SGA for caching, PGA for per-session work areas."}, {"answer": 0, "choices": ["Control files — they record the database structure, datafile locations, checkpoint SCNs, and RMAN metadata; multiplex them on separate disks", "Parameter files — they list the control files", "Redo logs — they store the schema", "The alert log — it has the structure"], "evidence": [], "hint": "If you lost every copy of this file, could Oracle even find its datafiles?", "id": "ora-control-file", "mins": 5, "objectives": ["Control files", "Multiplexing"], "prompt": "Which file is the database's 'table of contents,' and how is it protected?", "situation": "A DBA insists control files live on three separate disks. A manager calls it paranoia — 'we have backups of everything anyway.'", "title": "The three control files", "why": "The control file is the database's metadata hub: datafile/tempfile locations, log sequence numbers, checkpoint SCN, RMAN repository info. Lose all copies and the instance can't mount — recovery becomes a rebuild-from-backup exercise. Multiplexing (multiple copies on independent storage) is cheap insurance; it's standard, not paranoia."}, {"answer": 0, "choices": ["CDB (container) holds the root and seed; PDBs (pluggable databases) are portable, self-contained databases sharing one instance — unplug/plug for moves, patch once at CDB level", "PDBs are just schemas with a new name", "CDBs can't host application data", "Multitenant requires a separate license for every PDB in all editions"], "evidence": [], "hint": "Which architecture lets you unplug a whole database and plug it into another container?", "id": "ora-cdb-pdb", "mins": 6, "objectives": ["Multitenant", "CDB/PDB"], "prompt": "What is the multitenant architecture, and what operational problem does it solve?", "situation": "A company runs 40 small databases — 40 instances, 40 patch cycles, 40 memory footprints. They ask about consolidation.", "title": "The forty databases", "why": "Multitenant: one CDB (container database) hosts many PDBs (pluggable databases), sharing one instance/SGA/background processes. Benefits: patch/upgrade once at CDB level, unplug/plug PDBs to move them between CDBs, clone via snapshot. Each PDB looks like a standalone database to applications. It's the consolidation answer for 'many small databases'."}, {"answer": 0, "choices": ["Undo tablespace — stores before-images for read consistency and rollback; too-small undo causes ORA-01555 snapshot too old on long queries", "Temp tablespace — it holds undo", "System tablespace — undo lives in SYSTEM", "Undo is only needed for failed transactions"], "evidence": [], "hint": "Where does Oracle keep the 'before' picture that a long-running query reads?", "id": "ora-undo", "mins": 6, "objectives": ["Undo", "Read consistency", "ORA-01555"], "prompt": "What causes ORA-01555, and which tablespace is involved?", "situation": "A 2-hour report fails with ORA-01555 'snapshot too old' while heavy updates run concurrently.", "title": "The snapshot too old", "why": "Read consistency: a query sees data as of its start SCN, reconstructed from undo (before-images) when blocks changed underneath it. If undo is overwritten before the query finishes → ORA-01555. Fixes: size undo tablespace + undo retention appropriately, tune the long query, or reduce concurrent churn. Undo also rolls back uncommitted transactions — it's the backbone of MVCC."}]}, {"id": "installation", "name": "Installation & Creation", "scenarios": [{"answer": 0, "choices": ["DBCA (Database Configuration Assistant) — GUI/silent, handles prerequisites, templates, and post-creation config; manual CREATE DATABASE is for edge cases needing full control", "Manual SQL scripts are the only supported method", "DBCA can't create CDBs", "Installation order doesn't matter"], "evidence": [], "hint": "Which tool encodes Oracle's own best-practice creation steps?", "id": "ora-dbca", "mins": 5, "objectives": ["DBCA", "Database creation methods"], "prompt": "What is the standard creation path, and when would you go manual?", "situation": "A junior DBA wants to hand-write CREATE DATABASE scripts 'to learn'. The lead says use DBCA for production.", "title": "The creation debate", "why": "DBCA is the supported, standard path: it validates prerequisites, applies templates (including CDB/PDB, sample schemas), sets parameters sensibly, and configures listeners/EM. Manual creation (CREATE DATABASE script) is for unusual cases — learning internals, or custom layouts DBCA can't express. Production: DBCA (silent mode for automation); learning: manual once, to understand what DBCA does."}, {"answer": 0, "choices": ["OS prerequisites: oracle user/groups, kernel parameters (shared memory, semaphores), sufficient RAM/swap, and proper filesystem layout — installers fail or databases misbehave without them", "Prerequisites are optional suggestions", "Only disk space matters", "Kernel parameters are set automatically on all platforms"], "evidence": [], "hint": "What does the installer check before it even starts copying files?", "id": "ora-prereqs", "mins": 5, "objectives": ["Installation prerequisites", "OS configuration"], "prompt": "What prerequisite class causes most installation failures?", "situation": "An Oracle install fails midway with shared-memory errors. The sysadmin skipped the preinstall RPM and kernel settings.", "title": "The failed install", "why": "Oracle has hard OS prerequisites: the oracle user and groups (oinstall, dba), kernel parameters for shared memory/semaphores (SHMMAX, SEMMNS etc.), package dependencies, and ulimits. The preinstall RPM (oracle-database-preinstall) automates most of this on Oracle Linux. Skipping them produces cryptic mid-install failures — check prerequisites first, always."}, {"answer": 0, "choices": ["Choose it at creation — changing character sets later (especially to/from multibyte) is painful and sometimes requires full export/import; AL32UTF8 is the modern default", "Character sets can be changed anytime with ALTER DATABASE", "NLS settings don't affect stored data", "Single-byte is always sufficient"], "evidence": [], "hint": "Can you ALTER a database from WE8ISO8859P1 to AL32UTF8 after it has data?", "id": "ora-charset", "mins": 5, "objectives": ["Character sets", "NLS"], "prompt": "Why is character set choice a creation-time decision?", "situation": "A database created with a single-byte character set now needs emoji and CJK data. The team discovers conversion options are limited and risky.", "title": "The emoji problem", "why": "The database character set determines how text is stored; changing it after data exists ranges from restricted (CSSCAN/CSALTER for compatible supersets) to full export/import. AL32UTF8 (Unicode) is the safe modern default — it stores everything. Getting this wrong at creation is a multi-week migration later."}, {"answer": 0, "choices": ["Initialization parameters (SPFILE/PFILE): MEMORY_TARGET/SGA_TARGET, PROCESSES, DB_BLOCK_SIZE (set at creation), COMPATIBLE, UNDO settings — and know which are dynamic vs static", "Parameters are all dynamic; restart is never needed", "DB_BLOCK_SIZE can be changed anytime", "SPFILEs are deprecated"], "evidence": [], "hint": "Which parameters demand a restart, and which is frozen at creation?", "id": "ora-init-params", "mins": 6, "objectives": ["Initialization parameters", "SPFILE"], "prompt": "What parameter knowledge does a DBA need on day one?", "situation": "A new DBA changes DB_BLOCK_SIZE in the SPFILE and bounces the instance — startup fails.", "title": "The unstartable instance", "why": "DB_BLOCK_SIZE is set at database creation and immutable after. Parameters live in the SPFILE (binary, server-side, persistent) or PFILE (text, client-side); ALTER SYSTEM SET ... SCOPE=MEMORY/SPFILE/BOTH controls persistence, and some parameters are static (restart required). Know the critical ones: memory targets, PROCESSES (connection ceiling), COMPATIBLE, undo retention — and which need a bounce."}, {"answer": 0, "choices": ["Verify: instance open, listener serving, basic connectivity, alert log clean, backup scheduled, and a test restore — creation isn't done until recovery is proven", "Creation success message is sufficient proof", "Backups can wait until next quarter", "The alert log is only for errors"], "evidence": [], "hint": "What proves the database is actually operable, not just created?", "id": "ora-post-install", "mins": 5, "objectives": ["Post-installation verification", "Operational readiness"], "prompt": "What does 'done' look like after creating a database?", "situation": "DBCA reports success. The DBA wants to hand over to the app team immediately.", "title": "The handover checklist", "why": "A created database isn't a production database until: it opens cleanly after a bounce, the listener accepts connections, the alert log shows no errors, ARCHIVELOG mode + RMAN backups are configured and a test restore succeeded, and monitoring covers it. 'DBCA said success' is step one of ten."}, {"answer": 0, "choices": ["Silent/response-file installs and DBCA templates — identical, repeatable, version-controlled builds; GUI installs are for one-offs", "GUI installs are more repeatable", "Response files are deprecated", "Automation isn't possible for Oracle installs"], "evidence": [], "hint": "How do you build the 11th identical database exactly like the first 10?", "id": "ora-silent-install", "mins": 4, "objectives": ["Silent installation", "Automation"], "prompt": "How do you make database builds repeatable?", "situation": "A team must build 10 identical dev databases. Manual GUI installs drift within the third build.", "title": "The drifting builds", "why": "Response files (silent install) and DBCA templates make builds deterministic: same parameters, same options, every time — and they're version-controllable. GUI installs are fine for a single learning build; fleets need automation. Record the response file alongside the build docs."}]}, {"id": "storage", "name": "Storage Management", "scenarios": [{"answer": 0, "choices": ["SYSTEM holds the data dictionary (never put user data there); SYSAUX holds auxiliary metadata (AWR, EM); UNDO holds before-images; TEMP holds sort/hash spill — each has a distinct failure/space behavior", "All tablespaces are interchangeable", "User tables go in SYSTEM for speed", "TEMP is optional"], "evidence": [], "hint": "Which tablespace would break the data dictionary if it filled with user tables?", "id": "ora-tablespace-roles", "mins": 6, "objectives": ["Tablespace roles", "SYSTEM/SYSAUX"], "prompt": "What are the mandatory tablespaces and their roles?", "situation": "A developer creates tables in SYSTEM 'because it's the default'. The DBA calls it a critical finding.", "title": "The SYSTEM squatter", "why": "SYSTEM = data dictionary (Oracle's own metadata) — user objects there risk dictionary corruption and upgrade failures. SYSAUX = auxiliary repository (AWR snapshots, OEM data). UNDO = transaction before-images. TEMP = sort/hash spillover. Each has different space pressure symptoms: SYSTEM full = can't do DDL; TEMP full = big queries fail; UNDO full = DML stalls. Keep user data in dedicated tablespaces."}, {"answer": 0, "choices": ["AUTOEXTEND with MAXSIZE + monitoring/alerts on tablespace usage — growth is handled, runaway growth is capped and visible", "Disable AUTOEXTEND everywhere and extend manually at 3 AM", "One giant datafile per tablespace is best practice", "Space alerts are unnecessary with AUTOEXTEND"], "evidence": [], "hint": "Which combination grows automatically but can't grow forever unnoticed?", "id": "ora-autoextend", "mins": 5, "objectives": ["AUTOEXTEND", "Space management"], "prompt": "What is the space-management discipline?", "situation": "A tablespace hits 100% at 2 AM and transactions fail. AUTOEXTEND was off 'to control growth'.", "title": "The full tablespace", "why": "AUTOEXTEND ON with a sensible MAXSIZE lets datafiles grow with demand while capping runaway growth (a bad load can't fill the disk). Pair it with usage alerts (e.g., 80/90% thresholds via EM or scripts) so growth is visible before it becomes an outage. Manual-only extension trades control for 2 AM pages."}, {"answer": 0, "choices": ["ASM (Automatic Storage Management) — Oracle-managed striping/mirroring across disks with rebalance; filesystem storage is simpler but you manage layout/redundancy yourself", "ASM is only for RAC", "Filesystems are always faster than ASM", "ASM replaces backups"], "evidence": [], "hint": "Which storage layer stripes and mirrors for the database automatically?", "id": "ora-asm", "mins": 5, "objectives": ["ASM", "Storage options"], "prompt": "When does ASM win over plain filesystem storage?", "situation": "A DBA must choose storage for a production database on direct-attached disks, wanting striping and mirroring without manual volume management.", "title": "The storage layer choice", "why": "ASM is Oracle's volume manager/filesystem: it stripes data across disks, mirrors per failure group, and rebalances online when disks are added/removed. Filesystem (or NFS/dNFS) storage is simpler and fine for many cases, but striping/mirroring/redundancy become your problem. ASM doesn't replace backups — mirroring protects against disk failure, not against DROP TABLE."}, {"answer": 0, "choices": ["Segment → extents → blocks: a segment (table/index) is made of extents (contiguous block groups), each extent of Oracle blocks; locally managed tablespaces with AUTOALLOCATE handle this automatically", "Blocks contain tablespaces", "Extents are the smallest unit", "Dictionary-managed is the modern default"], "evidence": [], "hint": "Which is smallest: block, extent, or segment?", "id": "ora-segments", "mins": 5, "objectives": ["Storage hierarchy", "Segments/extents/blocks"], "prompt": "What is the logical-to-physical storage hierarchy?", "situation": "A junior DBA is confused by 'segment', 'extent', and 'block' in space reports.", "title": "The space vocabulary", "why": "Block (smallest, e.g., 8 KB) → extent (set of contiguous blocks allocated at once) → segment (the table/index/partition's extents) → tablespace → datafile. Locally managed tablespaces (the modern default) track this in bitmaps; AUTOALLOCATE sizes extents automatically. Understanding the hierarchy is what makes space reports readable."}, {"answer": 0, "choices": ["Bigfile tablespaces (single large datafile, up to 128 TB) simplify management for very large databases; smallfile (classic, many datafiles) suits most cases — choose by scale", "Bigfile is mandatory for all databases", "Smallfile tablespaces can't exceed 1 GB", "The choice affects SQL syntax"], "evidence": [], "hint": "One huge datafile vs many smaller ones — which simplifies a 50 TB tablespace?", "id": "ora-bigfile", "mins": 4, "objectives": ["Bigfile tablespaces"], "prompt": "When do bigfile tablespaces make sense?", "situation": "A 40 TB warehouse needs a new tablespace. The DBA debates bigfile vs smallfile.", "title": "The 40 TB tablespace", "why": "Bigfile tablespaces use one datafile (up to ~128 TB depending on block size) — fewer files to manage, ideal for very large databases and ASM. Smallfile (traditional, up to 1024 datafiles per tablespace) is the default and fine for typical sizes. It's a manageability/scale choice, invisible to SQL."}, {"answer": 0, "choices": ["Proactive: trend usage, alert at thresholds, add space before exhaustion; reactive: add datafile/resize on failure — and know that some objects (e.g., in SYSTEM) can't wait", "Space issues resolve themselves", "Adding datafiles requires downtime", "Alerts are optional"], "evidence": [], "hint": "Which tablespace filling is a 2 AM page, and which is a next-week task?", "id": "ora-space-crisis", "mins": 5, "objectives": ["Space monitoring", "Capacity management"], "prompt": "What is the operational discipline for space?", "situation": "UNDO tablespace fills during a huge batch; TEMP fills during month-end reports. Both cause failures, but the responses differ.", "title": "The space triage", "why": "Not all 'full' is equal: SYSTEM/SYSAUX full blocks DDL and can wedge the database (page now); TEMP full fails the big queries using it (add tempfile or tune the query); UNDO full stalls DML (add space or reduce batch commit scope). Discipline: trend growth, alert at 80/90%, and know the per-tablespace playbook — ADD DATAFILE/RESIZE is online."}]}, {"id": "backup-recovery", "name": "Backup & Recovery", "scenarios": [{"answer": 0, "choices": ["ARCHIVELOG mode — redo is archived instead of overwritten, enabling point-in-time recovery; NOARCHIVELOG only allows restore to the last backup with data loss", "NOARCHIVELOG is fine for production; backups are enough", "ARCHIVELOG mode slows down commits unacceptably", "The modes are identical for recovery"], "evidence": [], "hint": "What happens to a redo log when it fills — overwritten, or saved?", "id": "ora-archivelog", "mins": 6, "objectives": ["ARCHIVELOG mode", "Point-in-time recovery"], "prompt": "Why is ARCHIVELOG mode non-negotiable for production?", "situation": "A production database runs in NOARCHIVELOG. A disk failure at 2 PM destroys datafiles; the last backup was midnight. The business asks: 'Can we get back to 1:59 PM?'", "title": "The 2 PM failure", "why": "In NOARCHIVELOG, filled redo logs are overwritten — the transactions between midnight and 2 PM are unrecoverable. ARCHIVELOG preserves each filled log (ARCn copies it out), so RMAN can restore the midnight backup and roll forward through archived logs to 1:59 PM. That's point-in-time recovery, and it's why production runs ARCHIVELOG."}, {"answer": 0, "choices": ["Restore = copy backup files back to their locations; Recover = apply redo/archived logs to roll forward to the target time — you almost always do both", "Restore and recover are synonyms", "Recover copies files; restore applies logs", "Only one of them is ever needed"], "evidence": [], "hint": "Which step puts the files back, and which step replays history onto them?", "id": "ora-restore-vs-recover", "mins": 5, "objectives": ["Restore vs recover", "RMAN concepts"], "prompt": "What is the difference between restore and recover?", "situation": "A runbook says 'restore the database' and the junior DBA copies files back, then opens the database — it's inconsistent and won't open.", "title": "The half recovery", "why": "RESTORE copies backup pieces to datafile locations (files as of backup time). RECOVER applies archived/incremental changes to roll them forward to the desired point. Skipping RECOVER leaves files at backup-time SCN — inconsistent with the control file, so the database won't open. RMAN's RECOVER DATABASE does the roll-forward; then OPEN RESETLOGS if recovery was incomplete."}, {"answer": 0, "choices": ["Incremental strategy: weekly level-0 + daily level-1 (differential or cumulative) — faster backups, reasonable restore chains; validate with RESTORE VALIDATE and periodic test restores", "Full backup every night — simplest, always best", "Incrementals are unrestorable", "Cumulative incrementals don't exist in RMAN"], "evidence": [], "hint": "What backs up only changed blocks, and how do you prove the backups work?", "id": "ora-rman-strategy", "mins": 6, "objectives": ["RMAN", "Incremental backups", "Backup validation"], "prompt": "What is a sane RMAN backup strategy, and how is it proven?", "situation": "A 5 TB database does full backups nightly — the window is blown. Nobody has ever test-restored.", "title": "The blown backup window", "why": "RMAN incremental backups (level 0 base + level 1 changed-blocks-only; differential = since last level-1, cumulative = since last level-0) shrink the nightly window dramatically. Block change tracking makes incrementals fast. And backups are Schrödinger's backups until tested: RESTORE VALIDATE checks readability, but only a real test restore proves recoverability. Untested backups are hopes, not plans."}, {"answer": 0, "choices": ["Flashback (FLASHBACK TABLE/DATABASE) for logical errors — rewinds to a before-image using undo/flashback logs, fast and online; media recovery (RMAN) is for physical loss", "Flashback recovers lost datafiles", "RMAN is for logical errors", "They are interchangeable"], "evidence": [], "hint": "Dropped the wrong table at 10 AM — do you need the backup tapes, or the undo?", "id": "ora-flashback", "mins": 6, "objectives": ["Flashback", "Logical vs physical recovery"], "prompt": "When do you use Flashback vs RMAN media recovery?", "situation": "Someone drops the ORDERS table at 10 AM (logical error). Separately: a disk dies (physical loss). The team reaches for RMAN for both.", "title": "The dropped table", "why": "Flashback rewinds logical mistakes using undo/flashback logs — FLASHBACK TABLE TO TIMESTAMP can resurrect the dropped table in minutes without a restore. RMAN media recovery rebuilds physically lost/damaged files from backups + redo. Rule: logical error (wrong DML, dropped object) → Flashback (fast, online); physical loss (dead disk, corrupt file) → RMAN restore + recover. (Recycle bin also saves dropped tables if not purged.)"}, {"answer": 0, "choices": ["Retention policy (recovery window or redundancy) + archived-log deletion policy — RMAN knows what's obsolete and DELETE OBSOLETE cleans it; deleting OS files by hand corrupts the catalog", "Delete old backup files with rm — RMAN notices automatically", "Keep every backup forever — disk is cheap", "Retention policies are advisory only"], "evidence": [], "hint": "If you rm a backup piece, what does the RMAN catalog still believe?", "id": "ora-retention", "mins": 5, "objectives": ["Retention policy", "Backup maintenance"], "prompt": "How do you manage backup lifecycle without breaking RMAN?", "situation": "The backup disk fills. An admin rm's old backup files; the next RMAN job fails with 'backup piece not found'.", "title": "The full backup disk", "why": "RMAN's catalog tracks every backup piece — OS-level deletes leave phantom catalog entries. Manage lifecycle inside RMAN: CONFIGURE RETENTION POLICY (recovery window of N days, or redundancy of N copies), then DELETE OBSOLETE / DELETE EXPIRED to clean catalog + files together. CROSSCHECK syncs the catalog with reality after any external change."}, {"answer": 0, "choices": ["Incomplete recovery: restore, recover until the last good log/time, then OPEN RESETLOGS — creating a new incarnation; document the divergence for the standby", "OPEN RESETLOGS is never needed", "Recover to the corrupted log — corruption is usually harmless", "Resetlogs can be avoided by restoring twice"], "evidence": [], "hint": "After recovering to a point before the end of redo, what must happen to the log sequence?", "id": "ora-resetlogs", "mins": 6, "objectives": ["Incomplete recovery", "RESETLOGS", "Incarnations"], "prompt": "What is incomplete recovery, and why does it end with RESETLOGS?", "situation": "Archived logs are missing a 30-minute gap — recovery can only reach 1:30 PM, not the 2:00 PM failure point.", "title": "The gap in the logs", "why": "When you can't recover to the present (missing/corrupt logs), you do incomplete recovery: RESTORE, RECOVER UNTIL TIME/SEQUENCE, then OPEN RESETLOGS — which resets the log sequence and starts a new database incarnation. Consequences: take a fresh backup immediately (old backups belong to the prior incarnation), and Data Guard standbys need re-instantiation. RESETLOGS marks the timeline fork — it's deliberate, not a failure."}]}, {"id": "performance", "name": "Performance", "scenarios": [{"answer": 0, "choices": ["AWR (Automatic Workload Repository) snapshots + ADDM findings, and ASH for second-by-second session history — start with wait events and top SQL, not guesses", "Add indexes to every table — indexes always help", "Increase SGA until the problem disappears", "Restart the database; performance issues are usually transient"], "evidence": [], "hint": "What tells you where time actually went, versus where you guess it went?", "id": "ora-awr", "mins": 6, "objectives": ["AWR", "ASH", "Performance methodology"], "prompt": "What is the evidence-driven diagnosis path?", "situation": "'The database is slow' — the team wants to add indexes everywhere. Nobody has looked at AWR.", "title": "The slow database", "why": "Methodology: AWR snapshots capture workload stats over intervals; ADDM analyzes them and ranks findings; ASH samples active sessions every second for fine-grained 'who waited on what'. Read top wait events first (they name the bottleneck: db file sequential read = I/O, latch free = contention), then top SQL by elapsed time. Evidence before indexes."}, {"answer": 0, "choices": ["Stale or missing optimizer statistics — the optimizer's cost model depends on them; gather with DBMS_STATS and check LAST_ANALYZED; histograms matter for skewed columns", "Statistics are only for the DBA's curiosity", "The optimizer doesn't use statistics", "Gathering stats always makes things worse"], "evidence": [], "hint": "What does the optimizer base its cost estimates on?", "id": "ora-stats", "mins": 6, "objectives": ["Optimizer statistics", "DBMS_STATS"], "prompt": "What is the most common cause of a suddenly-bad plan?", "situation": "A query's plan flips overnight from an index range scan to a full table scan. Data volume barely changed. Stats were last gathered 6 months ago.", "title": "The flipped plan", "why": "The cost-based optimizer chooses plans from statistics (row counts, distinct values, histograms, index clustering). Stale stats → wrong costs → bad plans. DBMS_STATS.GATHER_* refreshes them; check DBA_TAB_STATISTICS.LAST_ANALYZED. Skewed columns need histograms or the optimizer assumes uniform distribution. Auto stats jobs usually handle this — verify they're actually running."}, {"answer": 0, "choices": ["Read the plan: operation order, access paths (full scan vs index), join methods, and the E-Rows vs A-Rows gap — a big gap means bad stats; DBMS_XPLAN shows it", "Plans are unreadable; just try hints", "The plan with the most steps is best", "Cost numbers are exact predictions"], "evidence": [["plan.sql", "SELECT * FROM TABLE(DBMS_XPLAN.DISPLAY_CURSOR('sql_id','', 'ALLSTATS LAST'));"], ["note", "E-Rows=10, A-Rows=2,000,000 on the driving table"]], "hint": "Estimated 10 rows, actual 2 million — what does that gap tell you?", "id": "ora-xplan", "mins": 6, "objectives": ["Execution plans", "DBMS_XPLAN"], "prompt": "How do you read an execution plan for the smoking gun?", "situation": "A query runs 100x slower than expected. DBMS_XPLAN shows E-Rows=10 vs A-Rows=2,000,000 on the driving table.", "title": "The lying estimate", "why": "The E-Rows/A-Rows gap is the classic smoking gun: the optimizer estimated 10 rows (nested loops looked cheap) but got 2M (nested loops = disaster). Root cause is almost always bad/missing stats or missing histograms. Fix the inputs (stats), not the plan — hints freeze a plan that may rot. Read plans inside-out: driving table, access path, join method, then row estimates."}, {"answer": 0, "choices": ["Wait events name the bottleneck: 'db file sequential read' = single-block I/O (index reads — check storage/index efficiency); 'log file sync' = commit latency (LGWR/storage); 'latch: cache buffers chains' = hot blocks (contention)", "Wait events are informational only", "All waits mean 'add CPU'", "'Idle' waits are the ones to tune"], "evidence": [], "hint": "Which waits represent real bottlenecks, and which are just sessions sitting idle?", "id": "ora-wait-events", "mins": 6, "objectives": ["Wait events", "Bottleneck analysis"], "prompt": "How do you translate top wait events into action?", "situation": "AWR top waits: 'db file sequential read', 'log file sync', 'latch: cache buffers chains'. The team proposes adding CPUs.", "title": "The wait-event readout", "why": "Tune what you wait on: sequential read (single-block reads, often index-driven) → I/O subsystem or index/plan efficiency; log file sync → commit frequency and redo storage latency (batch commits, faster redo disk); cache-buffers-chains latch → hot blocks (partitioning, reverse-key indexes, reduce contention). Idle waits (SQL*Net message from client) are sessions waiting for the app — not tunable. CPUs help only if the top wait is CPU."}, {"answer": 0, "choices": ["Indexes speed reads but cost on DML (maintenance per insert/update/delete) and space — index selectively: high-selectivity WHERE/JOIN columns, and drop unused ones (monitor via index usage tracking)", "Index every column — reads are all that matter", "Indexes slow down SELECTs too", "Unused indexes are harmless"], "evidence": [], "hint": "What happens on every INSERT when a table has 12 indexes?", "id": "ora-index-tradeoff", "mins": 5, "objectives": ["Index design", "DML overhead"], "prompt": "What is the indexing trade-off?", "situation": "A write-heavy table has 12 indexes 'for reporting'. Inserts are slow; reports use 3 of the indexes.", "title": "The over-indexed table", "why": "Every index is maintained on every DML — 12 indexes ≈ 12 extra writes per insert, plus space and slower stats gathering. Index the selective predicates that matter (WHERE/JOIN/ORDER BY on high-cardinality columns); monitor usage (DBA_INDEX_USAGE / index monitoring) and drop the dead weight. Composite indexes serve multi-column predicates; function-based indexes serve expressions."}, {"answer": 0, "choices": ["Bind variables / cursor sharing — literals force a hard parse per distinct value (shared pool churn, latch contention); binds make SQL reusable", "More literals improve plan quality", "Cursor sharing is automatic for all literals", "Hard parses are cheap"], "evidence": [["app.sql", "SELECT * FROM orders WHERE customer_id = 12345; -- 50k distinct literals/day"]], "hint": "What happens in the shared pool when every execution has a different literal?", "id": "ora-bind-variables", "mins": 5, "objectives": ["Bind variables", "Shared pool", "Hard parses"], "prompt": "Why is literal-heavy SQL a scalability killer?", "situation": "An app concatenates values into SQL — 50k distinct statements/day. The shared pool churns, library-cache latches spike, CPU burns on parsing.", "title": "The parse storm", "why": "Each unique literal text is a new cursor: hard parse (syntax, optimize, load into shared pool) every time — CPU-intensive and latch-contended. Bind variables make the SQL text identical, so it's parsed once and reused (soft parses). CURSOR_SHARING=FORCE is a band-aid with plan-stability risks; fixing the app to bind is the cure. Parse once, execute many."}]}, {"id": "dataguard", "name": "Data Guard Basics", "scenarios": [{"answer": 0, "choices": ["Physical standby: block-for-block replica via redo apply — the DR copy; logical standby: SQL-apply replica, open read-write for reporting/offload — choose by whether you need an identical DR target or a usable reporting copy", "They are the same thing", "Logical standby is the DR copy", "Physical standby accepts writes"], "evidence": [], "hint": "Which one is a byte-identical copy, and which one is open for queries and reporting?", "id": "ora-standby-types", "mins": 6, "objectives": ["Physical standby", "Logical standby"], "prompt": "What distinguishes physical from logical standby?", "situation": "A team wants both disaster recovery and a reporting offload. They assume one standby does both.", "title": "The two-standby question", "why": "Physical standby = redo apply, block-identical, mounted (read-only with Active Data Guard) — the true DR replica for failover. Logical standby = SQL apply into open tables, read-write — usable for reporting and even rolling upgrades, but it's a logical reconstruction, not a block copy. One physical standby is the DR answer; add logical/ADG readers for offload."}, {"answer": 0, "choices": ["Switchover = planned role reversal (primary ↔ standby), no data loss, reversible; Failover = emergency promotion when primary is dead, potential data loss, standby becomes primary", "They are synonyms", "Failover is planned; switchover is emergency", "Switchover always loses data"], "evidence": [], "hint": "Which one do you schedule for maintenance, and which one do you trigger at 3 AM?", "id": "ora-switchover-failover", "mins": 5, "objectives": ["Switchover", "Failover"], "prompt": "What is the difference, and when is each used?", "situation": "A planned datacenter maintenance needs the standby to take over with zero data loss. Separately, the team asks what happens if the primary datacenter burns down.", "title": "The role transition", "why": "Switchover: coordinated, both databases healthy — primary becomes standby and vice versa, zero data loss, used for maintenance/patching. Failover: primary is gone — promote the standby, accept possible data loss (depends on protection mode/sync), one-way. Test switchovers regularly; they're also your DR drill."}, {"answer": 0, "choices": ["Maximum Performance (async, no data-loss guarantee, minimal primary impact) → Maximum Availability (sync, zero loss unless standby unreachable, then async) → Maximum Protection (sync, zero loss guaranteed, primary stalls if standby lost)", "The modes only affect speed, not data loss", "Maximum Protection is the default", "Modes can't be changed after setup"], "evidence": [], "hint": "Which mode can stall the primary to guarantee zero data loss?", "id": "ora-protection-modes", "mins": 6, "objectives": ["Protection modes", "Redo transport"], "prompt": "How do the three protection modes trade off?", "situation": "A bank demands zero data loss; a SaaS company prioritizes primary performance. Both ask which mode.", "title": "The zero-loss demand", "why": "Max Performance: ASYNC redo — primary never waits, standby may lag (potential loss). Max Availability: SYNC — zero loss while standby is reachable; drops to async if the standby fails (primary keeps running). Max Protection: SYNC with guarantee — primary stalls rather than risk loss (highest safety, availability cost). Match the mode to the RPO: banks → availability/protection; latency-sensitive SaaS → performance."}, {"answer": 0, "choices": ["Redo transport lag / apply lag — query V$DATAGUARD_STATS or the broker's SHOW DATABASE; gaps come from network issues, standby downtime, or log deletion on primary before shipping", "Standbys never lag", "Lag is unmeasurable", "Delete archived logs aggressively to reduce lag"], "evidence": [], "hint": "Which view shows 'how far behind is my standby, in time'?", "id": "ora-dg-lag", "mins": 5, "objectives": ["Redo gaps", "Lag monitoring"], "prompt": "How do you detect and diagnose standby lag?", "situation": "After a network blip, the team suspects the standby is behind but has no measurement.", "title": "The silent gap", "why": "Monitor transport lag (redo shipped vs generated) and apply lag (redo applied vs received) via V$DATAGUARD_STATS / Data Guard Broker. Gaps arise from network outages, standby downtime, or primary deleting logs before shipment (size the fast recovery area / set log deletion policies accordingly). FAL (fetch archive log) usually auto-resolves gaps — verify it did."}, {"answer": 0, "choices": ["Observer + Fast-Start Failover (FSFO) — automates detection and promotion within seconds when conditions are met; manual failover is the fallback", "Automatic failover is the default in Data Guard", "The observer replaces the standby", "FSFO works without any configuration"], "evidence": [], "hint": "What component watches the primary and triggers promotion without a human?", "id": "ora-fsfo", "mins": 5, "objectives": ["Fast-Start Failover", "Observer"], "prompt": "How do you automate failover, and what are the prerequisites?", "situation": "RTO demands failover in under a minute — too fast for a human-driven runbook.", "title": "The 60-second RTO", "why": "Fast-Start Failover: the Observer process monitors primary/standby health and auto-promotes the standby when the primary fails (with configurable conditions to avoid flapping). Requires the broker, SYNC-ish transport (max availability/protection), and careful fencing to prevent split-brain. Automation buys speed; it demands rigorous testing."}, {"answer": 0, "choices": ["Active Data Guard — real-time query offload to the physical standby while redo apply continues; also enables block-change tracking offload and fast incremental backups", "Open the standby read-write — it stays a standby", "Standbys can't serve any workload", "Reporting must wait for failover"], "evidence": [], "hint": "Which licensed option lets a physical standby serve queries while staying a standby?", "id": "ora-adg", "mins": 5, "objectives": ["Active Data Guard", "Read offload"], "prompt": "How do you run reports on the standby without breaking DR?", "situation": "Reporting queries hammer the primary. The team has a physical standby sitting idle and asks if it can help.", "title": "The idle standby", "why": "Active Data Guard (licensed option) opens the physical standby read-only while redo apply continues — real-time reporting offload with fresh data, plus DML redirection and offloaded backups. Without ADG, a physical standby is mounted-but-closed (no queries). It's the sanctioned way to monetize the DR investment."}]}], "lessons": [{"domain_id": "architecture", "title": "Architecture — Core concepts", "concepts": ["Instance = memory (SGA) + background processes; database = physical files (datafiles, control files, redo logs). The control file is the database's metadata hub: datafile/tempfile locations, log sequence numbers, checkpoint SCN, RMAN repository info.", "Crash recovery: on startup, Oracle performs automatic crash recovery: SMON rolls forward committed changes from redo and rolls back uncommitted ones. Lose all copies and the instance can't mount — recovery becomes a rebuild-from-backup exercise.", "Background processes: multitenant: one CDB (container database) hosts many PDBs (pluggable databases), sharing one instance/SGA/background processes.", "Write-ahead logging: this write-ahead logging means: commit is fast because only redo is forced; datafiles catch up later.", "SGA: sizing: SGA for caching, PGA for per-session work areas.", "PGA (Program Global Area) is per-server-process: sort areas, hash areas, session cursor state."], "example": {"lang": "text", "code": "Worked example — instance vs database\nSetup: Instance = memory (SGA) + background processes; database = physical files (datafiles, control files, redo logs).\nReasoning: This write-ahead logging means: commit is fast because only redo is forced; datafiles catch up later.\nTakeaway: Read consistency: a query sees data as of its start SCN, reconstructed from undo (before-images) when blocks changed underneath it.", "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."}, "pitfalls": ["Common trap: multitenant requires a separate license for every PDB in all editions.", "Common trap: PGA is shared across sessions for efficiency.", "Common trap: the database is corrupted; restore from backup.", "Common trap: datafiles are gone when the instance dies."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "installation", "title": "Installation & Creation — Core concepts", "concepts": ["DBCA is the supported, standard path: it validates prerequisites, applies templates (including CDB/PDB, sample schemas), sets parameters sensibly, and configures listeners/EM. Response files (silent install) and DBCA templates make builds deterministic: same parameters, same options, every time — and they're version-controllable.", "Database creation methods: manual creation (CREATE DATABASE script) is for unusual cases — learning internals, or custom layouts DBCA can't express. DB_BLOCK_SIZE is set at database creation and immutable after.", "Installation prerequisites: oracle has hard OS prerequisites: the oracle user and groups (oinstall, dba), kernel parameters for shared memory/semaphores (SHMMAX, SEMMNS etc.), package dependencies, and ulimits.", "Character sets: the database character set determines how text is stored; changing it after data exists ranges from restricted (CSSCAN/CSALTER for compatible supersets) to full export/import."], "example": {"lang": "text", "code": "Worked example — dbca\nSetup: DBCA is the supported, standard path: it validates prerequisites, applies templates (including CDB/PDB, sample schemas), sets parameters sensibly…\nReasoning: Manual creation (CREATE DATABASE script) is for unusual cases — learning internals, or custom layouts DBCA can't express.\nTakeaway: Production: DBCA (silent mode for automation); learning: manual once, to understand what DBCA does.", "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."}, "pitfalls": ["Common trap: character sets can be changed anytime with ALTER DATABASE.", "Common trap: kernel parameters are set automatically on all platforms.", "Common trap: NLS settings don't affect stored data.", "Common trap: creation success message is sufficient proof."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "storage", "title": "Storage Management — Core concepts", "concepts": ["Tablespace roles: block (smallest, e.g., 8 KB) → extent (set of contiguous blocks allocated at once) → segment (the table/index/partition's extents) → tablespace → datafile. Smallfile (traditional, up to 1024 datafiles per tablespace) is the default and fine for typical sizes.", "SYSTEM/SYSAUX: not all 'full' is equal: SYSTEM/SYSAUX full blocks DDL and can wedge the database (page now); TEMP full fails the big queries using it (add tempfile or tune the query); UNDO full stalls DML (add space or reduce batch commit scope).", "AUTOEXTEND ON with a sensible MAXSIZE lets datafiles grow with demand while capping runaway growth (a bad load can't fill the disk).", "Space management: understanding the hierarchy is what makes space reports readable. Each has different space pressure symptoms: SYSTEM full = can't do DDL; TEMP full = big queries fail; UNDO full = DML stalls.", "ASM is Oracle's volume manager/filesystem: it stripes data across disks, mirrors per failure group, and rebalances online when disks are added/removed. Bigfile tablespaces use one datafile (up to ~128 TB depending on block size) — fewer files to manage, ideal for very large databases and ASM.", "Storage options: filesystem (or NFS/dNFS) storage is simpler and fine for many cases, but striping/mirroring/redundancy become your problem."], "example": {"lang": "text", "code": "Worked example — tablespace roles\nSetup: Understanding the hierarchy is what makes space reports readable.\nReasoning: Bigfile tablespaces use one datafile (up to ~128 TB depending on block size) — fewer files to manage, ideal for very large databases and ASM.\nTakeaway: Not all 'full' is equal: SYSTEM/SYSAUX full blocks DDL and can wedge the database (page now); TEMP full fails the big queries using it (add tempfile…", "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."}, "pitfalls": ["Common trap: space alerts are unnecessary with AUTOEXTEND.", "Common trap: one giant datafile per tablespace is best practice.", "Common trap: disable AUTOEXTEND everywhere and extend manually at 3 AM.", "Common trap: space issues resolve themselves."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "backup-recovery", "title": "Backup & Recovery — Core concepts", "concepts": ["ARCHIVELOG preserves each filled log (ARCn copies it out), so RMAN can restore the midnight backup and roll forward through archived logs to 1:59 PM.", "Point-in-time recovery: that's point-in-time recovery, and it's why production runs ARCHIVELOG. When you can't recover to the present (missing/corrupt logs), you do incomplete recovery: RESTORE, RECOVER UNTIL TIME/SEQUENCE, then OPEN RESETLOGS — which resets the log sequence and starts a new database incarnation.", "Restore vs recover: rule: logical error (wrong DML, dropped object) → Flashback (fast, online); physical loss (dead disk, corrupt file) → RMAN restore + recover.", "RMAN concepts: manage lifecycle inside RMAN: CONFIGURE RETENTION POLICY (recovery window of N days, or redundancy of N copies), then DELETE OBSOLETE / DELETE EXPIRED to clean catalog + files together.", "RMAN media recovery rebuilds physically lost/damaged files from backups + redo. RMAN's catalog tracks every backup piece — OS-level deletes leave phantom catalog entries.", "Incremental backups: and backups are Schrödinger's backups until tested: RESTORE VALIDATE checks readability, but only a real test restore proves recoverability. Consequences: take a fresh backup immediately (old backups belong to the prior incarnation), and Data Guard standbys need re-instantiation."], "example": {"lang": "text", "code": "Worked example — archivelog mode\nSetup: Rule: logical error (wrong DML, dropped object) → Flashback (fast, online); physical loss (dead disk, corrupt file) → RMAN restore + recover.\nReasoning: When you can't recover to the present (missing/corrupt logs), you do incomplete recovery: RESTORE, RECOVER UNTIL TIME/SEQUENCE, then OPEN RESETLOGS —…\nTakeaway: ARCHIVELOG preserves each filled log (ARCn copies it out), so RMAN can restore the midnight backup and roll forward through archived logs to 1:59 PM.", "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."}, "pitfalls": ["Common trap: recover copies files; restore applies logs.", "Common trap: ARCHIVELOG mode slows down commits unacceptably.", "Common trap: NOARCHIVELOG is fine for production; backups are enough.", "Common trap: cumulative incrementals don't exist in RMAN."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "performance", "title": "Performance — Core concepts", "concepts": ["AWR: methodology: AWR snapshots capture workload stats over intervals; ADDM analyzes them and ranks findings; ASH samples active sessions every second for fine-grained 'who waited on what'.", "Optimizer statistics: the cost-based optimizer chooses plans from statistics (row counts, distinct values, histograms, index clustering). The E-Rows/A-Rows gap is the classic smoking gun: the optimizer estimated 10 rows (nested loops looked cheap) but got 2M (nested loops = disaster).", "DBMS_STATS.GATHER_* refreshes them; check DBA_TAB_STATISTICS.LAST_ANALYZED.", "Execution plans: read plans inside-out: driving table, access path, join method, then row estimates."], "example": {"lang": "sql", "code": "SELECT * FROM TABLE(DBMS_XPLAN.DISPLAY_CURSOR('sql_id','', 'ALLSTATS LAST'));", "walkthrough": "The E-Rows/A-Rows gap is the classic smoking gun: the optimizer estimated 10 rows (nested loops looked cheap) but got 2M (nested loops = disaster). Root cause is almost always bad/missing stats or missing histograms. Fix the inputs (stats), not the plan — hints freeze a plan that may rot."}, "pitfalls": ["Common trap: the optimizer doesn't use statistics.", "Common trap: restart the database; performance issues are usually transient.", "Common trap: plans are unreadable; just try hints.", "Common trap: gathering stats always makes things worse."], "try_it": "Try it now in the Terminal tab →"}, {"domain_id": "dataguard", "title": "Data Guard Basics — Core concepts", "concepts": ["Physical standby: active Data Guard (licensed option) opens the physical standby read-only while redo apply continues — real-time reporting offload with fresh data, plus DML redirection and offloaded backups.", "Logical standby = SQL apply into open tables, read-write — usable for reporting and even rolling upgrades, but it's a logical reconstruction, not a block copy. Failover: primary is gone — promote the standby, accept possible data loss (depends on protection mode/sync), one-way.", "Switchover: coordinated, both databases healthy — primary becomes standby and vice versa, zero data loss, used for maintenance/patching.", "Failover: fast-Start Failover: the Observer process monitors primary/standby health and auto-promotes the standby when the primary fails (with configurable conditions to avoid flapping).", "Protection modes: max Protection: SYNC with guarantee — primary stalls rather than risk loss (highest safety, availability cost).", "Redo transport: monitor transport lag (redo shipped vs generated) and apply lag (redo applied vs received) via V$DATAGUARD_STATS / Data Guard Broker. Max Performance: ASYNC redo — primary never waits, standby may lag (potential loss)."], "example": {"lang": "text", "code": "Worked example — physical standby\nSetup: Active Data Guard (licensed option) opens the physical standby read-only while redo apply continues — real-time reporting offload with fresh data…\nReasoning: Physical standby = redo apply, block-identical, mounted (read-only with Active Data Guard) — the true DR replica for failover.\nTakeaway: Max Performance: ASYNC redo — primary never waits, standby may lag (potential loss).", "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."}, "pitfalls": ["Common trap: automatic failover is the default in Data Guard.", "Common trap: the modes only affect speed, not data loss.", "Common trap: physical standby accepts writes.", "Common trap: failover is planned; switchover is emergency."], "try_it": "Work through this in the Terminal tab →"}], "sections": [{"id": "foundations", "title": "Foundations", "kind": "foundation", "lectures": ["f-data-basics-0", "f-data-basics-1", "f-data-basics-2", "f-linux-cli-0", "f-linux-cli-1", "f-linux-cli-2"], "lab_ids": [], "drill_domain_ids": []}, {"id": "core", "title": "Core", "kind": "core", "lectures": ["c-installation", "c-storage", "c-backup-recovery", "c-performance", "c-dataguard"], "lab_ids": ["oracle-db-lab-1", "oracle-db-lab-2"], "drill_domain_ids": ["installation", "storage", "backup-recovery", "performance", "dataguard"]}, {"id": "advanced", "title": "Advanced", "kind": "advanced", "lectures": ["c-architecture"], "lab_ids": ["oracle-db-lab-3", "oracle-db-lab-4"], "drill_domain_ids": ["architecture"]}, {"id": "exam-prep", "title": "Exam Prep", "kind": "exam-prep", "lectures": [], "lab_ids": [], "drill_domain_ids": ["architecture", "installation", "storage", "backup-recovery", "performance", "dataguard"]}], "slug": "oracle-db", "tagline": "23ai/19c DBA — 1Z0-182/082 concepts", "title": "Oracle Database Administration", "vendor": {"certs": "1Z0-182, 1Z0-082", "docs": "https://education.oracle.com", "name": "Oracle"}, "labs": [{"id": "oracle-db-lab-1", "title": "Instance vs database — OCI CLI drill", "objective": "Run a short sequence of OCI CLI commands that demonstrates instance vs database, then verify each result against the expected output.", "steps": ["This lab reworks the Architecture practice scenario \"The power outage\" into commands you run yourself — same concept, hands-on instead of multiple choice.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: oci iam user list — the JSON envelope carries the data key", "Type exactly: oci compute instance list — the JSON envelope carries the data key", "In your own words, say what each command's output taught you about instance vs database."], "checks": [{"command_pattern": "oci iam user list", "expect_contains": "data", "hint": "In the Terminal tab, run `oci iam user list`. If the check fails, confirm you typed it exactly and that the output contains \"data\"."}, {"command_pattern": "oci compute instance list", "expect_contains": "data", "hint": "In the Terminal tab, run `oci compute instance list`. If the check fails, confirm you typed it exactly and that the output contains \"data\"."}], "success_message": "Lab complete — instance vs database practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"id": "oracle-db-lab-2", "title": "DBCA — OCI CLI drill", "objective": "Use the OCI CLI to explore DBCA hands-on: type each command, read what comes back, and connect the output to the concept.", "steps": ["Inspired by the Installation & Creation scenario \"The creation debate\": take its core idea and prove it live in the terminal instead of answering on paper.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: oci iam user list — the JSON envelope carries the data key", "Type exactly: oci compute instance list — the JSON envelope carries the data key", "In your own words, say what each command's output taught you about DBCA."], "checks": [{"command_pattern": "oci iam user list", "expect_contains": "data", "hint": "In the Terminal tab, run `oci iam user list`. If the check fails, confirm you typed it exactly and that the output contains \"data\"."}, {"command_pattern": "oci compute instance list", "expect_contains": "data", "hint": "In the Terminal tab, run `oci compute instance list`. If the check fails, confirm you typed it exactly and that the output contains \"data\"."}], "success_message": "Lab complete — DBCA practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"id": "oracle-db-lab-3", "title": "Tablespace roles — OCI CLI drill", "objective": "Prove you can apply tablespace roles in the OCI CLI — follow the steps, watch the output, and confirm every check passes.", "steps": ["The Storage Management scenario \"The SYSTEM squatter\" tests this concept as a question. This lab makes you demonstrate it with real commands.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: oci iam user list — the JSON envelope carries the data key", "Type exactly: oci compute instance list — the JSON envelope carries the data key", "In your own words, say what each command's output taught you about tablespace roles."], "checks": [{"command_pattern": "oci iam user list", "expect_contains": "data", "hint": "In the Terminal tab, run `oci iam user list`. If the check fails, confirm you typed it exactly and that the output contains \"data\"."}, {"command_pattern": "oci compute instance list", "expect_contains": "data", "hint": "In the Terminal tab, run `oci compute instance list`. If the check fails, confirm you typed it exactly and that the output contains \"data\"."}], "success_message": "Lab complete — tablespace roles practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"id": "oracle-db-lab-4", "title": "ARCHIVELOG mode — OCI CLI drill", "objective": "Run a short sequence of OCI CLI commands that demonstrates ARCHIVELOG mode, then verify each result against the expected output.", "steps": ["This lab reworks the Backup & Recovery practice scenario \"The 2 PM failure\" into commands you run yourself — same concept, hands-on instead of multiple choice.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: oci iam user list — the JSON envelope carries the data key", "Type exactly: oci compute instance list — the JSON envelope carries the data key", "In your own words, say what each command's output taught you about ARCHIVELOG mode."], "checks": [{"command_pattern": "oci iam user list", "expect_contains": "data", "hint": "In the Terminal tab, run `oci iam user list`. If the check fails, confirm you typed it exactly and that the output contains \"data\"."}, {"command_pattern": "oci compute instance list", "expect_contains": "data", "hint": "In the Terminal tab, run `oci compute instance list`. If the check fails, confirm you typed it exactly and that the output contains \"data\"."}], "success_message": "Lab complete — ARCHIVELOG mode practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"checks": [{"command_pattern": "oci iam compartment list", "expect_contains": "ilb-prod", "hint": "Run `oci iam compartment list`."}, {"command_pattern": "oci iam compartment list", "expect_contains": "ACTIVE", "hint": "Read the lifecycle-state column."}, {"command_pattern": "oci version", "expect_contains": "Oracle Cloud Infrastructure CLI 3.44.1", "hint": "Run `oci version`."}], "difficulty": 1, "id": "oracle-db-lab-5", "objective": "Map the tenancy: compartments and CLI version, the DBA's starting point.", "steps": ["Open the Terminal tab for this bootcamp.", "Type exactly: oci iam compartment list — record compartment names and states.", "Type exactly: oci iam group list — note who can administer.", "Type exactly: oci version — record the CLI version.", "Why does a DBA care about compartments before touching a database? One sentence."], "success_message": "Lab complete — tenancy mapped. A DBA who knows the tenancy never provisions into the wrong place.", "title": "Tenancy recon — OCI drill"}, {"checks": [{"command_pattern": "oci compute instance list", "expect_contains": "ilb-db-01", "hint": "Run `oci compute instance list`."}, {"command_pattern": "oci compute instance list", "expect_contains": "STOPPED", "hint": "Read the lifecycle-state column — which instance is stopped?"}, {"command_pattern": "oci compute image list", "expect_contains": "Oracle-Linux-9.5", "hint": "Run `oci compute image list`."}], "difficulty": 1, "id": "oracle-db-lab-6", "objective": "Find the database host: identify the stopped DB instance and the Oracle Linux image.", "steps": ["Open the Terminal tab.", "Type exactly: oci compute instance list — find the instance named ilb-db-01.", "Record its shape and lifecycle-state. Why might a DB host be STOPPED?", "Type exactly: oci compute image list — record the Oracle Linux image.", "In one sentence: what does the shape VM.Standard.E5.Flex tell you about sizing?"], "success_message": "Lab complete — DB host identified. Instance states are the first thing a DBA checks.", "title": "Find the database host — OCI drill"}, {"checks": [{"command_pattern": "oci compute instance launch --display-name ilb-db-lab", "expect_contains": "PROVISIONING", "hint": "Run `oci compute instance launch --display-name ilb-db-lab`."}, {"command_pattern": "oci compute instance list", "expect_contains": "ilb-db-lab", "hint": "Run `oci compute instance list` and find your instance."}], "difficulty": 2, "id": "oracle-db-lab-7", "objective": "Provision a lab database host and confirm it enters PROVISIONING.", "steps": ["Open the Terminal tab.", "Type exactly: oci compute instance launch --display-name ilb-db-lab — read the lifecycle-state.", "Type exactly: oci compute instance list — confirm ilb-db-lab appears.", "What must happen on this host before a database can be created? Name two things (OS patches, Oracle software install)."], "success_message": "Lab complete — lab host provisioning. Host first, database second: the DBA order of operations.", "title": "Provision a lab DB host — OCI drill"}, {"checks": [{"command_pattern": "oci os bucket list", "expect_contains": "ilb-artifacts", "hint": "Run `oci os bucket list`."}, {"command_pattern": "oci network vcn list", "expect_contains": "10.0.0.0/16", "hint": "Run `oci network vcn list` and read the cidr-block."}, {"command_pattern": "oci iam group list", "expect_contains": "ilb-admins", "hint": "Run `oci iam group list`."}], "difficulty": 3, "id": "oracle-db-lab-8", "objective": "Survey backup targets, network, and admin groups — the recovery footprint.", "steps": ["Open the Terminal tab.", "Type exactly: oci os bucket list — where would RMAN write backups?", "Type exactly: oci network vcn list — record the CIDR block for the DB subnet planning.", "Type exactly: oci iam group list — who holds admin rights over this tenancy?", "Type exactly: oci iam compartment list — which compartment should own the standby?", "Summarize the recovery footprint: backup target, network, admins."], "success_message": "Lab complete — recovery footprint surveyed. Backups, network, admins: the three legs of recoverability.", "title": "Recovery footprint survey — OCI drill"}], "foundations": [{"track": "data-basics", "why_needed": "Database administration is data stewardship. Learn what data is, how it goes wrong, and how questions become queries."}, {"track": "linux-cli", "why_needed": "Oracle DBAs live on Linux: installs, logs, and scripts all run in the terminal."}], "math": [], "simulations": [{"brief": "The database is in NOARCHIVELOG mode and last night's backup failed. The business needs point-in-time recovery capability by Friday.", "debrief": "NOARCHIVELOG means no point-in-time recovery — only whole cold backups. The fix is enabling ARCHIVELOG (requires a restart), then taking a full backup as the new baseline. Never promise PITR without archived redo.", "difficulty": 2, "domain_id": "backup-recovery", "id": "oracle-db-sim-1", "kind": "troubleshoot", "points": 15, "steps": [{"correct": 2, "evidence": [["database log", "Database in NOARCHIVELOG mode"], ["backup report", "Last successful backup: 9 days ago; last night: failed — media full"]], "explain": "Two problems: NOARCHIVELOG mode makes point-in-time recovery impossible, and the backup media is full. The recovery strategy must fix both: free or add media, enable ARCHIVELOG, then take a full baseline backup.", "options": ["Restore from the 9-day-old backup immediately", "Just free disk space and retry the same backup", "Free backup media, enable ARCHIVELOG mode, take a full baseline backup", "Switch to Data Guard instead"], "symptom": "No recent backup; NOARCHIVELOG mode."}, {"correct": 0, "evidence": [["maintenance window", "Friday 02:00 approved for restart"], ["post-change", "ARCHIVELOG enabled; full backup completed and verified"]], "explain": "ARCHIVELOG requires a database restart, which needs a change window — Friday 02:00 was the right call. The verified full backup after the change is the new recovery baseline.", "options": ["Enable ARCHIVELOG in the Friday window, then take and verify a full backup", "Enable ARCHIVELOG now without a restart", "Skip the baseline backup — archivelogs are enough", "Delay until next quarter"], "symptom": "Change window approved."}], "title": "No archivelogs, no backup"}, {"brief": "A tablespace is 95% full and the application team wants it fixed without downtime. Choose the path.", "debrief": "A full tablespace is fixed by adding space (datafile resize or add), not by deleting things blindly. AUTOEXTEND buys headroom; monitoring alerts prevent the next 2 AM page.", "difficulty": 2, "domain_id": "storage", "id": "oracle-db-sim-2", "kind": "branching", "points": 15, "steps": [{"choices": [{"feedback": "Correct: identify the top segment first, then decide.", "label": "Check which segment is growing fastest, then add a datafile", "next": "s2", "points": 2}, {"feedback": "Dropping indexes to free space trades a space problem for a performance outage.", "label": "Drop the largest index to free space", "next": "END", "outcome": "bad", "points": 0}], "id": "s1", "text": "USERS tablespace at 95%. First action?"}, {"choices": [{"feedback": "Correct — space added, and monitoring prevents recurrence.", "label": "Add the datafile and set up a tablespace-usage alert at 80%", "next": "END", "outcome": "good", "points": 2}, {"feedback": "Resizing without monitoring just moves the outage a month out.", "label": "Add the datafile and move on", "next": "END", "outcome": "bad", "points": 1}], "id": "s2", "text": "An audit table is growing 2 GB/week. Space is now added. Next?"}], "title": "Tablespace at 95%"}, {"brief": "Put these RMAN backup steps in the correct order.", "debrief": "Connect to the target, verify ARCHIVELOG mode (the prerequisite for hot backups), run the backup, then verify it — an unverified backup is a hope, not a recovery plan.", "difficulty": 1, "domain_id": "backup-recovery", "id": "oracle-db-sim-3", "kind": "ordering", "points": 10, "steps": {"context": "Taking an RMAN hot backup", "correct_order": [0, 1, 2, 3], "items": ["Connect RMAN to the target database", "Confirm the database is in ARCHIVELOG mode", "Run BACKUP DATABASE PLUS ARCHIVELOG", "Verify the backup with LIST and VALIDATE"]}, "title": "RMAN backup sequence"}, {"brief": "This init.ora excerpt is proposed for a production OLTP database. Click the misconfigured lines (2 issues to find).", "debrief": "Two tuning mistakes: a tiny SGA starves the buffer cache on an OLTP workload, and archive log destination pointing at the same disk as datafiles risks a full disk halting the database. Size memory to the workload; separate redo/archive destinations.", "difficulty": 3, "domain_id": "performance", "id": "oracle-db-sim-4", "kind": "config-check", "points": 10, "steps": {"config": "db_name=PROD\nsga_target=256M\npga_aggregate_target=512M\nlog_archive_dest_1='LOCATION=/u01/app/oracle/oradata/PROD'\ndb_block_size=8192\nprocesses=300", "find": 2, "issues": [{"description": "SGA of 256M is far too small for a production OLTP database — buffer cache starvation.", "fix": "Size sga_target to the workload (typically tens of GB on production).", "line": 2}, {"description": "Archive destination is on the same filesystem as the datafiles — a full disk stops the database.", "fix": "Point log_archive_dest_1 at a separate filesystem or FRA.", "line": 4}]}, "title": "Review the init.ora"}], "consoleSims": [{"brief": "The DBA team needs a new compartment to isolate the Data Guard standby environment. Create it in the cloud console.", "console": "generic-web", "debrief": "Data Guard standbys belong in their own compartment: network policies, IAM, and cost tracking all scope cleanly. Separation of primary and standby is both an availability and a governance practice.", "difficulty": 2, "domain_id": "dataguard", "id": "oracle-db-console-1", "tasks": [{"hint": "Name it after its role.", "id": "oracle-db-console-1-t1", "instruction": "Create a compartment named ilb-dr-standby.", "validate": {"action": "create", "params": {"name": "ilb-dr-standby", "type": "compartment"}}}, {"hint": "One line on its purpose.", "id": "oracle-db-console-1-t2", "instruction": "Set the description to 'Data Guard standby environment'.", "validate": {"action": "set-field", "params": {"field": "compartment-description", "value": "Data Guard standby environment"}}}, {"hint": "Finish the wizard.", "id": "oracle-db-console-1-t3", "instruction": "Click Create Compartment.", "validate": {"action": "click", "params": {"target": "create-compartment"}}}], "title": "Create a standby compartment"}, {"brief": "Provision an Object Storage bucket for RMAN backups with a 30-day retention mindset. Create the bucket in the console.", "console": "generic-web", "debrief": "RMAN backups need a durable, versioned target. Object Storage with versioning gives you point-in-time restore options; lifecycle rules later move old backups to Archive tier.", "difficulty": 2, "domain_id": "backup-recovery", "id": "oracle-db-console-2", "tasks": [{"hint": "Name it after its purpose.", "id": "oracle-db-console-2-t1", "instruction": "Create a bucket named ilb-rman-backups.", "validate": {"action": "create", "params": {"name": "ilb-rman-backups", "type": "bucket"}}}, {"hint": "Standard tier for active backup sets.", "id": "oracle-db-console-2-t2", "instruction": "Set the storage tier to Standard.", "validate": {"action": "set-field", "params": {"field": "storage-tier", "value": "Standard"}}}, {"hint": "Protect backup sets from overwrites.", "id": "oracle-db-console-2-t3", "instruction": "Enable Object Versioning, then click Create Bucket.", "validate": {"action": "click", "params": {"target": "create-bucket"}}}], "title": "Create an RMAN backup bucket"}], "terminalMissions": [{"brief": "List compartments for the database tenancy.", "checks": [{"command_pattern": "oci iam compartment list", "expect_contains": "ilb-prod", "hint": "Run `oci iam compartment list`."}], "difficulty": 1, "domain_id": "architecture", "id": "oracle-db-mission-1", "objectives": ["List compartments"], "success_message": "Mission complete — compartments mapped.", "title": "Compartment check"}, {"brief": "Find the database host instance.", "checks": [{"command_pattern": "oci compute instance list", "expect_contains": "ilb-db-01", "hint": "Run `oci compute instance list`."}, {"command_pattern": "oci compute instance list", "expect_contains": "STOPPED", "hint": "Read the lifecycle-state column."}], "difficulty": 1, "domain_id": "installation", "id": "oracle-db-mission-2", "objectives": ["List instances", "Identify the stopped DB host"], "success_message": "Mission complete — DB host found.", "title": "Locate the DB host"}, {"brief": "Check available platform images.", "checks": [{"command_pattern": "oci compute image list", "expect_contains": "Oracle-Linux-9.5", "hint": "Run `oci compute image list`."}], "difficulty": 2, "domain_id": "installation", "id": "oracle-db-mission-3", "objectives": ["List platform images"], "success_message": "Mission complete — images confirmed.", "title": "Image check"}, {"brief": "Verify the backup bucket exists.", "checks": [{"command_pattern": "oci os bucket list", "expect_contains": "ilb-artifacts", "hint": "Run `oci os bucket list`."}], "difficulty": 2, "domain_id": "backup-recovery", "id": "oracle-db-mission-4", "objectives": ["List Object Storage buckets"], "success_message": "Mission complete — backup target confirmed.", "title": "Backup target check"}, {"brief": "Provision a standby host for the DR exercise.", "checks": [{"command_pattern": "oci compute instance launch --display-name ilb-standby-01", "expect_contains": "PROVISIONING", "hint": "Run `oci compute instance launch --display-name ilb-standby-01`."}, {"command_pattern": "oci compute instance list", "expect_contains": "ilb-standby-01", "hint": "Run `oci compute instance list` to confirm."}], "difficulty": 3, "domain_id": "dataguard", "id": "oracle-db-mission-5", "objectives": ["Launch the standby host", "Confirm it in the inventory"], "success_message": "Mission complete — standby host provisioning.", "title": "Provision the standby host"}, {"brief": "Audit who can administer the tenancy.", "checks": [{"command_pattern": "oci iam group list", "expect_contains": "ilb-admins", "hint": "Run `oci iam group list`."}, {"command_pattern": "oci iam user list", "expect_contains": "candidate", "hint": "Run `oci iam user list`."}], "difficulty": 3, "domain_id": "architecture", "id": "oracle-db-mission-6", "objectives": ["List admin groups", "List users"], "success_message": "Mission complete — admin surface audited.", "title": "Admin audit"}], "media": [{"id": "oracle-db-architecture-diag", "kind": "diagram", "title": "Oracle Database Architecture", "svg": "assets/diagrams/oracle-db-architecture.svg", "lesson_ref": "c-architecture", "caption": "Instance (memory) vs database (files) — the core distinction.", "alt": "Oracle Database Architecture. Tiers: Instance (memory), Database (storage)."}, {"id": "oracle-db-installation-diag", "kind": "diagram", "title": "Oracle Installation Flow", "svg": "assets/diagrams/oracle-db-installation.svg", "lesson_ref": "c-installation", "caption": "Plan, install software, then create the database.", "alt": "Oracle Installation Flow. Shows: Prereqs, Software, Listener, DBCA, Verify."}, {"id": "oracle-db-storage-diag", "kind": "diagram", "title": "Oracle Storage Structures", "svg": "assets/diagrams/oracle-db-storage.svg", "lesson_ref": "c-storage", "caption": "Logical units map to physical files.", "alt": "Oracle Storage Structures. Shows: Tablespaces, Datafiles, Control files, Redo logs, ASM."}, {"id": "oracle-db-backup-recovery-diag", "kind": "diagram", "title": "RMAN Backup & Recovery", "svg": "assets/diagrams/oracle-db-backup-recovery.svg", "lesson_ref": "c-backup-recovery", "caption": "Configure, back up, validate, and rehearse restores.", "alt": "RMAN Backup & Recovery. Shows: Configure, BACKUP DATABASE, Validate, Recover, Test."}, {"id": "oracle-db-performance-diag", "kind": "diagram", "title": "Performance Tuning Basics", "svg": "assets/diagrams/oracle-db-performance.svg", "lesson_ref": "c-performance", "caption": "Measure first, then tune the top wait events.", "alt": "Performance Tuning Basics. Shows: AWR reports, ASH, Execution plans, Indexes, SGA sizing."}, {"id": "oracle-db-dataguard-diag", "kind": "diagram", "title": "Oracle Data Guard", "svg": "assets/diagrams/oracle-db-dataguard.svg", "lesson_ref": "c-dataguard", "caption": "Physical standby kept in sync via redo transport.", "alt": "Oracle Data Guard. Covers: Primary database, Physical standby, Redo transport, Fast-start failover, Observer, Switchover tests."}], "resources": {"cheatsheet": {"title": "Oracle Database Administration — Cheat Sheet", "sections": [{"heading": "Architecture", "items": ["Instance — Instance = memory (SGA) + background processes; database = physical files (datafiles, control files, redo logs). The control file is the database's metadata hub: datafile/tempfile locations, log sequence numbers, checkpoint SCN, RMAN repository info.", "Crash recovery — on startup, Oracle performs automatic crash recovery: SMON rolls forward committed changes from redo and rolls back uncommitted ones. Lose all copies and the instance can't mount — recovery becomes a rebuild-from-backup exercise.", "Background processes — multitenant: one CDB (container database) hosts many PDBs (pluggable databases), sharing one instance/SGA/background processes.", "Write-ahead logging — this write-ahead logging means: commit is fast because only redo is forced; datafiles catch up later.", "SGA — sizing: SGA for caching, PGA for per-session work areas.", "PGA (Program Global Area) is per-server-process — sort areas, hash areas, session cursor state.", "Common trap — multitenant requires a separate license for every PDB in all editions.", "Common trap — PGA is shared across sessions for efficiency.", "Common trap — the database is corrupted; restore from backup.", "Common trap — datafiles are gone when the instance dies."]}, {"heading": "Installation & Creation", "items": ["DBCA is the supported, standard path — it validates prerequisites, applies templates (including CDB/PDB, sample schemas), sets parameters sensibly, and configures listeners/EM. Response files (silent install) and DBCA templates make builds deterministic: same parameters, same options, every time…", "Database creation methods — manual creation (CREATE DATABASE script) is for unusual cases — learning internals, or custom layouts DBCA can't express. DB_BLOCK_SIZE is set at database creation and immutable after.", "Installation prerequisites — oracle has hard OS prerequisites: the oracle user and groups (oinstall, dba), kernel parameters for shared memory/semaphores (SHMMAX, SEMMNS etc.), package dependencies, and ulimits.", "Character sets — the database character set determines how text is stored; changing it after data exists ranges from restricted (CSSCAN/CSALTER for compatible supersets) to full export/import.", "Common trap — character sets can be changed anytime with ALTER DATABASE.", "Common trap — kernel parameters are set automatically on all platforms.", "Common trap — NLS settings don't affect stored data.", "Common trap — creation success message is sufficient proof."]}, {"heading": "Storage Management", "items": ["Tablespace roles — block (smallest, e.g., 8 KB) → extent (set of contiguous blocks allocated at once) → segment (the table/index/partition's extents) → tablespace → datafile. Smallfile (traditional, up to 1024 datafiles per tablespace) is the default and fine for typical sizes.", "SYSTEM/SYSAUX — not all 'full' is equal: SYSTEM/SYSAUX full blocks DDL and can wedge the database (page now); TEMP full fails the big queries using it (add tempfile or tune the query); UNDO full stalls DML (add space or reduce batch commit scope).", "AUTOEXTEND ON — AUTOEXTEND ON with a sensible MAXSIZE lets datafiles grow with demand while capping runaway growth (a bad load can't fill the disk).", "Space management — understanding the hierarchy is what makes space reports readable. Each has different space pressure symptoms: SYSTEM full = can't do DDL; TEMP full = big queries fail; UNDO full = DML stalls.", "ASM is Oracle's volume manager/filesystem — it stripes data across disks, mirrors per failure group, and rebalances online when disks are added/removed. Bigfile tablespaces use one datafile (up to ~128 TB depending on block size) — fewer files to manage, ideal for very large databases and ASM.", "Storage options — filesystem (or NFS/dNFS) storage is simpler and fine for many cases, but striping/mirroring/redundancy become your problem.", "Common trap — space alerts are unnecessary with AUTOEXTEND.", "Common trap — one giant datafile per tablespace is best practice.", "Common trap — disable AUTOEXTEND everywhere and extend manually at 3 AM.", "Common trap — space issues resolve themselves."]}, {"heading": "Backup & Recovery", "items": ["ARCHIVELOG — ARCHIVELOG preserves each filled log (ARCn copies it out), so RMAN can restore the midnight backup and roll forward through archived logs to 1:59 PM.", "Point-in-time recovery — that's point-in-time recovery, and it's why production runs ARCHIVELOG. When you can't recover to the present (missing/corrupt logs), you do incomplete recovery: RESTORE, RECOVER UNTIL TIME/SEQUENCE, then OPEN RESETLOGS — which resets the log sequence and s…", "Restore vs recover — rule: logical error (wrong DML, dropped object) → Flashback (fast, online); physical loss (dead disk, corrupt file) → RMAN restore + recover.", "RMAN concepts — manage lifecycle inside RMAN: CONFIGURE RETENTION POLICY (recovery window of N days, or redundancy of N copies), then DELETE OBSOLETE / DELETE EXPIRED to clean catalog + files together.", "RMAN — RMAN media recovery rebuilds physically lost/damaged files from backups + redo. RMAN's catalog tracks every backup piece — OS-level deletes leave phantom catalog entries.", "Incremental backups — and backups are Schrödinger's backups until tested: RESTORE VALIDATE checks readability, but only a real test restore proves recoverability. Consequences: take a fresh backup immediately (old backups belong to the prior incarnation), and Data Guard standbys…", "Common trap — recover copies files; restore applies logs.", "Common trap — ARCHIVELOG mode slows down commits unacceptably.", "Common trap — NOARCHIVELOG is fine for production; backups are enough.", "Common trap — cumulative incrementals don't exist in RMAN."]}, {"heading": "Performance", "items": ["AWR — methodology: AWR snapshots capture workload stats over intervals; ADDM analyzes them and ranks findings; ASH samples active sessions every second for fine-grained 'who waited on what'.", "Optimizer statistics — the cost-based optimizer chooses plans from statistics (row counts, distinct values, histograms, index clustering). The E-Rows/A-Rows gap is the classic smoking gun: the optimizer estimated 10 rows (nested loops looked cheap) but got 2M (nested loops = disa…", "DBMS_STATS.GATHER_ — DBMS_STATS.GATHER_* refreshes them; check DBA_TAB_STATISTICS.LAST_ANALYZED.", "Execution plans — read plans inside-out: driving table, access path, join method, then row estimates.", "Common trap — the optimizer doesn't use statistics.", "Common trap — restart the database; performance issues are usually transient.", "Common trap — plans are unreadable; just try hints.", "Common trap — gathering stats always makes things worse.", "The E-Rows/A-Rows gap is the classic smoking gun — the optimizer estimated 10 rows (nested loops looked cheap) but got 2M (nested loops = disaster). Root cause is almost always bad/missing stats or missing histograms. Fix the inputs (stats), not the plan — hints freeze a plan that may rot."]}, {"heading": "Data Guard Basics", "items": ["Physical standby — active Data Guard (licensed option) opens the physical standby read-only while redo apply continues — real-time reporting offload with fresh data, plus DML redirection and offloaded backups.", "Logical standby = SQL apply into open tables, read-write — usable for reporting and even rolling upgrades, but it's a logical reconstruction, not a block copy. Failover: primary is gone — promote the standby, accept possible data loss (depends on protection mode/sync), one-way.", "Switchover — coordinated, both databases healthy — primary becomes standby and vice versa, zero data loss, used for maintenance/patching.", "Failover — fast-Start Failover: the Observer process monitors primary/standby health and auto-promotes the standby when the primary fails (with configurable conditions to avoid flapping).", "Protection modes — max Protection: SYNC with guarantee — primary stalls rather than risk loss (highest safety, availability cost).", "Redo transport — monitor transport lag (redo shipped vs generated) and apply lag (redo applied vs received) via V$DATAGUARD_STATS / Data Guard Broker. Max Performance: ASYNC redo — primary never waits, standby may lag (potential loss).", "Common trap — automatic failover is the default in Data Guard.", "Common trap — the modes only affect speed, not data loss.", "Common trap — physical standby accepts writes.", "Common trap — failover is planned; switchover is emergency."]}]}, "glossary": [{"term": "RMAN", "def": "RMAN concepts: manage lifecycle inside RMAN: CONFIGURE RETENTION POLICY (recovery window of N days, or redundancy of N copies), then DELETE OBSOLETE / DELETE EXPIRED to clean catalog + files together."}, {"term": "SQL", "def": "Tune what you wait on: sequential read (single-block reads, often index-driven) → I/O subsystem or index/plan efficiency; log file sync → commit frequency and redo storage latency (batch commits, faster redo disk); cache-buffers-chains l…"}, {"term": "SGA", "def": "SGA: sizing: SGA for caching, PGA for per-session work areas."}, {"term": "DBCA", "def": "DBCA is the supported, standard path: it validates prerequisites, applies templates (including CDB/PDB, sample schemas), sets parameters sensibly, and configures listeners/EM. Response files (silent install) and DBCA templates make build…"}, {"term": "UNDO", "def": "Read consistency: a query sees data as of its start SCN, reconstructed from undo (before-images) when blocks changed underneath it. If undo is overwritten before the query finishes → ORA-01555."}, {"term": "RESTORE", "def": "RMAN incremental backups (level 0 base + level 1 changed-blocks-only; differential = since last level-1, cumulative = since last level-0) shrink the nightly window dramatically. Block change tracking makes incrementals fast."}, {"term": "PGA", "def": "PGA (Program Global Area) is per-server-process: sort areas, hash areas, session cursor state."}, {"term": "SYSTEM", "def": "SYSTEM/SYSAUX: not all 'full' is equal: SYSTEM/SYSAUX full blocks DDL and can wedge the database (page now); TEMP full fails the big queries using it (add tempfile or tune the query); UNDO full stalls DML (add space or reduce batch commi…"}, {"term": "AWR", "def": "AWR: methodology: AWR snapshots capture workload stats over intervals; ADDM analyzes them and ranks findings; ASH samples active sessions every second for fine-grained 'who waited on what'."}, {"term": "ASM", "def": "ASM is Oracle's volume manager/filesystem: it stripes data across disks, mirrors per failure group, and rebalances online when disks are added/removed. Bigfile tablespaces use one datafile (up to ~128 TB depending on block size) — fewer…"}, {"term": "SYNC", "def": "Max Performance: ASYNC redo — primary never waits, standby may lag (potential loss). Max Availability: SYNC — zero loss while standby is reachable; drops to async if the standby fails (primary keeps running)."}, {"term": "SYSAUX", "def": "SYSTEM/SYSAUX: not all 'full' is equal: SYSTEM/SYSAUX full blocks DDL and can wedge the database (page now); TEMP full fails the big queries using it (add tempfile or tune the query); UNDO full stalls DML (add space or reduce batch commi…"}, {"term": "ARCHIVELOG", "def": "A created database isn't a production database until: it opens cleanly after a bounce, the listener accepts connections, the alert log shows no errors, ARCHIVELOG mode + RMAN backups are configured and a test restore succeeded, and monit…"}, {"term": "OS", "def": "Oracle has hard OS prerequisites: the oracle user and groups (oinstall, dba), kernel parameters for shared memory/semaphores (SHMMAX, SEMMNS etc.), package dependencies, and ulimits. The preinstall RPM (oracle-database-preinstall) automa…"}, {"term": "ALTER", "def": "Can you ALTER a database from WE8ISO8859P1 to AL32UTF8 after it has data?"}, {"term": "MAXSIZE", "def": "AUTOEXTEND ON with a sensible MAXSIZE lets datafiles grow with demand while capping runaway growth (a bad load can't fill the disk)."}, {"term": "RECOVER", "def": "Point-in-time recovery: that's point-in-time recovery, and it's why production runs ARCHIVELOG. When you can't recover to the present (missing/corrupt logs), you do incomplete recovery: RESTORE, RECOVER UNTIL TIME/SEQUENCE, then OPEN RES…"}, {"term": "Data Guard", "def": "Physical standby: active Data Guard (licensed option) opens the physical standby read-only while redo apply continues — real-time reporting offload with fresh data, plus DML redirection and offloaded backups."}, {"term": "Failover", "def": "Logical standby = SQL apply into open tables, read-write — usable for reporting and even rolling upgrades, but it's a logical reconstruction, not a block copy. Failover: primary is gone — promote the standby, accept possible data loss (d…"}, {"term": "EM", "def": "DBCA is the supported, standard path: it validates prerequisites, applies templates (including CDB/PDB, sample schemas), sets parameters sensibly, and configures listeners/EM. Manual creation (CREATE DATABASE script) is for unusual cases…"}, {"term": "I/O", "def": "LGWR writes the redo log buffer to disk on every commit (sequential, fast) — that's the durability guarantee. DBWn writes dirty data buffers lazily in batches (random I/O, deferred)."}, {"term": "ADG", "def": "Active Data Guard (licensed option) opens the physical standby read-only while redo apply continues — real-time reporting offload with fresh data, plus DML redirection and offloaded backups. Without ADG, a physical standby is mounted-but…"}, {"term": "SYSTEM/SYSAUX", "def": "SYSTEM/SYSAUX: not all 'full' is equal: SYSTEM/SYSAUX full blocks DDL and can wedge the database (page now); TEMP full fails the big queries using it (add tempfile or tune the query); UNDO full stalls DML (add space or reduce batch commi…"}, {"term": "NFS", "def": "Storage options: filesystem (or NFS/dNFS) storage is simpler and fine for many cases, but striping/mirroring/redundancy become your problem."}, {"term": "Bigfile", "def": "Bigfile tablespaces use one datafile (up to ~128 TB depending on block size) — fewer files to manage, ideal for very large databases and ASM. Smallfile (traditional, up to 1024 datafiles per tablespace) is the default and fine for typica…"}], "links": [{"label": "Oracle — official site", "url": "https://education.oracle.com", "note": "Official vendor documentation and certification information"}, {"label": "Oracle Database documentation", "url": "https://docs.oracle.com/en/database/", "note": "Official Oracle Database docs"}, {"label": "Oracle Database 23ai docs", "url": "https://docs.oracle.com/en/database/oracle/oracle-database/", "note": "Official Oracle Database reference"}, {"label": "Oracle Database product page", "url": "https://www.oracle.com/database/", "note": "Official Oracle Database page"}, {"label": "Oracle Database technologies", "url": "https://www.oracle.com/database/technologies/", "note": "Official Oracle Database technology pages"}], "checklist": ["Get 7–8 hours of sleep the night before — fatigue destroys recall faster than any topic gap.", "Bring valid government-issued photo ID and arrive at the test center 30 minutes early.", "Eat a real meal beforehand; bring water and a light snack if the center allows them.", "Read every question twice before scanning the answer choices.", "Flag uncertain questions and move on — return with fresh eyes at the end.", "Eliminate the obviously wrong answers first, then compare the survivors.", "Budget your time: answer steadily and keep a 10–15 minute review buffer.", "Re-run your weakest-domain drill until mastery is at least 80%.", "For Architecture: restate the 'why' behind each scenario answer in your own words — if you can't explain it, you don't own it.", "Redo one Installation & Creation lab from scratch without looking at the steps.", "Recite the key Storage Management terms from the glossary aloud from memory."]}}
+{
+ "slug": "oracle-db",
+ "title": "Oracle Database",
+ "tagline": "Core Oracle Database concepts: instance architecture, multitenant design, backup and recovery with RMAN, and evidence-based performance tuning. This course confers no certificate and is not affiliated",
+ "vendor": {
+  "name": "Independent interview prep (not affiliated with ThreatLocker)",
+  "certs": "",
+  "docs": "https://www.threatlocker.com"
+ },
+ "disclaimer": "Independent interview-prep material by Interstitium Labs. Not affiliated with, endorsed by, or sponsored by ThreatLocker or any vendor mentioned. Confers no certificate. All scenarios are original practice content; no exam or vendor-training content is reproduced.",
+ "accent": "#e5484d",
+ "domains": [
+  {
+   "id": "oracle-db",
+   "name": "Oracle Database",
+   "summary": "Core Oracle Database concepts: instance architecture, multitenant design, backup and recovery with RMAN, and evidence-based performance tuning. This course confers no certificate and is not affiliated with or endorsed by Oracle.",
+   "scenarios": [
+    {
+     "id": "oracle-db-sc1",
+     "title": "Who Writes the Dirty Blocks?",
+     "situation": "You're shadowing a senior DBA. She points at a monitoring dashboard showing thousands of 'dirty' buffers in the buffer cache - blocks changed in memory but not yet written to the datafiles - and asks which background process is responsible for flushing them.",
+     "prompt": "Which background process writes dirty buffers from the buffer cache to the datafiles?",
+     "evidence": [
+      [
+       "DBA cheat sheet",
+       "DBWn - database writer: writes dirty buffers to datafiles.\nLGWR - log writer: writes redo entries to online redo logs.\nPMON - process monitor: cleans up after failed processes.\nSMON - system monitor: instance recovery and space cleanup."
+      ]
+     ],
+     "choices": [
+      "DBWn - the database writer process",
+      "LGWR - the log writer process",
+      "PMON - the process monitor",
+      "SMON - the system monitor"
+     ],
+     "answer": 0,
+     "why": "DBWn exists for exactly one job: writing dirty buffers to datafiles, in batches at checkpoints or when free buffers run low. LGWR writes redo (the change journal), not data blocks - confusing the two is the classic beginner mistake. PMON and SMON handle cleanup and recovery, never data writes.",
+     "hint": "Which process name contains the thing being written - data blocks, or the redo log?",
+     "objectives": [
+      "Oracle background processes",
+      "buffer cache mechanics"
+     ],
+     "mins": 5,
+     "difficulty": 1
+    },
+    {
+     "id": "oracle-db-sc2",
+     "title": "The Night the Disk Died",
+     "situation": "A small company's Oracle database runs in NOARCHIVELOG mode with a full backup every night at 2 AM. At 4 PM a storage failure destroys one datafile. The DBA restores the 2 AM backup and attempts recovery.",
+     "prompt": "After restoring the 2 AM backup, what is the state of the database?",
+     "evidence": [
+      [
+       "v$database",
+       "LOG_MODE\n------------\nNOARCHIVELOG"
+      ]
+     ],
+     "choices": [
+      "All transactions since 2 AM are lost - only the backup's contents come back",
+      "The database replays redo and returns to its 4 PM state",
+      "Only uncommitted transactions are lost; committed ones are recovered",
+      "Recovery is impossible - the database must be rebuilt from exports"
+     ],
+     "answer": 0,
+     "why": "In NOARCHIVELOG mode Oracle overwrites online redo logs, so there is no archived history to roll forward through. A restore gives you exactly the backup's point in time - everything after 2 AM is gone. ARCHIVELOG mode preserves the redo stream, which is what makes point-in-time recovery possible.",
+     "hint": "What does the database need in order to replay changes made after the backup was taken?",
+     "objectives": [
+      "ARCHIVELOG vs NOARCHIVELOG",
+      "point-in-time recovery"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "oracle-db-sc3",
+     "title": "The Slow Report",
+     "situation": "The month-end sales report used to finish in 40 seconds; now it takes 25 minutes. The AWR report for the window shows the top wait event is 'db file scattered read' at 78% of DB time, and the execution plan shows a FULL table scan on a 40-million-row table that has an index on sale_date.",
+     "prompt": "What is the most likely root cause, and the first fix to try?",
+     "evidence": [
+      [
+       "AWR top waits",
+       "db file scattered read ............ 78% of DB time"
+      ],
+      [
+       "Plan excerpt",
+       "TABLE ACCESS FULL SALES  (cost=412003)"
+      ]
+     ],
+     "choices": [
+      "The optimizer chose a full scan instead of the sale_date index - investigate why the index is not used (stale statistics, implicit conversion, bind mismatch)",
+      "The storage array is failing - replace the disks",
+      "The SGA is too small - double the buffer cache",
+      "The table is fragmented - move it to a new tablespace"
+     ],
+     "answer": 0,
+     "why": "'db file scattered read' is multiblock I/O - the signature of full table scans. The index on sale_date exists but the optimizer is ignoring it; typical causes are stale statistics, an implicit data-type conversion on the column, or bind-variable issues. Fix the plan choice first - hardware and memory changes only treat symptoms.",
+     "hint": "Match the wait event to the access path: which wait goes with full scans, and what did the optimizer pick?",
+     "objectives": [
+      "wait events",
+      "execution plans"
+     ],
+     "mins": 8,
+     "difficulty": 2
+    },
+    {
+     "id": "oracle-db-sc4",
+     "title": "The Filling Recovery Area",
+     "situation": "Backups start failing at 3 AM with ORA-19809: limit exceeded for recovery files. The flash recovery area is 100% full. Investigation shows archived redo logs going back six weeks, and the RMAN script runs BACKUP DATABASE but never touches archivelogs.",
+     "prompt": "What is the correct fix?",
+     "evidence": [
+      [
+       "RMAN script (nightly)",
+       "BACKUP DATABASE;\nDELETE NOPROMPT OBSOLETE;"
+      ],
+      [
+       "FRA listing",
+       "archived logs retained: 6 weeks; backed up: none"
+      ]
+     ],
+     "choices": [
+      "Back up the archivelogs and remove the originals: BACKUP ARCHIVELOG ALL DELETE INPUT, plus a configured deletion policy",
+      "Increase DB_RECOVERY_FILE_DEST_SIZE until the errors stop",
+      "Delete the oldest archivelogs with rm at the OS level",
+      "Switch the database to NOARCHIVELOG mode"
+     ],
+     "answer": 0,
+     "why": "The archivelogs were never backed up, so RMAN's OBSOLETE logic never considered them reclaimable and they piled up. BACKUP ARCHIVELOG ALL DELETE INPUT backs them up and removes the originals in one step. Enlarging the FRA only delays the failure; rm deletes files RMAN still catalogs, corrupting the repository; NOARCHIVELOG sacrifices recoverability.",
+     "hint": "Why would DELETE OBSOLETE leave six weeks of archivelogs alone? What has to happen to an archivelog before RMAN considers it disposable?",
+     "objectives": [
+      "RMAN archivelog management",
+      "flash recovery area"
+     ],
+     "mins": 7,
+     "difficulty": 2
+    },
+    {
+     "id": "oracle-db-sc5",
+     "title": "The Vanishing Rows",
+     "situation": "A 6-hour reconciliation report occasionally fails with ORA-01555: snapshot too old, always on busy mornings. The undo tablespace is 2 GB with RETENTION NOGUARANTEE, and undo extents are being overwritten roughly every 90 minutes.",
+     "prompt": "What change actually addresses the root cause?",
+     "evidence": [
+      [
+       "Alert log",
+       "ORA-01555: snapshot too old: rollback segment number 12"
+      ],
+      [
+       "Undo stats",
+       "longest query: ~6h | undo wraps every ~90 min"
+      ]
+     ],
+     "choices": [
+      "Size undo retention to cover the longest-running query: larger undo tablespace, tuned UNDO_RETENTION, with GUARANTEE",
+      "Add an index so the report runs faster",
+      "Lock the table for the duration of the report to freeze the data",
+      "Schedule the report at night when the system is idle"
+     ],
+     "answer": 0,
+     "why": "ORA-01555 means the query needed an old block image whose undo had already been overwritten - undo wraps every 90 minutes but the query needs 6 hours of history. Only retaining undo longer closes that gap. An index may help speed but does not guarantee it; locking the table blocks writers; night scheduling dodges the problem instead of fixing it.",
+     "hint": "Compare the two clocks in the evidence: how long does the query need the past, and how long does the database keep it?",
+     "objectives": [
+      "read consistency",
+      "undo management",
+      "ORA-01555"
+     ],
+     "mins": 9,
+     "difficulty": 3
+    },
+    {
+     "id": "oracle-db-sc6",
+     "title": "The Dev Refresh",
+     "situation": "Developers need a fresh copy of the 800 GB production schema every Monday. The current process - Data Pump export Sunday night, import Monday - takes 14 hours and doubles storage. The database is multitenant (one CDB, production as a PDB) on storage that supports snapshots.",
+     "prompt": "What is the best approach for the weekly refresh?",
+     "evidence": [
+      [
+       "Current timings",
+       "expdp: 6h | impdp: 8h | total storage: 1.6 TB"
+      ]
+     ],
+     "choices": [
+      "Clone the production PDB with a storage snapshot copy - a near-instant, space-efficient independent copy",
+      "Keep Data Pump but raise parallelism to PARALLEL=16",
+      "Use RMAN DUPLICATE to a second host every week",
+      "Give developers direct read access to production"
+     ],
+     "answer": 0,
+     "why": "A PDB snapshot-copy clone creates a fully independent dev database in minutes while sharing unchanged blocks with the source - no 14-hour copy, no 800 GB duplication. More Data Pump parallelism still copies every byte; RMAN DUPLICATE still copies every byte to another host; developer access to production is a security and stability non-starter.",
+     "hint": "Which option avoids copying the 800 GB at all?",
+     "objectives": [
+      "multitenant PDB clones",
+      "refresh strategies"
+     ],
+     "mins": 8,
+     "difficulty": 3
+    }
+   ]
+  }
+ ],
+ "lessons": [
+  {
+   "domain_id": "oracle-db",
+   "title": "Oracle Database - Core concepts",
+   "concepts": [
+    "An Oracle instance is memory plus processes; the database is the files. The SGA (buffer cache, shared pool, redo log buffer) is shared memory, background processes like DBWn and LGWR do the writing, and datafiles, control files, and the parameter file persist everything.",
+    "Multitenant architecture packs many pluggable databases (PDBs) into one container database (CDB). You patch and back up once at the CDB level while each PDB stays logically isolated - and cloning a PDB is the fastest way to provision dev and test copies.",
+    "Every change generates redo (the journal for recovery) and undo (the before-image for rollback and read consistency). Run production in ARCHIVELOG mode so redo is preserved and any point in time is recoverable.",
+    "RMAN is the supported backup tool: it understands Oracle block structure, so it can take incremental backups, skip unused blocks, and validate backups. Back up archivelogs too, or the recovery area fills and the database stalls.",
+    "Tune with evidence: AWR snapshots and ASH show where DB time goes via wait events. Match the top wait to its cause - scattered reads mean full scans, sequential reads mean index I/O - and fix the plan before buying hardware."
+   ],
+   "example": {
+    "lang": "shell",
+    "code": "sqlplus / as sysdba <<'EOF'\nSELECT name, open_mode FROM v$pdbs;\nSELECT log_mode FROM v$database;\nEOF",
+    "walkthrough": "Connect as SYSDBA and check two fundamentals in one pass: every PDB's open mode (is the application's database actually open?) and the log mode (is point-in-time recovery even possible?). Make this your first check on any unfamiliar database."
+   },
+   "pitfalls": [
+    "Common trap: saying 'the database is down' when only the listener is down - the instance and data are fine; test with a local sqlplus connection before escalating.",
+    "Common trap: trusting a backup that has never been restored - schedule test restores; a backup log saying 'completed' is not proof of recoverability.",
+    "Common trap: running NOARCHIVELOG in production to 'save space' - the first media failure becomes data loss back to the last backup.",
+    "Common trap: tuning by enlarging the SGA for every slow query - check the execution plan and top wait events first; most slow SQL is a plan problem, not a memory problem."
+   ],
+   "try_it": "Work through this in the Labs tab."
+  }
+ ],
+ "labs": [
+  {
+   "id": "oracle-db-lab1",
+   "domain_id": "oracle-db",
+   "title": "Inspect a Running Instance",
+   "objective": "Connect as SYSDBA and read the dynamic performance views that describe the instance, its memory, and its recoverability posture.",
+   "steps": [
+    "Log in to the lab database with OS authentication: sqlplus / as sysdba",
+    "Confirm the instance identity and state: SELECT instance_name, status FROM v$instance;",
+    "Break down SGA memory by component: SELECT component, ROUND(current_size/1024/1024) AS mb FROM v$sga_dynamic_components ORDER BY 2 DESC;",
+    "Check recoverability posture: SELECT log_mode, flashback_on FROM v$database;",
+    "List pluggable databases and their state: SELECT name, open_mode FROM v$pdbs;"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^SELECT\\s",
+     "expect_contains": "OPEN",
+     "hint": "Query v$instance - the STATUS column shows whether the instance is OPEN."
+    },
+    {
+     "command_pattern": "^SELECT\\s",
+     "expect_contains": "ARCHIVELOG",
+     "hint": "v$database.log_mode tells you whether point-in-time recovery is possible."
+    }
+   ]
+  },
+  {
+   "id": "oracle-db-lab2",
+   "domain_id": "oracle-db",
+   "title": "Take and Verify an RMAN Backup",
+   "objective": "Run an RMAN full backup including archivelogs, then prove the backup is restorable without performing a restore.",
+   "steps": [
+    "Start RMAN connected to the target database: rman target /",
+    "Back up the database plus archivelogs, removing backed-up logs: BACKUP DATABASE PLUS ARCHIVELOG DELETE INPUT;",
+    "List what was just created: LIST BACKUP SUMMARY;",
+    "Prove restorability without restoring: RESTORE DATABASE VALIDATE;",
+    "Reconcile the catalog with what is on disk: CROSSCHECK BACKUP;"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^rman\\s",
+     "expect_contains": "Recovery Manager",
+     "hint": "Start RMAN with 'rman target /' to connect using OS authentication."
+    },
+    {
+     "command_pattern": "^BACKUP\\s",
+     "expect_contains": "Finished backup",
+     "hint": "BACKUP DATABASE PLUS ARCHIVELOG covers datafiles and the redo history together."
+    }
+   ]
+  }
+ ],
+ "simulations": [],
+ "consoleSims": [],
+ "terminalMissions": [],
+ "sections": [
+  {
+   "id": "sec-full-spectrum",
+   "title": "Full Spectrum Dominance \u2014 core path",
+   "kind": "core",
+   "lectures": [],
+   "lab_ids": [
+    "fsd-tl-lab-1",
+    "fsd-tl-lab-2",
+    "fsd-tl-lab-3",
+    "fsd-sg-lab-1",
+    "fsd-sg-lab-2",
+    "fsd-sg-lab-3",
+    "fsd-ai-lab-1",
+    "fsd-ai-lab-2",
+    "fsd-ai-lab-3"
+   ],
+   "drill_domain_ids": [
+    "tl-interview",
+    "tl-endpoint-ops",
+    "sec-graphs",
+    "graph-defense",
+    "ml-defense",
+    "ai-agent-sec"
+   ]
+  }
+ ],
+ "behavioral": [
+  {
+   "prompt": "Tell me about the most technically difficult problem you have run into \u2014 a homelab, a broken environment, anything \u2014 and how you solved it.",
+   "framework": "STAR",
+   "points": [
+    "Pick ONE problem with a real evidence trail: the symptom, what you measured, the hypothesis you tested",
+    "Show the loop: scope, observe, hypothesize, smallest safe change, validate \u2014 interviewers score the method, not just the fix",
+    "Name the tools (VM build, networking, logs) and the lesson it taught you",
+    "Close with the result in concrete terms: what works now that did not before"
+   ],
+   "pitfalls": [
+    "Choosing a story with no real obstacle (\u201cI Googled it\u201d is not a story)",
+    "Skipping validation \u2014 saying it worked without proving it",
+    "Rambling past two minutes without reaching the result"
+   ]
+  },
+  {
+   "prompt": "Tell me about a time you dealt with a frustrated customer or user while something was broken.",
+   "framework": "STAR",
+   "points": [
+    "Lead with empathy and ownership: acknowledge the impact before the technical detail",
+    "Show translation: what you told them, in their language, plus the timeline you committed to",
+    "Show judgment: the narrow fix you chose and what you refused to do (e.g., disabling the control to clear the symptom)",
+    "Close with the relationship outcome, not just the technical one"
+   ],
+   "pitfalls": [
+    "Badmouthing the customer to sound decisive",
+    "Promising a timeline you could not keep",
+    "Framing the user as the problem rather than the situation"
+   ]
+  },
+  {
+   "prompt": "Why ThreatLocker, and why cybersecurity?",
+   "framework": "STAR",
+   "points": [
+    "Connect prevention to something concrete: a moment you saw detection arrive too late, or a system you hardened",
+    "Tie their model to your instincts: deny-by-default matches how you already think about trust",
+    "Show service orientation: the Cyber Hero culture rewards the 2 a.m. helper \u2014 give an example of being one",
+    "Name one forward-looking reason: Zero Trust, the MSP mission, or the bootcamp community investment"
+   ],
+   "pitfalls": [
+    "Generic flattery with no specifics about the company",
+    "Leading with compensation, title, or location convenience",
+    "Claiming expertise in products you have only read about \u2014 frame it as studied, not mastered"
+   ]
+  },
+  {
+   "framework": "STAR",
+   "pitfalls": [
+    "Staying vague ('I analyzed the data') instead of naming what you connected.",
+    "Skipping your own role: what did YOU see that others missed?",
+    "No outcome: what changed because you joined the dots?"
+   ],
+   "points": [
+    "The scattered signals and why nobody had connected them yet",
+    "The specific links you drew between them (shared host, time, infrastructure)",
+    "What the bigger picture turned out to be and what action it drove",
+    "What the experience taught you about investigating"
+   ],
+   "prompt": "Tell me about a time you connected scattered clues into a bigger picture that others had missed."
+  },
+  {
+   "framework": "STAR",
+   "pitfalls": [
+    "Claiming you fixed everything: credibility comes from trade-offs, not heroics.",
+    "Hiding the constraint: the limitation is what makes the prioritization story real.",
+    "No metric: 'better' needs a before-and-after."
+   ],
+   "points": [
+    "The constraint (time, budget, staff) and the size of the backlog",
+    "How you decided what mattered most (what was reachable, what was critical)",
+    "What you did first and what you deliberately deferred",
+    "The measurable result of the prioritization"
+   ],
+   "prompt": "Describe a time you had to prioritize risks or fixes with limited time or resources. How did you decide what came first?"
+  },
+  {
+   "framework": "STAR",
+   "pitfalls": [
+    "Reciting jargon to a non-technical audience and calling it communication.",
+    "Skipping the audience's reaction: did they actually understand and act?",
+    "Making yourself the hero instead of the translator."
+   ],
+   "points": [
+    "The technical finding and why it mattered",
+    "Who the audience was and what they cared about",
+    "How you reframed it (a picture, an analogy, a story)",
+    "What decision or action the audience took because they understood"
+   ],
+   "prompt": "Tell me about a time you explained a complex technical finding to a non-technical audience and it changed a decision."
+  },
+  {
+   "prompt": "Tell me about a time you used automation or AI to solve a security problem.",
+   "framework": "STAR",
+   "points": [
+    "The repetitive security task and what it cost in analyst time",
+    "The automation or AI approach you built and how you validated it",
+    "Measured outcome: time saved, detection gained, false positives changed"
+   ],
+   "pitfalls": [
+    "Describing the tool but never the validation",
+    "No measurable outcome"
+   ]
+  },
+  {
+   "prompt": "Describe a time you had to decide whether to trust an automated security decision.",
+   "framework": "STAR",
+   "points": [
+    "The stakes of the automated action and its blast radius",
+    "How you verified before acting (or the gate you built)",
+    "What happened and what you would automate differently next time"
+   ],
+   "pitfalls": [
+    "Saying you always trust the tool",
+    "No mention of blast radius or reversibility"
+   ]
+  }
+ ],
+ "resources": {
+  "cheatsheet": {
+   "title": "Full Spectrum Dominance \u2014 field reference",
+   "sections": [
+    {
+     "heading": "Company facts (verified)",
+     "items": [
+      "Founded 2017 in Orlando, FL \u2014 Danny Jenkins (CEO), Sami Jenkins (COO), John Carolan (QA)",
+      "Philosophy: deny-by-default / default-deny \u2014 approve known-good, deny the rest",
+      "Customers: 70,000+ organizations, sold heavily through the MSP channel",
+      "Funding: $190M Series F, July 2026 (Elephant-led); ~730 employees",
+      "Interview address: 1901 Summit Tower Blvd, Orlando, FL 32810",
+      "Culture: in-office 5 days/week; free lunch; post-offer background + drug screening"
+     ]
+    },
+    {
+     "heading": "Product stack",
+     "items": [
+      "Allowlisting \u2014 default-deny execution control for apps, DLLs, scripts, installers",
+      "Ringfencing \u2014 constrains allowed apps: app-to-app, file, registry, network",
+      "Storage Control \u2014 USB/device policy by serial, user, file type, encryption",
+      "Elevation Control \u2014 just-in-time per-app admin, no standing rights",
+      "Network Control \u2014 host firewall; port/IP/dynamic-ACL rules; ZTNA foundation",
+      "Web Control \u2014 agent-based DNS/URL category filtering, works off-network",
+      "Cyber Hero MDR \u2014 24/7/365 US-based response, ~60-second average",
+      "Testing Environment \u2014 one-button VDI sandbox; checks AV flags, canary files, registry changes"
+     ]
+    },
+    {
+     "heading": "Rule strength (strongest to weakest)",
+     "items": [
+      "Certificate/publisher rules \u2014 survive version updates",
+      "Hash rules \u2014 precise but break on every new version",
+      "Path rules \u2014 weakest; never in user-writable locations",
+      "Learning Mode catalogs before enforcement; Installation Mode pauses blocking \u2014 scope and time-box both"
+     ]
+    },
+    {
+     "heading": "Terminal evidence commands",
+     "items": [
+      "nmap <host> \u2014 which ports answer (22/80/443 open)",
+      "dig <name> \u2014 ANSWER SECTION with the A record",
+      "ss \u2014 listening sockets",
+      "systemctl status <svc> \u2014 unit state",
+      "journalctl -u <svc> \u2014 service logs",
+      "sha256sum <file> \u2014 real SHA-256 identity",
+      "grep <pattern> <file> \u2014 search the record",
+      "ps \u2014 what is actually running"
+     ]
+    },
+    {
+     "heading": "Graph vocabulary",
+     "items": [
+      "node \u2014 any entity tracked in the model (user, host, IP, domain, file hash, vulnerability)",
+      "edge \u2014 a labeled relationship between two nodes (logged into, resolved to, downloaded)",
+      "degree \u2014 number of edges on a node; high-degree nodes are attacker highways",
+      "centrality \u2014 how much traffic or how many paths flow through a node",
+      "directed edge \u2014 a relationship with a direction (A downloaded FROM B)",
+      "security graph \u2014 the living model of your whole environment as nodes and edges",
+      "attack graph \u2014 the subgraph of exploitable paths to your targets",
+      "knowledge graph \u2014 threat-intel indicators linked to campaigns and actors"
+     ]
+    },
+    {
+     "heading": "Attack-graph playbook",
+     "items": [
+      "inventory first \u2014 you cannot graph what you have not discovered",
+      "model flaws AND misconfigs as exploit edges",
+      "compute shortest paths to the crown jewels",
+      "find the choke point (highest betweenness on those paths)",
+      "break the path: patch, segment, or remove the edge",
+      "re-scan and re-run the graph to prove the path is gone",
+      "never trust yesterday's graph \u2014 redeployments redraw the map"
+     ]
+    },
+    {
+     "heading": "Zero Trust + graphs",
+     "items": [
+      "never trust, always verify \u2014 re-evaluate every access decision",
+      "assume breach \u2014 treat unexpected edges as hostile until proven otherwise",
+      "microsegmentation \u2014 allow-list approved edges, alert on new ones",
+      "ReBAC \u2014 policies are path queries on the identity graph",
+      "continuous verification \u2014 device/location/behavior edges change, trust follows",
+      "anomalous edge \u2014 a first-seen connection between strangers is the classic signal"
+     ]
+    },
+    {
+     "heading": "ML detection vocabulary",
+     "items": [
+      "Supervised learning \u2014 learns from labeled examples; strong on known threats, blind to novel ones",
+      "Unsupervised learning \u2014 finds structure without labels; clustering and dimensionality reduction",
+      "Anomaly detection \u2014 models 'normal' and flags deviations; the workhorse for novel threats",
+      "UEBA \u2014 user and entity behavior analytics: per-user baselines plus peer-group comparison",
+      "Feature engineering \u2014 encoding raw logs into model inputs (login velocity, rare processes, domain entropy)",
+      "Concept drift \u2014 model decay as attacker behavior and legitimate traffic shift over time"
+     ]
+    },
+    {
+     "heading": "Detection metrics",
+     "items": [
+      "Precision \u2014 of all flagged alerts, how many were real",
+      "Recall \u2014 of all real attacks, how many were flagged",
+      "Threshold tuning \u2014 sliding the decision cutoff trades precision against recall",
+      "Alert fatigue \u2014 when false positives train analysts to ignore the queue",
+      "DGA \u2014 domain generation algorithm; detected via character entropy of domain names"
+     ]
+    },
+    {
+     "heading": "Agent and LLM security",
+     "items": [
+      "Direct prompt injection \u2014 attacker input overrides app instructions (OWASP LLM01:2025, the #1 LLM risk)",
+      "Indirect prompt injection \u2014 hidden instructions inside retrieved data (email, web, docs)",
+      "Jailbreak \u2014 defeating the model's own safety policy; distinct from hijacking app behavior",
+      "Tool poisoning \u2014 malicious tool descriptions or metadata steer an agent to misuse its tools (MCP ecosystem risk)",
+      "Insecure output handling \u2014 executing or trusting model output without validation",
+      "Least-privilege tools \u2014 grant each tool only the scope its task requires"
+     ]
+    },
+    {
+     "heading": "Adversarial ML and governance",
+     "items": [
+      "Evasion \u2014 perturbing inputs at inference time to dodge a classifier",
+      "Poisoning \u2014 corrupting training data to corrupt the model",
+      "Extraction \u2014 querying a model to steal its behavior or parameters",
+      "MITRE ATLAS \u2014 knowledge base of adversarial ML tactics and techniques",
+      "Red-teaming and evals \u2014 adversarial testing of AI systems before deployment",
+      "Human-in-the-loop \u2014 required approval for high-impact or irreversible agent actions",
+      "SOAR \u2014 security orchestration, automation and response; automate enrichment, gate containment"
+     ]
+    }
+   ]
+  },
+  "glossary": [
+   {
+    "term": "Allowlisting",
+    "def": "Default-deny execution control: only explicitly approved applications, scripts, and installers may run."
+   },
+   {
+    "term": "Blocklisting",
+    "def": "Default-allow model: everything runs except recognized-bad items \u2014 the window zero-days live in."
+   },
+   {
+    "term": "Default-deny",
+    "def": "Deny-by-default posture: unknown code, devices, or connections are refused unless explicitly approved."
+   },
+   {
+    "term": "Ringfencing",
+    "def": "Containment applied on top of allowlisting; restricts what a permitted app may do across app-to-app, file, registry, and network dimensions."
+   },
+   {
+    "term": "Learning Mode",
+    "def": "Agent mode that catalogs applications and dependencies and auto-builds policies before enforcement; temporarily disables file blocking."
+   },
+   {
+    "term": "Installation Mode",
+    "def": "Temporary mode that pauses file blocking for installs \u2014 must be tightly scoped and time-boxed."
+   },
+   {
+    "term": "Elevation Control",
+    "def": "Grants specific approved applications admin rights for standard users \u2014 just-in-time, per-app, time-boxed \u2014 without standing admin rights."
+   },
+   {
+    "term": "Application hopping",
+    "def": "An elevated or trusted process spawning another tool (e.g., PowerShell) to inherit its privileges \u2014 countered by ringfencing the elevated process."
+   },
+   {
+    "term": "Storage Control",
+    "def": "Device and path policy: USB approved by serial, user, file type, time, and encryption; unapproved devices do not connect."
+   },
+   {
+    "term": "Network Control",
+    "def": "Centrally managed host firewall; rules by port, source IP, and dynamic ACLs; egress allowlisting pins apps to approved destinations."
+   },
+   {
+    "term": "ZTNA",
+    "def": "Zero Trust Network Access: per-session, per-application brokered connections (commonly over port 443) with no open inbound ports \u2014 deny-by-default for network access."
+   },
+   {
+    "term": "Approval Center",
+    "def": "Portal queue where end-user software requests arrive for admin review and decision."
+   },
+   {
+    "term": "Unified Audit",
+    "def": "Real-time audit showing what was allowed or denied across endpoints \u2014 and why; the evidence layer for triage."
+   },
+   {
+    "term": "Testing Environment",
+    "def": "One-button cloud VDI sandbox launched from an approval request; logs AV flags, canary-file access, and registry/system changes."
+   },
+   {
+    "term": "Cyber Hero MDR",
+    "def": "24/7/365 US-based managed detection and response team; validates alerts, isolates hosts, acts on customer runbooks; ~60-second average response."
+   },
+   {
+    "term": "Assume breach",
+    "def": "Design and operate as if the attacker already has a foothold \u2014 least privilege, containment, and monitoring everywhere."
+   },
+   {
+    "term": "Living off the land",
+    "def": "Attacks that hijack trusted built-in tools (Word, PowerShell) instead of dropping malware \u2014 defeated by behavior containment, not signatures."
+   },
+   {
+    "term": "Change control",
+    "def": "Scoped, ticketed, tested changes with validation and rollback \u2014 emergency speed never cancels the process."
+   },
+   {
+    "def": "A node in an attack graph representing a system or weakness, connected by edges that represent steps an attacker could take between them.",
+    "term": "attack graph"
+   },
+   {
+    "def": "How central a node is to paths through the graph (for example, betweenness: how many shortest paths cross it).",
+    "term": "centrality"
+   },
+   {
+    "def": "The most valuable assets in the environment (customer data, finance systems, source code): what attack paths are measured against.",
+    "term": "crown jewels"
+   },
+   {
+    "def": "A labeled connection between two nodes, representing a relationship such as 'logged into' or 'resolved to'.",
+    "term": "edge"
+   },
+   {
+    "def": "A graph of threat indicators (IPs, domains, hashes) linked to campaigns, actors, and each other through shared infrastructure.",
+    "term": "knowledge graph"
+   },
+   {
+    "def": "The practice of mapping relationships in data to reveal hidden associations; rooted in Euler's 1736 graph theory, 1970s paper link charts, and post-2001 intelligence work.",
+    "term": "link analysis"
+   },
+   {
+    "def": "A segment of the network so small that its allowed communications can be enumerated as a graph of approved edges.",
+    "term": "microsegmentation"
+   },
+   {
+    "def": "An entity in the graph: a user, host, IP address, domain, file, or vulnerability.",
+    "term": "node"
+   },
+   {
+    "def": "Access control where policy is evaluated by traversing relationships on a graph (for example: user reports_to manager who owns the resource's project).",
+    "term": "ReBAC"
+   },
+   {
+    "def": "A machine-learning model that operates directly on graph structure to classify nodes or subgraphs, for example labeling attack vs normal behavior.",
+    "term": "graph neural network (GNN)"
+   },
+   {
+    "def": "Monitoring user and entity behavior by modeling their normal relationship patterns and flagging structural anomalies.",
+    "term": "UEBA"
+   },
+   {
+    "term": "Supervised learning",
+    "def": "ML trained on labeled examples; classifies new inputs into known categories."
+   },
+   {
+    "term": "Anomaly detection",
+    "def": "ML approach that models normal behavior and flags statistically rare deviations."
+   },
+   {
+    "term": "Feature engineering",
+    "def": "Turning raw telemetry into numeric model inputs, e.g. login velocity or domain entropy."
+   },
+   {
+    "term": "Precision",
+    "def": "Share of flagged alerts that were real; the false-positive economics of the queue."
+   },
+   {
+    "term": "Recall",
+    "def": "Share of real attacks the detector flagged; the miss rate's complement."
+   },
+   {
+    "term": "Concept drift",
+    "def": "Decay of model performance as the data distribution shifts over time."
+   },
+   {
+    "term": "Prompt injection",
+    "def": "Attacker-crafted instructions that override an LLM application's intended behavior; direct (user input) or indirect (retrieved data)."
+   },
+   {
+    "term": "Jailbreak",
+    "def": "Crafted input that defeats an LLM's own safety policy or refusal behavior."
+   },
+   {
+    "term": "Tool poisoning",
+    "def": "Malicious tool descriptions or metadata that manipulate an AI agent into misusing its tools."
+   },
+   {
+    "term": "Insecure output handling",
+    "def": "Failing to validate LLM output before acting on it, e.g. executing generated commands."
+   },
+   {
+    "term": "Evasion attack",
+    "def": "Adversarial ML technique: perturbing inputs to cross a classifier's decision boundary."
+   },
+   {
+    "term": "MITRE ATLAS",
+    "def": "Adversarial Threat Landscape for AI Systems; MITRE's knowledge base of AI attack tactics."
+   },
+   {
+    "term": "SOAR",
+    "def": "Security orchestration, automation and response; playbooks that enrich automatically and gate containment on humans."
+   },
+   {
+    "term": "Human-in-the-loop",
+    "def": "Required human approval before high-impact or irreversible automated actions."
+   }
+  ],
+  "links": [
+   {
+    "label": "ThreatLocker Zero Trust platform explainer (official)",
+    "url": "https://www.threatlocker.com/blog/edr-xdr-vs-zero-trust-prevention",
+    "note": "EDR/XDR vs Zero Trust prevention \u2014 the deny-by-default argument in their own words."
+   },
+   {
+    "label": "ThreatLocker Bootcamp page (official)",
+    "url": "https://www.threatlocker.com/bootcamp",
+    "note": "Free six-week program: phases, format, and what completion leads to."
+   },
+   {
+    "label": "ThreatLocker Careers (official)",
+    "url": "https://www.threatlocker.com/company/careers",
+    "note": "Open roles and the hiring-event listing; roles are in-office in Orlando."
+   },
+   {
+    "label": "Elevation Control (official)",
+    "url": "https://www.threatlocker.com/secure-privileges-without-sacrificing-agility",
+    "note": "Just-in-time privilege without standing admin."
+   },
+   {
+    "label": "Storage Control (official)",
+    "url": "https://www.threatlocker.com/capabilities/external-storage-device-control",
+    "note": "USB/device policy by serial, user, file type, encryption."
+   },
+   {
+    "label": "Web Control (official)",
+    "url": "https://www.threatlocker.com/capabilities/web-content-control",
+    "note": "Agent-based DNS/URL filtering, including off-network."
+   },
+   {
+    "label": "Cyber Hero MDR (official)",
+    "url": "https://www.threatlocker.com/get-threat-response-in-minutes",
+    "note": "24/7/365 managed response positioning."
+   },
+   {
+    "label": "MDR capabilities (official)",
+    "url": "https://www.threatlocker.com/capabilities/managed-detection-and-response",
+    "note": "Detection and response capability detail."
+   },
+   {
+    "label": "NIST SP 800-207 \u2014 Zero Trust Architecture",
+    "url": "https://csrc.nist.gov/pubs/sp/800/207/final",
+    "note": "The canonical Zero Trust reference: tenets, deployment models, policy engine trust algorithm."
+   },
+   {
+    "label": "CISA Zero Trust Maturity Model",
+    "url": "https://www.cisa.gov/zero-trust-maturity-model",
+    "note": "Federal maturity steps across identity, devices, networks, applications, and data."
+   },
+   {
+    "label": "MITRE ATT&CK",
+    "note": "The adversary-tactics framework; codify its tactic chains as subgraphs to hunt for in your security graph.",
+    "url": "https://attack.mitre.org/"
+   },
+   {
+    "label": "CISA \u2014 Cybersecurity and Infrastructure Security Agency",
+    "note": "US government advisories, alerts, and guidance frequently referenced in threat-intel work.",
+    "url": "https://www.cisa.gov/"
+   },
+   {
+    "label": "Neo4j getting started",
+    "note": "A widely used graph database; the book's call to action suggests piloting graph queries on exported security data with tools like this.",
+    "url": "https://neo4j.com/docs/getting-started/"
+   },
+   {
+    "label": "OWASP GenAI Security Project",
+    "url": "https://genai.owasp.org/",
+    "note": "Home of the LLM Top 10 and GenAI security guidance"
+   },
+   {
+    "label": "OWASP Top 10 for LLM Applications",
+    "url": "https://genai.owasp.org/llm-top-10/",
+    "note": "The ranked LLM risk list \u2014 prompt injection is #1"
+   },
+   {
+    "label": "NIST AI Risk Management Framework",
+    "url": "https://www.nist.gov/itl/ai-risk-management-framework",
+    "note": "The standard governance framework for managing AI risk"
+   },
+   {
+    "label": "MITRE ATLAS",
+    "url": "https://atlas.mitre.org/",
+    "note": "Adversarial Threat Landscape for AI Systems \u2014 tactics and techniques"
+   },
+   {
+    "label": "CISA AI guidance",
+    "url": "https://www.cisa.gov/ai",
+    "note": "CISA's AI security resources and guidance"
+   }
+  ],
+  "checklist": [
+   "Sixty-second company brief rehearsed out loud: year, city, philosophy, three products, one milestone",
+   "Two STAR stories ready: hardest technical problem; a frustrated customer or user",
+   "\u201cWhy ThreatLocker / why cybersecurity\u201d answer tied to prevention and service, not slogans",
+   "Ringfencing explained in one plain-English sentence (the Word-on-a-leash version)",
+   "Elevation Control answer ready: just-in-time, per-app, time-boxed, ringfenced, logged",
+   "Triage loop memorized: scope \u2192 observe \u2192 hypothesize \u2192 smallest safe change \u2192 validate \u2192 explain",
+   "Three questions to ask them: team on-call shape, approval SLA expectations, what \u201cmost helpful\u201d looks like on the team",
+   "Logistics: 1901 Summit Tower Blvd, Orlando FL; in-office role; ID and references ready",
+   "Define your crown jewels before you model anything.",
+   "Build the asset-and-access graph from live sources (scans, configs, identity), not from the CMDB alone.",
+   "Model vulnerabilities AND misconfigurations as exploit edges.",
+   "Compute shortest attack paths to each crown jewel; name the choke points.",
+   "Prioritize remediation by path risk, not by raw severity score.",
+   "Express at least one access policy as a relationship path (ReBAC pilot).",
+   "Baseline approved communication edges per segment; alert on first-seen edges.",
+   "Brief the next incident or risk review with the graph, not a spreadsheet.",
+   "Can you explain supervised vs unsupervised vs anomaly detection with a security example for each?",
+   "Can you name three log features you would engineer for a C2 detector and why?",
+   "Can you walk through a UEBA alert (baseline, deviation, verification) end to end?",
+   "Can you explain the precision/recall tradeoff and how you would set a threshold for a fatigued SOC?",
+   "Can you define concept drift and describe a retraining process?",
+   "Can you distinguish direct vs indirect prompt injection and jailbreaking?",
+   "Can you explain tool poisoning in the MCP ecosystem and three controls against it?",
+   "Can you describe insecure output handling and how you would validate agent output?",
+   "Can you name the three adversarial ML attack classes and one defense for evasion?",
+   "Can you design a SOAR playbook gate: what automates freely, what needs human approval?"
+  ]
+ },
+ "chat": {
+  "persona": "You are a rigorous but encouraging interviewer preparing a candidate for a Zero Trust endpoint security role. Probe with 'why' and 'how would you explain that' follow-ups. Stay on topic: ThreatLocker-style endpoint defense, security graphs, and AI-powered security. All practice is original; never reproduce vendor material.",
+  "topics": [
+   {
+    "id": "tl-interview",
+    "name": "ThreatLocker Interview Prep",
+    "key_points": [
+     "allowlisting",
+     "ringfencing",
+     "default-deny",
+     "cyber hero",
+     "zero trust tenets",
+     "STAR stories"
+    ],
+    "followups": [
+     "Can you give an example?",
+     "How would you explain that to a CFO?"
+    ]
+   },
+   {
+    "id": "tl-endpoint-ops",
+    "name": "Zero Trust Endpoint Operations",
+    "key_points": [
+     "default-deny",
+     "ringfencing dimensions",
+     "elevation control",
+     "storage control",
+     "network control",
+     "change control"
+    ],
+    "followups": [
+     "Walk me through the triage order.",
+     "When would you deny outright?"
+    ]
+   },
+   {
+    "followups": [
+     "Can you walk through an example?",
+     "How does this change patch prioritization?",
+     "What is the difference between a security graph and an attack graph?"
+    ],
+    "id": "sec-graphs",
+    "key_points": [
+     "nodes",
+     "edges",
+     "attack graphs",
+     "kill chain",
+     "link analysis",
+     "threat intel graphs"
+    ],
+    "name": "Security Graphs: Think Like an Attacker"
+   },
+   {
+    "followups": [
+     "How do graphs change patch prioritization?",
+     "What is ReBAC and how is it different from RBAC?",
+     "How would a small team start with graphs?"
+    ],
+    "id": "graph-defense",
+    "key_points": [
+     "attack-path analysis",
+     "insider threat",
+     "vulnerability graphs",
+     "Zero Trust",
+     "microsegmentation",
+     "blast radius"
+    ],
+    "name": "Graph-Powered Defense Operations"
+   },
+   {
+    "id": "ml-defense",
+    "name": "ML-Powered Threat Defense",
+    "key_points": [
+     "anomaly detection",
+     "UEBA",
+     "alert fatigue",
+     "concept drift",
+     "threat hunting",
+     "precision recall"
+    ],
+    "followups": [
+     "Walk me through an example.",
+     "How do you handle false positives?"
+    ]
+   },
+   {
+    "id": "ai-agent-sec",
+    "name": "Securing AI Systems & Agents",
+    "key_points": [
+     "prompt injection",
+     "tool poisoning",
+     "MCP risks",
+     "insecure output handling",
+     "SOAR gates",
+     "adversarial ML"
+    ],
+    "followups": [
+     "Walk me through an example.",
+     "How do you secure an AI agent end to end?"
+    ]
+   }
+  ]
+ },
+ "simulation": {
+  "items": 12,
+  "minutes": 180,
+  "evidence_cost_mins": 2
+ },
+ "media": [
+  {
+   "id": "tl-allowlist-vs-blocklist",
+   "kind": "diagram",
+   "title": "Allowlisting vs blocklisting: default-deny vs default-allow",
+   "svg": "assets/diagrams/tl-allowlist-vs-blocklist.svg",
+   "lesson_ref": "c-tl-endpoint-ops",
+   "caption": "Default-deny stops unknown code without a signature; default-allow runs it until one exists.",
+   "alt": "Side-by-side comparison: on the left, a default-deny gate runs known-good payroll software and denies unknown ransomware with no signature needed; on the right, a default-allow gate runs both until the ransomware is recognized as bad."
+  },
+  {
+   "id": "tl-ringfencing",
+   "kind": "diagram",
+   "title": "Ringfencing: four leashes on an allowed application",
+   "svg": "assets/diagrams/tl-ringfencing.svg",
+   "lesson_ref": "c-tl-endpoint-ops",
+   "caption": "Word stays approved, but it cannot spawn PowerShell, read the credential store, or reach the internet \u2014 while opening its document is allowed.",
+   "alt": "An approved Word application inside a dashed containment ring: arrows show PowerShell launch denied, credential-store registry access denied, external network denied, and document file access allowed."
+  },
+  {
+   "id": "tl-zero-trust-stack",
+   "kind": "diagram",
+   "title": "The Zero Trust endpoint stack",
+   "svg": "assets/diagrams/tl-zero-trust-stack.svg",
+   "lesson_ref": "c-tl-interview",
+   "caption": "Five deny-by-default layers \u2014 Allowlisting, Ringfencing, Elevation, Storage, Network \u2014 watched by Web Control, the Testing Environment, Unified Audit, and the Cyber Hero MDR team.",
+   "alt": "A vertical stack of five layers from Allowlisting at the foundation up through Ringfencing, Elevation Control, Storage Control, and Network Control, with side boxes for Web Control, Testing Environment, Unified Audit, and Cyber Hero MDR."
+  },
+  {
+   "id": "tl-triage-flow",
+   "kind": "diagram",
+   "title": "Application-request triage flow",
+   "svg": "assets/diagrams/tl-triage-flow.svg",
+   "lesson_ref": "c-tl-endpoint-ops",
+   "caption": "Gather evidence first, then branch: trusted gets a scoped rule, unknown goes to the sandbox, malicious gets a documented deny.",
+   "alt": "Flowchart from request arrival through evidence gathering to a decision diamond branching into three outcomes: approve with a scoped rule, detonate in the Testing Environment then ringfence, or deny with documented evidence."
+  },
+  {
+   "alt": "Diagram of four labeled nodes (user, host, file, domain, IP) joined by labeled directed edges such as logged into, downloaded, and resolved to, illustrating graph vocabulary.",
+   "caption": "Nodes are the things; edges are the relationships. Attackers move along the edges.",
+   "id": "sg-graph-vocabulary",
+   "kind": "diagram",
+   "lesson_ref": "c-sec-graphs",
+   "svg": "assets/diagrams/sg-graph-vocabulary.svg",
+   "title": "Graph vocabulary: nodes and edges"
+  },
+  {
+   "alt": "Attack graph with four nodes in a chain: external attacker to VPN gateway to file server to customer database, with a dead-end branch to a printer, showing the shortest path to the crown jewel.",
+   "caption": "The shortest path to the crown jewel is length 3. Break the choke point and the campaign dies.",
+   "id": "sg-attack-path",
+   "kind": "diagram",
+   "lesson_ref": "c-sec-graphs",
+   "svg": "assets/diagrams/sg-attack-path.svg",
+   "title": "Attack graph: shortest path to the crown jewels"
+  },
+  {
+   "alt": "Seven kill-chain stages as connected graph nodes: reconnaissance, weaponization, delivery, exploitation, installation, command and control, actions. Three alerts are annotated at delivery, installation, and command and control.",
+   "caption": "Three 'unrelated' alerts, one kill-chain subgraph. Correlate by shared entities, not by severity.",
+   "id": "sg-kill-chain",
+   "kind": "diagram",
+   "lesson_ref": "c-sec-graphs",
+   "svg": "assets/diagrams/sg-kill-chain.svg",
+   "title": "Kill chain as a graph"
+  },
+  {
+   "alt": "A policy engine at the center of a small graph evaluates an access request from a finance user on an untrusted laptop to an R and D code server. The request is denied because there is no prior relationship edge and the device is untrusted.",
+   "caption": "Valid credentials are not enough. The graph checks device trust, history, and relationships on every request.",
+   "id": "sg-zero-trust",
+   "kind": "diagram",
+   "lesson_ref": "c-graph-defense",
+   "svg": "assets/diagrams/sg-zero-trust.svg",
+   "title": "Zero Trust runs on relationships"
+  },
+  {
+   "id": "ai-ml-pipeline",
+   "kind": "diagram",
+   "title": "ML detection pipeline: telemetry to triage",
+   "svg": "assets/diagrams/ai-ml-pipeline.svg",
+   "lesson_ref": "c-ml-defense",
+   "caption": "How raw telemetry becomes scored alerts: features feed the model, the model scores, analysts triage top-down \u2014 and analyst verdicts feed retraining.",
+   "alt": "Flow diagram: telemetry sources feed feature extraction, which feeds an ML model, which outputs scored alerts into an analyst triage queue, with a feedback arrow for retraining."
+  },
+  {
+   "id": "ai-ueba-baseline-diagram",
+   "kind": "diagram",
+   "title": "UEBA: baseline vs deviation",
+   "svg": "assets/diagrams/ai-ueba-baseline.svg",
+   "lesson_ref": "c-ml-defense",
+   "caption": "UEBA learns each user's normal hours, locations, and volumes, then scores deviations from that baseline.",
+   "alt": "24-hour timeline showing a shaded normal login window from 8 AM to 6 PM with normal logins inside it, and a red anomaly marker at 2:47 AM for a foreign login scoring 97 out of 100."
+  },
+  {
+   "id": "ai-injection-flow",
+   "kind": "diagram",
+   "title": "Indirect prompt injection attack flow",
+   "svg": "assets/diagrams/ai-injection-flow.svg",
+   "lesson_ref": "c-ai-agent-sec",
+   "caption": "An attacker hides instructions in data the agent retrieves; the agent mistakes data for instructions and misuses its tools.",
+   "alt": "Attack flow diagram: hidden instruction in an email is read by an AI agent, which mistakes it for a command and calls a privileged tool, causing fraud; three defense boxes below: sanitize content, least-privilege tools, human approval."
+  }
+ ],
+ "foundations": [
+  {
+   "track": "linux-cli",
+   "why_needed": "Terminal labs and missions run in a simulated Linux shell; command-line fluency is required to complete them."
+  },
+  {
+   "track": "security-basics",
+   "why_needed": "Security-graph and ML-detection lessons assume baseline vocabulary (CIA triad, malware types, incident response phases)."
+  }
+ ],
+ "math": [
+  "stats",
+  "probability"
+ ]
+}

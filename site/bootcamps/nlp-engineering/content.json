@@ -1,0 +1,480 @@
+{
+ "slug": "nlp-engineering",
+ "title": "Natural Language Processing Engineering",
+ "tagline": "Machines that read and write, engineered properly: text preprocessing, tokenization and embeddings, classical NLTK methods, sequence models, and Hugging Face in practice — 60 hours.",
+ "vendor": {
+  "name": "Independent",
+  "certs": [],
+  "docs": []
+ },
+ "disclaimer": "Independent study material by Interstitium Labs. Not affiliated with or endorsed by any vendor. Confers no certificate.",
+ "accent": "#3b82f6",
+ "domains": [
+  {
+   "id": "nlp-engineering",
+   "name": "Natural Language Processing Engineering",
+   "summary": "The engineering track for machines that read and write: preprocessing decisions, subword tokenization and embeddings, classical NLTK methods as baselines, sequence models and decoding, and the Hugging Face practitioner workflow. Independent study; confers no certificate.",
+   "scenarios": [
+    {
+     "id": "nlp-engineering-sc1",
+     "title": "The negation that vanished",
+     "situation": "A sentiment classifier on product reviews strips stopwords with a standard English list before featurizing. Accuracy is mediocre, and error analysis shows 'not good', 'never works', and 'no complaints' are systematically misclassified as positive or negative — the opposite of their meaning.",
+     "prompt": "What preprocessing change fixes this class of error?",
+     "evidence": [],
+     "choices": [
+      "Stop stripping meaning-carrying words: keep negations ('not', 'never', 'no') and consider keeping stopwords entirely for short-text sentiment. Preprocessing must match the task — aggressive normalization that helps topic models destroys the signal sentiment depends on.",
+      "Lowercase more aggressively: case is the real noise here.",
+      "Remove even more stopwords: the list was too short.",
+      "Stem every token: 'working' and 'works' must merge."
+     ],
+     "answer": 0,
+     "why": "Stopword removal was designed for long-document retrieval, where frequent words add noise. In short reviews, 'not' is often the single most informative token in the sentence. The general rule: never apply a normalization step without checking what task-relevant signal it deletes.",
+     "hint": "Which single token flips the meaning of 'not good' — and is it on the stopword list you removed?",
+     "objectives": [],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "nlp-engineering-sc2",
+     "title": "The OOV explosion",
+     "situation": "A word-level tokenizer on social media text produces 30% out-of-vocabulary tokens at inference: misspellings, slang, emoji-adjacent glue words, and novel hashtags all map to UNK. The classifier trained on clean news text collapses on this data.",
+     "prompt": "What tokenization strategy addresses this robustly?",
+     "evidence": [],
+     "choices": [
+      "Move to subword tokenization (BPE or WordPiece): frequent words stay whole while rare or misspelled words split into known pieces, so almost nothing is truly out-of-vocabulary and morphological variants share representations.",
+      "Grow the word vocabulary to 500k entries: a bigger lookup table fixes OOV.",
+      "Lowercase everything: case variants cause most OOVs.",
+      "Switch to pure character-level modeling: subwords are a fad."
+     ],
+     "answer": 0,
+     "why": "Word-level vocabularies have a hard coverage ceiling on noisy text; every unseen word becomes the same UNK vector. Subword methods learn the merge operations from data, so 'unhappiness' splits into pieces the model has seen even if the exact word is new. This is why modern pretrained models ship subword tokenizers.",
+     "hint": "What happens to a word the vocabulary has never seen — and what would you need for it to still get a useful representation?",
+     "objectives": [],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "nlp-engineering-sc3",
+     "title": "One vector for 'bank'",
+     "situation": "A team uses pretrained Word2Vec embeddings for a legal-document classifier. The word 'bank' gets one vector, so 'river bank erosion' and 'bank loan default' pull the document representation in the same direction. Precision on finance-vs-environment classification is stuck.",
+     "prompt": "What representation change resolves this?",
+     "evidence": [],
+     "choices": [
+      "Switch to contextual embeddings from a transformer encoder: the vector for 'bank' is computed from its surrounding words, so 'river bank' and 'bank loan' get different representations. Static embeddings assign one vector per word type; contextual models assign one per word occurrence.",
+      "Train Word2Vec with more dimensions: 300 is too few for polysemy.",
+      "Train Word2Vec longer: the vectors have not converged.",
+      "Average the word vectors with TF-IDF weights: weighting fixes polysemy."
+     ],
+     "answer": 0,
+     "why": "This is the distributional hypothesis hitting its limit: static embeddings conflate all senses of a word into one point. Contextual models (ELMo, BERT and descendants) made the representation a function of the sentence, which is why they ended the one-vector-per-word era for most tasks.",
+     "hint": "If a word has two unrelated meanings, can a single fixed vector represent both faithfully — and what information would you need to disambiguate them?",
+     "objectives": [],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "nlp-engineering-sc4",
+     "title": "The looping chatbot",
+     "situation": "A seq2seq support chatbot trained on dialog pairs answers fluently but, on open-ended prompts, falls into loops: 'I don't know I don't know I don't know...' Greedy decoding picks the highest-probability token at each step.",
+     "prompt": "What decoding change breaks the loop?",
+     "evidence": [],
+     "choices": [
+      "Replace pure greedy decoding with beam search or sampling (temperature/top-k/top-p) plus a repetition penalty or no-repeat n-gram constraint. Greedy decoding is myopic — one safe, high-probability token ('I') leads into a self-reinforcing loop the model cannot back out of.",
+      "Train on more data: the model has not seen enough dialogs.",
+      "Use a bigger model: capacity fixes decoding loops.",
+      "Lower the learning rate and retrain: optimization is the issue."
+     ],
+     "answer": 0,
+     "why": "The loop is a decoding artifact, not a knowledge gap: 'I don't know' is high-probability under the training distribution, and greedy selection keeps re-selecting it because each repeated token raises the next one's probability. Sampling introduces diversity; repetition penalties directly tax already-used n-grams.",
+     "hint": "Once the model emits 'I don't know' twice, why would a greedy decoder pick it a third time — and what would let it choose differently?",
+     "objectives": [],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "nlp-engineering-sc5",
+     "title": "The confident pipeline",
+     "situation": "A team ships a sentiment feature using a Hugging Face pipeline with a general-domain checkpoint. On their legal-contract text it returns confident labels that domain experts say are wrong — the model was trained on movie reviews and tweets, not contracts.",
+     "prompt": "What is the correct engineering response?",
+     "evidence": [],
+     "choices": [
+      "Treat the pipeline as a baseline, not a solution: there is domain shift. Read the model card to confirm the training domain, collect labeled in-domain data, and fine-tune (or train a domain-specific classifier). Do not trust confidence scores from a model operating outside its training distribution.",
+      "Trust the confidence scores: 0.97 means it is right.",
+      "Rephrase the inputs as prompts: the pipeline just needs better phrasing.",
+      "Ensemble two pipelines: averaging fixes domain shift."
+     ],
+     "answer": 0,
+     "why": "Confidence is not correctness — softmax scores are poorly calibrated under distribution shift, and the model card exists precisely to tell you what domain the checkpoint was trained on. The pipeline API is the fastest way to get a baseline; fine-tuning on your data is how you get a product.",
+     "hint": "What data was this checkpoint actually trained on — and how would you check before trusting it on contracts?",
+     "objectives": [],
+     "mins": 6,
+     "difficulty": 3
+    },
+    {
+     "id": "nlp-engineering-sc6",
+     "title": "The fine-tune that forgot",
+     "situation": "Fine-tuning a BERT-base classifier on 400 labeled support tickets with lr=1e-3 for 20 epochs: training accuracy hits 100% by epoch 3, validation F1 collapses, and the model now performs worse than the pretrained baseline on a related task — it forgot general language structure.",
+     "prompt": "What fine-tuning discipline prevents this?",
+     "evidence": [],
+     "choices": [
+      "Fine-tune gently: learning rate around 2e-5 with warmup, 2-4 epochs, small batches, and early stopping on validation — optionally freezing lower layers first. With 400 examples the pretrained weights are the asset; a large LR and long schedule destroy them (catastrophic forgetting) while memorizing the tiny set.",
+      "Train for 50 epochs: more training always helps small datasets.",
+      "Raise the learning rate to 1e-2: the model needs bigger steps to learn the new task.",
+      "Switch to a larger model: BERT-large memorizes small data better."
+     ],
+     "answer": 0,
+     "why": "Pretrained models need only small nudges: the standard recipe (low LR, few epochs, warmup) exists because aggressive fine-tuning overwrites the general representations that made the checkpoint valuable. With 400 examples you are adapting, not training — and early stopping on a validation split is non-negotiable.",
+     "hint": "You have 400 examples and 110M parameters — which side of that ratio should dominate the training schedule, and what does that imply for the learning rate?",
+     "objectives": [],
+     "mins": 6,
+     "difficulty": 3
+    }
+   ]
+  }
+ ],
+ "lessons": [
+  {
+   "domain_id": "nlp-engineering",
+   "title": "Natural Language Processing Engineering — Core concepts",
+   "concepts": [
+    "Preprocessing is task-dependent: normalization that helps topic modeling (stopword removal, stemming) can destroy sentiment signal ('not good'). Never apply a text transform without asking what it deletes.",
+    "Tokenization is the representation contract: word-level vocabularies drown in OOV on noisy text, while BPE/WordPiece subwords split rare words into known pieces — the reason modern models ship subword tokenizers.",
+    "Embeddings encode the distributional hypothesis — words appearing in similar contexts get similar vectors. Word2Vec and GloVe made this practical; static embeddings assign one vector per word type, conflating all senses.",
+    "Classical NLTK tools (tokenizers, POS taggers, chunkers, named-entity chunkers) are fast, inspectable baselines: still the right choice for small, well-defined tasks and for features that neural models should not have to relearn.",
+    "Sequence models made language modeling the unifying task: RNNs and LSTMs carry state across tokens, seq2seq with attention maps sequences to sequences, and decoding strategy (greedy, beam, sampling) shapes output as much as the model does.",
+    "The Hugging Face workflow is pipeline first, fine-tune second: instant baselines from the pipelines API, then task-specific fine-tuning on your data — after reading the model card for training domain, license, and known limits."
+   ],
+   "example": {
+    "lang": "python",
+    "code": "from transformers import pipeline, AutoTokenizer\n\n# Baseline in two lines: tokenizer + model + labels, handled for you.\nclf = pipeline(\"sentiment-analysis\")\nprint(clf(\"The battery life is fantastic, but the screen is dim.\"))\n# [{'label': 'POSITIVE', 'score': 0.99...}]\n\n# Look under the hood before trusting it: what does the tokenizer see?\ntok = AutoTokenizer.from_pretrained(clf.model.name_or_path)\nprint(tok.tokenize(\"unhappiness\"))\n# ['un', '##happiness']  -> subwords, not UNK\n\n# Fine-tuning (sketch): same tokenizer, new head, your labeled data.\n# from transformers import AutoModelForSequenceClassification, Trainer\n# model = AutoModelForSequenceClassification.from_pretrained(\n#     \"distilbert-base-uncased\", num_labels=3)\n# train with Trainer on your Dataset of tokenized examples,\n# lr=2e-5, 3 epochs, early stopping on validation F1.\n",
+    "walkthrough": "The pipelines API is the fastest honest baseline in NLP: it wires a pretrained tokenizer and model together and returns labeled predictions in two lines. Inspecting the tokenizer shows why subwords matter — 'unhappiness' splits into known pieces instead of collapsing to unknown. The fine-tuning sketch shows the production path: keep the pretrained tokenizer, attach a classification head, and train gently (low learning rate, few epochs) on your own labeled data. Between the two lines and the sketch sits the model card — read it before either, because the training domain decides whether the baseline is even valid."
+   },
+   "pitfalls": [
+    "Common trap: stripping stopwords for sentiment or short-text tasks — 'not', 'never', and 'no' are often the most informative tokens.",
+    "Common trap: trusting pipeline confidence scores on out-of-domain text — softmax confidence is not correctness under distribution shift.",
+    "Common trap: fine-tuning with a large learning rate or many epochs on a small dataset — you destroy the pretrained weights you came for.",
+    "Common trap: evaluating tokenization choices on intrinsic metrics instead of the downstream task — the tokenizer serves the task, not the other way around."
+   ],
+   "try_it": "Work through this in the Labs tab."
+  }
+ ],
+ "labs": [
+  {
+   "id": "nlp-engineering-lab1",
+   "domain_id": "nlp-engineering",
+   "title": "Classical NLP pipeline with NLTK",
+   "objective": "Build an inspectable classical NLP pipeline — sentence segmentation, tokenization, POS tagging, and named entity chunking — and compare its entities against a modern baseline on the same text.",
+   "steps": [
+    "Create lab1.py: download the NLTK 'punkt', 'averaged_perceptron_tagger', 'maxent_ne_chunker', and 'words' resources, then load three short news-style paragraphs as your corpus.",
+    "For each paragraph, run sentence segmentation, word tokenization, POS tagging, and nltk.ne_chunk; print the tagged sentences and extracted entity trees.",
+    "Collect all PERSON/ORGANIZATION/GPE entities into a list and print the unique set with counts.",
+    "Hand-annotate the true entities for one paragraph (your gold standard) and compute precision/recall of the chunker against it.",
+    "In three sentences, state where the classical pipeline is trustworthy, where it fails, and which failure mode a neural NER model would fix first."
+   ],
+   "checks": [
+    {
+     "command_pattern": "^python3\\s",
+     "expect_contains": "PERSON",
+     "hint": "Print the extracted entity labels (e.g. lines containing PERSON/ORGANIZATION/GPE) so the check can see the chunker ran."
+    }
+   ]
+  },
+  {
+   "id": "nlp-engineering-lab2",
+   "domain_id": "nlp-engineering",
+   "title": "Fine-tune a text classifier end to end",
+   "objective": "Fine-tune a small transformer classifier on a labeled text dataset with the Trainer API, using proper fine-tuning discipline, and report validation metrics plus a model-card-style summary.",
+   "steps": [
+    "Create lab2.py: build a tiny labeled CSV (at least 200 rows, 2-3 classes, e.g. support-ticket topics) and load it with the datasets library.",
+    "Tokenize with the matching AutoTokenizer (distilbert-base-uncased), create AutoModelForSequenceClassification with num_labels set, and configure TrainingArguments: lr=2e-5, 3 epochs, evaluation each epoch.",
+    "Train with Trainer, then evaluate on a held-out split and print accuracy and macro F1 to four decimals.",
+    "Run the base pipeline (no fine-tuning) on the same held-out split and print its accuracy — the baseline your fine-tune had to beat.",
+    "Write a five-line model card: base checkpoint, training data description, eval metrics, known limits, intended use."
+   ],
+   "checks": [
+    {
+     "command_pattern": "^python3\\s",
+     "expect_contains": "macro F1",
+     "hint": "Print a line like 'macro F1 0.XXXX' after evaluation so the check can see the metric."
+    }
+   ]
+  }
+ ],
+ "simulations": [],
+ "consoleSims": [],
+ "terminalMissions": [],
+ "sections": [
+  {
+   "id": "nlp-engineering-sec",
+   "title": "Natural Language Processing Engineering — core path",
+   "kind": "path",
+   "lectures": [],
+   "lab_ids": [
+    "nlp-engineering-lab1",
+    "nlp-engineering-lab2"
+   ],
+   "drill_domain_ids": [
+    "nlp-engineering"
+   ]
+  }
+ ],
+ "behavioral": [
+  {
+   "prompt": "Explain word embeddings to a product manager who thinks the model 'understands English like a person does.'",
+   "framework": "STAR",
+   "points": [
+    "Give the distributional intuition in one plain sentence",
+    "Name one concrete limit (polysemy, bias, no grounding) with an example",
+    "Connect the limit to a product decision they own",
+    "Check their understanding with a question, not a lecture"
+   ],
+   "pitfalls": [
+    "Letting the anthropomorphism stand",
+    "Drowning them in vector math",
+    "No product implication drawn"
+   ]
+  },
+  {
+   "prompt": "Tell me about a time your NLP model produced biased or harmful output. What did you do?",
+   "framework": "STAR",
+   "points": [
+    "Describe the output and how it was caught",
+    "Trace it to data, representation, or decoding — with evidence",
+    "Explain the mitigation and how you measured it",
+    "State what monitoring you added afterward"
+   ],
+   "pitfalls": [
+    "Denying the model can be biased",
+    "Blaming the training data and stopping there",
+    "No measurement of the fix"
+   ]
+  },
+  {
+   "prompt": "Walk me through shipping a text feature built on messy, real-world user input.",
+   "framework": "STAR",
+   "points": [
+    "Characterize the mess: languages, noise, length, edge cases",
+    "Explain the preprocessing and tokenization choices and why",
+    "Describe how you evaluated on realistic data, not clean benchmarks",
+    "Name what broke in production and how you handled it"
+   ],
+   "pitfalls": [
+    "Assuming clean input",
+    "Evaluating only on a tidy benchmark",
+    "No error analysis on real failures"
+   ]
+  },
+  {
+   "prompt": "Describe a disagreement about whether to use a classical NLP approach or a neural model.",
+   "framework": "STAR",
+   "points": [
+    "State the task constraints both sides faced (latency, data, interpretability)",
+    "Show the baseline comparison that informed the call",
+    "Explain the final decision and its measured tradeoff",
+    "Note what would flip the decision"
+   ],
+   "pitfalls": [
+    "Choosing neural by default prestige",
+    "No baseline numbers",
+    "Ignoring latency or cost constraints"
+   ]
+  },
+  {
+   "prompt": "Tell me about a labeling or annotation effort you ran or relied on. How did you ensure quality?",
+   "framework": "STAR",
+   "points": [
+    "Describe the guidelines and how annotators were trained",
+    "Explain how you measured agreement",
+    "Show how label noise affected the model, with numbers",
+    "Describe the adjudication process for disagreements"
+   ],
+   "pitfalls": [
+    "Treating labels as ground truth without checking",
+    "No agreement measurement",
+    "Blaming the model for label noise"
+   ]
+  },
+  {
+   "prompt": "How do you evaluate a language model beyond a single accuracy number?",
+   "framework": "STAR",
+   "points": [
+    "Name the metric suite for the task (precision/recall/F1, BLEU/ROUGE limits, human eval)",
+    "Explain slicing: performance by subgroup, length, or domain",
+    "Describe error analysis on real failures",
+    "Connect metrics to the user-facing outcome"
+   ],
+   "pitfalls": [
+    "One metric to rule them all",
+    "No error analysis",
+    "Metrics disconnected from user impact"
+   ]
+  },
+  {
+   "prompt": "Tell me about a time you had to read a model card or paper critically before using a checkpoint.",
+   "framework": "STAR",
+   "points": [
+    "Name what you checked: training data, domain, license, limits",
+    "Describe a red flag you found and how it changed your plan",
+    "Explain how you validated the checkpoint on your data",
+    "State the usage constraints you documented"
+   ],
+   "pitfalls": [
+    "Downloading the top-of-leaderboard checkpoint blindly",
+    "Ignoring the license",
+    "No validation on own data"
+   ]
+  },
+  {
+   "prompt": "Describe a production incident involving an NLP system — drift, bad outputs, or a pipeline failure.",
+   "framework": "STAR",
+   "points": [
+    "Explain how the failure surfaced and its user impact",
+    "Trace the root cause (data drift, domain shift, tokenizer mismatch)",
+    "Describe the fix and the guardrail added",
+    "State what you monitor now that you did not before"
+   ],
+   "pitfalls": [
+    "Blaming users for weird input",
+    "A fix with no monitoring",
+    "No root-cause chain"
+   ]
+  }
+ ],
+ "resources": {
+  "cheatsheet": [
+   "Preprocessing serves the task: keep negations for sentiment; normalize aggressively only for retrieval-style tasks.",
+   "Subword tokenizers (BPE/WordPiece) for noisy or open-vocabulary text; word-level only for clean, closed domains.",
+   "Static embeddings (Word2Vec/GloVe): one vector per word type. Contextual: one per occurrence.",
+   "pipeline() first for baselines; read the model card before trusting any checkpoint.",
+   "Fine-tune gently: lr ~2e-5, few epochs, warmup, early stopping on validation.",
+   "Decoding shapes output: greedy is myopic; beam/sampling + repetition penalty for open-ended generation.",
+   "NLTK classics are baselines and features: fast, inspectable, still winning small well-defined tasks.",
+   "Evaluate on your data and your task — never on the checkpoint's home benchmark alone."
+  ],
+  "glossary": [
+   [
+    "tokenization",
+    "Splitting text into the units a model consumes: words, subwords, or characters."
+   ],
+   [
+    "BPE / WordPiece",
+    "Subword tokenization algorithms that merge frequent character pairs; handle rare words via known pieces."
+   ],
+   [
+    "OOV",
+    "Out-of-vocabulary: tokens unseen in training; word-level models map them all to one UNK vector."
+   ],
+   [
+    "Word2Vec / GloVe",
+    "Static word-embedding methods from the distributional hypothesis: one vector per word type."
+   ],
+   [
+    "contextual embedding",
+    "A token vector computed from its surrounding context (e.g. BERT); disambiguates word senses."
+   ],
+   [
+    "POS tagging",
+    "Labeling each token with its part of speech (noun, verb, ...); a classical sequence-labeling task."
+   ],
+   [
+    "NER",
+    "Named entity recognition: finding and typing spans like PERSON, ORGANIZATION, GPE."
+   ],
+   [
+    "chunking / parsing",
+    "Grouping tokens into phrases (chunking) or full syntactic trees (parsing)."
+   ],
+   [
+    "RNN / LSTM",
+    "Recurrent architectures carrying hidden state across tokens; LSTMs add gates for long-range memory."
+   ],
+   [
+    "seq2seq",
+    "Encoder-decoder architecture mapping an input sequence to an output sequence (translation, summarization)."
+   ],
+   [
+    "attention",
+    "Mechanism letting the decoder weight encoder states per output step; the original seq2seq attention predates transformers."
+   ],
+   [
+    "decoding",
+    "Strategy for choosing output tokens: greedy, beam search, or sampling (temperature, top-k, top-p)."
+   ],
+   [
+    "language modeling",
+    "Predicting the next token given context; the unifying pretraining task for modern NLP."
+   ],
+   [
+    "fine-tuning",
+    "Continuing training of a pretrained model on task data with a small learning rate."
+   ],
+   [
+    "model card",
+    "Documentation for a checkpoint: training data, intended use, limits, license — read before downloading."
+   ],
+   [
+    "domain shift",
+    "When deployment text differs from training text; degrades performance and calibration."
+   ],
+   [
+    "pipeline (HF)",
+    "Hugging Face's high-level API: tokenizer + model + postprocessing in one call."
+   ],
+   [
+    "Trainer",
+    "Hugging Face's training loop abstraction handling batching, optimization, and evaluation."
+   ]
+  ],
+  "links": [
+   {
+    "name": "NLTK documentation",
+    "url": "https://www.nltk.org/"
+   },
+   {
+    "name": "Hugging Face documentation",
+    "url": "https://huggingface.co/docs"
+   },
+   {
+    "name": "PyTorch documentation",
+    "url": "https://pytorch.org/docs/stable/index.html"
+   }
+  ],
+  "checklist": [
+   "Preprocessing choices justified per task; negations preserved where meaning depends on them.",
+   "Tokenizer matched to text noise level; OOV rate measured on real data.",
+   "Baseline established (classical or pipeline) before any fine-tuning.",
+   "Model card read: training domain, license, and known limits documented.",
+   "Fine-tuning uses low LR, few epochs, warmup, and validation-based early stopping.",
+   "Evaluation on in-domain held-out data with task-appropriate metrics and error analysis.",
+   "Decoding strategy chosen deliberately for generation tasks.",
+   "Known failure modes (domain shift, polysemy, label noise) listed with mitigations."
+  ]
+ },
+ "chat": {
+  "persona": "You are a rigorous but encouraging NLP engineering tutor. Teach from first principles, show short real code (NLTK, Hugging Face) when it clarifies, and always ask what the learner observed before giving the answer. Stay on topic: preprocessing, tokenization, embeddings, classical NLP, sequence models, decoding, and Hugging Face practice. Independent study material; no vendor affiliation, no certificates.",
+  "topics": [
+   {
+    "id": "nlp-engineering",
+    "name": "Natural Language Processing Engineering",
+    "key_points": [
+     "text preprocessing",
+     "BPE and WordPiece",
+     "Word2Vec and GloVe",
+     "static vs contextual embeddings",
+     "NLTK: POS, NER, parsing",
+     "RNNs, LSTMs, seq2seq, attention",
+     "decoding strategies",
+     "HF pipelines, fine-tuning, model cards"
+    ]
+   }
+  ]
+ },
+ "simulation": {
+  "items": 10,
+  "minutes": 30,
+  "evidence_cost_mins": 2
+ },
+ "media": [],
+ "foundations": [],
+ "math": []
+}

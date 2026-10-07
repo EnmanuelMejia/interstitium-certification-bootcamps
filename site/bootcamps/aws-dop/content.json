@@ -1,1 +1,1253 @@
-{"disclaimer": "Independent practice material by Interstitium Labs. Not affiliated with, endorsed by, or sponsored by Amazon Web Services. Confers no certificate. All scenarios are original; no exam content is reproduced.", "domains": [{"id": "sdlc-automation", "name": "SDLC Automation", "scenarios": [{"answer": 1, "choices": ["Jenkins on a single EC2 instance", "CodePipeline with CodeBuild and CodeDeploy stages", "Manual builds from a developer laptop", "FTP uploads to production"], "evidence": [["pipe.txt", "Need: commit -> build -> test ->\ndeploy to staging -> manual approval\n-> deploy to prod. Audit every step."]], "hint": "Which managed service chains build, test, and deploy stages with approvals?", "id": "dop-sa-01", "mins": 6, "objectives": ["CodePipeline", "CI/CD"], "prompt": "Which pipeline design fits?", "situation": "The team needs commit-to-production automation with staging, a manual approval gate, and full auditability.", "title": "Commit to production, safely", "why": "CodePipeline orchestrates the full CI/CD workflow — source, CodeBuild, test, CodeDeploy — with manual approval actions and a complete execution history. Self-managed Jenkins reintroduces server ops; laptop builds and FTP are unauditable anti-patterns."}, {"answer": 0, "choices": ["A manual approval action between staging and production", "Auto-deploy to production on every commit", "Emailing the team before deploy", "Deploying Friday at 5 PM"], "evidence": [["gate.txt", "Regulated app. Requirement:\nhuman sign-off with identity recorded\nbefore production deploys."]], "hint": "Which CodePipeline action type pauses for a human and records who approved?", "id": "dop-sa-02", "mins": 5, "objectives": ["Manual approvals", "Deployment gates"], "prompt": "What enforces the sign-off?", "situation": "A regulated app requires a recorded human sign-off before any production deploy.", "title": "The gate before production", "why": "A CodePipeline manual approval action pauses the pipeline until an approver acts, recording their identity — satisfying the regulation in the pipeline itself. Auto-deploy skips the gate; emails aren't enforced or recorded in the pipeline."}, {"answer": 2, "choices": ["CodeBuild with a buildspec.yml", "A developer's laptop", "An EC2 instance with cron", "Lambda with 15-min builds"], "evidence": [["build.txt", "Builds: flaky, 'works on my laptop'.\nNeed: reproducible, versioned,\ntriggered by pipeline."]], "hint": "Which managed build service runs buildspec-defined builds?", "id": "dop-sa-03", "mins": 5, "objectives": ["CodeBuild", "Reproducible builds"], "prompt": "What makes builds reproducible?", "situation": "Builds are flaky and 'work on my laptop'; the team needs reproducible, versioned, pipeline-triggered builds.", "title": "Works on my laptop, fails in prod", "why": "CodeBuild runs builds in clean, versioned environments defined by buildspec.yml, triggered by the pipeline — eliminating laptop-specific flakiness. Laptop and cron-EC2 builds aren't reproducible; Lambda's timeout and packaging model don't fit general builds."}, {"answer": 1, "choices": ["Blue/green for Lambda with CodeDeploy", "All-at-once Lambda deploys", "Manual Lambda console publishes", "Rolling EC2 deploys for Lambda"], "evidence": [["lambda.txt", "Lambda API: 10k rps.\nRequirement: shift 10% traffic to\nnew version, monitor, then all."]], "hint": "Which deployment shifts Lambda traffic gradually with automatic rollback on alarms?", "id": "dop-sa-04", "mins": 6, "objectives": ["Lambda deployments", "Canary"], "prompt": "Which deployment strategy fits?", "situation": "A high-traffic Lambda needs canary traffic shifting (10%, then all) with monitoring and rollback.", "title": "Canary for Lambda", "why": "CodeDeploy's Lambda blue/green (canary/linear) shifts aliases' traffic gradually and can roll back automatically on CloudWatch alarms. All-at-once maximizes blast radius; console publishes are manual; EC2 rolling doesn't apply to Lambda."}, {"answer": 3, "choices": ["Separate pipelines per environment", "One pipeline with parameterized environment stages", "Copy-paste the pipeline JSON", "One pipeline that deploys to prod only"], "evidence": [["env.txt", "Environments: dev, staging, prod.\nCurrent: 3 divergent pipelines."]], "hint": "What's DRY for pipelines across environments?", "id": "dop-sa-05", "mins": 6, "objectives": ["Pipeline design", "Environments"], "prompt": "What unifies the pipelines?", "situation": "Three divergent pipelines serve dev, staging, and prod; changes must be made three times.", "title": "One pipeline, three environments", "why": "One parameterized pipeline with per-environment stages keeps the workflow DRY — the same tested artifact progresses through environments with environment-specific parameters. Divergent pipelines drift; prod-only pipelines skip the safety of staging."}, {"answer": 0, "choices": ["CodeArtifact", "A public npm registry only", "Vendored tarballs in git", "An S3 bucket with no versioning"], "evidence": [["deps.txt", "Builds pull public packages.\nIncident: upstream package deleted;\nbuilds broke for 6 hours."]], "hint": "Which managed service hosts private, immutable package versions?", "id": "dop-sa-06", "mins": 5, "objectives": ["CodeArtifact", "Dependency management"], "prompt": "What protects builds from upstream breakage?", "situation": "An upstream package deletion broke builds for 6 hours; the team pulls directly from public registries.", "title": "The package that vanished", "why": "CodeArtifact hosts private package repositories with immutable versions, insulating builds from upstream deletions. Public-only registries reintroduce the risk; vendored tarballs bloat repos; unversioned S3 lacks package semantics."}]}, {"id": "iac-config-management", "name": "IaC & Config Management", "scenarios": [{"answer": 2, "choices": ["Console ClickOps", "CloudFormation with nested stacks and change sets", "Hardcoded scripts per environment", "Manual runbooks"], "evidence": [["iac.txt", "200 resources, 4 environments.\nNeed: reviewable changes,\nrollback, drift detection."]], "hint": "Which IaC service has change sets and drift detection built in?", "id": "dop-ic-01", "mins": 6, "objectives": ["CloudFormation", "IaC at scale"], "prompt": "Which IaC approach fits?", "situation": "200 resources across 4 environments need reviewable changes, rollback, and drift detection.", "title": "Infrastructure as actual code", "why": "CloudFormation with nested stacks (modularity) and change sets (preview before apply) plus drift detection meets all requirements natively. ClickOps and hardcoded scripts aren't reviewable or repeatable; runbooks drift."}, {"answer": 1, "choices": ["One giant stack for everything", "Nested stacks / modules per component with parameters", "A stack per resource", "No IaC — use the console"], "evidence": [["mod.txt", "Network, data, app layers.\nTeams: 3, deploying independently.\nNeed: reuse + independent updates."]], "hint": "What gives you reusable, independently-updatable units?", "id": "dop-ic-02", "mins": 6, "objectives": ["Modularity", "Nested stacks"], "prompt": "How should the IaC be structured?", "situation": "Three teams deploy network, data, and app layers independently and want reusable components.", "title": "Modules, not monoliths", "why": "Nested stacks (or registry modules) decompose infrastructure into reusable, independently-updatable units with clear interfaces via parameters/outputs. A giant stack couples everything; per-resource stacks explode overhead."}, {"answer": 0, "choices": ["Systems Manager State Manager / desired-state configuration", "SSH scripts run by hand", "User data that configures once at boot", "Golden images rebuilt monthly by hand"], "evidence": [["cfg.txt", "Fleet: 500 instances.\nRequirement: NTP, agents, and\nbaseline configs enforced continuously."]], "hint": "Which service enforces configuration continuously, not just at boot?", "id": "dop-ic-03", "mins": 6, "objectives": ["State Manager", "Configuration management"], "prompt": "What enforces the baseline continuously?", "situation": "500 instances need NTP, agents, and baseline configs enforced continuously — not just at launch.", "title": "Configuration that stays configured", "why": "State Manager (Systems Manager) applies associations that continuously enforce desired state, correcting drift. Boot-time user data doesn't fix runtime drift; manual SSH doesn't scale; hand-built images are slow to update."}, {"answer": 3, "choices": ["Baking secrets into AMIs", "Parameter Store SecureString with IAM-scoped access per environment", "Plaintext in the template", "The same password in all environments"], "evidence": [["sec-iac.txt", "Templates in git.\nNeed: per-environment secrets,\nno plaintext in repo."]], "hint": "Which parameter type encrypts values and integrates with IAM?", "id": "dop-ic-04", "mins": 5, "objectives": ["Parameter Store", "Secrets in IaC"], "prompt": "How should templates handle secrets?", "situation": "IaC templates in git need per-environment secrets with nothing in plaintext.", "title": "Secrets in the template repo", "why": "Parameter Store SecureString (or Secrets Manager) stores encrypted secrets referenced by templates, with IAM policies scoping access per environment. Plaintext in git leaks; baked AMI secrets can't rotate; one password everywhere maximizes blast radius."}, {"answer": 1, "choices": ["Direct stack updates with no preview", "Change sets reviewed before execution", "Deleting and recreating the stack", "Updating via the console"], "evidence": [["chg.txt", "Last update replaced the\nproduction database (data loss).\nNeed: preview + prevent replacement."]], "hint": "Which CloudFormation feature shows you the replacement before it happens?", "id": "dop-ic-05", "mins": 6, "objectives": ["Change sets", "Safe updates"], "prompt": "What prevents the next accidental replacement?", "situation": "A stack update replaced the production database, causing data loss.", "title": "Preview before you apply", "why": "Change sets preview exactly what a stack update will do — including resource replacement — so reviewers catch the database replacement before execution. Direct updates skip the preview; delete/recreate guarantees downtime; console updates are unauditable."}, {"answer": 2, "choices": ["Ignoring drift", "CloudFormation drift detection with remediation runbooks", "Rebuilding everything weekly", "Deleting the stack"], "evidence": [["drift2.txt", "Someone changed a security group\nin the console. Template no longer\nmatches reality."]], "hint": "Which feature compares the stack to actual resource configuration?", "id": "dop-ic-06", "mins": 5, "objectives": ["Drift detection"], "prompt": "What catches and corrects the drift?", "situation": "A console change to a security group made the template diverge from reality.", "title": "The console change nobody logged", "why": "CloudFormation drift detection identifies resources whose actual configuration differs from the template, and remediation runbooks (or re-applying the stack) restore the desired state. Ignoring drift compounds; weekly rebuilds are disruptive; deleting the stack is destructive."}]}, {"id": "monitoring-logging", "name": "Monitoring & Logging", "scenarios": [{"answer": 1, "choices": ["One alarm per instance", "Composite alarms + SLO-based burn-rate alerting", "No alarms; check dashboards daily", "Alarming on every metric"], "evidence": [["noise.txt", "3000 alarms/week.\nOn-call ignores them all.\nReal incident missed last Tuesday."]], "hint": "What reduces thousands of alarms to a few that actually page?", "id": "dop-ml-01", "mins": 6, "objectives": ["Composite alarms", "Alert fatigue"], "prompt": "What fixes the alert fatigue?", "situation": "3,000 alarms per week; on-call ignores them all and a real incident was missed.", "title": "Three thousand alarms a week", "why": "Composite alarms combine signals into meaningful pages, and SLO burn-rate alerting pages only when the error budget is actually at risk — cutting noise to signal. Per-instance alarms multiply noise; no alarms is blindness; alarming on everything is the current failure."}, {"answer": 0, "choices": ["AWS X-Ray with service maps and trace analytics", "CloudWatch Logs alone", "Guessing from metrics", "VPC Flow Logs"], "evidence": [["trace.txt", "Request spans 8 services.\nLatency spike: which hop?\nLogs exist but aren't correlated."]], "hint": "Which service correlates the hops into one trace?", "id": "dop-ml-02", "mins": 6, "objectives": ["X-Ray", "Distributed tracing"], "prompt": "What finds the slow hop?", "situation": "A request spans 8 services; latency spiked and uncorrelated logs can't show which hop is slow.", "title": "Which hop is slow?", "why": "X-Ray traces requests across services into a service map with per-segment timing, pinpointing the slow hop. Uncorrelated logs require manual stitching; metrics show symptoms not paths; Flow Logs show network flows, not app spans."}, {"answer": 2, "choices": ["Each service logs in its own format", "Structured JSON logs with correlation IDs shipped to a central store", "Logs only on the instances", "No logs in production"], "evidence": [["corr.txt", "Incident review: couldn't follow\none request across 5 services.\nFormats differ per team."]], "hint": "What lets you query one request across all services?", "id": "dop-ml-03", "mins": 6, "objectives": ["Structured logging", "Correlation IDs"], "prompt": "What makes cross-service debugging possible?", "situation": "An incident review couldn't follow one request across 5 services with differing log formats.", "title": "Following one request everywhere", "why": "Structured JSON logs with correlation IDs, shipped centrally, let you query a single request's journey across services. Per-team formats block correlation; instance-local logs aren't searchable; no production logs is blindness."}, {"answer": 1, "choices": ["The application tier only", "CloudWatch RUM + Synthetics canaries", "Pingdom-style external ping only", "No user monitoring"], "evidence": [["ux.txt", "Backend green, but checkout\nfails for Safari users.\nNobody knew for 2 days."]], "hint": "Which AWS services watch the real user experience and probe it synthetically?", "id": "dop-ml-04", "mins": 6, "objectives": ["RUM", "Synthetics"], "prompt": "What catches user-facing breakage the backend misses?", "situation": "Backend metrics were green while checkout failed for Safari users for two days.", "title": "Green backend, broken checkout", "why": "CloudWatch RUM captures real-user experience (including browser-specific failures) and Synthetics canaries continuously probe critical flows — catching what backend metrics miss. Backend-only monitoring is exactly the blind spot; external ping alone lacks depth."}, {"answer": 3, "choices": ["Unlimited log retention", "Centralized log archive in S3 with lifecycle policies + Athena for ad-hoc queries", "Logs deleted after 7 days", "Logs in 12 different accounts with no aggregation"], "evidence": [["ret.txt", "Compliance: 1-year log retention.\nNeed: occasional forensic queries.\nVolume: 500 GB/day."]], "hint": "Cheap durable storage + serverless SQL = which pattern?", "id": "dop-ml-05", "mins": 6, "objectives": ["Log archival", "Athena"], "prompt": "What meets retention and forensic needs affordably?", "situation": "500 GB/day of logs need 1-year retention with occasional forensic queries.", "title": "A year of logs, queried occasionally", "why": "Archiving to S3 with lifecycle policies gives cheap durable retention, and Athena provides serverless SQL for ad-hoc forensic queries without running infrastructure. Unlimited retention in CloudWatch Logs is expensive; 7-day deletion violates compliance; scattered accounts block investigation."}, {"answer": 0, "choices": ["EC2 detailed monitoring (1-min) + custom high-resolution metrics", "Default 5-minute basic monitoring", "Monitoring the hypervisor only", "No monitoring on batch workers"], "evidence": [["batch2.txt", "Batch workers die silently.\n5-min metrics miss the 2-min\nfailure spikes."]], "hint": "What sees sub-5-minute phenomena?", "id": "dop-ml-06", "mins": 5, "objectives": ["Detailed monitoring", "Metric resolution"], "prompt": "What catches the short-lived failures?", "situation": "Batch workers die silently; 5-minute metrics miss 2-minute failure spikes.", "title": "The spikes between datapoints", "why": "Detailed (1-minute) monitoring plus high-resolution custom metrics capture short-lived failures that 5-minute basic monitoring averages away. Hypervisor-only metrics miss app state; no monitoring is the current failure."}]}, {"id": "policies-standards", "name": "Policies & Standards", "scenarios": [{"answer": 2, "choices": ["Trusting every team to tag", "AWS Organizations with SCPs + tag policies", "One account for everything", "Email reminders about tagging"], "evidence": [["gov.txt", "12 accounts, 4 teams.\nNeed: prevent prod deploys outside\npipeline; enforce cost-center tags."]], "hint": "Which mechanism sets guardrails even the admin can't cross?", "id": "dop-ps-01", "mins": 6, "objectives": ["SCPs", "Organizations"], "prompt": "What enforces the guardrails?", "situation": "Twelve accounts need hard guardrails: no prod deploys outside the pipeline, mandatory cost-center tags.", "title": "Guardrails, not guidelines", "why": "Service Control Policies (SCPs) in Organizations set permission guardrails that apply even to account admins, and tag policies enforce tagging standards. Trust and emails aren't enforcement; one account maximizes blast radius."}, {"answer": 1, "choices": ["IAM users with static keys for CI", "OIDC federation from the CI provider to IAM roles", "Sharing one deploy key", "Long-lived tokens in repo secrets"], "evidence": [["ci.txt", "CI deploys to AWS.\nCurrent: static access key in CI secrets,\nrotated never, visible to all jobs."]], "hint": "Which pattern gives CI temporary credentials with no stored secrets?", "id": "dop-ps-02", "mins": 6, "objectives": ["OIDC federation", "CI/CD security"], "prompt": "What secures the CI-to-AWS trust?", "situation": "CI deploys to AWS with a static access key in CI secrets, never rotated, visible to all jobs.", "title": "CI with no stored secrets", "why": "OIDC federation lets the CI provider assume IAM roles with short-lived credentials — no static keys stored anywhere. Static keys in CI secrets are the current vulnerability; shared keys destroy scoping; repo tokens leak."}, {"answer": 0, "choices": ["Config rules + conformance packs across accounts", "Manual spreadsheet audits", "Trusting team self-reports", "Annual pentest only"], "evidence": [["std.txt", "Standard: encrypted EBS, no public\nS3, TLS everywhere. 12 accounts.\nNeed: continuous verification."]], "hint": "Which service continuously evaluates rules and aggregates across accounts?", "id": "dop-ps-03", "mins": 6, "objectives": ["Config conformance packs"], "prompt": "What verifies the standards continuously?", "situation": "Security standards (encrypted EBS, no public S3, TLS) must be continuously verified across 12 accounts.", "title": "Standards that verify themselves", "why": "Config rules packaged as conformance packs deploy the standard's checks across accounts/regions with aggregated compliance views. Spreadsheets and self-reports don't verify; annual pentests are point-in-time."}, {"answer": 3, "choices": ["Allow all actions in the pipeline role", "Pipeline roles scoped with IAM Permissions Boundaries", "One admin role for all pipelines", "No roles; use root"], "evidence": [["blast.txt", "Compromised pipeline deployed\ncrypto-miners with its admin role.\nBlast radius: entire account."]], "hint": "Which IAM feature caps what a role can do even if its policies are broad?", "id": "dop-ps-04", "mins": 7, "objectives": ["Permissions boundaries", "Blast radius"], "prompt": "What limits the next compromise's blast radius?", "situation": "A compromised pipeline's admin role deployed crypto-miners across the entire account.", "title": "Capping the blast radius", "why": "IAM Permissions Boundaries set the maximum permissions a role can ever have, containing a compromised pipeline even if its attached policies are broad. Admin-for-everything is the current failure; no roles/root are worse."}, {"answer": 1, "choices": ["Each developer manages their own keys", "Centralized secrets rotation via Secrets Manager with pipeline integration", "Secrets in Slack", "One shared password"], "evidence": [["rot.txt", "Policy: rotate all deploy secrets\nquarterly. Current: manual,\nlast rotation 18 months ago."]], "hint": "Which service automates rotation and integrates with pipelines?", "id": "dop-ps-05", "mins": 5, "objectives": ["Secrets rotation", "Automation"], "prompt": "What makes rotation actually happen?", "situation": "Quarterly secret rotation is policy but manual rotation hasn't happened in 18 months.", "title": "Rotation that actually rotates", "why": "Secrets Manager automates rotation schedules and integrates with pipelines/services so rotation happens without heroics. Manual processes are the current failure; Slack/shared passwords are breaches waiting to happen."}, {"answer": 2, "choices": ["No approvals ever", "Manual approvals + automated policy checks (e.g., OPA/Config) in the pipeline", "Approvals via hallway conversation", "Deploying then asking forgiveness"], "evidence": [["change.txt", "Change control: every prod change\nneeds approval + policy check.\nNeed: speed AND compliance."]], "hint": "What combines human judgment where needed with automated checks everywhere?", "id": "dop-ps-06", "mins": 6, "objectives": ["Policy as code", "Change control"], "prompt": "What satisfies both speed and control?", "situation": "Every production change needs approval and policy checks, without killing deployment speed.", "title": "Speed with guardrails", "why": "Pipelines with manual approval gates for human judgment plus automated policy-as-code checks give both speed and compliance. No approvals fails audit; hallway approvals aren't recorded; deploy-then-apologize is a career-limiting strategy."}]}, {"id": "incident-response", "name": "Incident Response", "scenarios": [{"answer": 0, "choices": ["A runbook-driven response: CloudWatch alarm -> SNS -> Lambda/SSM automation -> OpsCenter OpsItem", "Waiting for users to report", "SSHing into prod to poke around", "Restarting everything blindly"], "evidence": [["ir.txt", "Incident: 2 AM, disk full on fleet.\nNeed: detect, respond, track,\nlearn — repeatably."]], "hint": "Which pattern detects, responds, tracks, and learns as a system?", "id": "dop-ir-01", "mins": 6, "objectives": ["Incident automation", "OpsCenter"], "prompt": "What makes the 2 AM response repeatable?", "situation": "A 2 AM disk-full incident needs detection, response, tracking, and learning — repeatably.", "title": "The 2 AM runbook", "why": "Alarm → SNS → automated remediation (Lambda/SSM) → OpsCenter OpsItem gives detection, response, tracking, and a record for the postmortem — the full incident loop. User reports are slow; ad-hoc SSH is unrepeatable; blind restarts skip diagnosis."}, {"answer": 1, "choices": ["Deleting the compromised instance immediately", "Isolating with security groups, snapshotting for forensics, then eradicating", "Ignoring it until business hours", "Paying the ransom (if ransomware)"], "evidence": [["comp.txt", "GuardDuty: instance mining crypto,\ntalking to known C2."]], "hint": "Contain first, preserve evidence, then eradicate — which option does that?", "id": "dop-ir-02", "mins": 7, "objectives": ["Incident response", "Containment"], "prompt": "What is the correct response sequence?", "situation": "GuardDuty flags an instance mining crypto and talking to known command-and-control.", "title": "Containing the compromise", "why": "Isolate (security group quarantine) to stop spread, snapshot for forensics, then eradicate — the contain→investigate→eradicate sequence. Immediate deletion destroys evidence; waiting lets it spread; paying ransoms is never the answer."}, {"answer": 2, "choices": ["A wiki page nobody updates", "SSM Incident Manager with response plans, runbooks, and post-incident analysis", "A group chat", "Phone calls only"], "evidence": [["coord.txt", "Last SEV-1: 3 teams, no clear owner,\n45 min to coordinate, no record\nof decisions."]], "hint": "Which service provides response plans, paging, and decision tracking?", "id": "dop-ir-03", "mins": 6, "objectives": ["Incident Manager", "Coordination"], "prompt": "What fixes the coordination chaos?", "situation": "The last SEV-1 had no clear owner, 45 minutes of coordination chaos, and no decision record.", "title": "Coordinating the SEV-1", "why": "SSM Incident Manager provides response plans (who does what), automated paging, runbook execution, and a timeline of decisions — plus post-incident analysis. Wikis go stale; chats lose decisions; phone-only leaves no record."}, {"answer": 3, "choices": ["Restarting the service and hoping", "Automated rollback on CloudWatch alarms via CodeDeploy", "Manual rollback next business day", "Leaving the bad deploy in place"], "evidence": [["bad.txt", "Deploy caused 5xx spike.\nDetected in 3 min by alarms.\nRollback took 90 min (manual)."]], "hint": "Which deployment feature rolls back automatically when alarms fire?", "id": "dop-ir-04", "mins": 5, "objectives": ["Automatic rollback"], "prompt": "What shrinks the 90-minute rollback?", "situation": "A bad deploy spiked 5xx errors; alarms fired in 3 minutes but manual rollback took 90.", "title": "Ninety minutes of 5xx", "why": "CodeDeploy's automatic rollback on CloudWatch alarms reverts the deployment within minutes of detection — the detection-to-recovery loop automated. Hope isn't a strategy; next-business-day is 12 hours of errors; leaving it is negligence."}, {"answer": 0, "choices": ["Blameless postmortems with tracked action items", "Blaming the on-call engineer", "Skipping the review ('we fixed it')", "A postmortem that nobody reads"], "evidence": [["pm.txt", "Same outage 3rd time this quarter.\nPrevious 'reviews' named no\ncauses and tracked nothing."]], "hint": "What turns an outage into a fix that sticks?", "id": "dop-ir-05", "mins": 5, "objectives": ["Blameless postmortems"], "prompt": "What breaks the repeat-outage cycle?", "situation": "The same outage happened a third time; previous reviews named no causes and tracked nothing.", "title": "The third time this quarter", "why": "Blameless postmortems that identify systemic causes and track action items to completion are what prevent recurrence. Blame suppresses honesty; skipping review guarantees repeats; unread postmortems change nothing."}, {"answer": 1, "choices": ["One person with all the knowledge", "GameDays / fault-injection drills (e.g., FIS) with practiced runbooks", "Hoping incidents don't happen", "Reading about incidents"], "evidence": [["ready.txt", "Team has never handled a real\nincident. Runbooks untested.\nOn-call starts next month."]], "hint": "Which practice rehearses failure before it counts?", "id": "dop-ir-06", "mins": 6, "objectives": ["GameDays", "Resilience drills"], "prompt": "How does the team get ready?", "situation": "The team has never handled a real incident; runbooks are untested; on-call starts next month.", "title": "Rehearsing the fire", "why": "GameDays and fault-injection (AWS Fault Injection Simulator) rehearse failure modes with the team practicing real runbooks — building muscle memory before it counts. Single points of knowledge, hope, and theory don't prepare anyone."}]}, {"id": "high-availability-recovery", "name": "High Availability & Recovery", "scenarios": [{"answer": 2, "choices": ["Backup and restore", "Pilot light", "Warm standby", "Multi-site active-active with Route 53"], "evidence": [["rto.txt", "RTO: near-zero. RPO: near-zero.\nBudget: high. Workload: global\ncheckout."]], "hint": "Near-zero RTO/RPO with a high budget — which DR tier is the top one?", "id": "dop-hr-01", "mins": 6, "objectives": ["DR tiers", "Active-active"], "prompt": "Which DR strategy fits?", "situation": "Global checkout needs near-zero RTO and RPO with a high budget.", "title": "Near-zero everything", "why": "Multi-site active-active with Route 53 routing serves traffic from multiple regions simultaneously — near-zero RTO/RPO by design, at the highest cost. The lower tiers (backup/restore, pilot light, warm standby) trade recovery speed for cost and can't hit near-zero."}, {"answer": 0, "choices": ["Route 53 failover routing with health checks", "Manual DNS edits", "A single region with bigger instances", "Email notification to fail over"], "evidence": [["dns2.txt", "Need: automatic traffic shift\non regional failure. RTO: minutes."]], "hint": "Which Route 53 feature shifts traffic automatically on health-check failure?", "id": "dop-hr-02", "mins": 5, "objectives": ["Route 53 failover"], "prompt": "What automates the traffic shift?", "situation": "Traffic must shift automatically on regional failure with minutes-level RTO.", "title": "Traffic that moves itself", "why": "Route 53 failover routing with health checks detects the failure and shifts DNS automatically. Manual DNS edits can't hit minutes-level RTO; bigger single-region instances share the region's fate; email isn't automation."}, {"answer": 1, "choices": ["Application-level retries only", "SQS with visibility timeout + DLQ between tiers", "Synchronous chains with no buffering", "Hoping downstream recovers fast"], "evidence": [["cascade.txt", "Payment service slow ->\ncheckout threads exhausted ->\nfull outage. Cascading failure."]], "hint": "What breaks the synchronous coupling that cascades failures?", "id": "dop-hr-03", "mins": 6, "objectives": ["Decoupling", "Cascading failures"], "prompt": "What stops the cascade?", "situation": "A slow payment service exhausted checkout threads — a classic cascading failure.", "title": "Stopping the cascade", "why": "A queue between tiers with visibility timeout (redelivery) and DLQ (poison isolation) decouples the services so one slow dependency can't exhaust the other's threads. Retries alone amplify the load; synchronous chains are the failure mode; hope isn't engineering."}, {"answer": 3, "choices": ["Deploying to all AZs at once", "Cell-based architecture (shuffle sharding) to bound blast radius", "One big database", "A single deploy pipeline"], "evidence": [["blast2.txt", "One bad config took down\nall customers at once."]], "hint": "Which architecture limits any failure to a fraction of customers?", "id": "dop-hr-04", "mins": 7, "objectives": ["Cell-based architecture", "Blast radius"], "prompt": "What bounds the blast radius?", "situation": "One bad config took down all customers simultaneously.", "title": "Blast radius: everyone", "why": "Cell-based architecture (shuffle sharding) partitions customers into independent cells so a bad config or failure affects only a fraction. All-at-once deploys maximize blast radius; one big database is a single point of failure."}, {"answer": 0, "choices": ["Regular restore testing (game days for backups)", "Assuming backups work", "Testing once a year", "No backups; rely on replication"], "evidence": [["bkp2.txt", "Restore needed. Backup corrupt.\nLast successful restore test: never."]], "hint": "When is a backup actually a backup?", "id": "dop-hr-05", "mins": 5, "objectives": ["Restore testing"], "prompt": "What would have caught the corrupt backup?", "situation": "A restore was needed; the backup was corrupt; a restore had never been tested.", "title": "The backup that wasn't", "why": "Regular restore testing proves backups actually work — an untested backup is just a hope. Assuming, annual testing, or relying on replication (which replicates corruption too) all fail the same way."}, {"answer": 1, "choices": ["RPO 24h / RTO 24h for everything", "Tiered RTO/RPO by workload criticality, tested regularly", "RPO 0 for everything regardless of cost", "No defined RTO/RPO"], "evidence": [["tiers.txt", "50 workloads. One DR plan.\nCritical checkout treated the\nsame as the internal wiki."]], "hint": "Should the wiki and the checkout share a recovery target?", "id": "dop-hr-06", "mins": 6, "objectives": ["RTO/RPO tiering"], "prompt": "What fixes the one-size-fits-all DR plan?", "situation": "50 workloads share one DR plan; critical checkout gets the same recovery target as the internal wiki.", "title": "Not everything is tier one", "why": "Tiered RTO/RPO by workload criticality focuses budget and effort where they matter, with regular testing per tier. One-size-fits-all either overspends on the wiki or underserves checkout; RPO-0-everywhere is unaffordable; undefined targets are unplannable."}]}], "lessons": [{"domain_id": "sdlc-automation", "title": "SDLC Automation — Core concepts", "concepts": ["CodePipeline orchestrates the full CI/CD workflow — source, CodeBuild, test, CodeDeploy — with manual approval actions and a complete execution history. A CodePipeline manual approval action pauses the pipeline until an approver acts, recording their identity — satisfying the regulation in the pipeline itself.", "Manual approvals: all-at-once maximizes blast radius; console publishes are manual; EC2 rolling doesn't apply to Lambda.", "CodeBuild runs builds in clean, versioned environments defined by buildspec.yml, triggered by the pipeline — eliminating laptop-specific flakiness.", "Reproducible builds: laptop and cron-EC2 builds aren't reproducible; Lambda's timeout and packaging model don't fit general builds. CodeArtifact hosts private package repositories with immutable versions, insulating builds from upstream deletions."], "example": {"lang": "text", "code": "Environments: dev, staging, prod.\nCurrent: 3 divergent pipelines.", "walkthrough": "One parameterized pipeline with per-environment stages keeps the workflow DRY — the same tested artifact progresses through environments with environment-specific parameters. Divergent pipelines drift; prod-only pipelines skip the safety of staging."}, "pitfalls": ["Common trap: manual builds from a developer laptop.", "Common trap: manual Lambda console publishes.", "Common trap: one pipeline with parameterized environment stages.", "Common trap: rolling EC2 deploys for Lambda."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "iac-config-management", "title": "IaC & Config Management — Core concepts", "concepts": ["CloudFormation with nested stacks (modularity) and change sets (preview before apply) plus drift detection meets all requirements natively. CloudFormation drift detection identifies resources whose actual configuration differs from the template, and remediation runbooks (or re-applying the stack) restore the desired state.", "IaC at scale: boot-time user data doesn't fix runtime drift; manual SSH doesn't scale; hand-built images are slow to update.", "Nested stacks (or registry modules) decompose infrastructure into reusable, independently-updatable units with clear interfaces via parameters/outputs.", "State Manager (Systems Manager) applies associations that continuously enforce desired state, correcting drift. Parameter Store SecureString (or Secrets Manager) stores encrypted secrets referenced by templates, with IAM policies scoping access per environment."], "example": {"lang": "text", "code": "200 resources, 4 environments.\nNeed: reviewable changes,\nrollback, drift detection.", "walkthrough": "CloudFormation with nested stacks (modularity) and change sets (preview before apply) plus drift detection meets all requirements natively. ClickOps and hardcoded scripts aren't reviewable or repeatable; runbooks drift."}, "pitfalls": ["Common trap: cloudFormation with nested stacks and change sets.", "Common trap: cloudFormation drift detection with remediation runbooks.", "Common trap: parameter Store SecureString with IAM-scoped access per environment.", "Common trap: direct stack updates with no preview."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "monitoring-logging", "title": "Monitoring & Logging — Core concepts", "concepts": ["Composite alarms combine signals into meaningful pages, and SLO burn-rate alerting pages only when the error budget is actually at risk — cutting noise to signal.", "X-Ray traces requests across services into a service map with per-segment timing, pinpointing the slow hop.", "Structured JSON logs with correlation IDs, shipped centrally, let you query a single request's journey across services.", "Correlation IDs: per-team formats block correlation; instance-local logs aren't searchable; no production logs is blindness."], "example": {"lang": "text", "code": "Compliance: 1-year log retention.\nNeed: occasional forensic queries.\nVolume: 500 GB/day.", "walkthrough": "Archiving to S3 with lifecycle policies gives cheap durable retention, and Athena provides serverless SQL for ad-hoc forensic queries without running infrastructure. Unlimited retention in CloudWatch Logs is expensive; 7-day deletion violates compliance; scattered accounts block investigation."}, "pitfalls": ["Common trap: structured JSON logs with correlation IDs shipped to a central store.", "Common trap: centralized log archive in S3 with lifecycle policies + Athena for ad-hoc queries.", "Common trap: no alarms; check dashboards daily.", "Common trap: default 5-minute basic monitoring."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "policies-standards", "title": "Policies & Standards — Core concepts", "concepts": ["SCPs: service Control Policies (SCPs) in Organizations set permission guardrails that apply even to account admins, and tag policies enforce tagging standards.", "OIDC federation lets the CI provider assume IAM roles with short-lived credentials — no static keys stored anywhere.", "Config rules packaged as conformance packs deploy the standard's checks across accounts/regions with aggregated compliance views.", "Permissions boundaries: IAM Permissions Boundaries set the maximum permissions a role can ever have, containing a compromised pipeline even if its attached policies are broad."], "example": {"lang": "text", "code": "Policy: rotate all deploy secrets\nquarterly. Current: manual,\nlast rotation 18 months ago.", "walkthrough": "Secrets Manager automates rotation schedules and integrates with pipelines/services so rotation happens without heroics. Manual processes are the current failure; Slack/shared passwords are breaches waiting to happen."}, "pitfalls": ["Common trap: AWS Organizations with SCPs + tag policies.", "Common trap: pipeline roles scoped with IAM Permissions Boundaries.", "Common trap: manual approvals + automated policy checks (e.g., OPA/Config) in the pipeline.", "Common trap: long-lived tokens in repo secrets."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "incident-response", "title": "Incident Response — Core concepts", "concepts": ["Incident automation: alarm → SNS → automated remediation (Lambda/SSM) → OpsCenter OpsItem gives detection, response, tracking, and a record for the postmortem — the full incident loop.", "Principle: user reports are slow; ad-hoc SSH is unrepeatable; blind restarts skip diagnosis.", "Principle: isolate (security group quarantine) to stop spread, snapshot for forensics, then eradicate — the contain→investigate→eradicate sequence."], "example": {"lang": "text", "code": "GuardDuty: instance mining crypto,\ntalking to known C2.", "walkthrough": "Isolate (security group quarantine) to stop spread, snapshot for forensics, then eradicate — the contain→investigate→eradicate sequence. Immediate deletion destroys evidence; waiting lets it spread; paying ransoms is never the answer."}, "pitfalls": ["Common trap: SSM Incident Manager with response plans, runbooks, and post-incident analysis.", "Common trap: automated rollback on CloudWatch alarms via CodeDeploy.", "Common trap: manual rollback next business day.", "Common trap: sSHing into prod to poke around."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "high-availability-recovery", "title": "High Availability & Recovery — Core concepts", "concepts": ["DR tiers: the lower tiers (backup/restore, pilot light, warm standby) trade recovery speed for cost and can't hit near-zero. A queue between tiers with visibility timeout (redelivery) and DLQ (poison isolation) decouples the services so one slow dependency can't exhaust the other's threads.", "Active-active: multi-site active-active with Route 53 routing serves traffic from multiple regions simultaneously — near-zero RTO/RPO by design, at the highest cost.", "Route 53 failover routing with health checks detects the failure and shifts DNS automatically.", "Cell-based architecture (shuffle sharding) partitions customers into independent cells so a bad config or failure affects only a fraction."], "example": {"lang": "text", "code": "Restore needed. Backup corrupt.\nLast successful restore test: never.", "walkthrough": "Regular restore testing proves backups actually work — an untested backup is just a hope. Assuming, annual testing, or relying on replication (which replicates corruption too) all fail the same way."}, "pitfalls": ["Common trap: cell-based architecture (shuffle sharding) to bound blast radius.", "Common trap: a single region with bigger instances.", "Common trap: hoping downstream recovers fast.", "Common trap: RPO 0 for everything regardless of cost."], "try_it": "Work through this in the Terminal tab →"}], "sections": [{"id": "foundations", "title": "Foundations", "kind": "foundation", "lectures": ["m-binary", "m-subnetting", "f-linux-cli-0", "f-linux-cli-1", "f-linux-cli-2", "f-iam-concepts-0", "f-iam-concepts-1", "f-iam-concepts-2", "f-cloud-concepts-0", "f-cloud-concepts-1", "f-cloud-concepts-2"], "lab_ids": [], "drill_domain_ids": []}, {"id": "core", "title": "Core", "kind": "core", "lectures": ["c-sdlc-automation", "c-iac-config-management", "c-monitoring-logging"], "lab_ids": ["aws-dop-lab-1", "aws-dop-lab-2"], "drill_domain_ids": ["sdlc-automation", "iac-config-management", "monitoring-logging"]}, {"id": "advanced", "title": "Advanced", "kind": "advanced", "lectures": ["c-policies-standards", "c-incident-response", "c-high-availability-recovery"], "lab_ids": ["aws-dop-lab-3", "aws-dop-lab-4"], "drill_domain_ids": ["policies-standards", "incident-response", "high-availability-recovery"]}, {"id": "exam-prep", "title": "Exam Prep", "kind": "exam-prep", "lectures": [], "lab_ids": [], "drill_domain_ids": ["sdlc-automation", "iac-config-management", "monitoring-logging", "policies-standards", "incident-response", "high-availability-recovery"]}], "behavioral": [{"prompt": "Tell me about a time you built or improved a CI/CD pipeline.", "framework": "STAR", "points": ["The manual pain it replaced", "Your design decisions", "Deployment frequency or lead-time change"], "pitfalls": ["Tool choice without reasoning", "No measured improvement"]}, {"prompt": "Describe a time you managed infrastructure as code at scale.", "framework": "STAR", "points": ["The scale", "How you structured it", "How you handled drift"], "pitfalls": ["ClickOps confessions", "No rollback story"]}, {"prompt": "Tell me about an incident where your automation helped or hurt.", "framework": "STAR", "points": ["What the automation did", "Whether it helped or hurt", "What you changed"], "pitfalls": ["Automation without guardrails", "No human override"]}, {"prompt": "Describe a time you had to balance deployment speed with safety.", "framework": "STAR", "points": ["The tension", "The mechanism you chose", "How it performed under pressure"], "pitfalls": ["Speed without safety", "Safety that stopped shipping"]}, {"prompt": "Tell me about a time you improved observability for your team.", "framework": "STAR", "points": ["The blind spot", "What you instrumented", "How incident response changed"], "pitfalls": ["Dashboards nobody watches", "Metrics without alerts"]}, {"prompt": "Describe a disagreement about technical direction and how you resolved it.", "framework": "STAR", "points": ["The disagreement", "How you evaluated options", "The outcome and buy-in"], "pitfalls": ["Winning the argument, losing the team", "No data in the decision"]}, {"prompt": "Tell me about a time you responded to a security incident in a pipeline or cloud account.", "framework": "STAR", "points": ["How you detected it", "Containment steps", "Prevention afterwards"], "pitfalls": ["Skipping forensics", "No prevention"]}, {"prompt": "Describe a time you mentored someone on DevOps practices.", "framework": "STAR", "points": ["Their starting point", "What you taught", "Their growth"], "pitfalls": ["Doing it for them", "No follow-through"]}], "chat": {"persona": "You are a demanding AWS DevOps Professional interviewer running a mock DOP-C02 assessment. Expect professional depth: automation design, blast-radius thinking, and operational excellence. Challenge shallow answers.", "topics": [{"id": "sdlc-automation", "name": "SDLC Automation", "key_points": ["CodePipeline stages", "manual approvals", "CodeBuild", "Lambda canary deploys", "CodeArtifact"], "followups": ["How would you roll back?", "Where is the approval gate and why?"]}, {"id": "iac-config-management", "name": "IaC & Config Management", "key_points": ["CloudFormation change sets", "nested stacks", "State Manager", "drift detection", "secrets in IaC"], "followups": ["How do you preview a dangerous change?", "How do you handle drift?"]}, {"id": "monitoring-logging", "name": "Monitoring & Logging", "key_points": ["composite alarms", "X-Ray tracing", "structured logging", "RUM and Synthetics"], "followups": ["How do you fight alert fatigue?", "How do you trace one request across services?"]}, {"id": "policies-standards", "name": "Policies & Standards", "key_points": ["SCPs", "OIDC federation for CI", "Config conformance packs", "permissions boundaries"], "followups": ["How do you enforce guardrails?", "How does CI authenticate to AWS?"]}, {"id": "incident-response", "name": "Incident Response", "key_points": ["runbook automation", "containment sequence", "Incident Manager", "blameless postmortems", "GameDays"], "followups": ["Walk me through your first 15 minutes.", "How do you prevent recurrence?"]}, {"id": "high-availability-recovery", "name": "High Availability & Recovery", "key_points": ["DR tiers", "Route 53 failover", "decoupling", "cell-based architecture", "restore testing"], "followups": ["What are the RTO/RPO?", "What bounds the blast radius?"]}]}, "slug": "aws-dop", "title": "AWS DevOps Engineer Professional", "tagline": "DOP-C02: SDLC automation at professional depth", "vendor": {"certs": "DOP-C02", "docs": "https://aws.amazon.com/certification", "name": "Amazon Web Services"}, "labs": [{"id": "aws-dop-lab-1", "title": "CodePipeline — AWS CLI drill", "objective": "Run a short sequence of AWS CLI commands that demonstrates codePipeline, then verify each result against the expected output.", "steps": ["This lab reworks the SDLC Automation practice scenario \"Commit to production, safely\" into commands you run yourself — same concept, hands-on instead of multiple choice.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: aws s3 ls — the listing names your lab buckets", "Type exactly: aws sts get-caller-identity — the identity document includes your Account id", "Type exactly: aws iam list-users — the user list carries the UserName field", "In your own words, say what each command's output taught you about codePipeline."], "checks": [{"command_pattern": "aws s3 ls", "expect_contains": "bucket", "hint": "In the Terminal tab, run `aws s3 ls`. If the check fails, confirm you typed it exactly and that the output contains \"bucket\"."}, {"command_pattern": "aws sts get-caller-identity", "expect_contains": "Account", "hint": "In the Terminal tab, run `aws sts get-caller-identity`. If the check fails, confirm you typed it exactly and that the output contains \"Account\"."}, {"command_pattern": "aws iam list-users", "expect_contains": "UserName", "hint": "In the Terminal tab, run `aws iam list-users`. If the check fails, confirm you typed it exactly and that the output contains \"UserName\"."}], "success_message": "Lab complete — codePipeline practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"id": "aws-dop-lab-2", "title": "CloudFormation — AWS CLI drill", "objective": "Use the AWS CLI to explore cloudFormation hands-on: type each command, read what comes back, and connect the output to the concept.", "steps": ["Inspired by the IaC & Config Management scenario \"Infrastructure as actual code\": take its core idea and prove it live in the terminal instead of answering on paper.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: aws iam list-users — the user list carries the UserName field", "Type exactly: aws ec2 describe-instances — the reservation output includes the Instances block", "Type exactly: aws s3 ls — the listing names your lab buckets", "In your own words, say what each command's output taught you about cloudFormation."], "checks": [{"command_pattern": "aws iam list-users", "expect_contains": "UserName", "hint": "In the Terminal tab, run `aws iam list-users`. If the check fails, confirm you typed it exactly and that the output contains \"UserName\"."}, {"command_pattern": "aws ec2 describe-instances", "expect_contains": "Instances", "hint": "In the Terminal tab, run `aws ec2 describe-instances`. If the check fails, confirm you typed it exactly and that the output contains \"Instances\"."}, {"command_pattern": "aws s3 ls", "expect_contains": "bucket", "hint": "In the Terminal tab, run `aws s3 ls`. If the check fails, confirm you typed it exactly and that the output contains \"bucket\"."}], "success_message": "Lab complete — cloudFormation practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"id": "aws-dop-lab-3", "title": "Composite alarms — AWS CLI drill", "objective": "Prove you can apply composite alarms in the AWS CLI — follow the steps, watch the output, and confirm every check passes.", "steps": ["The Monitoring & Logging scenario \"Three thousand alarms a week\" tests this concept as a question. This lab makes you demonstrate it with real commands.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: aws s3 ls — the listing names your lab buckets", "Type exactly: aws sts get-caller-identity — the identity document includes your Account id", "Type exactly: aws iam list-users — the user list carries the UserName field", "In your own words, say what each command's output taught you about composite alarms."], "checks": [{"command_pattern": "aws s3 ls", "expect_contains": "bucket", "hint": "In the Terminal tab, run `aws s3 ls`. If the check fails, confirm you typed it exactly and that the output contains \"bucket\"."}, {"command_pattern": "aws sts get-caller-identity", "expect_contains": "Account", "hint": "In the Terminal tab, run `aws sts get-caller-identity`. If the check fails, confirm you typed it exactly and that the output contains \"Account\"."}, {"command_pattern": "aws iam list-users", "expect_contains": "UserName", "hint": "In the Terminal tab, run `aws iam list-users`. If the check fails, confirm you typed it exactly and that the output contains \"UserName\"."}], "success_message": "Lab complete — composite alarms practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"id": "aws-dop-lab-4", "title": "SCPs — AWS CLI drill", "objective": "Run a short sequence of AWS CLI commands that demonstrates SCPs, then verify each result against the expected output.", "steps": ["This lab reworks the Policies & Standards practice scenario \"Guardrails, not guidelines\" into commands you run yourself — same concept, hands-on instead of multiple choice.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: aws iam list-users — the user list carries the UserName field", "Type exactly: aws ec2 describe-instances — the reservation output includes the Instances block", "Type exactly: aws s3 ls — the listing names your lab buckets", "In your own words, say what each command's output taught you about SCPs."], "checks": [{"command_pattern": "aws iam list-users", "expect_contains": "UserName", "hint": "In the Terminal tab, run `aws iam list-users`. If the check fails, confirm you typed it exactly and that the output contains \"UserName\"."}, {"command_pattern": "aws ec2 describe-instances", "expect_contains": "Instances", "hint": "In the Terminal tab, run `aws ec2 describe-instances`. If the check fails, confirm you typed it exactly and that the output contains \"Instances\"."}, {"command_pattern": "aws s3 ls", "expect_contains": "bucket", "hint": "In the Terminal tab, run `aws s3 ls`. If the check fails, confirm you typed it exactly and that the output contains \"bucket\"."}], "success_message": "Lab complete — SCPs practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"id": "aws-dop-lab-artifact-inventory", "title": "Pipeline inputs — inventory the artifacts", "objective": "DevOps pipelines consume versioned artifacts. Inventory the artifact bucket and prove your deploy identity first.", "difficulty": 1, "steps": ["Open the Terminal tab for this bootcamp.", "Type exactly: aws s3 ls s3://ilb-artifacts — the builds the pipeline can deploy", "Type exactly: aws sts get-caller-identity — the identity the pipeline would run as", "In your own words, say why pipelines deploy immutable artifacts instead of building on the target."], "checks": [{"command_pattern": "^aws s3 ls s3://ilb-artifacts$", "expect_contains": "builds/bootcamp-v4.zip", "hint": "In the Terminal tab, run `aws s3 ls s3://ilb-artifacts`. If the check fails, confirm you typed it exactly and that the output contains \"builds/bootcamp-v4.zip\"."}, {"command_pattern": "^aws sts get-caller-identity$", "expect_contains": "123456789012", "hint": "In the Terminal tab, run `aws sts get-caller-identity`. If the check fails, confirm you typed it exactly and that the output contains \"123456789012\"."}], "success_message": "Lab complete — you inventoried the pipeline's inputs."}, {"id": "aws-dop-lab-deploy-identity", "title": "Who deploys? — the automation principal", "objective": "Pipelines deploy as service principals, not humans. Enumerate the users and roles the automation can assume.", "difficulty": 1, "steps": ["Open the Terminal tab for this bootcamp.", "Type exactly: aws iam list-users — find the bot identity built for automation", "Type exactly: aws iam list-roles — the roles automation assumes instead of holding keys", "In your own words, say why deploy-bot should assume a role rather than own an access key."], "checks": [{"command_pattern": "^aws iam list-users$", "expect_contains": "deploy-bot", "hint": "In the Terminal tab, run `aws iam list-users`. If the check fails, confirm you typed it exactly and that the output contains \"deploy-bot\"."}, {"command_pattern": "^aws iam list-roles$", "expect_contains": "ilb-lambda-exec", "hint": "In the Terminal tab, run `aws iam list-roles`. If the check fails, confirm you typed it exactly and that the output contains \"ilb-lambda-exec\"."}], "success_message": "Lab complete — you mapped the automation's identity footprint."}, {"id": "aws-dop-lab-promotion", "title": "Promote the build — bucket to bucket", "objective": "Promotion moves an immutable artifact between stages without rebuilding. Copy the v3 build into a promotion bucket, then verify it landed.", "difficulty": 2, "steps": ["Open the Terminal tab for this bootcamp.", "Type exactly: aws s3 mb s3://ilb-dop-promote — create the promotion-stage bucket", "Type exactly: aws s3 cp s3://ilb-artifacts/builds/bootcamp-v3.zip s3://ilb-dop-promote/bootcamp-v3.zip — promote without rebuilding", "Type exactly: aws s3 ls s3://ilb-dop-promote — verify the artifact arrived", "In your own words, say what 'promote, don't rebuild' guarantees about the tested artifact."], "checks": [{"command_pattern": "^aws s3 mb s3://ilb-dop-promote$", "expect_contains": "make_bucket: ilb-dop-promote", "hint": "In the Terminal tab, run `aws s3 mb s3://ilb-dop-promote`. If the check fails, confirm you typed it exactly and that the output contains \"make_bucket: ilb-dop-promote\"."}, {"command_pattern": "^aws s3 cp s3://ilb-artifacts/builds/bootcamp-v3.zip s3://ilb-dop-promote/bootcamp-v3.zip$", "expect_contains": "copy:", "hint": "In the Terminal tab, run `aws s3 cp s3://ilb-artifacts/builds/bootcamp-v3.zip s3://ilb-dop-promote/bootcamp-v3.zip`. If the check fails, confirm you typed it exactly and that the output contains \"copy:\"."}], "success_message": "Lab complete — you promoted a build the way release pipelines do."}, {"id": "aws-dop-lab-rollback", "title": "Rollback rehearsal — recover the fleet", "objective": "The deploy went sideways; the rollback is a recovery drill. Stop the web host to simulate the failure, then bring it back and verify.", "difficulty": 3, "steps": ["Open the Terminal tab for this bootcamp.", "Type exactly: aws ec2 describe-instances --instance-ids i-0a1b2c3d4e5f60718 — confirm ilb-web-01 is running", "Type exactly: aws ec2 stop-instances --instance-ids i-0a1b2c3d4e5f60718 — simulate the failed deploy taking the host down", "Type exactly: aws ec2 start-instances --instance-ids i-0a1b2c3d4e5f60718 — execute the rollback recovery", "In your own words, say why rollback plans are rehearsed instead of written."], "checks": [{"command_pattern": "^aws ec2 describe-instances --instance-ids i-0a1b2c3d4e5f60718$", "expect_contains": "running", "hint": "In the Terminal tab, run `aws ec2 describe-instances --instance-ids i-0a1b2c3d4e5f60718`. If the check fails, confirm you typed it exactly and that the output contains \"running\"."}, {"command_pattern": "^aws ec2 stop-instances --instance-ids i-0a1b2c3d4e5f60718$", "expect_contains": "now stopped", "hint": "In the Terminal tab, run `aws ec2 stop-instances --instance-ids i-0a1b2c3d4e5f60718`. If the check fails, confirm you typed it exactly and that the output contains \"now stopped\"."}, {"command_pattern": "^aws ec2 start-instances --instance-ids i-0a1b2c3d4e5f60718$", "expect_contains": "now running", "hint": "In the Terminal tab, run `aws ec2 start-instances --instance-ids i-0a1b2c3d4e5f60718`. If the check fails, confirm you typed it exactly and that the output contains \"now running\"."}], "success_message": "Lab complete — you rehearsed the rollback instead of just documenting it."}], "foundations": [{"track": "linux-cli", "why_needed": "DevOps on AWS is terminal-driven: CLI commands, scripts, and pipelines. Get fluent before the automation topics."}, {"track": "iam-concepts", "why_needed": "Deployment pipelines assume roles constantly. Learn what roles and policies are before the SDLC automation."}, {"track": "cloud-concepts", "why_needed": "Multi-account strategy and billing topics assume the region, service, and billing mental model."}], "math": ["binary", "subnetting"], "simulations": [{"id": "aws-dop-sim-pipeline-order", "title": "Wire up the pipeline", "kind": "ordering", "domain_id": "sdlc-automation", "difficulty": 1, "brief": "The team is automating releases for the first time. Order the pipeline stages so each one feeds the next.", "steps": {"context": "CI/CD pipeline: from commit to production.", "items": ["Deploy to production with approval gate", "Build the artifact and run unit tests", "Commit triggers the pipeline", "Deploy to staging and run integration tests", "Static analysis and security scan"], "correct_order": [2, 1, 4, 3, 0]}, "debrief": "You ordered the classic pipeline: commit, build and test, scan, stage, then gated production. Quality gates belong before production, never after.", "points": 10}, {"id": "aws-dop-sim-deploy-fail", "title": "The red pipeline", "kind": "troubleshoot", "domain_id": "sdlc-automation", "difficulty": 2, "brief": "The pipeline is red and the team is blocked. The build log's last lines are your only evidence — read them before you click anything.", "steps": [{"symptom": "Pipeline fails at the deploy stage; build and test stages are green.", "evidence": [["deploy.log", "Uploading build v4 to s3://ilb-artifacts ... OK\nTargeting instances: i-0a1b2c3d4e5f60718 ... OK\nERROR: InvalidInstanceID.NotFound for i-0f9e8d7c6b5a43210\nDeploy aborted."]], "options": ["Re-run the pipeline — transient AWS errors happen", "Fix the deploy target list: it references an instance id that does not exist", "Roll back to build v3 — v4 must be broken", "Increase the deploy timeout and re-run"], "correct": 1, "explain": "The log names the failure precisely: an instance id in the target list does not exist. Green build plus a NotFound at deploy means bad targeting, not a bad artifact — re-running changes nothing."}, {"symptom": "The stale id belonged to a terminated host still listed in the deploy config.", "evidence": [["aws ec2 describe-instances", "i-0a1b2c3d4e5f60718  ilb-web-01  running  t3.medium  us-east-1a\ni-0f9e8d7c6b5a43210  ilb-db-01   stopped  r6g.large  us-east-1b"]], "options": ["Remove the dead id from the deploy config and re-run", "Terminate ilb-db-01 so the ids match again", "Disable the deploy stage until someone investigates", "Pin the pipeline to build v3 permanently"], "correct": 0, "explain": "Remove the stale target and re-run — the fleet and the artifact are both healthy. This is also why deploy targets should be discovered (tags, ASG) rather than hardcoded."}], "debrief": "You read the log before acting and fixed the target list instead of the artifact. Most 'broken pipeline' pages are broken config, not broken code.", "points": 15}, {"id": "aws-dop-sim-rollback-call", "title": "Make the rollback call", "kind": "branching", "domain_id": "incident-response", "difficulty": 3, "brief": "Production is degraded 20 minutes after a deploy. You are the release captain. The decision tree is yours — choose like the blast radius depends on it.", "steps": [{"id": "s1", "text": "Error rate is 8% and climbing on the new build; the old build was clean. First move?", "choices": [{"label": "Roll back now — restore the known-good build", "next": "s2", "points": 2, "feedback": "Correct. With a clean previous build and climbing errors, rollback is the fastest mitigation."}, {"label": "Roll forward with a hotfix — the team is already debugging", "next": "s2a", "points": 0, "feedback": "Rolling forward on a climbing error rate gambles with users. Mitigate first."}]}, {"id": "s2a", "text": "The hotfix will take 40 minutes; errors hit 15%. Reconsider:", "choices": [{"label": "Roll back now", "next": "s2", "points": 1, "feedback": "Right — a 40-minute fix window on climbing errors is not a plan, it is hope."}]}, {"id": "s2", "text": "Rollback complete, errors back to baseline. What closes out the incident properly?", "choices": [{"label": "Declare victory and move on — service is healthy", "next": "END", "points": 0, "outcome": "bad", "feedback": "Skipping the postmortem guarantees a repeat. Healthy now is not the same as fixed."}, {"label": "Freeze deploys, run a blameless postmortem, add a canary stage", "next": "END", "points": 2, "outcome": "good", "feedback": "Correct — the incident is not over at mitigation. Learn, then harden the pipeline."}]}], "debrief": "You made the release-captain calls: rollback beats hotfix on climbing errors, and the incident ends with learning, not just recovery.", "points": 15}, {"id": "aws-dop-sim-buildspec", "title": "The buildspec that lies", "kind": "config-check", "domain_id": "iac-config-management", "difficulty": 2, "brief": "A pipeline keeps 'succeeding' while shipping untested builds. Review this buildspec and click the lines that let bad builds through.", "steps": {"config": "version: 0.2\nphases:\n  build:\n    commands:\n      - echo building...\n      - npm run test || true\n      - npm run package\nartifacts:\n  files:\n    - '**/*'", "find": 2, "issues": [{"line": 5, "description": "'npm run test || true' swallows test failures — the build stays green with broken tests.", "fix": "Remove '|| true' so a failing test suite fails the build."}, {"line": 9, "description": "Artifacts include '**/*' — node_modules and secrets can ship to production.", "fix": "List only the packaged output (e.g. dist/**) in the artifacts files."}]}, "debrief": "You caught the two silent-failure patterns: swallowed test results and over-broad artifacts. A green pipeline that ships untested code is worse than a red one.", "points": 10}], "consoleSims": [{"id": "aws-dop-console-pipeline-1", "title": "Add the staging gate", "console": "cicd-pipeline", "domain_id": "sdlc-automation", "difficulty": 2, "brief": "The pipeline deploys straight from build to production. Insert a staging stage with an approval gate before production.", "tasks": [{"id": "t1", "instruction": "Create a pipeline stage named staging that consumes the build artifact.", "validate": {"action": "create", "params": {"type": "stage", "name": "staging", "input": "build-artifact"}}, "hint": "Add a new stage after build and wire it to the build artifact."}, {"id": "t2", "instruction": "Require manual approval before the production stage runs.", "validate": {"action": "set-field", "params": {"field": "stage.production.approval", "value": "manual"}}, "hint": "Find the production stage settings and switch approval to manual."}], "debrief": "You added the missing safety: every production deploy now passes through staging and a human gate."}, {"id": "aws-dop-console-iam-1", "title": "Role for the pipeline", "console": "aws-iam", "domain_id": "policies-standards", "difficulty": 2, "brief": "The pipeline currently uses deploy-bot's long-lived key. Replace it with an assumable role scoped to deployments.", "tasks": [{"id": "t1", "instruction": "Create a role named ilb-pipeline-deploy that the CI service can assume.", "validate": {"action": "create", "params": {"type": "role", "name": "ilb-pipeline-deploy", "service": "ci"}}, "hint": "Create a role (not a user) trusted by the CI service."}, {"id": "t2", "instruction": "Scope the role to deploy actions on the artifact bucket only.", "validate": {"action": "set-field", "params": {"field": "role.ilb-pipeline-deploy.policy", "value": "s3:PutObject/ilb-artifacts"}}, "hint": "Attach the narrowest deploy policy — PutObject on the artifact bucket, nothing more."}], "debrief": "You removed the long-lived key from the pipeline's blast radius and replaced it with a scoped, assumable role."}], "terminalMissions": [{"id": "aws-dop-mission-inputs", "title": "List the deployable builds", "domain_id": "sdlc-automation", "difficulty": 1, "brief": "A pipeline can only deploy what exists. List the staged builds.", "objectives": ["List objects in s3://ilb-artifacts"], "checks": [{"command_pattern": "^aws s3 ls s3://ilb-artifacts$", "expect_contains": "bootcamp-v3.zip", "hint": "In the Terminal tab, run `aws s3 ls s3://ilb-artifacts`. If the check fails, confirm you typed it exactly and that the output contains \"bootcamp-v3.zip\"."}], "success_message": "Inputs listed — two builds are deployable."}, {"id": "aws-dop-mission-identity", "title": "Confirm the deploy identity", "domain_id": "policies-standards", "difficulty": 1, "brief": "Verify which identity this shell runs as before it touches the pipeline.", "objectives": ["Retrieve the STS caller identity"], "checks": [{"command_pattern": "^aws sts get-caller-identity$", "expect_contains": "123456789012", "hint": "In the Terminal tab, run `aws sts get-caller-identity`. If the check fails, confirm you typed it exactly and that the output contains \"123456789012\"."}], "success_message": "Identity confirmed for the deploy log."}, {"id": "aws-dop-mission-stage", "title": "Stage a release bucket", "domain_id": "sdlc-automation", "difficulty": 2, "brief": "Create the release-stage bucket the pipeline will promote into.", "objectives": ["Create s3://ilb-dop-mission"], "checks": [{"command_pattern": "^aws s3 mb s3://ilb-dop-mission$", "expect_contains": "make_bucket: ilb-dop-mission", "hint": "In the Terminal tab, run `aws s3 mb s3://ilb-dop-mission`. If the check fails, confirm you typed it exactly and that the output contains \"make_bucket: ilb-dop-mission\"."}], "success_message": "Release bucket staged."}, {"id": "aws-dop-mission-fleet", "title": "Check fleet health", "domain_id": "high-availability-recovery", "difficulty": 2, "brief": "Confirm the web host is running before the deploy window opens.", "objectives": ["Describe all EC2 instances", "Confirm ilb-web-01 is running"], "checks": [{"command_pattern": "^aws ec2 describe-instances$", "expect_contains": "running", "hint": "In the Terminal tab, run `aws ec2 describe-instances`. If the check fails, confirm you typed it exactly and that the output contains \"running\"."}], "success_message": "Fleet healthy — the window can open."}, {"id": "aws-dop-mission-roles", "title": "Audit the execution roles", "domain_id": "policies-standards", "difficulty": 2, "brief": "List the roles the pipeline stages can assume.", "objectives": ["List all IAM roles"], "checks": [{"command_pattern": "^aws iam list-roles$", "expect_contains": "ilb-lambda-exec", "hint": "In the Terminal tab, run `aws iam list-roles`. If the check fails, confirm you typed it exactly and that the output contains \"ilb-lambda-exec\"."}], "success_message": "Execution roles audited."}, {"id": "aws-dop-mission-config", "title": "Verify the CLI region", "domain_id": "monitoring-logging", "difficulty": 3, "brief": "A deploy to the wrong region is a resume-generating event. Verify the configured region.", "objectives": ["Show the CLI configuration", "Confirm the region"], "checks": [{"command_pattern": "^aws configure list$", "expect_contains": "us-east-1", "hint": "In the Terminal tab, run `aws configure list`. If the check fails, confirm you typed it exactly and that the output contains \"us-east-1\"."}], "success_message": "Region verified — deploys will land in us-east-1."}], "media": [{"id": "aws-dop-sdlc-automation-diag", "kind": "diagram", "title": "AWS CI/CD Pipeline", "svg": "assets/diagrams/aws-dop-sdlc-automation.svg", "lesson_ref": "c-sdlc-automation", "caption": "CodeCommit → CodeBuild → CodeDeploy, wired by CodePipeline.", "alt": "AWS CI/CD Pipeline. Shows: CodeCommit, CodeBuild, CodeDeploy, CodePipeline."}, {"id": "aws-dop-iac-config-management-diag", "kind": "diagram", "title": "IaC & Config Commands", "svg": "assets/diagrams/aws-dop-iac-config-management.svg", "lesson_ref": "c-iac-config-management", "caption": "CloudFormation and Systems Manager are the DOP workhorses.", "alt": "IaC & Config Commands. Commands: aws cloudformation deploy --template-file t.yaml --stack-name s, aws cloudformation describe-stacks, aws ssm send-command --instance-ids i-1 --document-name AWS-RunShellScript, aws ssm get-parameter --name /app/db, sam build && sam deploy."}, {"id": "aws-dop-monitoring-logging-diag", "kind": "diagram", "title": "Monitoring on AWS", "svg": "assets/diagrams/aws-dop-monitoring-logging.svg", "lesson_ref": "c-monitoring-logging", "caption": "Metrics, logs, and traces feeding alarms and dashboards.", "alt": "Monitoring on AWS. Shows: Metrics, Alarms, Logs, X-Ray, Dashboards."}, {"id": "aws-dop-policies-standards-diag", "kind": "diagram", "title": "Policies & Standards", "svg": "assets/diagrams/aws-dop-policies-standards.svg", "lesson_ref": "c-policies-standards", "caption": "Guardrails that keep accounts compliant by default.", "alt": "Policies & Standards. Shows: AWS Config, Organizations SCPs, CloudFormation Guard, Tag policies."}, {"id": "aws-dop-incident-response-diag", "kind": "diagram", "title": "Incident Response (NIST 800-61)", "svg": "assets/diagrams/aws-dop-incident-response.svg", "lesson_ref": "c-incident-response", "caption": "The standard six-phase incident lifecycle.", "alt": "Incident Response (NIST 800-61). Shows: Preparation, Detection & Analysis, Containment, Eradication, Recovery, Post-Incident."}, {"id": "aws-dop-high-availability-recovery-diag", "kind": "diagram", "title": "HA & Recovery Patterns", "svg": "assets/diagrams/aws-dop-high-availability-recovery.svg", "lesson_ref": "c-high-availability-recovery", "caption": "Survive failures without heroics.", "alt": "HA & Recovery Patterns. Shows: Multi-AZ, Auto Scaling, Health checks, Backups."}], "resources": {"cheatsheet": {"title": "AWS DevOps Engineer Professional — Cheat Sheet", "sections": [{"heading": "SDLC Automation", "items": ["CodePipeline orchestrates the full CI/CD workflow — source, CodeBuild, test, CodeDeploy — with manual approval actions and a complete execution history. A CodePipeline manual approval action pauses the pipeline until an approver acts, recording their identity — satisfying the regulation in the pipeline itself.", "Manual approvals — all-at-once maximizes blast radius; console publishes are manual; EC2 rolling doesn't apply to Lambda.", "CodeBuild — CodeBuild runs builds in clean, versioned environments defined by buildspec.yml, triggered by the pipeline — eliminating laptop-specific flakiness.", "Reproducible builds — laptop and cron-EC2 builds aren't reproducible; Lambda's timeout and packaging model don't fit general builds. CodeArtifact hosts private package repositories with immutable versions, insulating builds from upstream deletions.", "Common trap — manual builds from a developer laptop.", "Common trap — manual Lambda console publishes.", "Common trap — one pipeline with parameterized environment stages.", "Common trap — rolling EC2 deploys for Lambda.", "One — One parameterized pipeline with per-environment stages keeps the workflow DRY — the same tested artifact progresses through environments with environment-specific parameters. Divergent pipelines drift; prod-only pipelines skip the safety of staging."]}, {"heading": "IaC & Config Management", "items": ["CloudFormation — CloudFormation with nested stacks (modularity) and change sets (preview before apply) plus drift detection meets all requirements natively. CloudFormation drift detection identifies resources whose actual configuration differs from the template, and remedia…", "IaC at scale — boot-time user data doesn't fix runtime drift; manual SSH doesn't scale; hand-built images are slow to update.", "Nested — Nested stacks (or registry modules) decompose infrastructure into reusable, independently-updatable units with clear interfaces via parameters/outputs.", "State Manager — State Manager (Systems Manager) applies associations that continuously enforce desired state, correcting drift. Parameter Store SecureString (or Secrets Manager) stores encrypted secrets referenced by templates, with IAM policies scoping access per environm…", "Common trap — cloudFormation with nested stacks and change sets.", "Common trap — cloudFormation drift detection with remediation runbooks.", "Common trap — parameter Store SecureString with IAM-scoped access per environment.", "Common trap — direct stack updates with no preview.", "CloudFormation — CloudFormation with nested stacks (modularity) and change sets (preview before apply) plus drift detection meets all requirements natively. ClickOps and hardcoded scripts aren't reviewable or repeatable; runbooks drift."]}, {"heading": "Monitoring & Logging", "items": ["Composite — Composite alarms combine signals into meaningful pages, and SLO burn-rate alerting pages only when the error budget is actually at risk — cutting noise to signal.", "X-Ray — X-Ray traces requests across services into a service map with per-segment timing, pinpointing the slow hop.", "Structured JSON — Structured JSON logs with correlation IDs, shipped centrally, let you query a single request's journey across services.", "Correlation IDs — per-team formats block correlation; instance-local logs aren't searchable; no production logs is blindness.", "Common trap — structured JSON logs with correlation IDs shipped to a central store.", "Common trap — centralized log archive in S3 with lifecycle policies + Athena for ad-hoc queries.", "Common trap — no alarms; check dashboards daily.", "Common trap — default 5-minute basic monitoring.", "Archiving — Archiving to S3 with lifecycle policies gives cheap durable retention, and Athena provides serverless SQL for ad-hoc forensic queries without running infrastructure. Unlimited retention in CloudWatch Logs is expensive; 7-day deletion violates compliance; sc…"]}, {"heading": "Policies & Standards", "items": ["SCPs — service Control Policies (SCPs) in Organizations set permission guardrails that apply even to account admins, and tag policies enforce tagging standards.", "OIDC — OIDC federation lets the CI provider assume IAM roles with short-lived credentials — no static keys stored anywhere.", "Config — Config rules packaged as conformance packs deploy the standard's checks across accounts/regions with aggregated compliance views.", "Permissions boundaries — IAM Permissions Boundaries set the maximum permissions a role can ever have, containing a compromised pipeline even if its attached policies are broad.", "Common trap — AWS Organizations with SCPs + tag policies.", "Common trap — pipeline roles scoped with IAM Permissions Boundaries.", "Common trap — manual approvals + automated policy checks (e.g., OPA/Config) in the pipeline.", "Common trap — long-lived tokens in repo secrets.", "Secrets Manager — Secrets Manager automates rotation schedules and integrates with pipelines/services so rotation happens without heroics. Manual processes are the current failure; Slack/shared passwords are breaches waiting to happen."]}, {"heading": "Incident Response", "items": ["Incident automation — alarm → SNS → automated remediation (Lambda/SSM) → OpsCenter OpsItem gives detection, response, tracking, and a record for the postmortem — the full incident loop.", "Principle — user reports are slow; ad-hoc SSH is unrepeatable; blind restarts skip diagnosis.", "Principle — isolate (security group quarantine) to stop spread, snapshot for forensics, then eradicate — the contain→investigate→eradicate sequence.", "Common trap — SSM Incident Manager with response plans, runbooks, and post-incident analysis.", "Common trap — automated rollback on CloudWatch alarms via CodeDeploy.", "Common trap — manual rollback next business day.", "Common trap — sSHing into prod to poke around.", "Isolate — Isolate (security group quarantine) to stop spread, snapshot for forensics, then eradicate — the contain→investigate→eradicate sequence. Immediate deletion destroys evidence; waiting lets it spread; paying ransoms is never the answer."]}, {"heading": "High Availability & Recovery", "items": ["DR tiers — the lower tiers (backup/restore, pilot light, warm standby) trade recovery speed for cost and can't hit near-zero. A queue between tiers with visibility timeout (redelivery) and DLQ (poison isolation) decouples the services so one slow dependency can't exha…", "Active-active — multi-site active-active with Route 53 routing serves traffic from multiple regions simultaneously — near-zero RTO/RPO by design, at the highest cost.", "Route — Route 53 failover routing with health checks detects the failure and shifts DNS automatically.", "Cell-based — Cell-based architecture (shuffle sharding) partitions customers into independent cells so a bad config or failure affects only a fraction.", "Common trap — cell-based architecture (shuffle sharding) to bound blast radius.", "Common trap — a single region with bigger instances.", "Common trap — hoping downstream recovers fast.", "Common trap — RPO 0 for everything regardless of cost.", "Regular restore testing proves backups actually work — an untested backup is just a hope. Assuming, annual testing, or relying on replication (which replicates corruption too) all fail the same way."]}]}, "glossary": [{"term": "SSH", "def": "IaC at scale: boot-time user data doesn't fix runtime drift; manual SSH doesn't scale; hand-built images are slow to update."}, {"term": "RPO", "def": "Near-zero RTO/RPO with a high budget — which DR tier is the top one?"}, {"term": "RTO", "def": "Near-zero RTO/RPO with a high budget — which DR tier is the top one?"}, {"term": "CI", "def": "OIDC federation lets the CI provider assume IAM roles with short-lived credentials — no static keys stored anywhere. Static keys in CI secrets are the current vulnerability; shared keys destroy scoping; repo tokens leak."}, {"term": "SSM", "def": "SSM Incident Manager provides response plans (who does what), automated paging, runbook execution, and a timeline of decisions — plus post-incident analysis. Wikis go stale; chats lose decisions; phone-only leaves no record."}, {"term": "SNS", "def": "Incident automation: alarm → SNS → automated remediation (Lambda/SSM) → OpsCenter OpsItem gives detection, response, tracking, and a record for the postmortem — the full incident loop."}, {"term": "JSON", "def": "Structured JSON logs with correlation IDs, shipped centrally, let you query a single request's journey across services."}, {"term": "SCPs", "def": "SCPs: service Control Policies (SCPs) in Organizations set permission guardrails that apply even to account admins, and tag policies enforce tagging standards."}, {"term": "AWS", "def": "Common trap: AWS Organizations with SCPs + tag policies."}, {"term": "Secrets Manager", "def": "Secrets Manager automates rotation schedules and integrates with pipelines/services so rotation happens without heroics. Manual processes are the current failure; Slack/shared passwords are breaches waiting to happen."}, {"term": "IAM Permissions Boundaries", "def": "Permissions boundaries: IAM Permissions Boundaries set the maximum permissions a role can ever have, containing a compromised pipeline even if its attached policies are broad."}, {"term": "Principle", "def": "Principle: user reports are slow; ad-hoc SSH is unrepeatable; blind restarts skip diagnosis."}, {"term": "SSM Incident Manager", "def": "SSM Incident Manager provides response plans (who does what), automated paging, runbook execution, and a timeline of decisions — plus post-incident analysis. Wikis go stale; chats lose decisions; phone-only leaves no record."}, {"term": "DR", "def": "Near-zero RTO/RPO with a high budget — which DR tier is the top one?"}, {"term": "FTP", "def": "CodePipeline orchestrates the full CI/CD workflow — source, CodeBuild, test, CodeDeploy — with manual approval actions and a complete execution history. Self-managed Jenkins reintroduces server ops; laptop builds and FTP are unauditable…"}, {"term": "Manual", "def": "Secrets Manager automates rotation schedules and integrates with pipelines/services so rotation happens without heroics. Manual processes are the current failure; Slack/shared passwords are breaches waiting to happen."}, {"term": "Athena", "def": "Archiving to S3 with lifecycle policies gives cheap durable retention, and Athena provides serverless SQL for ad-hoc forensic queries without running infrastructure. Unlimited retention in CloudWatch Logs is expensive; 7-day deletion vio…"}, {"term": "All-at-once", "def": "CodeDeploy's Lambda blue/green (canary/linear) shifts aliases' traffic gradually and can roll back automatically on CloudWatch alarms. All-at-once maximizes blast radius; console publishes are manual; EC2 rolling doesn't apply to Lambda."}, {"term": "CD", "def": "CodePipeline orchestrates the full CI/CD workflow — source, CodeBuild, test, CodeDeploy — with manual approval actions and a complete execution history. A CodePipeline manual approval action pauses the pipeline until an approver acts, re…"}, {"term": "X-Ray", "def": "X-Ray traces requests across services into a service map with per-segment timing, pinpointing the slow hop."}, {"term": "Cell-based", "def": "Cell-based architecture (shuffle sharding) partitions customers into independent cells so a bad config or failure affects only a fraction."}, {"term": "State Manager", "def": "State Manager (Systems Manager) applies associations that continuously enforce desired state, correcting drift. Parameter Store SecureString (or Secrets Manager) stores encrypted secrets referenced by templates, with IAM policies scoping…"}, {"term": "A CodePipeline", "def": "A CodePipeline manual approval action pauses the pipeline until an approver acts, recording their identity — satisfying the regulation in the pipeline itself. Auto-deploy skips the gate; emails aren't enforced or recorded in the pipeline."}, {"term": "Systems Manager", "def": "State Manager (Systems Manager) applies associations that continuously enforce desired state, correcting drift. Parameter Store SecureString (or Secrets Manager) stores encrypted secrets referenced by templates, with IAM policies scoping…"}, {"term": "Structured JSON", "def": "Structured JSON logs with correlation IDs, shipped centrally, let you query a single request's journey across services."}], "links": [{"label": "Amazon Web Services — official site", "url": "https://aws.amazon.com/certification", "note": "Official vendor documentation and certification information"}, {"label": "AWS documentation", "url": "https://docs.aws.amazon.com/", "note": "Official service documentation"}, {"label": "AWS Well-Architected Framework", "url": "https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html", "note": "Official architecture best practices"}, {"label": "AWS Architecture Center", "url": "https://aws.amazon.com/architecture/", "note": "Official AWS architecture guidance"}, {"label": "AWS whitepapers", "url": "https://aws.amazon.com/whitepapers/", "note": "Official AWS whitepapers"}, {"label": "Google SRE book", "url": "https://sre.google/sre-book/table-of-contents/", "note": "Google's Site Reliability Engineering book"}, {"label": "OpenTelemetry documentation", "url": "https://opentelemetry.io/docs/", "note": "Official OpenTelemetry docs"}], "checklist": ["Get 7–8 hours of sleep the night before — fatigue destroys recall faster than any topic gap.", "Bring valid government-issued photo ID and arrive at the test center 30 minutes early.", "Eat a real meal beforehand; bring water and a light snack if the center allows them.", "Read every question twice before scanning the answer choices.", "Flag uncertain questions and move on — return with fresh eyes at the end.", "Eliminate the obviously wrong answers first, then compare the survivors.", "Budget your time: answer steadily and keep a 10–15 minute review buffer.", "Re-run your weakest-domain drill until mastery is at least 80%.", "For SDLC Automation: restate the 'why' behind each scenario answer in your own words — if you can't explain it, you don't own it.", "Redo one IaC & Config Management lab from scratch without looking at the steps.", "Recite the key Monitoring & Logging terms from the glossary aloud from memory."]}}
+{
+ "slug": "aws-dop",
+ "title": "AWS DevOps Engineer Professional",
+ "tagline": "DevOps on AWS: CI/CD with CodePipeline and CodeBuild/CodeDeploy, infrastructure as code with CloudFormation, blue/green and canary deployments, and configuration management at scale. Vendor-neutral st",
+ "vendor": {
+  "name": "Independent interview prep (not affiliated with ThreatLocker)",
+  "certs": "",
+  "docs": "https://www.threatlocker.com"
+ },
+ "disclaimer": "Independent interview-prep material by Interstitium Labs. Not affiliated with, endorsed by, or sponsored by ThreatLocker or any vendor mentioned. Confers no certificate. All scenarios are original practice content; no exam or vendor-training content is reproduced.",
+ "accent": "#e5484d",
+ "domains": [
+  {
+   "id": "aws-dop",
+   "name": "AWS DevOps Engineer Professional",
+   "summary": "DevOps on AWS: CI/CD with CodePipeline and CodeBuild/CodeDeploy, infrastructure as code with CloudFormation, blue/green and canary deployments, and configuration management at scale. Vendor-neutral study aid. Not affiliated with AWS; this course confers no certification.",
+   "scenarios": [
+    {
+     "id": "aws-dop-sc1",
+     "title": "From Commit to Prod",
+     "situation": "A team deploys by zipping code on laptops and uploading it to servers. Releases are monthly, error-prone, and nobody can say which commit is running in production.",
+     "prompt": "Which pipeline design fixes this with AWS-native services?",
+     "evidence": [
+      [
+       "Pipeline anatomy",
+       "Source (CodeCommit/GitHub) -> Build (CodeBuild: compile/test/package) -> Deploy (CodeDeploy: EC2/ECS/Lambda). CodePipeline orchestrates stages; artifacts pass between stages via an S3 artifact store."
+      ]
+     ],
+     "choices": [
+      "CodePipeline: source stage from version control, CodeBuild to compile/test/package, CodeDeploy to roll out — every commit traceable, every deploy repeatable, artifacts versioned in S3.",
+      "Keep the laptop-zip process but add a shared drive so zips are at least centralized.",
+      "CodeBuild alone: build the zip in the cloud, then keep manual uploads for deployment.",
+      "CodeDeploy alone pointed at the developers' laptops as deployment targets."
+     ],
+     "answer": 0,
+     "why": "The pipeline's value is the chain of custody: version-controlled source, automated build/test, automated deployment, with artifacts flowing through versioned stages. Any manual step in the middle breaks traceability and repeatability — the exact properties the team is missing.",
+     "hint": "Where does the current process lose track of 'which commit is live'?",
+     "objectives": [
+      "CodePipeline",
+      "CodeBuild",
+      "CodeDeploy"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "aws-dop-sc2",
+     "title": "Infrastructure as Code, Safely",
+     "situation": "An engineer is about to apply a CloudFormation template change to production networking. Last time, a template update unexpectedly replaced a database. The team wants no more surprises.",
+     "prompt": "What is the safe change workflow?",
+     "evidence": [
+      [
+       "CloudFormation safety",
+       "Change sets preview exactly what a stack update will add, modify, or replace before execution. Drift detection reports resources changed outside the template. DeletionPolicy and UpdateReplacePolicy control what happens on replacement."
+      ]
+     ],
+     "choices": [
+      "Run a change set first and review every resource marked for replacement; check drift detection for out-of-band changes; require approval before executing the update.",
+      "Apply the template directly — CloudFormation never replaces resources unexpectedly.",
+      "Edit resources in the console for speed, then update the template later to match.",
+      "Delete the stack and recreate it from the new template to guarantee a clean state."
+     ],
+     "answer": 0,
+     "why": "Change sets turn 'apply and pray' into 'review then apply': replacement actions are visible before anything happens, and drift detection catches the console edits that make templates lie. Deleting production stacks to avoid review is the opposite of safety.",
+     "hint": "What would you want to see before the change touches production?",
+     "objectives": [
+      "CloudFormation",
+      "Change sets",
+      "Drift detection"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "aws-dop-sc3",
+     "title": "Blue/Green on the Load Balancer",
+     "situation": "A team runs an ECS service behind an ALB and wants zero-downtime deploys with instant rollback and a live production test of the new version before full cutover.",
+     "prompt": "How should CodeDeploy blue/green be configured?",
+     "evidence": [
+      [
+       "Blue/green mechanics",
+       "CodeDeploy provisions the green task set, registers it with a test listener or target group for validation, then shifts production traffic (all-at-once, linear, or canary), keeping blue until termination wait expires for rollback. CloudWatch alarms can trigger automatic rollback."
+      ]
+     ],
+     "choices": [
+      "CodeDeploy blue/green with a test listener for pre-traffic validation, linear traffic shifting, automatic rollback on CloudWatch alarms, and a termination wait keeping blue available.",
+      "Update the ECS task definition in place and restart all tasks simultaneously during low traffic.",
+      "Deploy green to a separate ALB and ask users to switch URLs when ready.",
+      "Shift 100% of traffic instantly with no test listener — validation happens in staging anyway."
+     ],
+     "answer": 0,
+     "why": "The blue/green value proposition is validation plus reversibility: the test listener proves green against production traffic before cutover, gradual shifting limits blast radius, alarm-driven rollback is automatic, and the surviving blue environment is the rollback plan. Skipping validation or instant-shifting forfeits exactly those guarantees.",
+     "hint": "If green is broken, how do you get back — and how would you have known before users did?",
+     "objectives": [
+      "CodeDeploy",
+      "Blue/green",
+      "ALB"
+     ],
+     "mins": 7,
+     "difficulty": 2
+    },
+    {
+     "id": "aws-dop-sc4",
+     "title": "Config Drift on the Fleet",
+     "situation": "Over a year, engineers hand-tweaked individual servers: different package versions, stray cron jobs, forgotten config edits. 'It works on prod-3' is now a real sentence. Auditors want uniformity.",
+     "prompt": "How does the team eliminate configuration drift?",
+     "evidence": [
+      [
+       "Config management",
+       "Systems Manager State Manager applies associations (desired-state documents) on a schedule and reports compliance. Immutable AMIs/pipelines rebuild rather than repair. Chef/Puppet/Ansible via SSM provide cross-platform config management."
+      ]
+     ],
+     "choices": [
+      "Define desired state as code and enforce it with State Manager associations (or a config management tool via SSM), rebuilding instances from versioned AMIs instead of hand-editing them.",
+      "Document the differences between servers in a wiki and have engineers check it before changes.",
+      "SSH into each server monthly and manually reconcile configurations against a checklist.",
+      "Freeze all changes permanently; drift cannot happen if nothing ever changes."
+     ],
+     "answer": 0,
+     "why": "Drift is a process failure, not a knowledge problem: desired-state enforcement continuously converges servers back to the declared configuration, and immutable rebuilds make hand-edits impossible by construction. Wikis and manual reconciliation don't scale and don't enforce; freezing changes freezes the business too.",
+     "hint": "What stops the next engineer from hand-editing prod-3 at 2 AM?",
+     "objectives": [
+      "State Manager",
+      "Configuration management"
+     ],
+     "mins": 7,
+     "difficulty": 2
+    },
+    {
+     "id": "aws-dop-sc5",
+     "title": "The 2 AM Rollback",
+     "situation": "A deployment succeeds technically but error rates spike 20 minutes later — a bad query only visible under production load. The team debates whether to roll forward with a fix or roll back.",
+     "prompt": "What should the deployment system have done automatically, and what is the right call now?",
+     "evidence": [
+      [
+       "Rollback design",
+       "CodeDeploy supports automatic rollback triggered by CloudWatch alarms or failed lifecycle events. Rolling back a known-good artifact is usually faster and safer than rolling forward an untested fix under pressure."
+      ]
+     ],
+     "choices": [
+      "The pipeline should have had alarm-based automatic rollback wired to error-rate metrics; now, roll back to the last known-good artifact immediately, then fix forward calmly.",
+      "Roll forward with a hotfix directly in production — rolling back loses the new features users want.",
+      "Wait and watch: error rates sometimes settle on their own after caches warm up.",
+      "Manually edit the bad query on each production server to stop the bleeding."
+     ],
+     "answer": 0,
+     "why": "Automatic rollback on production-health alarms converts a 2 AM judgment call into a pre-decided response; when it wasn't wired up, the disciplined move is still rollback-first because the known-good artifact is the only thing proven at production load. Hotfixes under pressure and manual server edits create new unknowns exactly when unknowns are most dangerous.",
+     "hint": "Which option returns the system to a state that was already proven in production?",
+     "objectives": [
+      "Automatic rollback",
+      "CloudWatch alarms"
+     ],
+     "mins": 9,
+     "difficulty": 3
+    },
+    {
+     "id": "aws-dop-sc6",
+     "title": "Pipeline Security",
+     "situation": "A company's CI/CD pipeline uses one shared IAM user with admin rights for all stages, stores database passwords in build scripts, and deploys straight to production on every commit.",
+     "prompt": "What is the hardened pipeline design?",
+     "evidence": [
+      [
+       "Pipeline security",
+       "Each stage assumes a least-privilege IAM role. Secrets live in Secrets Manager/Parameter Store, referenced — never embedded. Artifact buckets are KMS-encrypted. Manual approval gates protect production. CodePipeline/CodeBuild roles need only their stage's permissions."
+      ]
+     ],
+     "choices": [
+      "Per-stage least-privilege IAM roles, secrets pulled from Secrets Manager at runtime, KMS-encrypted artifact store, and a manual approval gate before production.",
+      "Keep the admin user but rotate its key monthly; the pipeline needs broad access to be flexible.",
+      "Move the passwords to environment variables in the build project — better than scripts.",
+      "Add the approval gate but keep shared admin credentials so nothing breaks."
+     ],
+     "answer": 0,
+     "why": "A pipeline with production access is a production system: least-privilege roles bound each stage's blast radius, secret stores remove credentials from code and logs, encryption protects artifacts at rest, and the approval gate makes production promotion a human decision. Rotating a shared admin key doesn't fix shared admin scope.",
+     "hint": "If the build stage were compromised, what could it reach in each design?",
+     "objectives": [
+      "IAM roles",
+      "Secrets Manager",
+      "Approval gates"
+     ],
+     "mins": 9,
+     "difficulty": 3
+    }
+   ]
+  },
+  {
+   "id": "aws-dop-d2",
+   "name": "DevOps at Scale on AWS",
+   "summary": "The DOP-C02 professional half: CodePipeline artifact flow, CloudFormation change sets, canary deployments, EventBridge auto-remediation, multi-account governance, and CloudWatch composite alarming. Independent training content; this course confers no certificate.",
+   "scenarios": [
+    {
+     "id": "aws-dop-d2-sc1",
+     "title": "The Artifact That Vanished",
+     "situation": "A CodePipeline has source → build → deploy stages, but the deploy stage can't find the build output — each stage re-clones the repo instead of passing artifacts.",
+     "prompt": "What is the correct pipeline wiring?",
+     "evidence": [
+      [
+       "pipeline",
+       "source (CodeCommit) → build (CodeBuild) → deploy (CodeDeploy)"
+      ],
+      [
+       "error",
+       "deploy: input artifact not found"
+      ],
+      [
+       "artifacts",
+       "none declared between stages"
+      ]
+     ],
+     "choices": [
+      "Declare named input/output artifacts per stage (build outputs `BuildArtifact`, deploy consumes it) with the pipeline's artifact S3 bucket — stages pass artifacts, not repo re-clones",
+      "Give every stage the repo URL; re-cloning is the artifact mechanism",
+      "Merge build and deploy into one stage; fewer stages, fewer problems",
+      "Artifacts are automatic; the error is a permissions issue"
+     ],
+     "answer": 0,
+     "why": "CodePipeline stages communicate through versioned input/output artifacts in the pipeline bucket — the build stage's output artifact is the deploy stage's input. Without declared artifacts each action runs in isolation.",
+     "hint": "How does the build's output reach the deploy stage?",
+     "objectives": [
+      "CodePipeline",
+      "artifacts",
+      "CI/CD"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "aws-dop-d2-sc2",
+     "title": "Change Set or YOLO?",
+     "situation": "A CloudFormation stack update to production will replace the database (the template changed an immutable property). The team updates stacks directly.",
+     "prompt": "What is the correct safe-update flow?",
+     "evidence": [
+      [
+       "template diff",
+       "DBInstance: EngineVersion change requiring replacement"
+      ],
+      [
+       "current",
+       "direct stack update, no preview"
+      ]
+     ],
+     "choices": [
+      "Create a change set first (`create-change-set`), review the proposed actions — it flags the replacement — then decide (execute, or fix the template); change sets are the preview gate for stack updates",
+      "Update directly; CloudFormation warns before replacing",
+      "Set a stack policy after the fact; policies preview changes",
+      "Use drift detection instead; it previews updates"
+     ],
+     "answer": 0,
+     "why": "Change sets render the exact create/update/delete/replace plan before execution — the only reliable way to catch a replacement-class change pre-apply. Stack policies *prevent* updates to protected resources; they don't preview. Drift detection compares reality vs template, not future changes.",
+     "hint": "What shows the replacement *before* it happens?",
+     "objectives": [
+      "CloudFormation",
+      "change sets",
+      "safe deployments"
+     ],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "aws-dop-d2-sc3",
+     "title": "Canary With a Kill Switch",
+     "situation": "A canary deploy shifts 10% traffic to the new version, but there's no automatic rollback — a bad canary needs a human to notice CloudWatch.",
+     "prompt": "What is the correct automated canary?",
+     "evidence": [
+      [
+       "deploy",
+       "CodeDeploy canary 10%, no alarms attached"
+      ],
+      [
+       "need",
+       "auto-rollback on canary metrics"
+      ]
+     ],
+     "choices": [
+      "Attach CloudWatch alarms to the CodeDeploy deployment group (auto-rollback on alarm) with lifecycle hooks (BeforeAllowTraffic) running validation — the canary becomes self-reverting on metric breach",
+      "Watch the dashboard during deploys; humans are the rollback",
+      "Canary without rollback is standard; just shift faster",
+      "Use blue/green instead; canary can't auto-roll back"
+     ],
+     "answer": 0,
+     "why": "CodeDeploy supports alarm-driven automatic rollback natively — the deployment group rolls back when attached alarms breach. BeforeAllowTraffic hooks gate traffic shift on validation (e.g. smoke tests). Manual watching doesn't scale and misses 3 AM canaries.",
+     "hint": "What reverts the canary without a human?",
+     "objectives": [
+      "CodeDeploy",
+      "canary",
+      "auto rollback"
+     ],
+     "mins": 7,
+     "difficulty": 2
+    },
+    {
+     "id": "aws-dop-d2-sc4",
+     "title": "The Instance That Heals Itself",
+     "situation": "Compromised EC2 instances must be isolated automatically: detect GuardDuty finding → quarantine the instance (strip security groups) → snapshot for forensics → notify.",
+     "prompt": "What is the correct event-driven design?",
+     "evidence": [
+      [
+       "need",
+       "finding → isolate → snapshot → notify, no human in loop"
+      ],
+      [
+       "tools",
+       "GuardDuty, EventBridge, Lambda/SSM, SNS"
+      ]
+     ],
+     "choices": [
+      "EventBridge rule matching the GuardDuty finding event → Lambda/SSM Automation runbook: revoke security-group rules (attach quarantine SG), create EBS snapshots, publish to SNS — event-driven remediation in minutes",
+      "A cron job polling GuardDuty every hour; polling is simpler",
+      "Manually isolate; automation risks quarantining the wrong instance",
+      "Security groups can't be changed on running instances"
+     ],
+     "answer": 0,
+     "why": "EventBridge routes AWS service events to targets in near-real-time — the standard incident-response automation fabric (finding → rule → SSM Automation/Lambda → quarantine + snapshot + notify). Polling adds up to an hour of dwell time; SGs are mutable on running instances by design.",
+     "hint": "What reacts to the finding in seconds without polling?",
+     "objectives": [
+      "EventBridge",
+      "auto-remediation",
+      "GuardDuty"
+     ],
+     "mins": 7,
+     "difficulty": 2
+    },
+    {
+     "id": "aws-dop-d2-sc5",
+     "title": "Thirty Accounts, One Rule",
+     "situation": "The org has 30 AWS accounts. A new rule — 'no public S3 buckets, ever' — must apply everywhere, including future accounts, without per-account clicks.",
+     "prompt": "What is the correct multi-account governance?",
+     "evidence": [
+      [
+       "org",
+       "AWS Organizations, 30 accounts, new ones monthly"
+      ],
+      [
+       "need",
+       "preventive, org-wide, automatic for new accounts"
+      ]
+     ],
+     "choices": [
+      "An SCP (Service Control Policy) on the organization root/OUs denying `s3:PutBucketPolicy` with public-read conditions (or the account-level S3 Block Public Access) — SCPs are preventive guardrails inherited by all current and future accounts",
+      "A Config rule in each account; detective is enough",
+      "IAM policies on every user; identity-level control scales",
+      "A Lambda in each account fixing buckets after creation"
+     ],
+     "answer": 0,
+     "why": "SCPs set permission boundaries across the org — preventive, inherited, and automatic for new accounts in the OU. Config rules are detective (find after the fact); per-account Lambdas are 30 things to maintain. S3 Block Public Access at the account level complements the SCP.",
+     "hint": "Which control is preventive, inherited, and covers future accounts?",
+     "objectives": [
+      "Organizations",
+      "SCPs",
+      "governance"
+     ],
+     "mins": 8,
+     "difficulty": 3
+    },
+    {
+     "id": "aws-dop-d2-sc6",
+     "title": "One Alarm to Page Them All",
+     "situation": "Five separate alarms (CPU, latency, errors, disk, queue depth) each page independently — the team gets 5 pages for one incident and can't tell the real signal.",
+     "prompt": "What is the correct alarming design?",
+     "evidence": [
+      [
+       "alerts",
+       "5 independent alarms, all paging"
+      ],
+      [
+       "incident review",
+       "4 of 5 pages were symptoms of one root cause"
+      ]
+     ],
+     "choices": [
+      "A CloudWatch composite alarm combining the children (e.g. alarm on errors AND latency, suppressed when the deploy-in-progress alarm fires) — one page per incident with the true state; keep component alarms as non-paging tickets",
+      "More alarms; finer granularity catches more issues",
+      "One mega-alarm on CPU only; CPU predicts everything",
+      "Composite alarms can't page; only metric alarms can"
+     ],
+     "answer": 0,
+     "why": "Composite alarms express boolean logic over child alarms — page on the incident (symptom combination), ticket the components. Five independent pages for one root cause is alert fatigue by design; composite alarms (which absolutely can notify) collapse it.",
+     "hint": "How do you page once per incident instead of once per symptom?",
+     "objectives": [
+      "CloudWatch",
+      "composite alarms",
+      "alerting"
+     ],
+     "mins": 8,
+     "difficulty": 3
+    }
+   ]
+  }
+ ],
+ "lessons": [
+  {
+   "domain_id": "aws-dop",
+   "title": "AWS DevOps Engineer Professional — Core concepts",
+   "concepts": [
+    "A CI/CD pipeline is a chain of custody: source control feeds CodeBuild (compile, test, package), CodeDeploy/CodePipeline stages promote versioned artifacts, and every production release traces back to a commit. Manual steps anywhere in the chain break that guarantee.",
+    "Treat infrastructure as code with CloudFormation (or CDK): templates are versioned, change sets preview updates including replacements, drift detection exposes console edits, and stack policies guard critical resources. Never let the console and the template disagree.",
+    "Choose deployment strategy by risk tolerance: all-at-once is fast and dangerous, rolling bounds exposure, blue/green buys instant rollback at 2x capacity, and canary/linear shifting validates against real traffic. Wire CloudWatch alarms to automatic rollback so production health decides, not optimism.",
+    "Kill configuration drift with desired-state enforcement: State Manager associations, config management tools via SSM, and immutable AMIs rebuilt by pipeline rather than hand-patched servers. If an engineer can SSH in and improvise, drift will return.",
+    "Secure the pipeline like production: least-privilege IAM roles per stage, secrets from Secrets Manager/Parameter Store (never in code), KMS-encrypted artifact stores, and manual approval gates before production. The pipeline's permissions are the blast radius."
+   ],
+   "example": {
+    "lang": "shell",
+    "code": "aws cloudformation create-change-set --stack-name prod-vpc \\\n  --template-body file://vpc.yaml --change-set-name review-042 \\\n  --change-set-type UPDATE\naws cloudformation describe-change-set --stack-name prod-vpc \\\n  --change-set-name review-042 --query 'Changes[*].ResourceChange.{Action:Action,Type:ResourceType,Replace:Replacement}'",
+    "walkthrough": "This previews a stack update before applying it. The describe call surfaces any Replacement: True entries — resources CloudFormation would destroy and recreate — so the team approves with full knowledge instead of discovering it afterward."
+   },
+   "pitfalls": [
+    "Common trap: applying template updates without a change set — replacements (new physical IDs, data loss) hide in innocent-looking diffs.",
+    "Common trap: embedding secrets in buildspecs or templates — they land in logs and version history; reference Secrets Manager instead.",
+    "Common trap: blue/green without backward-compatible data migrations — the new version writes rows the old version cannot read during cutover.",
+    "Common trap: one shared admin credential for the whole pipeline — a compromised build stage then owns production."
+   ],
+   "try_it": "Work through this in the Labs tab."
+  }
+ ],
+ "labs": [
+  {
+   "id": "aws-dop-lab1",
+   "domain_id": "aws-dop",
+   "title": "Preview Before You Apply",
+   "objective": "Validate a CloudFormation template and generate a change set to practice safe IaC updates.",
+   "steps": [
+    "Write or obtain a small template (e.g., an S3 bucket with versioning).",
+    "Run `aws cloudformation validate-template --template-body file://template.yaml`.",
+    "Create a change set with `aws cloudformation create-change-set` against a test stack.",
+    "Describe the change set and identify each change's Action and Replacement status."
+   ],
+   "checks": [
+    {
+     "command_pattern": "^aws\\s",
+     "expect_contains": "Parameters",
+     "hint": "validate-template echoes back the template's declared Parameters on success."
+    }
+   ]
+  },
+  {
+   "id": "aws-dop-lab2",
+   "domain_id": "aws-dop",
+   "title": "Inspect a Pipeline Execution",
+   "objective": "Use the CLI to trace a CodePipeline execution across stages and find where a failure occurred.",
+   "steps": [
+    "List pipelines with `aws codepipeline list-pipelines`.",
+    "Get pipeline state with `aws codepipeline get-pipeline-state --name <pipeline>`.",
+    "List recent executions and their statuses with `list-pipeline-executions`.",
+    "Drill into a failed execution's action states to identify the failing stage and action."
+   ],
+   "checks": [
+    {
+     "command_pattern": "^aws\\s",
+     "expect_contains": "stageStates",
+     "hint": "get-pipeline-state returns stageStates showing each stage's latest execution status."
+    }
+   ]
+  }
+ ],
+ "simulations": [],
+ "consoleSims": [],
+ "terminalMissions": [],
+ "sections": [
+  {
+   "id": "sec-full-spectrum",
+   "title": "Full Spectrum Dominance — core path",
+   "kind": "core",
+   "lectures": [],
+   "lab_ids": [
+    "fsd-tl-lab-1",
+    "fsd-tl-lab-2",
+    "fsd-tl-lab-3",
+    "fsd-sg-lab-1",
+    "fsd-sg-lab-2",
+    "fsd-sg-lab-3",
+    "fsd-ai-lab-1",
+    "fsd-ai-lab-2",
+    "fsd-ai-lab-3"
+   ],
+   "drill_domain_ids": [
+    "tl-interview",
+    "tl-endpoint-ops",
+    "sec-graphs",
+    "graph-defense",
+    "ml-defense",
+    "ai-agent-sec"
+   ]
+  }
+ ],
+ "behavioral": [
+  {
+   "prompt": "Tell me about the most technically difficult problem you have run into — a homelab, a broken environment, anything — and how you solved it.",
+   "framework": "STAR",
+   "points": [
+    "Pick ONE problem with a real evidence trail: the symptom, what you measured, the hypothesis you tested",
+    "Show the loop: scope, observe, hypothesize, smallest safe change, validate — interviewers score the method, not just the fix",
+    "Name the tools (VM build, networking, logs) and the lesson it taught you",
+    "Close with the result in concrete terms: what works now that did not before"
+   ],
+   "pitfalls": [
+    "Choosing a story with no real obstacle (“I Googled it” is not a story)",
+    "Skipping validation — saying it worked without proving it",
+    "Rambling past two minutes without reaching the result"
+   ]
+  },
+  {
+   "prompt": "Tell me about a time you dealt with a frustrated customer or user while something was broken.",
+   "framework": "STAR",
+   "points": [
+    "Lead with empathy and ownership: acknowledge the impact before the technical detail",
+    "Show translation: what you told them, in their language, plus the timeline you committed to",
+    "Show judgment: the narrow fix you chose and what you refused to do (e.g., disabling the control to clear the symptom)",
+    "Close with the relationship outcome, not just the technical one"
+   ],
+   "pitfalls": [
+    "Badmouthing the customer to sound decisive",
+    "Promising a timeline you could not keep",
+    "Framing the user as the problem rather than the situation"
+   ]
+  },
+  {
+   "prompt": "Why ThreatLocker, and why cybersecurity?",
+   "framework": "STAR",
+   "points": [
+    "Connect prevention to something concrete: a moment you saw detection arrive too late, or a system you hardened",
+    "Tie their model to your instincts: deny-by-default matches how you already think about trust",
+    "Show service orientation: the Cyber Hero culture rewards the 2 a.m. helper — give an example of being one",
+    "Name one forward-looking reason: Zero Trust, the MSP mission, or the bootcamp community investment"
+   ],
+   "pitfalls": [
+    "Generic flattery with no specifics about the company",
+    "Leading with compensation, title, or location convenience",
+    "Claiming expertise in products you have only read about — frame it as studied, not mastered"
+   ]
+  },
+  {
+   "framework": "STAR",
+   "pitfalls": [
+    "Staying vague ('I analyzed the data') instead of naming what you connected.",
+    "Skipping your own role: what did YOU see that others missed?",
+    "No outcome: what changed because you joined the dots?"
+   ],
+   "points": [
+    "The scattered signals and why nobody had connected them yet",
+    "The specific links you drew between them (shared host, time, infrastructure)",
+    "What the bigger picture turned out to be and what action it drove",
+    "What the experience taught you about investigating"
+   ],
+   "prompt": "Tell me about a time you connected scattered clues into a bigger picture that others had missed."
+  },
+  {
+   "framework": "STAR",
+   "pitfalls": [
+    "Claiming you fixed everything: credibility comes from trade-offs, not heroics.",
+    "Hiding the constraint: the limitation is what makes the prioritization story real.",
+    "No metric: 'better' needs a before-and-after."
+   ],
+   "points": [
+    "The constraint (time, budget, staff) and the size of the backlog",
+    "How you decided what mattered most (what was reachable, what was critical)",
+    "What you did first and what you deliberately deferred",
+    "The measurable result of the prioritization"
+   ],
+   "prompt": "Describe a time you had to prioritize risks or fixes with limited time or resources. How did you decide what came first?"
+  },
+  {
+   "framework": "STAR",
+   "pitfalls": [
+    "Reciting jargon to a non-technical audience and calling it communication.",
+    "Skipping the audience's reaction: did they actually understand and act?",
+    "Making yourself the hero instead of the translator."
+   ],
+   "points": [
+    "The technical finding and why it mattered",
+    "Who the audience was and what they cared about",
+    "How you reframed it (a picture, an analogy, a story)",
+    "What decision or action the audience took because they understood"
+   ],
+   "prompt": "Tell me about a time you explained a complex technical finding to a non-technical audience and it changed a decision."
+  },
+  {
+   "prompt": "Tell me about a time you used automation or AI to solve a security problem.",
+   "framework": "STAR",
+   "points": [
+    "The repetitive security task and what it cost in analyst time",
+    "The automation or AI approach you built and how you validated it",
+    "Measured outcome: time saved, detection gained, false positives changed"
+   ],
+   "pitfalls": [
+    "Describing the tool but never the validation",
+    "No measurable outcome"
+   ]
+  },
+  {
+   "prompt": "Describe a time you had to decide whether to trust an automated security decision.",
+   "framework": "STAR",
+   "points": [
+    "The stakes of the automated action and its blast radius",
+    "How you verified before acting (or the gate you built)",
+    "What happened and what you would automate differently next time"
+   ],
+   "pitfalls": [
+    "Saying you always trust the tool",
+    "No mention of blast radius or reversibility"
+   ]
+  }
+ ],
+ "resources": {
+  "cheatsheet": {
+   "title": "Full Spectrum Dominance — field reference",
+   "sections": [
+    {
+     "heading": "Company facts (verified)",
+     "items": [
+      "Founded 2017 in Orlando, FL — Danny Jenkins (CEO), Sami Jenkins (COO), John Carolan (QA)",
+      "Philosophy: deny-by-default / default-deny — approve known-good, deny the rest",
+      "Customers: 70,000+ organizations, sold heavily through the MSP channel",
+      "Funding: $190M Series F, July 2026 (Elephant-led); ~730 employees",
+      "Interview address: 1901 Summit Tower Blvd, Orlando, FL 32810",
+      "Culture: in-office 5 days/week; free lunch; post-offer background + drug screening"
+     ]
+    },
+    {
+     "heading": "Product stack",
+     "items": [
+      "Allowlisting — default-deny execution control for apps, DLLs, scripts, installers",
+      "Ringfencing — constrains allowed apps: app-to-app, file, registry, network",
+      "Storage Control — USB/device policy by serial, user, file type, encryption",
+      "Elevation Control — just-in-time per-app admin, no standing rights",
+      "Network Control — host firewall; port/IP/dynamic-ACL rules; ZTNA foundation",
+      "Web Control — agent-based DNS/URL category filtering, works off-network",
+      "Cyber Hero MDR — 24/7/365 US-based response, ~60-second average",
+      "Testing Environment — one-button VDI sandbox; checks AV flags, canary files, registry changes"
+     ]
+    },
+    {
+     "heading": "Rule strength (strongest to weakest)",
+     "items": [
+      "Certificate/publisher rules — survive version updates",
+      "Hash rules — precise but break on every new version",
+      "Path rules — weakest; never in user-writable locations",
+      "Learning Mode catalogs before enforcement; Installation Mode pauses blocking — scope and time-box both"
+     ]
+    },
+    {
+     "heading": "Terminal evidence commands",
+     "items": [
+      "nmap <host> — which ports answer (22/80/443 open)",
+      "dig <name> — ANSWER SECTION with the A record",
+      "ss — listening sockets",
+      "systemctl status <svc> — unit state",
+      "journalctl -u <svc> — service logs",
+      "sha256sum <file> — real SHA-256 identity",
+      "grep <pattern> <file> — search the record",
+      "ps — what is actually running"
+     ]
+    },
+    {
+     "heading": "Graph vocabulary",
+     "items": [
+      "node — any entity tracked in the model (user, host, IP, domain, file hash, vulnerability)",
+      "edge — a labeled relationship between two nodes (logged into, resolved to, downloaded)",
+      "degree — number of edges on a node; high-degree nodes are attacker highways",
+      "centrality — how much traffic or how many paths flow through a node",
+      "directed edge — a relationship with a direction (A downloaded FROM B)",
+      "security graph — the living model of your whole environment as nodes and edges",
+      "attack graph — the subgraph of exploitable paths to your targets",
+      "knowledge graph — threat-intel indicators linked to campaigns and actors"
+     ]
+    },
+    {
+     "heading": "Attack-graph playbook",
+     "items": [
+      "inventory first — you cannot graph what you have not discovered",
+      "model flaws AND misconfigs as exploit edges",
+      "compute shortest paths to the crown jewels",
+      "find the choke point (highest betweenness on those paths)",
+      "break the path: patch, segment, or remove the edge",
+      "re-scan and re-run the graph to prove the path is gone",
+      "never trust yesterday's graph — redeployments redraw the map"
+     ]
+    },
+    {
+     "heading": "Zero Trust + graphs",
+     "items": [
+      "never trust, always verify — re-evaluate every access decision",
+      "assume breach — treat unexpected edges as hostile until proven otherwise",
+      "microsegmentation — allow-list approved edges, alert on new ones",
+      "ReBAC — policies are path queries on the identity graph",
+      "continuous verification — device/location/behavior edges change, trust follows",
+      "anomalous edge — a first-seen connection between strangers is the classic signal"
+     ]
+    },
+    {
+     "heading": "ML detection vocabulary",
+     "items": [
+      "Supervised learning — learns from labeled examples; strong on known threats, blind to novel ones",
+      "Unsupervised learning — finds structure without labels; clustering and dimensionality reduction",
+      "Anomaly detection — models 'normal' and flags deviations; the workhorse for novel threats",
+      "UEBA — user and entity behavior analytics: per-user baselines plus peer-group comparison",
+      "Feature engineering — encoding raw logs into model inputs (login velocity, rare processes, domain entropy)",
+      "Concept drift — model decay as attacker behavior and legitimate traffic shift over time"
+     ]
+    },
+    {
+     "heading": "Detection metrics",
+     "items": [
+      "Precision — of all flagged alerts, how many were real",
+      "Recall — of all real attacks, how many were flagged",
+      "Threshold tuning — sliding the decision cutoff trades precision against recall",
+      "Alert fatigue — when false positives train analysts to ignore the queue",
+      "DGA — domain generation algorithm; detected via character entropy of domain names"
+     ]
+    },
+    {
+     "heading": "Agent and LLM security",
+     "items": [
+      "Direct prompt injection — attacker input overrides app instructions (OWASP LLM01:2025, the #1 LLM risk)",
+      "Indirect prompt injection — hidden instructions inside retrieved data (email, web, docs)",
+      "Jailbreak — defeating the model's own safety policy; distinct from hijacking app behavior",
+      "Tool poisoning — malicious tool descriptions or metadata steer an agent to misuse its tools (MCP ecosystem risk)",
+      "Insecure output handling — executing or trusting model output without validation",
+      "Least-privilege tools — grant each tool only the scope its task requires"
+     ]
+    },
+    {
+     "heading": "Adversarial ML and governance",
+     "items": [
+      "Evasion — perturbing inputs at inference time to dodge a classifier",
+      "Poisoning — corrupting training data to corrupt the model",
+      "Extraction — querying a model to steal its behavior or parameters",
+      "MITRE ATLAS — knowledge base of adversarial ML tactics and techniques",
+      "Red-teaming and evals — adversarial testing of AI systems before deployment",
+      "Human-in-the-loop — required approval for high-impact or irreversible agent actions",
+      "SOAR — security orchestration, automation and response; automate enrichment, gate containment"
+     ]
+    }
+   ]
+  },
+  "glossary": [
+   {
+    "term": "Allowlisting",
+    "def": "Default-deny execution control: only explicitly approved applications, scripts, and installers may run."
+   },
+   {
+    "term": "Blocklisting",
+    "def": "Default-allow model: everything runs except recognized-bad items — the window zero-days live in."
+   },
+   {
+    "term": "Default-deny",
+    "def": "Deny-by-default posture: unknown code, devices, or connections are refused unless explicitly approved."
+   },
+   {
+    "term": "Ringfencing",
+    "def": "Containment applied on top of allowlisting; restricts what a permitted app may do across app-to-app, file, registry, and network dimensions."
+   },
+   {
+    "term": "Learning Mode",
+    "def": "Agent mode that catalogs applications and dependencies and auto-builds policies before enforcement; temporarily disables file blocking."
+   },
+   {
+    "term": "Installation Mode",
+    "def": "Temporary mode that pauses file blocking for installs — must be tightly scoped and time-boxed."
+   },
+   {
+    "term": "Elevation Control",
+    "def": "Grants specific approved applications admin rights for standard users — just-in-time, per-app, time-boxed — without standing admin rights."
+   },
+   {
+    "term": "Application hopping",
+    "def": "An elevated or trusted process spawning another tool (e.g., PowerShell) to inherit its privileges — countered by ringfencing the elevated process."
+   },
+   {
+    "term": "Storage Control",
+    "def": "Device and path policy: USB approved by serial, user, file type, time, and encryption; unapproved devices do not connect."
+   },
+   {
+    "term": "Network Control",
+    "def": "Centrally managed host firewall; rules by port, source IP, and dynamic ACLs; egress allowlisting pins apps to approved destinations."
+   },
+   {
+    "term": "ZTNA",
+    "def": "Zero Trust Network Access: per-session, per-application brokered connections (commonly over port 443) with no open inbound ports — deny-by-default for network access."
+   },
+   {
+    "term": "Approval Center",
+    "def": "Portal queue where end-user software requests arrive for admin review and decision."
+   },
+   {
+    "term": "Unified Audit",
+    "def": "Real-time audit showing what was allowed or denied across endpoints — and why; the evidence layer for triage."
+   },
+   {
+    "term": "Testing Environment",
+    "def": "One-button cloud VDI sandbox launched from an approval request; logs AV flags, canary-file access, and registry/system changes."
+   },
+   {
+    "term": "Cyber Hero MDR",
+    "def": "24/7/365 US-based managed detection and response team; validates alerts, isolates hosts, acts on customer runbooks; ~60-second average response."
+   },
+   {
+    "term": "Assume breach",
+    "def": "Design and operate as if the attacker already has a foothold — least privilege, containment, and monitoring everywhere."
+   },
+   {
+    "term": "Living off the land",
+    "def": "Attacks that hijack trusted built-in tools (Word, PowerShell) instead of dropping malware — defeated by behavior containment, not signatures."
+   },
+   {
+    "term": "Change control",
+    "def": "Scoped, ticketed, tested changes with validation and rollback — emergency speed never cancels the process."
+   },
+   {
+    "def": "A node in an attack graph representing a system or weakness, connected by edges that represent steps an attacker could take between them.",
+    "term": "attack graph"
+   },
+   {
+    "def": "How central a node is to paths through the graph (for example, betweenness: how many shortest paths cross it).",
+    "term": "centrality"
+   },
+   {
+    "def": "The most valuable assets in the environment (customer data, finance systems, source code): what attack paths are measured against.",
+    "term": "crown jewels"
+   },
+   {
+    "def": "A labeled connection between two nodes, representing a relationship such as 'logged into' or 'resolved to'.",
+    "term": "edge"
+   },
+   {
+    "def": "A graph of threat indicators (IPs, domains, hashes) linked to campaigns, actors, and each other through shared infrastructure.",
+    "term": "knowledge graph"
+   },
+   {
+    "def": "The practice of mapping relationships in data to reveal hidden associations; rooted in Euler's 1736 graph theory, 1970s paper link charts, and post-2001 intelligence work.",
+    "term": "link analysis"
+   },
+   {
+    "def": "A segment of the network so small that its allowed communications can be enumerated as a graph of approved edges.",
+    "term": "microsegmentation"
+   },
+   {
+    "def": "An entity in the graph: a user, host, IP address, domain, file, or vulnerability.",
+    "term": "node"
+   },
+   {
+    "def": "Access control where policy is evaluated by traversing relationships on a graph (for example: user reports_to manager who owns the resource's project).",
+    "term": "ReBAC"
+   },
+   {
+    "def": "A machine-learning model that operates directly on graph structure to classify nodes or subgraphs, for example labeling attack vs normal behavior.",
+    "term": "graph neural network (GNN)"
+   },
+   {
+    "def": "Monitoring user and entity behavior by modeling their normal relationship patterns and flagging structural anomalies.",
+    "term": "UEBA"
+   },
+   {
+    "term": "Supervised learning",
+    "def": "ML trained on labeled examples; classifies new inputs into known categories."
+   },
+   {
+    "term": "Anomaly detection",
+    "def": "ML approach that models normal behavior and flags statistically rare deviations."
+   },
+   {
+    "term": "Feature engineering",
+    "def": "Turning raw telemetry into numeric model inputs, e.g. login velocity or domain entropy."
+   },
+   {
+    "term": "Precision",
+    "def": "Share of flagged alerts that were real; the false-positive economics of the queue."
+   },
+   {
+    "term": "Recall",
+    "def": "Share of real attacks the detector flagged; the miss rate's complement."
+   },
+   {
+    "term": "Concept drift",
+    "def": "Decay of model performance as the data distribution shifts over time."
+   },
+   {
+    "term": "Prompt injection",
+    "def": "Attacker-crafted instructions that override an LLM application's intended behavior; direct (user input) or indirect (retrieved data)."
+   },
+   {
+    "term": "Jailbreak",
+    "def": "Crafted input that defeats an LLM's own safety policy or refusal behavior."
+   },
+   {
+    "term": "Tool poisoning",
+    "def": "Malicious tool descriptions or metadata that manipulate an AI agent into misusing its tools."
+   },
+   {
+    "term": "Insecure output handling",
+    "def": "Failing to validate LLM output before acting on it, e.g. executing generated commands."
+   },
+   {
+    "term": "Evasion attack",
+    "def": "Adversarial ML technique: perturbing inputs to cross a classifier's decision boundary."
+   },
+   {
+    "term": "MITRE ATLAS",
+    "def": "Adversarial Threat Landscape for AI Systems; MITRE's knowledge base of AI attack tactics."
+   },
+   {
+    "term": "SOAR",
+    "def": "Security orchestration, automation and response; playbooks that enrich automatically and gate containment on humans."
+   },
+   {
+    "term": "Human-in-the-loop",
+    "def": "Required human approval before high-impact or irreversible automated actions."
+   }
+  ],
+  "links": [
+   {
+    "label": "ThreatLocker Zero Trust platform explainer (official)",
+    "url": "https://www.threatlocker.com/blog/edr-xdr-vs-zero-trust-prevention",
+    "note": "EDR/XDR vs Zero Trust prevention — the deny-by-default argument in their own words."
+   },
+   {
+    "label": "ThreatLocker Bootcamp page (official)",
+    "url": "https://www.threatlocker.com/bootcamp",
+    "note": "Free six-week program: phases, format, and what completion leads to."
+   },
+   {
+    "label": "ThreatLocker Careers (official)",
+    "url": "https://www.threatlocker.com/company/careers",
+    "note": "Open roles and the hiring-event listing; roles are in-office in Orlando."
+   },
+   {
+    "label": "Elevation Control (official)",
+    "url": "https://www.threatlocker.com/secure-privileges-without-sacrificing-agility",
+    "note": "Just-in-time privilege without standing admin."
+   },
+   {
+    "label": "Storage Control (official)",
+    "url": "https://www.threatlocker.com/capabilities/external-storage-device-control",
+    "note": "USB/device policy by serial, user, file type, encryption."
+   },
+   {
+    "label": "Web Control (official)",
+    "url": "https://www.threatlocker.com/capabilities/web-content-control",
+    "note": "Agent-based DNS/URL filtering, including off-network."
+   },
+   {
+    "label": "Cyber Hero MDR (official)",
+    "url": "https://www.threatlocker.com/get-threat-response-in-minutes",
+    "note": "24/7/365 managed response positioning."
+   },
+   {
+    "label": "MDR capabilities (official)",
+    "url": "https://www.threatlocker.com/capabilities/managed-detection-and-response",
+    "note": "Detection and response capability detail."
+   },
+   {
+    "label": "NIST SP 800-207 — Zero Trust Architecture",
+    "url": "https://csrc.nist.gov/pubs/sp/800/207/final",
+    "note": "The canonical Zero Trust reference: tenets, deployment models, policy engine trust algorithm."
+   },
+   {
+    "label": "CISA Zero Trust Maturity Model",
+    "url": "https://www.cisa.gov/zero-trust-maturity-model",
+    "note": "Federal maturity steps across identity, devices, networks, applications, and data."
+   },
+   {
+    "label": "MITRE ATT&CK",
+    "note": "The adversary-tactics framework; codify its tactic chains as subgraphs to hunt for in your security graph.",
+    "url": "https://attack.mitre.org/"
+   },
+   {
+    "label": "CISA — Cybersecurity and Infrastructure Security Agency",
+    "note": "US government advisories, alerts, and guidance frequently referenced in threat-intel work.",
+    "url": "https://www.cisa.gov/"
+   },
+   {
+    "label": "Neo4j getting started",
+    "note": "A widely used graph database; the book's call to action suggests piloting graph queries on exported security data with tools like this.",
+    "url": "https://neo4j.com/docs/getting-started/"
+   },
+   {
+    "label": "OWASP GenAI Security Project",
+    "url": "https://genai.owasp.org/",
+    "note": "Home of the LLM Top 10 and GenAI security guidance"
+   },
+   {
+    "label": "OWASP Top 10 for LLM Applications",
+    "url": "https://genai.owasp.org/llm-top-10/",
+    "note": "The ranked LLM risk list — prompt injection is #1"
+   },
+   {
+    "label": "NIST AI Risk Management Framework",
+    "url": "https://www.nist.gov/itl/ai-risk-management-framework",
+    "note": "The standard governance framework for managing AI risk"
+   },
+   {
+    "label": "MITRE ATLAS",
+    "url": "https://atlas.mitre.org/",
+    "note": "Adversarial Threat Landscape for AI Systems — tactics and techniques"
+   },
+   {
+    "label": "CISA AI guidance",
+    "url": "https://www.cisa.gov/ai",
+    "note": "CISA's AI security resources and guidance"
+   }
+  ],
+  "checklist": [
+   "Sixty-second company brief rehearsed out loud: year, city, philosophy, three products, one milestone",
+   "Two STAR stories ready: hardest technical problem; a frustrated customer or user",
+   "“Why ThreatLocker / why cybersecurity” answer tied to prevention and service, not slogans",
+   "Ringfencing explained in one plain-English sentence (the Word-on-a-leash version)",
+   "Elevation Control answer ready: just-in-time, per-app, time-boxed, ringfenced, logged",
+   "Triage loop memorized: scope → observe → hypothesize → smallest safe change → validate → explain",
+   "Three questions to ask them: team on-call shape, approval SLA expectations, what “most helpful” looks like on the team",
+   "Logistics: 1901 Summit Tower Blvd, Orlando FL; in-office role; ID and references ready",
+   "Define your crown jewels before you model anything.",
+   "Build the asset-and-access graph from live sources (scans, configs, identity), not from the CMDB alone.",
+   "Model vulnerabilities AND misconfigurations as exploit edges.",
+   "Compute shortest attack paths to each crown jewel; name the choke points.",
+   "Prioritize remediation by path risk, not by raw severity score.",
+   "Express at least one access policy as a relationship path (ReBAC pilot).",
+   "Baseline approved communication edges per segment; alert on first-seen edges.",
+   "Brief the next incident or risk review with the graph, not a spreadsheet.",
+   "Can you explain supervised vs unsupervised vs anomaly detection with a security example for each?",
+   "Can you name three log features you would engineer for a C2 detector and why?",
+   "Can you walk through a UEBA alert (baseline, deviation, verification) end to end?",
+   "Can you explain the precision/recall tradeoff and how you would set a threshold for a fatigued SOC?",
+   "Can you define concept drift and describe a retraining process?",
+   "Can you distinguish direct vs indirect prompt injection and jailbreaking?",
+   "Can you explain tool poisoning in the MCP ecosystem and three controls against it?",
+   "Can you describe insecure output handling and how you would validate agent output?",
+   "Can you name the three adversarial ML attack classes and one defense for evasion?",
+   "Can you design a SOAR playbook gate: what automates freely, what needs human approval?"
+  ]
+ },
+ "chat": {
+  "persona": "You are a rigorous but encouraging interviewer preparing a candidate for a Zero Trust endpoint security role. Probe with 'why' and 'how would you explain that' follow-ups. Stay on topic: ThreatLocker-style endpoint defense, security graphs, and AI-powered security. All practice is original; never reproduce vendor material.",
+  "topics": [
+   {
+    "id": "tl-interview",
+    "name": "ThreatLocker Interview Prep",
+    "key_points": [
+     "allowlisting",
+     "ringfencing",
+     "default-deny",
+     "cyber hero",
+     "zero trust tenets",
+     "STAR stories"
+    ],
+    "followups": [
+     "Can you give an example?",
+     "How would you explain that to a CFO?"
+    ]
+   },
+   {
+    "id": "tl-endpoint-ops",
+    "name": "Zero Trust Endpoint Operations",
+    "key_points": [
+     "default-deny",
+     "ringfencing dimensions",
+     "elevation control",
+     "storage control",
+     "network control",
+     "change control"
+    ],
+    "followups": [
+     "Walk me through the triage order.",
+     "When would you deny outright?"
+    ]
+   },
+   {
+    "followups": [
+     "Can you walk through an example?",
+     "How does this change patch prioritization?",
+     "What is the difference between a security graph and an attack graph?"
+    ],
+    "id": "sec-graphs",
+    "key_points": [
+     "nodes",
+     "edges",
+     "attack graphs",
+     "kill chain",
+     "link analysis",
+     "threat intel graphs"
+    ],
+    "name": "Security Graphs: Think Like an Attacker"
+   },
+   {
+    "followups": [
+     "How do graphs change patch prioritization?",
+     "What is ReBAC and how is it different from RBAC?",
+     "How would a small team start with graphs?"
+    ],
+    "id": "graph-defense",
+    "key_points": [
+     "attack-path analysis",
+     "insider threat",
+     "vulnerability graphs",
+     "Zero Trust",
+     "microsegmentation",
+     "blast radius"
+    ],
+    "name": "Graph-Powered Defense Operations"
+   },
+   {
+    "id": "ml-defense",
+    "name": "ML-Powered Threat Defense",
+    "key_points": [
+     "anomaly detection",
+     "UEBA",
+     "alert fatigue",
+     "concept drift",
+     "threat hunting",
+     "precision recall"
+    ],
+    "followups": [
+     "Walk me through an example.",
+     "How do you handle false positives?"
+    ]
+   },
+   {
+    "id": "ai-agent-sec",
+    "name": "Securing AI Systems & Agents",
+    "key_points": [
+     "prompt injection",
+     "tool poisoning",
+     "MCP risks",
+     "insecure output handling",
+     "SOAR gates",
+     "adversarial ML"
+    ],
+    "followups": [
+     "Walk me through an example.",
+     "How do you secure an AI agent end to end?"
+    ]
+   }
+  ]
+ },
+ "simulation": {
+  "items": 12,
+  "minutes": 180,
+  "evidence_cost_mins": 2
+ },
+ "media": [
+  {
+   "id": "tl-allowlist-vs-blocklist",
+   "kind": "diagram",
+   "title": "Allowlisting vs blocklisting: default-deny vs default-allow",
+   "svg": "assets/diagrams/tl-allowlist-vs-blocklist.svg",
+   "lesson_ref": "c-tl-endpoint-ops",
+   "caption": "Default-deny stops unknown code without a signature; default-allow runs it until one exists.",
+   "alt": "Side-by-side comparison: on the left, a default-deny gate runs known-good payroll software and denies unknown ransomware with no signature needed; on the right, a default-allow gate runs both until the ransomware is recognized as bad."
+  },
+  {
+   "id": "tl-ringfencing",
+   "kind": "diagram",
+   "title": "Ringfencing: four leashes on an allowed application",
+   "svg": "assets/diagrams/tl-ringfencing.svg",
+   "lesson_ref": "c-tl-endpoint-ops",
+   "caption": "Word stays approved, but it cannot spawn PowerShell, read the credential store, or reach the internet — while opening its document is allowed.",
+   "alt": "An approved Word application inside a dashed containment ring: arrows show PowerShell launch denied, credential-store registry access denied, external network denied, and document file access allowed."
+  },
+  {
+   "id": "tl-zero-trust-stack",
+   "kind": "diagram",
+   "title": "The Zero Trust endpoint stack",
+   "svg": "assets/diagrams/tl-zero-trust-stack.svg",
+   "lesson_ref": "c-tl-interview",
+   "caption": "Five deny-by-default layers — Allowlisting, Ringfencing, Elevation, Storage, Network — watched by Web Control, the Testing Environment, Unified Audit, and the Cyber Hero MDR team.",
+   "alt": "A vertical stack of five layers from Allowlisting at the foundation up through Ringfencing, Elevation Control, Storage Control, and Network Control, with side boxes for Web Control, Testing Environment, Unified Audit, and Cyber Hero MDR."
+  },
+  {
+   "id": "tl-triage-flow",
+   "kind": "diagram",
+   "title": "Application-request triage flow",
+   "svg": "assets/diagrams/tl-triage-flow.svg",
+   "lesson_ref": "c-tl-endpoint-ops",
+   "caption": "Gather evidence first, then branch: trusted gets a scoped rule, unknown goes to the sandbox, malicious gets a documented deny.",
+   "alt": "Flowchart from request arrival through evidence gathering to a decision diamond branching into three outcomes: approve with a scoped rule, detonate in the Testing Environment then ringfence, or deny with documented evidence."
+  },
+  {
+   "alt": "Diagram of four labeled nodes (user, host, file, domain, IP) joined by labeled directed edges such as logged into, downloaded, and resolved to, illustrating graph vocabulary.",
+   "caption": "Nodes are the things; edges are the relationships. Attackers move along the edges.",
+   "id": "sg-graph-vocabulary",
+   "kind": "diagram",
+   "lesson_ref": "c-sec-graphs",
+   "svg": "assets/diagrams/sg-graph-vocabulary.svg",
+   "title": "Graph vocabulary: nodes and edges"
+  },
+  {
+   "alt": "Attack graph with four nodes in a chain: external attacker to VPN gateway to file server to customer database, with a dead-end branch to a printer, showing the shortest path to the crown jewel.",
+   "caption": "The shortest path to the crown jewel is length 3. Break the choke point and the campaign dies.",
+   "id": "sg-attack-path",
+   "kind": "diagram",
+   "lesson_ref": "c-sec-graphs",
+   "svg": "assets/diagrams/sg-attack-path.svg",
+   "title": "Attack graph: shortest path to the crown jewels"
+  },
+  {
+   "alt": "Seven kill-chain stages as connected graph nodes: reconnaissance, weaponization, delivery, exploitation, installation, command and control, actions. Three alerts are annotated at delivery, installation, and command and control.",
+   "caption": "Three 'unrelated' alerts, one kill-chain subgraph. Correlate by shared entities, not by severity.",
+   "id": "sg-kill-chain",
+   "kind": "diagram",
+   "lesson_ref": "c-sec-graphs",
+   "svg": "assets/diagrams/sg-kill-chain.svg",
+   "title": "Kill chain as a graph"
+  },
+  {
+   "alt": "A policy engine at the center of a small graph evaluates an access request from a finance user on an untrusted laptop to an R and D code server. The request is denied because there is no prior relationship edge and the device is untrusted.",
+   "caption": "Valid credentials are not enough. The graph checks device trust, history, and relationships on every request.",
+   "id": "sg-zero-trust",
+   "kind": "diagram",
+   "lesson_ref": "c-graph-defense",
+   "svg": "assets/diagrams/sg-zero-trust.svg",
+   "title": "Zero Trust runs on relationships"
+  },
+  {
+   "id": "ai-ml-pipeline",
+   "kind": "diagram",
+   "title": "ML detection pipeline: telemetry to triage",
+   "svg": "assets/diagrams/ai-ml-pipeline.svg",
+   "lesson_ref": "c-ml-defense",
+   "caption": "How raw telemetry becomes scored alerts: features feed the model, the model scores, analysts triage top-down — and analyst verdicts feed retraining.",
+   "alt": "Flow diagram: telemetry sources feed feature extraction, which feeds an ML model, which outputs scored alerts into an analyst triage queue, with a feedback arrow for retraining."
+  },
+  {
+   "id": "ai-ueba-baseline-diagram",
+   "kind": "diagram",
+   "title": "UEBA: baseline vs deviation",
+   "svg": "assets/diagrams/ai-ueba-baseline.svg",
+   "lesson_ref": "c-ml-defense",
+   "caption": "UEBA learns each user's normal hours, locations, and volumes, then scores deviations from that baseline.",
+   "alt": "24-hour timeline showing a shaded normal login window from 8 AM to 6 PM with normal logins inside it, and a red anomaly marker at 2:47 AM for a foreign login scoring 97 out of 100."
+  },
+  {
+   "id": "ai-injection-flow",
+   "kind": "diagram",
+   "title": "Indirect prompt injection attack flow",
+   "svg": "assets/diagrams/ai-injection-flow.svg",
+   "lesson_ref": "c-ai-agent-sec",
+   "caption": "An attacker hides instructions in data the agent retrieves; the agent mistakes data for instructions and misuses its tools.",
+   "alt": "Attack flow diagram: hidden instruction in an email is read by an AI agent, which mistakes it for a command and calls a privileged tool, causing fraud; three defense boxes below: sanitize content, least-privilege tools, human approval."
+  }
+ ],
+ "foundations": [
+  {
+   "track": "linux-cli",
+   "why_needed": "Terminal labs and missions run in a simulated Linux shell; command-line fluency is required to complete them."
+  },
+  {
+   "track": "security-basics",
+   "why_needed": "Security-graph and ML-detection lessons assume baseline vocabulary (CIA triad, malware types, incident response phases)."
+  }
+ ],
+ "math": [
+  "stats",
+  "probability"
+ ]
+}

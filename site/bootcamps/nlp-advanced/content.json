@@ -1,0 +1,480 @@
+{
+ "slug": "nlp-advanced",
+ "title": "Advanced NLP in Practice",
+ "tagline": "Beyond the demo: production NLP pipelines, sentence embeddings, span-level NER, label quality, LLMs as components, and hybrid retrieval — 60 hours of applied practice.",
+ "vendor": {
+  "name": "Independent",
+  "certs": [],
+  "docs": []
+ },
+ "disclaimer": "Independent study material by Interstitium Labs. Not affiliated with or endorsed by any vendor. Confers no certificate.",
+ "accent": "#8b5cf6",
+ "domains": [
+  {
+   "id": "nlp-advanced",
+   "name": "Advanced NLP in Practice",
+   "summary": "Advanced applied NLP: reproducible text pipelines, sentence embeddings and similarity search, sequence-model practice with span NER and label quality, LLMs as disciplined components, and hybrid information retrieval. Independent study; confers no certificate.",
+   "scenarios": [
+    {
+     "id": "nlp-advanced-sc1",
+     "title": "The shredded contract",
+     "situation": "A RAG system over legal contracts chunks documents into fixed 512-token windows with no overlap. Retrieved passages regularly start or end mid-sentence, and the generator cites fragments that misrepresent the clause they came from. The embedding model tests fine on benchmarks.",
+     "prompt": "What chunking change fixes this?",
+     "evidence": [],
+     "choices": [
+      "Chunk on linguistic boundaries — sentences or paragraphs — with overlap between adjacent chunks, and keep small metadata (section heading, page) on each chunk. Fixed token windows shred the discourse structure the generator needs to quote faithfully.",
+      "Increase chunk size to 2048 tokens: bigger windows always help.",
+      "Switch to a larger embedding model: the vectors are the problem.",
+      "Retrieve more chunks (top-20 instead of top-5): recall fixes everything."
+     ],
+     "answer": 0,
+     "why": "Retrieval quality is bounded by chunk quality: a perfect embedding of a severed sentence still retrieves a severed sentence. Overlap preserves cross-boundary context, and boundary-aware splitting keeps each chunk self-contained enough to cite. The embedding benchmark was measuring the wrong thing — chunk integrity, not vector quality.",
+     "hint": "If a cited passage starts mid-sentence, is the failure in the embedding, the retrieval, or the chunking — and which one decides what text the generator can see?",
+     "objectives": [],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "nlp-advanced-sc2",
+     "title": "Similar but useless",
+     "situation": "Dense retrieval over a support knowledge base returns passages that paraphrase the user's question beautifully — but do not contain the answer. Cosine similarity is high; task success is low. The team proposes a bigger embedding model.",
+     "prompt": "What is the right diagnosis and fix?",
+     "evidence": [],
+     "choices": [
+      "Semantic similarity is not task relevance: embeddings rank 'sounds like the question' above 'answers the question.' Fix with hybrid retrieval (BM25 for lexical precision plus dense for paraphrase), a cross-encoder reranker on the top candidates, and evaluation with recall@k on your own queries — not embedding benchmarks.",
+      "Use a bigger embedding model: scale fixes relevance.",
+      "L2-normalize the vectors harder: the metric is miscalibrated.",
+      "Cosine similarity is the wrong metric: switch to Euclidean distance."
+     ],
+     "answer": 0,
+     "why": "Embedding benchmarks measure paraphrase similarity, but your task is answer retrieval — different objective, different failure mode. BM25 catches exact terms (error codes, product names) that dense models blur; rerankers score query-passage pairs jointly and consistently beat bi-encoder ranking on precision. Evaluate on your queries or you are optimizing a proxy.",
+     "hint": "The top result paraphrases the question instead of answering it — what does that tell you about what the similarity score is actually measuring?",
+     "objectives": [],
+     "mins": 6,
+     "difficulty": 1
+    },
+    {
+     "id": "nlp-advanced-sc3",
+     "title": "The 0.78 ceiling",
+     "situation": "A custom NER model for medical entities plateaus at 0.78 F1 across architectures: BiLSTM-CRF, fine-tuned BERT, larger BERT — all land within a point of each other. The team wants to try a 10x larger model next.",
+     "prompt": "What should they investigate before scaling up?",
+     "evidence": [],
+     "choices": [
+      "Label quality: when every architecture plateaus at the same score, the ceiling is usually the annotations. Measure inter-annotator agreement, adjudicate disagreements, and audit a sample of 'errors' — many will be defensible predictions punished by noisy or inconsistent gold labels.",
+      "Scale to the 10x model: capacity is the only remaining lever.",
+      "Train for 100 epochs: the models are undertrained.",
+      "Add more dropout: regularization will break the ceiling."
+     ],
+     "answer": 0,
+     "why": "Architecture-invariant plateaus are the signature of a data ceiling, not a model ceiling. A model cannot systematically beat the consistency of its own supervision — if two annotators agree only 80% of the time, 0.78 F1 may already be at the achievable limit. The highest-ROI work is adjudication guidelines and span-boundary conventions, not parameters.",
+     "hint": "If three very different architectures all stop at the same score, is the bottleneck more likely in the models — which differ — or in the thing they share?",
+     "objectives": [],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "nlp-advanced-sc4",
+     "title": "The inventive extractor",
+     "situation": "A zero-shot LLM extracts invoice fields (vendor, date, total) into JSON. On 5% of documents it outputs fields that do not appear anywhere in the source text — plausible-looking vendor names and totals. Lowering temperature to 0 did not eliminate it.",
+     "prompt": "How do you make extraction trustworthy?",
+     "evidence": [],
+     "choices": [
+      "Constrain and verify: use structured/constrained output (JSON schema), then verify every extracted span against the source document — reject or flag anything not found verbatim. For critical fields, add a hybrid verifier: rules or a second model that checks source grounding. Temperature 0 reduces sampling noise; it does not stop confabulation.",
+      "Lower the temperature further: temperature is the only lever.",
+      "Use a bigger model: scale eliminates hallucination.",
+      "Write a better prompt: prompt engineering fixes extraction."
+     ],
+     "answer": 0,
+     "why": "Extraction is a grounding task, and LLMs generate rather than copy by default — the failure mode is structural, not a tuning detail. Schema constraints fix the shape; source-span verification fixes the content. The hybrid pattern (LLM proposes, verifier disposes) is how production extraction pipelines earn trust on money fields.",
+     "hint": "The model outputs a total that appears nowhere in the invoice — which step in your pipeline could have caught that, and why didn't temperature fix it?",
+     "objectives": [],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "nlp-advanced-sc5",
+     "title": "The case of XJ-4500",
+     "situation": "Hybrid search evaluation shows dense retrieval missing queries containing exact product codes like 'XJ-4500' — the embedding blurs the code into generic 'product' semantics — while BM25 alone misses paraphrased questions ('my device won't charge' vs 'charging failure troubleshooting'). Each method fails a different query slice.",
+     "prompt": "What retrieval design covers both?",
+     "evidence": [],
+     "choices": [
+      "Keep both and fuse: BM25 for lexical precision on exact tokens (codes, names, error strings) plus dense retrieval for paraphrase and semantics, fused with reciprocal rank fusion or a learned combination, then a reranker on top. Neither method covers both slices; the hybrid exists because their failure modes are complementary.",
+      "Retrain the embeddings on product codes: dense retrieval must do everything.",
+      "BM25 is obsolete: delete it and tune the dense model harder.",
+      "Use dense retrieval only: lexical match is a legacy concern."
+     ],
+     "answer": 0,
+     "why": "This is the canonical hybrid-search argument: lexical methods excel at rare exact tokens (their IDF weighting is built for it) while dense methods excel at meaning-preserving paraphrase. Deleting either one reintroduces its failure slice. Fusion plus reranking is the standard production stack for exactly this reason.",
+     "hint": "Which query slice does each method win — exact codes or paraphrases — and what does that imply about deleting one of them?",
+     "objectives": [],
+     "mins": 6,
+     "difficulty": 3
+    },
+    {
+     "id": "nlp-advanced-sc6",
+     "title": "The labeling buyout",
+     "situation": "Leadership proposes replacing the annotation team with LLM labeling for a 200k-document classification project: 'ten times faster, one-tenth the cost.' A pilot shows 92% agreement with gold labels on easy cases but systematic errors on the ambiguous edge cases that matter most to the business.",
+     "prompt": "What is the responsible recommendation?",
+     "evidence": [],
+     "choices": [
+      "Run the quality audit, not the cost math, first: measure LLM-vs-gold agreement sliced by difficulty, keep human adjudication for edge cases and a gold validation set, and present the tradeoff table (cost, latency, error rate per slice). LLM labeling is a force multiplier for the easy majority — not a wholesale replacement where errors are expensive.",
+      "Approve the buyout: 92% agreement is good enough for everything.",
+      "Reject LLM labeling entirely: machines cannot label.",
+      "Use few-shot prompts and ship: prompting fixes the edge cases."
+     ],
+     "answer": 0,
+     "why": "The pilot's own numbers argue against the buyout: agreement is high where labels are cheap and low where they are valuable. The professional move is the hybrid — LLM first pass, human review on low-confidence and high-stakes slices, and a permanent gold set to detect drift. Present it as a tradeoff table so leadership decides with eyes open.",
+     "hint": "Where do the LLM's errors concentrate — the cheap easy cases or the expensive edge cases — and what does that do to the 'one-tenth the cost' claim?",
+     "objectives": [],
+     "mins": 6,
+     "difficulty": 3
+    }
+   ]
+  }
+ ],
+ "lessons": [
+  {
+   "domain_id": "nlp-advanced",
+   "title": "Advanced NLP in Practice — Core concepts",
+   "concepts": [
+    "Pipelines are reproducibility contracts: cleaning decisions, tokenization choices, and chunking strategy must be versioned together, because a silent change in any one of them shifts everything downstream.",
+    "Sentence embeddings turn meaning into geometry, but similarity is not relevance: evaluate embeddings on your task (recall@k on your queries), never on a generic benchmark, and expect paraphrase-similar non-answers.",
+    "NER is span prediction, not token classification in spirit: boundary conventions decide your F1 as much as the model does, and label quality — measured by inter-annotator agreement — is the ceiling no architecture tunes past.",
+    "LLMs are strong NLP components under discipline: zero/few-shot for the easy majority, structured extraction with schema constraints, and LLM labeling only with a human-audited gold set and slice-aware agreement metrics.",
+    "Retrieval is a stack, not a model: BM25 for lexical precision, dense retrieval for paraphrase, hybrid fusion for both, and a cross-encoder reranker for precision — each layer covering the last one's failure slice.",
+    "Active learning spends the labeling budget where it matters: label the uncertain and the disagreeing, adjudicate edge cases with humans, and keep a frozen gold set so you can detect drift instead of debating it."
+   ],
+   "example": {
+    "lang": "python",
+    "code": "from sentence_transformers import SentenceTransformer\nfrom sklearn.metrics.pairwise import cosine_similarity\nfrom sklearn.cluster import KMeans\n\nmodel = SentenceTransformer(\"all-MiniLM-L6-v2\")  # small, fast, honest baseline\ndocs = [\n    \"How do I reset my password?\",\n    \"Password reset instructions for locked accounts\",\n    \"What is the refund policy for annual plans?\",\n    \"Refund eligibility and timelines\",\n]\nembs = model.encode(docs, normalize_embeddings=True)\n\n# Similarity search: rank docs for a query.\nq = model.encode([\"I forgot my login credentials\"], normalize_embeddings=True)\nscores = cosine_similarity(q, embs)[0]\nfor doc, s in sorted(zip(docs, scores), key=lambda x: -x[1]):\n    print(f\"{s:.3f}  {doc}\")\n\n# Topic discovery: cluster the embedding space.\nlabels = KMeans(n_clusters=2, n_init=10, random_state=0).fit_predict(embs)\nprint(labels)  # expect password docs together, refund docs together\n\n# The discipline the snippet does NOT show: evaluate recall@k on YOUR\n# queries, and add BM25 + a reranker before calling this production.\n",
+    "walkthrough": "This is the working core of modern applied NLP: one small sentence-embedding model gives you similarity search and clustering in twenty lines. Normalized embeddings make cosine similarity a dot product, so ranking is cheap and exact. Clustering the same vectors surfaces topics without any labels — the 'topic discovery' use case. The closing comment is the lesson's real point: the snippet is a baseline, and production adds hybrid retrieval, reranking, and task evaluation — the stack from scenario 5, not just the vectors."
+   },
+   "pitfalls": [
+    "Common trap: evaluating embeddings on a public benchmark instead of your queries — benchmark similarity and task relevance are different objectives.",
+    "Common trap: chunking on fixed token windows — shredded sentences produce untrustworthy citations no reranker can repair.",
+    "Common trap: treating LLM-extracted fields as grounded facts — verify every extracted span against the source document.",
+    "Common trap: scaling the model past an architecture-invariant plateau — when BiLSTM, BERT, and larger BERT all stop at the same F1, audit the labels."
+   ],
+   "try_it": "Work through this in the Labs tab."
+  }
+ ],
+ "labs": [
+  {
+   "id": "nlp-advanced-lab1",
+   "domain_id": "nlp-advanced",
+   "title": "Hybrid retrieval toy: BM25 plus dense",
+   "objective": "Build a small hybrid search stack — hand-rolled BM25, sentence-embedding dense retrieval, reciprocal rank fusion — and show measured recall@k on a query set where each method alone fails a slice.",
+   "steps": [
+    "Create lab1.py with 30 short documents on two topics, deliberately including exact codes (e.g. 'XJ-4500') in some and paraphrased descriptions in others.",
+    "Implement a compact BM25 scorer from scratch (term frequency, inverse document frequency, length normalization) and rank all 30 docs for 6 test queries.",
+    "Add dense retrieval with sentence-transformers: encode docs and queries, rank by cosine similarity.",
+    "Fuse both rankings with reciprocal rank fusion and compute recall@5 for BM25-only, dense-only, and fused — print all three numbers.",
+    "Identify one query each method wins, and in three sentences explain why the fused ranking covers both failure slices."
+   ],
+   "checks": [
+    {
+     "command_pattern": "^python3\\s",
+     "expect_contains": "recall@5",
+     "hint": "Print lines like 'bm25 recall@5 0.XXXX / dense recall@5 0.XXXX / fused recall@5 0.XXXX' so the check can compare all three."
+    }
+   ]
+  },
+  {
+   "id": "nlp-advanced-lab2",
+   "domain_id": "nlp-advanced",
+   "title": "Span-F1 evaluator and label audit",
+   "objective": "Write a span-level NER evaluator, run it on sample gold vs predicted spans, then simulate label noise to show how annotation inconsistency caps measured F1.",
+   "steps": [
+    "Create lab2.py: define 20 gold entity spans (text, start, end, label) over 5 short sentences, and a predicted set with 3 boundary errors, 2 label errors, and 2 misses.",
+    "Implement span-level precision, recall, and F1 requiring exact boundary plus label match; print the scores to four decimals.",
+    "Now corrupt the gold set: randomly shift 4 span boundaries by one token (simulating annotator disagreement) and re-score the same predictions against the noisy gold.",
+    "Print both F1 numbers and compute the gap; in three sentences, explain what this implies about architecture comparisons run on noisy labels.",
+    "Draft a three-rule span-boundary convention (e.g. include/exclude articles, handle conjunctions) that would have prevented your simulated disagreements."
+   ],
+   "checks": [
+    {
+     "command_pattern": "^python3\\s",
+     "expect_contains": "F1",
+     "hint": "Print lines like 'clean-gold F1 0.XXXX / noisy-gold F1 0.XXXX' so the check can see the label-noise effect."
+    }
+   ]
+  }
+ ],
+ "simulations": [],
+ "consoleSims": [],
+ "terminalMissions": [],
+ "sections": [
+  {
+   "id": "nlp-advanced-sec",
+   "title": "Advanced NLP in Practice — core path",
+   "kind": "path",
+   "lectures": [],
+   "lab_ids": [
+    "nlp-advanced-lab1",
+    "nlp-advanced-lab2"
+   ],
+   "drill_domain_ids": [
+    "nlp-advanced"
+   ]
+  }
+ ],
+ "behavioral": [
+  {
+   "prompt": "Walk me through an NLP project end to end: the messy text, the pipeline, the model, and how you knew it worked.",
+   "framework": "STAR",
+   "points": [
+    "Characterize the raw text honestly: noise, languages, length distribution",
+    "Justify the pipeline decisions (cleaning, tokenization, chunking) per task",
+    "Explain the model choice and the baseline it had to beat",
+    "Show evaluation on realistic data plus error analysis on linguistic failures"
+   ],
+   "pitfalls": [
+    "Skipping the data characterization",
+    "No baseline comparison",
+    "Evaluation only on a clean benchmark"
+   ]
+  },
+  {
+   "prompt": "Tell me about a retrieval system you built or improved. How did you measure 'better'?",
+   "framework": "STAR",
+   "points": [
+    "Name the retrieval stack layers you used or considered",
+    "Explain your query set and why it represents real usage",
+    "Give recall@k (or similar) numbers before and after",
+    "Describe a failure slice and which layer fixed it"
+   ],
+   "pitfalls": [
+    "'It felt better' with no metrics",
+    "No representative query set",
+    "One method claimed to do everything"
+   ]
+  },
+  {
+   "prompt": "Describe a time you caught a label-quality problem. How did you prove it and what changed?",
+   "framework": "STAR",
+   "points": [
+    "Explain the symptom: the plateau or error pattern that pointed at labels",
+    "Show how you measured agreement or audited errors",
+    "Describe the guideline or adjudication fix",
+    "Quantify the metric movement after the fix"
+   ],
+   "pitfalls": [
+    "Blaming the model for label noise",
+    "No agreement measurement",
+    "Fixing by relabeling everything blindly"
+   ]
+  },
+  {
+   "prompt": "How do you decide between fine-tuning a model and using an LLM for an NLP task?",
+   "framework": "STAR",
+   "points": [
+    "Lay out the tradeoff table: cost, latency, accuracy, control, data needs",
+    "Give a concrete case where you chose each side",
+    "Explain how you validated the choice on your data",
+    "Note what would make you switch approaches"
+   ],
+   "pitfalls": [
+    "LLM for everything by default",
+    "No cost/latency math",
+    "No validation comparison"
+   ]
+  },
+  {
+   "prompt": "Tell me about an LLM output failure in production — hallucination, bad extraction, or unsafe content.",
+   "framework": "STAR",
+   "points": [
+    "Describe the failure and how it was detected",
+    "Explain the guardrail that should have caught it",
+    "Walk through the fix: constraints, verification, or hybrid design",
+    "State what you monitor now"
+   ],
+   "pitfalls": [
+    "Claiming it never happens",
+    "Prompt tweaks presented as a complete fix",
+    "No verification layer added"
+   ]
+  },
+  {
+   "prompt": "Explain embeddings and vector search to a skeptical backend engineer who trusts only SQL.",
+   "framework": "STAR",
+   "points": [
+    "Start from their mental model: indexes and similarity as fuzzy matching",
+    "Give one concrete demo result, not theory",
+    "Name the limits honestly (not a replacement for exact lookup)",
+    "Show where hybrid (SQL/BM25 + vectors) beats either alone"
+   ],
+   "pitfalls": [
+    "Hand-waving about 'meaning'",
+    "Claiming vectors replace exact search",
+    "No concrete example"
+   ]
+  },
+  {
+   "prompt": "Describe a disagreement over evaluation metrics for a language task.",
+   "framework": "STAR",
+   "points": [
+    "State the metrics each side wanted and what each measures",
+    "Explain what the disagreement revealed about the real goal",
+    "Describe the evaluation suite you converged on",
+    "Show how it changed a subsequent decision"
+   ],
+   "pitfalls": [
+    "Optimizing the metric instead of the goal",
+    "One metric imposed without discussion",
+    "No human or slice-level evaluation"
+   ]
+  },
+  {
+   "prompt": "Tell me about a time you had to deliver NLP results under a tight labeling budget.",
+   "framework": "STAR",
+   "points": [
+    "State the budget constraint in concrete terms",
+    "Explain the prioritization: active learning, weak supervision, or LLM-assisted labeling",
+    "Show how you protected quality on the highest-stakes slices",
+    "Give the final quality-vs-cost outcome"
+   ],
+   "pitfalls": [
+    "Labeling randomly until money ran out",
+    "No quality protection on critical slices",
+    "Cutting evaluation to save budget"
+   ]
+  }
+ ],
+ "resources": {
+  "cheatsheet": [
+   "Chunk on linguistic boundaries with overlap; keep section/page metadata on each chunk.",
+   "Similarity != relevance: hybrid BM25 + dense, fused, then a cross-encoder reranker.",
+   "Evaluate retrieval with recall@k on YOUR queries, not embedding benchmarks.",
+   "NER is span prediction: fix boundary conventions before scaling the model.",
+   "Architecture-invariant plateau => audit the labels (inter-annotator agreement first).",
+   "LLM extraction: JSON schema constraints + verify every span against the source.",
+   "LLM labeling: audit slice-aware agreement vs gold; keep humans on edge cases and a frozen gold set.",
+   "Active learning: label the uncertain and the disagreeing; protect the labeling budget."
+  ],
+  "glossary": [
+   [
+    "sentence embedding",
+    "A fixed-size vector representing a whole sentence or passage; the unit of semantic search."
+   ],
+   [
+    "similarity search",
+    "Ranking documents by vector similarity (usually cosine) to a query embedding."
+   ],
+   [
+    "BM25",
+    "Lexical ranking function weighting term frequency against inverse document frequency; the exact-match baseline."
+   ],
+   [
+    "dense retrieval",
+    "Retrieval using embedding similarity instead of term overlap; strong on paraphrase, weak on exact tokens."
+   ],
+   [
+    "hybrid search",
+    "Combining lexical (BM25) and dense retrieval, typically via rank fusion, to cover both failure slices."
+   ],
+   [
+    "reranking",
+    "Second-stage scoring of top candidates with a stronger model (often a cross-encoder) for precision."
+   ],
+   [
+    "recall@k",
+    "Fraction of relevant documents appearing in the top-k results; the core retrieval metric."
+   ],
+   [
+    "cross-encoder",
+    "Model scoring a query-passage pair jointly; accurate but too slow for first-stage retrieval."
+   ],
+   [
+    "chunking",
+    "Splitting long documents into retrievable units; boundary choice decides citation quality."
+   ],
+   [
+    "span",
+    "A contiguous token range with a label — the unit of NER evaluation."
+   ],
+   [
+    "span F1",
+    "NER metric requiring exact boundary plus label match; harsher and more honest than token accuracy."
+   ],
+   [
+    "inter-annotator agreement",
+    "How often independent annotators agree; sets the realistic ceiling for supervised metrics."
+   ],
+   [
+    "active learning",
+    "Labeling strategy prioritizing the most informative examples (uncertain, disagreeing)."
+   ],
+   [
+    "zero-shot / few-shot",
+    "LLM task performance with no examples vs a few in-context examples; no weight updates."
+   ],
+   [
+    "structured extraction",
+    "Constraining LLM output to a schema (e.g. JSON) so fields are parseable and verifiable."
+   ],
+   [
+    "LLM labeling",
+    "Using a model to annotate training data; requires gold-set audits and slice-aware agreement checks."
+   ],
+   [
+    "language detection",
+    "Identifying a document's language before routing it to language-specific pipeline steps."
+   ],
+   [
+    "weak supervision",
+    "Generating training labels from heuristics or models instead of manual annotation; noisy by design."
+   ]
+  ],
+  "links": [
+   {
+    "name": "Hugging Face documentation",
+    "url": "https://huggingface.co/docs"
+   },
+   {
+    "name": "NLTK documentation",
+    "url": "https://www.nltk.org/"
+   },
+   {
+    "name": "PyTorch documentation",
+    "url": "https://pytorch.org/docs/stable/index.html"
+   }
+  ],
+  "checklist": [
+   "Pipeline steps versioned together: cleaning, tokenization, chunking reproducible end to end.",
+   "Chunks split on linguistic boundaries with overlap; metadata attached.",
+   "Retrieval evaluated with recall@k on representative in-domain queries.",
+   "Hybrid stack in place where exact tokens matter: BM25 + dense + reranker.",
+   "NER boundary conventions written down before annotation starts.",
+   "Inter-annotator agreement measured; gold validation set frozen.",
+   "LLM-extracted fields verified against source spans; schema-constrained output.",
+   "Cost/latency/accuracy tradeoff table maintained for LLM-vs-fine-tune decisions."
+  ]
+ },
+ "chat": {
+  "persona": "You are a rigorous but encouraging advanced-NLP tutor. Teach from first principles, show short real code (sentence-transformers, scikit-learn, Hugging Face) when it clarifies, and always ask what the learner observed before giving the answer. Stay on topic: NLP pipelines, embeddings, span NER, label quality, LLMs as components, hybrid retrieval, and evaluation. Independent study material; no vendor affiliation, no certificates.",
+  "topics": [
+   {
+    "id": "nlp-advanced",
+    "name": "Advanced NLP in Practice",
+    "key_points": [
+     "pipeline reproducibility",
+     "sentence embeddings",
+     "similarity search and clustering",
+     "span-level NER",
+     "label quality and active learning",
+     "zero/few-shot LLMs",
+     "structured extraction",
+     "BM25, dense, hybrid retrieval, reranking"
+    ]
+   }
+  ]
+ },
+ "simulation": {
+  "items": 10,
+  "minutes": 30,
+  "evidence_cost_mins": 2
+ },
+ "media": [],
+ "foundations": [],
+ "math": []
+}
