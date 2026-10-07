@@ -1,1 +1,2153 @@
-{"slug": "az-305", "title": "Azure Solutions Architect (AZ-305)", "tagline": "Designing infrastructure, data, and integration solutions", "vendor": {"name": "Microsoft", "certs": "AZ-305", "docs": "https://learn.microsoft.com"}, "disclaimer": "Independent practice material by Interstitium Labs. Not affiliated with, endorsed by, or sponsored by Microsoft. Confers no certificate. All scenarios are original; no exam content is reproduced.", "domains": [{"id": "identity-security-design", "name": "Identity & Security Design", "scenarios": [{"id": "az305-ca-design", "title": "The acquisition's identities", "situation": "Contoso acquires Fabrikam. Two Entra tenants must collaborate immediately, but Contoso's CISO won't merge directories for a year.", "prompt": "What identity design enables secure cross-tenant collaboration now?", "evidence": [], "choices": ["Cross-tenant access with B2B collaboration, scoped Conditional Access, and access packages", "Merging both tenants this weekend", "Sharing one global admin account", "Federating both tenants to a third IdP without Entra"], "answer": 0, "why": "Entra's cross-tenant access settings plus B2B collaboration let users from one tenant access the other's resources under explicit trust, Conditional Access, and MFA requirements — the architected path for M&A collaboration without a directory merge.", "hint": "Which Entra feature is built for 'their users, our resources' without merging directories?", "objectives": ["Cross-tenant access", "B2B design"], "mins": 7}, {"id": "az305-pim-design", "title": "Standing admin rights", "situation": "Sixty engineers hold permanent Global Administrator. An audit flags this as the company's top identity risk.", "prompt": "What design removes standing privilege while keeping emergency access possible?", "evidence": [], "choices": ["Privileged Identity Management: eligible (not active) assignments, MFA-gated activation, approval, and time-bound access", "Deleting all admin accounts", "Giving everyone Global Admin so it's 'equal'", "Weekly password rotations for admins"], "answer": 0, "why": "PIM implements just-in-time administration: admins hold eligible assignments and activate the role only when needed, with MFA, approval workflows, justification, and automatic expiry. This eliminates standing privilege — the core of identity security design.", "hint": "How do you give someone admin power only for the hour they need it?", "objectives": ["PIM", "Just-in-time access"], "mins": 7}, {"id": "az305-managed-id", "title": "The connection string leak", "situation": "An app's SQL connection string with username and password was committed to a public GitHub repo. The architect wants credentials eliminated from code entirely.", "prompt": "What design removes secrets from the application?", "evidence": [], "choices": ["Managed identity — the app authenticates to Azure SQL as its own identity with no stored credentials", "A longer password rotated monthly", "Storing the password in appsettings.json with restricted file permissions", "Using the same credential across all environments"], "answer": 0, "why": "Managed identities give Azure resources an Entra identity; the platform handles credential rotation invisibly. Apps use DefaultAzureCredential-style flows to get tokens — no passwords in code, config, or vaults to leak. (Key Vault is for secrets you truly must keep, like third-party API keys.)", "hint": "What identity type means the app never holds a password at all?", "objectives": ["Managed identity", "Secretless auth"], "mins": 6}, {"id": "az305-keyvault", "title": "The third-party API key", "situation": "An app needs a third-party payment API key — a secret that can't be replaced by a managed identity.", "prompt": "Where should this secret live, and how should the app read it?", "evidence": [], "choices": ["Azure Key Vault with a private endpoint; the app authenticates via its managed identity and reads the secret at runtime", "In the source code repository", "In an environment variable on the developer's laptop", "In a storage account blob with a SAS token"], "answer": 0, "why": "Key Vault is the designed home for secrets, keys, and certificates: RBAC-scoped access, private endpoint networking, rotation, and audit logging. The app's managed identity is granted Get on secrets only — no human ever sees the value.", "hint": "Secrets you must keep go in the vault; how does the app prove who it is to the vault?", "objectives": ["Key Vault", "Secret management"], "mins": 6}, {"id": "az305-hub-spoke-sec", "title": "The flat network", "situation": "A startup's Azure footprint is one giant VNet where every workload talks to every other. A breach in the marketing site reached the payment database.", "prompt": "What network security design limits blast radius?", "evidence": [], "choices": ["Hub-and-spoke with NSGs, Azure Firewall in the hub, and private endpoints for PaaS — segmenting tiers", "A bigger single VNet", "Public endpoints on all PaaS for easier access", "Removing all NSGs for performance"], "answer": 0, "why": "Hub-and-spoke segments workloads into isolated spokes with the hub hosting shared security (Azure Firewall for egress filtering, Bastion, VPN/ExpressRoute). NSGs and private endpoints add per-tier controls so one compromised tier can't reach the others.", "hint": "How do you stop lateral movement between tiers by design?", "objectives": ["Hub-spoke security", "Network segmentation"], "mins": 7}, {"id": "az305-landing-zone", "title": "The subscription sprawl", "situation": "A company creates subscriptions ad hoc — no consistent policies, no network standards, no cost tagging. Audits keep failing.", "prompt": "What enterprise-scale design brings order?", "evidence": [], "choices": ["A landing-zone design: management group hierarchy, baseline policies, hub networking, and identity foundation applied consistently", "One subscription for everything", "Letting each team invent its own standards", "Deleting old subscriptions quarterly"], "answer": 0, "why": "Landing zones (Cloud Adoption Framework) provide the repeatable foundation: management groups for policy/RBAC inheritance, connectivity hub, identity baseline, and guardrails — so every workload subscription starts compliant instead of drifting.", "hint": "What framework gives every new subscription the same secure starting point?", "objectives": ["Landing zones", "CAF enterprise-scale"], "mins": 7}]}, {"id": "data-solutions", "name": "Data Solutions", "scenarios": [{"id": "az305-sql-choice", "title": "The lift-and-shift database", "situation": "A legacy app needs SQL Server Agent jobs, cross-database queries, and near-100% compatibility with on-premises SQL Server, but the company wants PaaS management.", "prompt": "Which Azure SQL option fits?", "evidence": [], "choices": ["Azure SQL Managed Instance — near-full SQL Server compatibility as a PaaS", "Azure SQL Database single database — some features like Agent unavailable", "SQL Server on Azure VMs — IaaS, full control but self-managed", "Azure Cosmos DB"], "answer": 0, "why": "SQL Managed Instance offers near-100% compatibility with on-premises SQL Server (Agent jobs, cross-db queries, CLR) while Microsoft manages patching and HA. Single databases suit cloud-native apps; VMs suit when OS-level control is required.", "hint": "Which PaaS keeps SQL Agent and cross-database queries working?", "objectives": ["SQL MI vs SQL DB", "Database selection"], "mins": 7}, {"id": "az305-cosmos-choice", "title": "The global shopping cart", "situation": "A retailer's cart service needs single-digit-millisecond reads/writes for users on five continents, with automatic failover.", "prompt": "Which data store is designed for this?", "evidence": [], "choices": ["Azure Cosmos DB with multi-region writes — global distribution with tunable consistency", "Azure SQL Database in one region", "Azure Table storage in one region", "SQL Server on a VM with replication"], "answer": 0, "why": "Cosmos DB is built for globally distributed NoSQL: multi-region writes, 99.999% SLA options, and five tunable consistency levels trading freshness for latency. Regional relational databases can't match the global latency profile.", "hint": "Millisecond global access with automatic failover — which store is purpose-built?", "objectives": ["Cosmos DB", "Global distribution"], "mins": 6}, {"id": "az305-synapse-delta", "title": "The lakehouse", "situation": "Analysts need SQL over the data lake's Parquet files today, and data scientists need Spark over the same files tomorrow — without duplicating data.", "prompt": "What design serves both engines from one copy?", "evidence": [], "choices": ["Open formats (Parquet/Delta Lake) on ADLS Gen2 queried by Synapse serverless SQL and Spark pools", "Copying data into a SQL database and a separate Spark cluster", "CSV files on a file share", "Two separate data lakes"], "answer": 0, "why": "Storing data once in open formats (Parquet, Delta Lake) on ADLS Gen2 lets Synapse serverless SQL pools query it with T-SQL and Spark pools process it — the lakehouse pattern. Delta Lake adds ACID transactions and time travel on top.", "hint": "One copy of data, two engines. What storage format makes that possible?", "objectives": ["Lakehouse", "Open formats"], "mins": 7}, {"id": "az305-partitioning", "title": "The hot partition", "situation": "A Cosmos DB container with 2 TB of data throttles constantly. All documents share one partition key value — the tenant ID of the largest customer.", "prompt": "What is the design flaw?", "evidence": [["metrics", "429 rate-limited requests: 38% | normalized RU consumption on partition 7: 100%"]], "choices": ["A hot partition — the partition key doesn't distribute throughput; choose a high-cardinality key aligned with query patterns", "Cosmos DB can't handle 2 TB", "Throughput should be set to manual minimum", "The container needs a second region"], "answer": 0, "why": "Partition key choice is the most consequential Cosmos DB design decision: it must distribute both data and request volume evenly and match query patterns. A single hot value concentrates all RU consumption on one physical partition — throttling regardless of provisioned throughput.", "hint": "All traffic hits one partition. What design decision caused that?", "objectives": ["Partitioning strategy", "Cosmos DB design"], "mins": 7}, {"id": "az305-backup-retention", "title": "The compliance retention", "situation": "A bank must retain database backups for 7 years and be able to restore to any point in the last 30 days.", "prompt": "How should backup be designed?", "evidence": [], "choices": ["Long-term retention (LTR) policies for the 7-year requirement plus point-in-time restore for the 30-day window", "Weekly manual exports to a laptop", "Geo-replication alone", "Relying on the default 7-day retention"], "answer": 0, "why": "Azure SQL's automated backups give point-in-time restore (7–35 days configurable); long-term retention policies keep full backups in RA-GRS storage for up to 10 years. The two mechanisms cover different requirements — recency vs. compliance archive.", "hint": "Which two backup features cover 'any point in 30 days' versus 'keep for 7 years'?", "objectives": ["Backup design", "LTR and PITR"], "mins": 6}, {"id": "az305-polyglot", "title": "The mixed workload", "situation": "An architect must store: user sessions (key-value, ephemeral), product catalog (flexible documents), and financial transactions (strict ACID).", "prompt": "What is the sound design approach?", "evidence": [], "choices": ["Polyglot persistence — the right store per workload (cache, document DB, relational) rather than one store for all", "One relational database for everything", "One document database for everything", "Flat files for everything"], "answer": 0, "why": "Polyglot persistence matches each workload to its ideal store: ephemeral sessions in a cache (Redis), flexible catalog in a document DB, transactions in relational. Forcing all three into one store compromises each workload's needs.", "hint": "Three workloads with different shapes and guarantees — one store or three?", "objectives": ["Polyglot persistence", "Data solution design"], "mins": 6}]}, {"id": "business-continuity", "name": "Business Continuity", "scenarios": [{"id": "az305-rto-rpo", "title": "The two numbers", "situation": "Leadership says 'we can't lose more than 15 minutes of orders, and the site must be back within 4 hours of a regional disaster.'", "prompt": "How does the architect translate this?", "evidence": [], "choices": ["RPO ≤ 15 minutes (max data loss) drives replication frequency; RTO ≤ 4 hours (max downtime) drives recovery automation and architecture", "Both numbers describe the backup schedule", "RPO measures downtime; RTO measures data loss", "These are SLA percentages in disguise"], "answer": 0, "why": "RPO (recovery point objective) = how much data loss is tolerable, dictating replication/backup frequency. RTO (recovery time objective) = how long downtime is tolerable, dictating how automated and warm the recovery environment must be. Every BCDR design starts here.", "hint": "Which number is about lost data and which is about downtime?", "objectives": ["RPO vs RTO", "BCDR requirements"], "mins": 6}, {"id": "az305-active-active", "title": "The zero-downtime demand", "situation": "A trading platform tolerates essentially zero downtime and zero data loss across a regional outage.", "prompt": "Which architecture meets this?", "evidence": [], "choices": ["Active-active across regions (e.g., Cosmos DB multi-region writes, Front Door routing) — at the highest cost and complexity", "Backup and restore to a second region", "A single region with availability zones only", "Weekly database exports"], "answer": 0, "why": "Active-active serves traffic from multiple regions simultaneously with synchronous or near-synchronous replication — the only pattern approaching zero RTO/RPO across regions. It costs the most and demands conflict-resolution design; pilot-light and backup/restore accept longer RTOs for lower cost.", "hint": "Zero downtime across a regional failure demands which recovery pattern?", "objectives": ["BCDR patterns", "Active-active"], "mins": 7}, {"id": "az305-pilot-light", "title": "The budget-conscious DR", "situation": "A nonprofit needs regional DR but can't afford to run a full duplicate environment 24/7.", "prompt": "Which pattern fits?", "evidence": [], "choices": ["Pilot light or warm standby — minimal always-on footprint (replicated data, small core) scaled up on failover", "Active-active", "No DR at all", "Running everything twice at full size"], "answer": 0, "why": "Pilot light keeps the minimum viable footprint running (data replication, core services) and scales out during failover — balancing RTO against cost. It's the standard answer when active-active is unaffordable but backup/restore RTOs are too slow.", "hint": "Minimal always-on, scale up on disaster — which pattern is that?", "objectives": ["BCDR patterns", "Pilot light"], "mins": 6}, {"id": "az305-backup-vs-siterecovery", "title": "Files vs failover", "situation": "A team confuses Azure Backup with Azure Site Recovery, proposing Site Recovery to restore a single deleted file.", "prompt": "What is the correct distinction?", "evidence": [], "choices": ["Azure Backup protects data (files, VMs, databases) for restore; Site Recovery replicates whole workloads for failover to a second site", "They are the same service", "Site Recovery backs up files; Backup fails over VMs", "Neither handles on-premises workloads"], "answer": 0, "why": "Backup = data protection and granular restore (a file, a database point-in-time). Site Recovery = workload replication and orchestrated failover/failback of entire VMs and apps to a secondary region. Different problems, different tools.", "hint": "Granular restore versus whole-workload failover — which service does each?", "objectives": ["Backup vs Site Recovery", "BCDR services"], "mins": 6}, {"id": "az305-zones-vs-region", "title": "The regional outage", "situation": "An app spread across availability zones in East US survives datacenter failures, but leadership asks about a full East US regional outage.", "prompt": "What must the design add?", "evidence": [], "choices": ["Cross-region replication/failover (paired region, Traffic Manager/Front Door) — zones don't survive regional loss", "More zones in the same region", "Bigger VMs in the same zones", "A second VNet in East US"], "answer": 0, "why": "Availability zones protect against datacenter-level failure within a region; only cross-region architecture (replication + global load balancing + failover runbooks) survives a regional event. Zones and regions are different tiers of resilience.", "hint": "Zones are in-region. What tier of resilience covers losing the whole region?", "objectives": ["Resilience tiers", "Cross-region design"], "mins": 6}, {"id": "az305-restore-testing", "title": "The untested backup", "situation": "A company has backups running for two years but has never attempted a restore. An auditor asks for proof of recoverability.", "prompt": "What should the design include?", "evidence": [], "choices": ["Regular restore testing and documented runbooks — backups are worthless until a restore is proven", "Longer retention", "More frequent backups", "A second backup vault in the same region"], "answer": 0, "why": "An untested backup is a hope, not a plan. Mature BCDR designs schedule restore drills, document RTO/RPO validation, and keep runbooks current — auditors specifically look for evidence of tested recovery, not just backup jobs succeeding.", "hint": "What proves a backup actually works?", "objectives": ["DR testing", "Recovery validation"], "mins": 5}]}, {"id": "infrastructure-design", "name": "Infrastructure Design", "scenarios": [{"id": "az305-compute-choice", "title": "The batch genome job", "situation": "A research team runs a 6-hour parallel genome analysis once a week — no steady load, massive burst compute, then nothing.", "prompt": "Which compute design fits?", "evidence": [], "choices": ["Azure Batch or VMSS with autoscale-to-zero / spot — pay only for burst hours", "Always-on VMs sized for peak", "App Service with Always On", "A single container instance running 24/7"], "answer": 0, "why": "Episodic parallel HPC workloads fit Azure Batch (job scheduling across pooled VMs, including spot) or scale sets that scale to zero — you pay for 6 hours, not 168. Always-on infrastructure for weekly bursts is pure waste.", "hint": "Six hours a week of massive parallelism — what compute pattern avoids paying for idle time?", "objectives": ["Compute selection", "Batch patterns"], "mins": 6}, {"id": "az305-aks-vs-containerapps", "title": "The microservices call", "situation": "A team runs 12 microservices, wants Kubernetes API compatibility for their GitOps tooling, and needs node-level control for GPU workloads.", "prompt": "Which container platform fits?", "evidence": [], "choices": ["Azure Kubernetes Service — full Kubernetes control including node pools and GPUs", "Azure Container Apps — serverless containers without Kubernetes API access", "Container Instances — single containers, no orchestration", "App Service — not container orchestration"], "answer": 0, "why": "AKS provides managed Kubernetes with full API access, custom node pools (including GPU SKUs), and GitOps integration. Container Apps is excellent for serverless microservices but abstracts the Kubernetes layer away — wrong when the team needs node control and K8s-native tooling.", "hint": "They need the Kubernetes API and GPU node pools. Which service gives both?", "objectives": ["Container platforms", "AKS vs Container Apps"], "mins": 7}, {"id": "az305-hybrid-arc", "title": "The factory servers", "situation": "A manufacturer has 300 Windows servers on factory floors that can't move to Azure, but IT wants unified policy, monitoring, and patching from Azure.", "prompt": "What extends Azure management to them?", "evidence": [], "choices": ["Azure Arc — projects on-premises/edge servers into Azure Resource Manager for policy, monitoring, and extensions", "ExpressRoute alone", "Migrating them all to Azure VMs", "A site-to-site VPN"], "answer": 0, "why": "Azure Arc-enabled servers bring non-Azure machines under ARM: Azure Policy guest configuration, Monitor, Defender, and Update Manager work uniformly. It's the hybrid management answer when migration isn't possible.", "hint": "How do you manage servers you can't migrate as if they were Azure resources?", "objectives": ["Azure Arc", "Hybrid management"], "mins": 6}, {"id": "az305-ssl-design", "title": "The TLS termination", "situation": "A global web app needs TLS termination, WAF protection, and routing to regional backends with the lowest-latency choice per user.", "prompt": "Which front-door design fits?", "evidence": [], "choices": ["Azure Front Door — global anycast entry, WAF, TLS termination, latency-based routing to origins", "Application Gateway — regional only", "Azure Firewall — not a reverse proxy/WAF for HTTP", "Traffic Manager — DNS-based, no TLS termination or WAF"], "answer": 0, "why": "Front Door is the global (multi-region) HTTP entry point: anycast, WAF integration, TLS offload, and latency-based routing. Application Gateway is the regional equivalent; Traffic Manager is DNS-level without HTTP features.", "hint": "Global entry + WAF + TLS + latency routing — which service combines all four?", "objectives": ["Global load balancing", "Front Door design"], "mins": 7}, {"id": "az305-storage-design", "title": "The video pipeline", "situation": "A media pipeline ingests 50 TB/day of video, processes it with Spark, and serves thumbnails worldwide with low latency.", "prompt": "What storage design fits?", "evidence": [], "choices": ["ADLS Gen2 (hierarchical namespace, Spark-optimized) for ingest/process, plus Azure CDN or Front Door caching for global thumbnail delivery", "Premium SSD managed disks for 50 TB/day ingest", "Archive tier for active processing", "A single file share for everything"], "answer": 0, "why": "ADLS Gen2 is the analytics-optimized object store (hierarchical namespace, fine-grained ACLs, Spark/Hadoop compatible); CDN/Front Door caches hot thumbnails at the edge. Managed disks are VM-attached block storage — wrong for shared analytics at this scale.", "hint": "Shared analytics-scale ingest plus global low-latency reads — which two services?", "objectives": ["Storage design", "ADLS Gen2 and CDN"], "mins": 7}, {"id": "az305-well-architected", "title": "The review framework", "situation": "An architect is asked to systematically review a workload design before production — reliability, security, cost, operations, performance.", "prompt": "Which framework structures this review?", "evidence": [], "choices": ["The Azure Well-Architected Framework — five pillars with assessment reviews", "The Cloud Adoption Framework — migration-focused", "Azure Policy — enforcement, not design review", "The pricing calculator"], "answer": 0, "why": "The Well-Architected Framework's five pillars (Reliability, Security, Cost Optimization, Operational Excellence, Performance Efficiency) plus the Well-Architected Review tooling give a structured design assessment. CAF covers cloud adoption strategy; WAF covers workload quality.", "hint": "Which framework's pillars are reliability, security, cost, operations, and performance?", "objectives": ["WAF", "Design review"], "mins": 5}]}, {"id": "integration", "name": "Integration", "scenarios": [{"id": "az305-apim", "title": "The partner API", "situation": "A company must expose internal APIs to partners with rate limits, API keys, usage analytics, and a developer portal — without rewriting the backends.", "prompt": "What provides this API facade?", "evidence": [], "choices": ["Azure API Management — gateway policies, subscriptions/keys, throttling, analytics, developer portal", "A raw Azure Function URL per API", "An NSG in front of the backend", "Application Gateway alone"], "answer": 0, "why": "API Management is the full-lifecycle API gateway: policy enforcement (rate limits, transformation, auth), product/subscription key management, analytics, and a self-service developer portal — the designed facade for partner exposure.", "hint": "Rate limits, keys, portal, analytics over existing backends — which service?", "objectives": ["API Management", "Integration design"], "mins": 6}, {"id": "az305-messaging", "title": "Orders vs telemetry", "situation": "The architect must choose messaging for: (a) order processing requiring exactly-once, ordered, transactional delivery; (b) 1M/sec device telemetry fan-out.", "prompt": "Which pairing is correct?", "evidence": [], "choices": ["Service Bus for orders (queues, transactions, ordering); Event Hubs for telemetry (high-throughput streaming ingestion)", "Event Hubs for orders; Service Bus for telemetry", "Event Grid for both", "Storage queues for both"], "answer": 0, "why": "Service Bus = enterprise messaging (queues/topics, transactions, sessions/ordering, dead-lettering) for orders. Event Hubs = big-data streaming ingestion (millions of events/sec, partitions, consumer groups) for telemetry. Event Grid = event routing for reactive scenarios — a third distinct pattern.", "hint": "Transactional ordered delivery versus massive streaming fan-out — which service per workload?", "objectives": ["Messaging patterns", "Service Bus vs Event Hubs"], "mins": 7}, {"id": "az305-event-grid", "title": "The blob-triggered workflow", "situation": "When a file lands in Blob storage, three independent downstream systems must react — a function, a logic app, and a webhook.", "prompt": "Which eventing service fits?", "evidence": [], "choices": ["Event Grid — pub/sub event routing with multiple subscribers per event", "Event Hubs — streaming ingestion, overkill for discrete events", "Service Bus — messaging, not event fan-out", "A timer-triggered function polling the container"], "answer": 0, "why": "Event Grid routes discrete events (like BlobCreated) to multiple subscribers with push delivery and filtering — the reactive integration pattern. Polling wastes resources; streaming platforms suit continuous data, not discrete notifications.", "hint": "One event, three independent reactions. Which service is pub/sub event routing?", "objectives": ["Event Grid", "Event-driven integration"], "mins": 6}, {"id": "az305-logicapps-funcs", "title": "The SaaS approval flow", "situation": "HR needs: when a ServiceNow ticket closes, post to Teams, wait for manager approval, then create an Entra account. Built by a non-developer team.", "prompt": "Which integration tool fits?", "evidence": [], "choices": ["Logic Apps — visual workflow designer with 1000+ connectors (ServiceNow, Teams, Entra) for citizen integrators", "Azure Functions — code-first, wrong for a non-developer team", "A VM running scripts", "Event Hubs"], "answer": 0, "why": "Logic Apps' designer and connector ecosystem make human-in-the-loop SaaS workflows buildable without code. Functions suit code-first compute; the scenario's approval step and connector breadth point to Logic Apps.", "hint": "Visual workflow, SaaS connectors, human approval, non-developer builders — which tool?", "objectives": ["Logic Apps vs Functions", "Workflow integration"], "mins": 6}, {"id": "az305-private-paas", "title": "The locked-down integration", "situation": "APIM must call backend Functions and SQL with no traffic traversing the public internet, per a regulatory requirement.", "prompt": "What network design satisfies this?", "evidence": [], "choices": ["Private endpoints for APIM/Functions/SQL on the VNet (Premium/isolated tiers as needed) plus private DNS", "Public endpoints with IP whitelisting", "Service endpoints only — the PaaS public endpoints remain", "A VPN from APIM to the backends"], "answer": 0, "why": "Private endpoints bring each PaaS into the VNet with private IPs, so integration traffic never leaves the private network. Note tier implications: APIM needs Premium (or Standard v2) for VNet injection/private endpoints — a real design constraint.", "hint": "Regulation says no public internet for integration traffic. Which construct privatizes PaaS?", "objectives": ["Private integration", "Private endpoints"], "mins": 7}, {"id": "az305-saga", "title": "The distributed order", "situation": "An order flow spans inventory service, payment service, and shipping service — each with its own database. A payment failure must undo the inventory reservation.", "prompt": "Which pattern handles this?", "evidence": [], "choices": ["Saga pattern — orchestrated or choreographed compensating transactions across services", "A distributed two-phase commit across databases", "A single shared database for all services", "Ignoring the failure and shipping anyway"], "answer": 0, "why": "Microservices can't share ACID transactions across databases; the saga pattern sequences local transactions with compensating actions (cancel reservation) on failure. Two-phase commit doesn't scale across autonomous services.", "hint": "No shared database, but failures must roll back prior steps. Which pattern?", "objectives": ["Saga pattern", "Distributed transactions"], "mins": 7}]}, {"id": "migration", "name": "Migration", "scenarios": [{"id": "az305-migrate-assess", "title": "The unknown estate", "situation": "A company wants to migrate 400 VMs to Azure but doesn't know their utilization, dependencies, or readiness.", "prompt": "What is the correct first step?", "evidence": [], "choices": ["Azure Migrate assessment — agentless discovery, dependency mapping, utilization analysis, and right-sizing recommendations", "Migrating the VMs immediately", "Buying reserved instances first", "Asking each team to guess their usage"], "answer": 0, "why": "Azure Migrate's discovery and assessment phase maps dependencies, measures actual utilization, and produces right-sized Azure targets with cost estimates — the evidence base for every migration wave plan. Migrating blind guarantees waste and outages.", "hint": "Before moving 400 VMs, what produces the dependency map and right-sizing data?", "objectives": ["Azure Migrate", "Assessment phase"], "mins": 6}, {"id": "az305-6rs", "title": "The strategy choice", "situation": "For each app in the portfolio, the team must pick: rehost, refactor, rearchitect, rebuild, replace, or retire.", "prompt": "What is this decision framework?", "evidence": [], "choices": ["The 6 R's of migration strategy — matching each workload to the right transformation depth", "The 5 pillars of WAF", "The 3 service models", "A licensing audit"], "answer": 0, "why": "The 6 Rs (rehost/lift-and-shift, refactor, rearchitect, rebuild, replace with SaaS, retire) force an explicit strategy per app instead of one-size-fits-all. Rehost is fastest; replace/retire often deliver the best economics.", "hint": "Which framework assigns each app a migration strategy?", "objectives": ["6 Rs", "Migration strategy"], "mins": 5}, {"id": "az305-dms", "title": "The database move", "situation": "A 4 TB on-premises SQL Server must move to Azure SQL Managed Instance with minimal downtime during cutover.", "prompt": "Which approach fits?", "evidence": [], "choices": ["Azure Database Migration Service / MI link with continuous replication and a planned cutover", "Backup-and-restore over a weekend outage", "Detaching MDF files and copying them", "Rewriting the app for Cosmos DB first"], "answer": 0, "why": "Online migration (DMS or the MI link feature) replicates continuously and cuts over with minutes of downtime — the minimal-downtime pattern for large databases. Offline backup/restore means the outage lasts as long as the 4 TB transfer.", "hint": "Minimal downtime for a 4 TB database move — which migration mode?", "objectives": ["Online migration", "DMS"], "mins": 6}, {"id": "az305-wave-plan", "title": "The dependency order", "situation": "Assessment shows the web tier depends on an app tier that depends on a database. The team wants to migrate the web tier first.", "prompt": "What does the wave plan say?", "evidence": [], "choices": ["Migrate in dependency order (database → app → web) or as a wave group — migrating dependents first strands them", "Migrate in any order; dependencies resolve automatically", "Migrate the web tier first for quick wins", "Skip the database entirely"], "answer": 0, "why": "Wave planning groups apps by dependency: migrate dependencies first (or together in one wave) so nothing lands in Azure pointing at a database still on-premises. The dependency map from assessment drives the wave sequence.", "hint": "The web tier needs the app tier needs the database. What order do waves follow?", "objectives": ["Wave planning", "Dependency order"], "mins": 6}, {"id": "az305-hybrid-dns", "title": "The split-brain DNS", "situation": "During migration, some VMs are on-premises and some in Azure, and name resolution breaks for the migrated ones.", "prompt": "What must the design address?", "evidence": [], "choices": ["Hybrid DNS — conditional forwarders / private resolver so both environments resolve each other's names", "More bandwidth", "Bigger VMs", "A second ExpressRoute"], "answer": 0, "why": "Coexistence requires name resolution both ways: on-premises DNS forwarding Azure private zones (via Azure Private DNS Resolver or forwarders) and Azure resolving on-premises names. DNS is the most common hybrid migration breakage.", "hint": "Migrated and unmigrated servers can't find each other by name. Which design piece is missing?", "objectives": ["Hybrid DNS", "Migration networking"], "mins": 6}, {"id": "az305-landing-migrate", "title": "The migration foundation", "situation": "The team is ready to migrate but has no Azure footprint: no subscriptions structure, no hub network, no baseline policies.", "prompt": "What comes before the first workload migration?", "evidence": [], "choices": ["Build the landing zone first — management groups, connectivity, identity, and guardrails — then migrate into it", "Migrate one app to learn, then design the foundation", "Use the default subscription as-is", "Skip governance for speed"], "answer": 0, "why": "CAF's ready phase: establish the landing zone (subscriptions, networking, identity, governance) before migrating workloads. Migrating into an ungoverned tenant creates the sprawl the migration was supposed to fix.", "hint": "What must exist before the first workload lands?", "objectives": ["Landing zone readiness", "CAF phases"], "mins": 6}]}], "lessons": [{"domain_id": "identity-security-design", "title": "Identity & Security Design — Core concepts", "concepts": ["Cross-tenant access: entra's cross-tenant access settings plus B2B collaboration let users from one tenant access the other's resources under explicit trust, Conditional Access, and MFA requirements — the architected path for M&A collaboration without a directory merge.", "PIM implements just-in-time administration: admins hold eligible assignments and activate the role only when needed, with MFA, approval workflows, justification, and automatic expiry.", "Managed identity: the app's managed identity is granted Get on secrets only — no human ever sees the value. Managed identities give Azure resources an Entra identity; the platform handles credential rotation invisibly."], "example": {"lang": "text", "code": "Worked example — cross-tenant access\nSetup: Key Vault is the designed home for secrets, keys, and certificates: RBAC-scoped access, private endpoint networking, rotation, and audit logging.\nReasoning: (Key Vault is for secrets you truly must keep, like third-party API keys.).\nTakeaway: Landing zones (Cloud Adoption Framework) provide the repeatable foundation: management groups for policy/RBAC inheritance, connectivity hub, identity…", "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."}, "pitfalls": ["Common trap: public endpoints on all PaaS for easier access.", "Common trap: storing the password in appsettings.json with restricted file permissions.", "Common trap: sharing one global admin account.", "Common trap: federating both tenants to a third IdP without Entra."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "data-solutions", "title": "Data Solutions — Core concepts", "concepts": ["SQL MI vs SQL DB: storing data once in open formats (Parquet, Delta Lake) on ADLS Gen2 lets Synapse serverless SQL pools query it with T-SQL and Spark pools process it — the lakehouse pattern.", "Cosmos DB: partition key choice is the most consequential Cosmos DB design decision: it must distribute both data and request volume evenly and match query patterns. Cosmos DB is built for globally distributed NoSQL: multi-region writes, 99.999% SLA options, and five tunable consistency levels trading freshness for latency.", "Global distribution: regional relational databases can't match the global latency profile."], "example": {"lang": "text", "code": "429 rate-limited requests: 38% | normalized RU consumption on partition 7: 100%", "walkthrough": "Partition key choice is the most consequential Cosmos DB design decision: it must distribute both data and request volume evenly and match query patterns. A single hot value concentrates all RU consumption on one physical partition — throttling regardless of provisioned throughput."}, "pitfalls": ["Common trap: copying data into a SQL database and a separate Spark cluster.", "Common trap: azure SQL Database in one region.", "Common trap: SQL Server on Azure VMs.", "Common trap: two separate data lakes."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "business-continuity", "title": "Business Continuity — Core concepts", "concepts": ["BCDR patterns: mature BCDR designs schedule restore drills, document RTO/RPO validation, and keep runbooks current — auditors specifically look for evidence of tested recovery, not just backup jobs succeeding.", "RPO vs RTO: pilot light keeps the minimum viable footprint running (data replication, core services) and scales out during failover — balancing RTO against cost. RPO (recovery point objective) = how much data loss is tolerable, dictating replication/backup frequency.", "Active-active serves traffic from multiple regions simultaneously with synchronous or near-synchronous replication — the only pattern approaching zero RTO/RPO across regions. It's the standard answer when active-active is unaffordable but backup/restore RTOs are too slow.", "Backup vs Site Recovery: site Recovery = workload replication and orchestrated failover/failback of entire VMs and apps to a secondary region. RTO (recovery time objective) = how long downtime is tolerable, dictating how automated and warm the recovery environment must be."], "example": {"lang": "text", "code": "Worked example — bcdr patterns\nSetup: Pilot light keeps the minimum viable footprint running (data replication, core services) and scales out during failover — balancing RTO against cost.\nReasoning: Mature BCDR designs schedule restore drills, document RTO/RPO validation, and keep runbooks current — auditors specifically look for evidence of…\nTakeaway: RPO (recovery point objective) = how much data loss is tolerable, dictating replication/backup frequency.", "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."}, "pitfalls": ["Common trap: site Recovery backs up files; Backup fails over VMs.", "Common trap: RPO measures downtime; RTO measures data loss.", "Common trap: both numbers describe the backup schedule.", "Common trap: backup and restore to a second region."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "infrastructure-design", "title": "Infrastructure Design — Core concepts", "concepts": ["Batch patterns: episodic parallel HPC workloads fit Azure Batch (job scheduling across pooled VMs, including spot) or scale sets that scale to zero — you pay for 6 hours, not 168.", "Container Apps is excellent for serverless microservices but abstracts the Kubernetes layer away — wrong when the team needs node control and K8s-native tooling.", "AKS provides managed Kubernetes with full API access, custom node pools (including GPU SKUs), and GitOps integration.", "Azure Arc-enabled servers bring non-Azure machines under ARM: Azure Policy guest configuration, Monitor, Defender, and Update Manager work uniformly.", "Hybrid management: it's the hybrid management answer when migration isn't possible."], "example": {"lang": "text", "code": "Worked example — compute selection\nSetup: Front Door is the global (multi-region) HTTP entry point: anycast, WAF integration, TLS offload, and latency-based routing.\nReasoning: Always-on infrastructure for weekly bursts is pure waste.\nTakeaway: ADLS Gen2 is the analytics-optimized object store (hierarchical namespace, fine-grained ACLs, Spark/Hadoop compatible); CDN/Front Door caches hot…", "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."}, "pitfalls": ["Common trap: a single container instance running 24/7.", "Common trap: dNS-based, no TLS termination or WAF.", "Common trap: premium SSD managed disks for 50 TB/day ingest.", "Common trap: serverless containers without Kubernetes API access."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "integration", "title": "Integration — Core concepts", "concepts": ["API Management is the full-lifecycle API gateway: policy enforcement (rate limits, transformation, auth), product/subscription key management, analytics, and a self-service developer portal — the designed facade for partner exposure.", "Integration design: event Grid routes discrete events (like BlobCreated) to multiple subscribers with push delivery and filtering — the reactive integration pattern. Private endpoints bring each PaaS into the VNet with private IPs, so integration traffic never leaves the private network.", "Messaging patterns: service Bus = enterprise messaging (queues/topics, transactions, sessions/ordering, dead-lettering) for orders.", "Service Bus vs Event Hubs: event Hubs = big-data streaming ingestion (millions of events/sec, partitions, consumer groups) for telemetry.", "Event Grid = event routing for reactive scenarios — a third distinct pattern."], "example": {"lang": "text", "code": "Worked example — api management\nSetup: Private endpoints bring each PaaS into the VNet with private IPs, so integration traffic never leaves the private network.\nReasoning: API Management is the full-lifecycle API gateway: policy enforcement (rate limits, transformation, auth), product/subscription key management…\nTakeaway: Service Bus = enterprise messaging (queues/topics, transactions, sessions/ordering, dead-lettering) for orders.", "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."}, "pitfalls": ["Common trap: event Hubs for orders; Service Bus for telemetry.", "Common trap: a raw Azure Function URL per API.", "Common trap: a distributed two-phase commit across databases.", "Common trap: the PaaS public endpoints remain."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "migration", "title": "Migration — Core concepts", "concepts": ["Azure Migrate's discovery and assessment phase maps dependencies, measures actual utilization, and produces right-sized Azure targets with cost estimates — the evidence base for every migration wave plan.", "Assessment phase: cAF's ready phase: establish the landing zone (subscriptions, networking, identity, governance) before migrating workloads. The dependency map from assessment drives the wave sequence.", "6 Rs: the 6 Rs (rehost/lift-and-shift, refactor, rearchitect, rebuild, replace with SaaS, retire) force an explicit strategy per app instead of one-size-fits-all.", "Migration strategy: online migration (DMS or the MI link feature) replicates continuously and cuts over with minutes of downtime — the minimal-downtime pattern for large databases. DNS is the most common hybrid migration breakage.", "Online migration: migrating into an ungoverned tenant creates the sprawl the migration was supposed to fix."], "example": {"lang": "text", "code": "Worked example — azure migrate\nSetup: Azure Migrate's discovery and assessment phase maps dependencies, measures actual utilization, and produces right-sized Azure targets with cost…\nReasoning: Wave planning groups apps by dependency: migrate dependencies first (or together in one wave) so nothing lands in Azure pointing at a database still…\nTakeaway: CAF's ready phase: establish the landing zone (subscriptions, networking, identity, governance) before migrating workloads.", "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."}, "pitfalls": ["Common trap: migrate in any order; dependencies resolve automatically.", "Common trap: migrate the web tier first for quick wins.", "Common trap: migrate one app to learn, then design the foundation.", "Common trap: buying reserved instances first."], "try_it": "Work through this in the Terminal tab →"}], "sections": [{"id": "foundations", "title": "Foundations", "kind": "foundation", "lectures": ["f-cloud-concepts-0", "f-cloud-concepts-1", "f-cloud-concepts-2", "f-networking-0", "f-networking-1", "f-networking-2", "f-networking-3"], "lab_ids": [], "drill_domain_ids": []}, {"id": "core", "title": "Core", "kind": "core", "lectures": ["c-data-solutions", "c-business-continuity", "c-integration", "c-migration"], "lab_ids": ["az-305-lab-1", "az-305-lab-2"], "drill_domain_ids": ["data-solutions", "business-continuity", "integration", "migration"]}, {"id": "advanced", "title": "Advanced", "kind": "advanced", "lectures": ["c-identity-security-design", "c-infrastructure-design"], "lab_ids": ["az-305-lab-3", "az-305-lab-4"], "drill_domain_ids": ["identity-security-design", "infrastructure-design"]}, {"id": "exam-prep", "title": "Exam Prep", "kind": "exam-prep", "lectures": [], "lab_ids": [], "drill_domain_ids": ["identity-security-design", "data-solutions", "business-continuity", "infrastructure-design", "integration", "migration"]}], "behavioral": [{"prompt": "Tell me about a time you had to defend an architecture decision to skeptical stakeholders.", "framework": "STAR", "points": ["The decision and the objections", "How you presented trade-offs", "The outcome and what you'd keep"], "pitfalls": ["Dismissing the objections", "No trade-off analysis"]}, {"prompt": "Describe a time your design had to balance cost against reliability or performance.", "framework": "STAR", "points": ["The competing requirements", "Options you evaluated", "The balance you struck and why"], "pitfalls": ["Optimizing one axis blindly", "No stakeholder alignment"]}, {"prompt": "Tell me about a design that failed in production and what you changed.", "framework": "STAR", "points": ["The failure and its blast radius", "Root cause in the design", "Design changes afterward"], "pitfalls": ["Blaming implementation only", "No design lesson"]}, {"prompt": "Describe a time you had to choose between two viable architectures with incomplete information.", "framework": "STAR", "points": ["What was unknown and what you assumed", "How you de-risked the choice", "How it played out"], "pitfalls": ["Analysis paralysis", "Ignoring the unknowns"]}, {"prompt": "Tell me about a time you designed for a non-functional requirement (security, DR, compliance) that others undervalued.", "framework": "STAR", "points": ["The requirement and why it mattered", "How you got buy-in", "The protection it provided"], "pitfalls": ["Gold-plating without justification", "No buy-in story"]}, {"prompt": "Describe a migration or modernization you architected.", "framework": "STAR", "points": ["The starting state and target", "Phasing and risk controls", "Measured results"], "pitfalls": ["Big-bang with no rollback", "No success metrics"]}, {"prompt": "Tell me about a time you had to simplify an over-engineered design.", "framework": "STAR", "points": ["The complexity and its cost", "What you removed and why it was safe", "The result"], "pitfalls": ["Simplifying away real requirements", "No rationale"]}, {"prompt": "Why are you pursuing the Azure Solutions Architect Expert certification, and what kinds of systems do you want to design?", "framework": "PAR", "points": ["Your motivation", "The design scope you target", "What comes after"], "pitfalls": ["Title-chasing with no substance", "No design direction"]}], "chat": {"persona": "You are a demanding but fair solutions-architect interviewer running a mock AZ-305 assessment. Push for trade-off reasoning: every design choice must name what it costs and what it risks. Correct imprecise service selection and demand RPO/RTO, consistency, and resilience reasoning.", "topics": [{"id": "identity-security-design", "name": "Identity & Security Design", "key_points": ["cross-tenant access and B2B", "PIM and just-in-time access", "managed identities", "Key Vault design", "hub-and-spoke security", "landing zones"], "followups": ["What does this choice cost in complexity?", "How does privilege get activated and expire?"]}, {"id": "data-solutions", "name": "Data Solutions", "key_points": ["SQL MI vs SQL DB vs Cosmos DB selection", "global distribution and consistency", "lakehouse and open formats", "partition key design", "backup retention vs point-in-time", "polyglot persistence"], "followups": ["Which consistency model fits?", "What happens at 10x the data volume?"]}, {"id": "business-continuity", "name": "Business Continuity", "key_points": ["RPO vs RTO", "active-active vs pilot light vs backup-restore", "Backup vs Site Recovery", "zones vs cross-region resilience", "restore testing"], "followups": ["State the RPO/RTO this design actually delivers.", "What fails first in a regional outage?"]}, {"id": "infrastructure-design", "name": "Infrastructure Design", "key_points": ["compute selection for workload shape", "AKS vs Container Apps", "Azure Arc for hybrid", "Front Door vs App Gateway", "ADLS Gen2 for analytics", "Well-Architected Framework pillars"], "followups": ["Why this compute and not the alternative?", "Which pillar does this decision serve?"]}, {"id": "integration", "name": "Integration", "key_points": ["API Management as facade", "Service Bus vs Event Hubs vs Event Grid", "Logic Apps vs Functions", "private endpoints for PaaS", "saga pattern"], "followups": ["Which messaging semantic does this need?", "What happens when a downstream step fails?"]}, {"id": "migration", "name": "Migration", "key_points": ["Azure Migrate assessment", "the 6 Rs", "online vs offline database migration", "wave planning by dependency", "hybrid DNS", "landing zone readiness"], "followups": ["What did the assessment reveal?", "What migrates first and why?"]}]}, "labs": [{"id": "az-305-lab-1", "title": "Cross-tenant access — Azure CLI drill", "objective": "Run a short sequence of Azure CLI commands that demonstrates cross-tenant access, then verify each result against the expected output.", "steps": ["This lab reworks the Identity & Security Design practice scenario \"The acquisition's identities\" into commands you run yourself — same concept, hands-on instead of multiple choice.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: az account show — the account document includes the subscription name", "Type exactly: az group list — each resource group entry carries a name", "Type exactly: az vm list — each VM entry carries a name", "In your own words, say what each command's output taught you about cross-tenant access."], "checks": [{"command_pattern": "az account show", "expect_contains": "name", "hint": "In the Terminal tab, run `az account show`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."}, {"command_pattern": "az group list", "expect_contains": "name", "hint": "In the Terminal tab, run `az group list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."}, {"command_pattern": "az vm list", "expect_contains": "name", "hint": "In the Terminal tab, run `az vm list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."}], "success_message": "Lab complete — cross-tenant access practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"id": "az-305-lab-2", "title": "SQL MI vs SQL DB — Azure CLI drill", "objective": "Use the Azure CLI to explore SQL MI vs SQL DB hands-on: type each command, read what comes back, and connect the output to the concept.", "steps": ["Inspired by the Data Solutions scenario \"The lift-and-shift database\": take its core idea and prove it live in the terminal instead of answering on paper.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: az vm list — each VM entry carries a name", "Type exactly: az account show — the account document includes the subscription name", "Type exactly: az group list — each resource group entry carries a name", "In your own words, say what each command's output taught you about SQL MI vs SQL DB."], "checks": [{"command_pattern": "az vm list", "expect_contains": "name", "hint": "In the Terminal tab, run `az vm list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."}, {"command_pattern": "az account show", "expect_contains": "name", "hint": "In the Terminal tab, run `az account show`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."}, {"command_pattern": "az group list", "expect_contains": "name", "hint": "In the Terminal tab, run `az group list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."}], "success_message": "Lab complete — SQL MI vs SQL DB practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"id": "az-305-lab-3", "title": "RPO vs RTO — Azure CLI drill", "objective": "Prove you can apply RPO vs RTO in the Azure CLI — follow the steps, watch the output, and confirm every check passes.", "steps": ["The Business Continuity scenario \"The two numbers\" tests this concept as a question. This lab makes you demonstrate it with real commands.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: az group list — each resource group entry carries a name", "Type exactly: az vm list — each VM entry carries a name", "Type exactly: az account show — the account document includes the subscription name", "In your own words, say what each command's output taught you about RPO vs RTO."], "checks": [{"command_pattern": "az group list", "expect_contains": "name", "hint": "In the Terminal tab, run `az group list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."}, {"command_pattern": "az vm list", "expect_contains": "name", "hint": "In the Terminal tab, run `az vm list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."}, {"command_pattern": "az account show", "expect_contains": "name", "hint": "In the Terminal tab, run `az account show`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."}], "success_message": "Lab complete — RPO vs RTO practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"id": "az-305-lab-4", "title": "Compute selection — Azure CLI drill", "objective": "Run a short sequence of Azure CLI commands that demonstrates compute selection, then verify each result against the expected output.", "steps": ["This lab reworks the Infrastructure Design practice scenario \"The batch genome job\" into commands you run yourself — same concept, hands-on instead of multiple choice.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: az account show — the account document includes the subscription name", "Type exactly: az group list — each resource group entry carries a name", "Type exactly: az vm list — each VM entry carries a name", "In your own words, say what each command's output taught you about compute selection."], "checks": [{"command_pattern": "az account show", "expect_contains": "name", "hint": "In the Terminal tab, run `az account show`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."}, {"command_pattern": "az group list", "expect_contains": "name", "hint": "In the Terminal tab, run `az group list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."}, {"command_pattern": "az vm list", "expect_contains": "name", "hint": "In the Terminal tab, run `az vm list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."}], "success_message": "Lab complete — compute selection practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"id": "az305-lab-landing-zone", "title": "Survey the landing zone", "objective": "Architects start with the foundation: subscriptions, resource groups, and regions already in place.", "difficulty": 1, "steps": ["Open the Terminal tab for this bootcamp.", "Type exactly: az account list — the subscriptions the landing zone spans", "Type exactly: az group list — the resource groups and their regions", "In your own words, say what a landing zone gives a new workload on day one."], "checks": [{"command_pattern": "^az account list$", "expect_contains": "ILB-Playground", "hint": "In the Terminal tab, run `az account list`. If the check fails, confirm you typed it exactly and that the output contains \"ILB-Playground\"."}, {"command_pattern": "^az group list$", "expect_contains": "ilb-network-rg", "hint": "In the Terminal tab, run `az group list`. If the check fails, confirm you typed it exactly and that the output contains \"ilb-network-rg\"."}], "success_message": "Lab complete — landing zone surveyed."}, {"id": "az305-lab-data-tier", "title": "Evaluate the data tier", "objective": "Data solutions start with the storage inventory. List the storage accounts backing the platform.", "difficulty": 1, "steps": ["Open the Terminal tab for this bootcamp.", "Type exactly: az storage account list — storage account names and SKUs", "In your own words, say when you would choose locally-redundant versus geo-redundant storage."], "checks": [{"command_pattern": "^az storage account list$", "expect_contains": "ilbartifacts", "hint": "In the Terminal tab, run `az storage account list`. If the check fails, confirm you typed it exactly and that the output contains \"ilbartifacts\"."}], "success_message": "Lab complete — data tier inventoried."}, {"id": "az305-lab-ha", "title": "Assess the high-availability footprint", "objective": "Business continuity is designed, not hoped for. Assess the compute footprint: VM sizes, states, and the AKS cluster.", "difficulty": 2, "steps": ["Open the Terminal tab for this bootcamp.", "Type exactly: az vm list — VM sizes and power states across the fleet", "Type exactly: az aks list — the managed Kubernetes cluster and node count", "In your own words, say what a 3-node AKS cluster buys you that a single VM cannot."], "checks": [{"command_pattern": "^az vm list$", "expect_contains": "Standard_D2s_v3", "hint": "In the Terminal tab, run `az vm list`. If the check fails, confirm you typed it exactly and that the output contains \"Standard_D2s_v3\"."}, {"command_pattern": "^az aks list$", "expect_contains": "3", "hint": "In the Terminal tab, run `az aks list`. If the check fails, confirm you typed it exactly and that the output contains \"3\"."}], "success_message": "Lab complete — HA footprint assessed."}, {"id": "az305-lab-dr", "title": "Design the DR region presence", "objective": "A DR design needs a foothold in the secondary region. Create the DR resource group and verify the network inventory.", "difficulty": 3, "steps": ["Open the Terminal tab for this bootcamp.", "Type exactly: az group create --name ilb-dr-rg --location westus — the DR region foothold", "Type exactly: az network vnet list — the primary region network you will peer or replicate from", "In your own words, say why the DR region should differ from the primary region's geography."], "checks": [{"command_pattern": "^az group create --name ilb-dr-rg --location westus$", "expect_contains": "ilb-dr-rg", "hint": "In the Terminal tab, run `az group create --name ilb-dr-rg --location westus`. If the check fails, confirm you typed it exactly and that the output contains \"ilb-dr-rg\"."}, {"command_pattern": "^az network vnet list$", "expect_contains": "ilb-vnet", "hint": "In the Terminal tab, run `az network vnet list`. If the check fails, confirm you typed it exactly and that the output contains \"ilb-vnet\"."}], "success_message": "Lab complete — DR foothold established."}], "foundations": [{"track": "cloud-concepts", "why_needed": "Designing solutions assumes you already think in regions, zones, and services. This track builds that thinking."}, {"track": "networking", "why_needed": "Infrastructure design is network design: VNets, connectivity, and private access throughout."}], "math": [], "simulations": [{"id": "az305-sim-arch-choice", "title": "Design the order service", "kind": "branching", "domain_id": "infrastructure-design", "difficulty": 3, "brief": "You are the solutions architect for an order service: spiky traffic, strict latency SLO, regulated data. Each choice compounds.", "steps": [{"id": "s1", "text": "Traffic spikes 10x during sales events. Compute choice?", "choices": [{"label": "Fixed VM fleet sized for peak — simple", "next": "s2a", "points": 0, "feedback": "Sizing fixed capacity for a 10x spike means paying for idle iron 360 days a year."}, {"label": "Autoscaling VM scale set behind a load balancer", "next": "s2", "points": 2, "feedback": "Correct — elastic compute matches spiky demand without paying for idle peak capacity."}]}, {"id": "s2a", "text": "Finance rejects the idle-peak bill. Reconsider:", "choices": [{"label": "Autoscaling scale set behind a load balancer", "next": "s2", "points": 1, "feedback": "Right — elasticity is the cloud's answer to spiky demand."}]}, {"id": "s2", "text": "Order data is regulated and must survive a regional outage. Data choice?", "choices": [{"label": "Single-region database with weekly backups", "next": "END", "points": 0, "outcome": "bad", "feedback": "Weekly backups on regulated data in one region fails both the RPO and the regional-outage requirement."}, {"label": "Geo-replicated database with automated failover", "next": "END", "points": 2, "outcome": "good", "feedback": "Correct — geo-replication meets the regional-outage requirement and tight RPO for regulated data."}]}], "debrief": "You designed to the requirements: elastic compute for spiky traffic, geo-replicated data for regulated resilience. Requirements drive architecture, not preferences.", "points": 15}, {"id": "az305-sim-migration-waves", "title": "Plan the migration waves", "kind": "ordering", "domain_id": "migration", "difficulty": 2, "brief": "Twenty apps are moving to Azure. Order the migration waves so dependencies land before dependents.", "steps": {"context": "Migration waves: dependencies first, then the apps that need them.", "items": ["Migrate the customer-facing web apps", "Migrate shared databases and identity", "Assess and discover all dependencies", "Migrate batch and internal tools", "Validate networking and connectivity to on-premises"], "correct_order": [2, 4, 1, 0, 3]}, "debrief": "You sequenced the migration: discover, connect, shared services, then front-ends, then batch. Dependents never land before their dependencies.", "points": 10}, {"id": "az305-sim-failover", "title": "The regional outage", "kind": "troubleshoot", "domain_id": "business-continuity", "difficulty": 3, "brief": "The primary region is impaired and the runbook says fail over. The failover stalls halfway — work it.", "steps": [{"symptom": "Failover initiated; traffic still hits the primary region 30 minutes later.", "evidence": [["az network vnet list", "ilb-vnet  ilb-network-rg  10.0.0.0/16"]], "options": ["Check DNS failover and traffic-manager endpoints — traffic follows DNS, not the runbook's hopes", "Restart the primary region workloads to force traffic away", "Wait longer — failovers always take hours", "Fail back immediately — the secondary must be broken"], "correct": 0, "explain": "Traffic routing is DNS-driven: if health checks or DNS failover did not flip, clients keep hitting primary. Verify the traffic-management layer before touching workloads."}, {"symptom": "DNS still resolves to the primary endpoints; the failover profile never flipped.", "evidence": [["az account show", "\"name\": \"ILB-Playground\""]], "options": ["Manually flip the traffic profile to the secondary endpoints and verify resolution", "Delete the primary endpoints so DNS has no choice", "Page the network team and wait", "Declare the outage over — 30 minutes is acceptable"], "correct": 0, "explain": "Execute the flip the automation missed, then verify end-to-end. Deleting primary endpoints destroys the failback path; waiting is not a strategy."}], "debrief": "You troubleshot the failover at the right layer: traffic follows DNS, so verify and flip the routing before touching any workload.", "points": 15}, {"id": "az305-sim-backup-config", "title": "The backup policy gap", "kind": "config-check", "domain_id": "business-continuity", "difficulty": 2, "brief": "Audit the backup policy against the 24-hour RPO the business signed. Click the lines that breach it.", "steps": {"config": "Backup policy: standard-weekly\n1. Frequency: weekly full, Sunday 02:00\n2. Retention: 4 weeks\n3. RPO target: 24 hours\n4. Databases: covered\n5. File shares: not covered", "find": 2, "issues": [{"line": 1, "description": "Weekly backups cannot meet a 24-hour RPO — up to 7 days of data loss is possible.", "fix": "Move to daily backups (or continuous) so the worst case fits inside 24 hours."}, {"line": 5, "description": "File shares are outside the policy entirely — an unprotected data class.", "fix": "Extend the policy to cover file shares or document the accepted risk."}]}, "debrief": "You matched the policy to the RPO: the backup frequency must fit inside the recovery objective, and every data class must be covered or explicitly accepted.", "points": 10}], "consoleSims": [{"id": "az305-console-portal-sku-1", "title": "Right-size the design", "console": "azure-portal", "domain_id": "infrastructure-design", "difficulty": 2, "brief": "The design doc specifies burstable B-series for the dev tier, but ilb-web-01 runs D2s_v3. Correct the design drift.", "tasks": [{"id": "t1", "instruction": "Change ilb-web-01's SKU to Standard_B2s per the design document.", "validate": {"action": "set-field", "params": {"field": "vm.ilb-web-01.size", "value": "Standard_B2s"}}, "hint": "Open the VM size blade and select the design-specified SKU."}, {"id": "t2", "instruction": "Record the change in the design log field.", "validate": {"action": "set-field", "params": {"field": "vm.ilb-web-01.design_log", "value": "resized to B2s per design v3"}}, "hint": "Find the design/notes field on the VM and log the change."}], "debrief": "You enforced design governance: the deployed estate matches the approved design, and the change is logged."}, {"id": "az305-console-portal-dr-1", "title": "Configure geo-replication", "console": "azure-portal", "domain_id": "business-continuity", "difficulty": 3, "brief": "The storage account holds regulated data. Enable geo-replication so a regional outage does not become a data-loss event.", "tasks": [{"id": "t1", "instruction": "Change ilbartifacts replication from LRS to GRS.", "validate": {"action": "set-field", "params": {"field": "storage.ilbartifacts.replication", "value": "GRS"}}, "hint": "Open the storage account's replication blade and select geo-redundant storage."}, {"id": "t2", "instruction": "Verify the secondary region shows as available.", "validate": {"action": "click", "params": {"target": "storage.ilbartifacts.secondary-status"}}, "hint": "Check the secondary endpoint status indicator."}], "debrief": "You closed the regional-outage gap: data now replicates to the paired region automatically."}], "terminalMissions": [{"id": "az305-mission-cloud", "title": "Confirm the cloud", "domain_id": "infrastructure-design", "difficulty": 1, "brief": "Verify the environment metadata on the account document.", "objectives": ["Show the Azure account", "Confirm the cloud environment"], "checks": [{"command_pattern": "^az account show$", "expect_contains": "AzureCloud", "hint": "In the Terminal tab, run `az account show`. If the check fails, confirm you typed it exactly and that the output contains \"AzureCloud\"."}], "success_message": "Environment confirmed — AzureCloud."}, {"id": "az305-mission-regions", "title": "List the regions in use", "domain_id": "infrastructure-design", "difficulty": 1, "brief": "List the resource groups and read which regions the footprint spans.", "objectives": ["List all resource groups"], "checks": [{"command_pattern": "^az group list$", "expect_contains": "eastus2", "hint": "In the Terminal tab, run `az group list`. If the check fails, confirm you typed it exactly and that the output contains \"eastus2\"."}], "success_message": "Regions mapped — eastus and eastus2."}, {"id": "az305-mission-vms", "title": "Survey the compute", "domain_id": "infrastructure-design", "difficulty": 2, "brief": "List the VMs an architect would evaluate for consolidation.", "objectives": ["List all virtual machines"], "checks": [{"command_pattern": "^az vm list$", "expect_contains": "ilb-web-01", "hint": "In the Terminal tab, run `az vm list`. If the check fails, confirm you typed it exactly and that the output contains \"ilb-web-01\"."}], "success_message": "Compute surveyed."}, {"id": "az305-mission-storage", "title": "Evaluate the data tier", "domain_id": "data-solutions", "difficulty": 2, "brief": "List the storage accounts the data design builds on.", "objectives": ["List all storage accounts"], "checks": [{"command_pattern": "^az storage account list$", "expect_contains": "ilbartifacts", "hint": "In the Terminal tab, run `az storage account list`. If the check fails, confirm you typed it exactly and that the output contains \"ilbartifacts\"."}], "success_message": "Data tier evaluated."}, {"id": "az305-mission-network", "title": "Read the network design", "domain_id": "infrastructure-design", "difficulty": 2, "brief": "List the VNets and identify the resource group owning the network.", "objectives": ["List all virtual networks"], "checks": [{"command_pattern": "^az network vnet list$", "expect_contains": "ilb-network-rg", "hint": "In the Terminal tab, run `az network vnet list`. If the check fails, confirm you typed it exactly and that the output contains \"ilb-network-rg\"."}], "success_message": "Network design read."}, {"id": "az305-mission-nodes", "title": "Count the cluster nodes", "domain_id": "integration", "difficulty": 3, "brief": "The integration design leans on AKS. Confirm the node count supports the workload.", "objectives": ["List all AKS clusters", "Read the node count"], "checks": [{"command_pattern": "^az aks list$", "expect_contains": "3", "hint": "In the Terminal tab, run `az aks list`. If the check fails, confirm you typed it exactly and that the output contains \"3\"."}], "success_message": "Node count confirmed — 3 nodes online."}], "media": [{"id": "az-305-identity-security-design-diag", "kind": "diagram", "title": "Identity & Security Design", "svg": "assets/diagrams/az-305-identity-security-design.svg", "lesson_ref": "c-identity-security-design", "caption": "Design flow: identify actors, then layer controls.", "alt": "Identity & Security Design. Shows: Actors, Entra ID, Conditional Access, Privileged access, Monitoring."}, {"id": "az-305-data-solutions-diag", "kind": "diagram", "title": "Azure Data Platform Choices", "svg": "assets/diagrams/az-305-data-solutions.svg", "lesson_ref": "c-data-solutions", "caption": "Relational, NoSQL, lake — by consistency and scale needs.", "alt": "Azure Data Platform Choices. Table with 4 rows."}, {"id": "az-305-business-continuity-diag", "kind": "diagram", "title": "Business Continuity Design", "svg": "assets/diagrams/az-305-business-continuity.svg", "lesson_ref": "c-business-continuity", "caption": "RTO/RPO drive every continuity decision.", "alt": "Business Continuity Design. Shows: RTO, RPO, MTTR, MTBF, 3 copies, 2 media types."}, {"id": "az-305-infrastructure-design-diag", "kind": "diagram", "title": "Landing Zone Design", "svg": "assets/diagrams/az-305-infrastructure-design.svg", "lesson_ref": "c-infrastructure-design", "caption": "Enterprise-scale structure for Azure estates.", "alt": "Landing Zone Design. Tiers: Management, Connectivity, Workloads."}, {"id": "az-305-integration-diag", "kind": "diagram", "title": "Integration Services Flow", "svg": "assets/diagrams/az-305-integration.svg", "lesson_ref": "c-integration", "caption": "Events in, orchestrated actions out.", "alt": "Integration Services Flow. Shows: Event Grid, Service Bus, Logic Apps, API Management."}, {"id": "az-305-migration-diag", "kind": "diagram", "title": "Cloud Migration Stages", "svg": "assets/diagrams/az-305-migration.svg", "lesson_ref": "c-migration", "caption": "Assess, move, then optimize — in waves.", "alt": "Cloud Migration Stages. Shows: Assess, Migrate, Optimize, Secure."}], "resources": {"cheatsheet": {"title": "Azure Solutions Architect (AZ-305) — Cheat Sheet", "sections": [{"heading": "Identity & Security Design", "items": ["Cross-tenant access — entra's cross-tenant access settings plus B2B collaboration let users from one tenant access the other's resources under explicit trust, Conditional Access, and MFA requirements — the architected path for M&A collaboration without a directory merge.", "PIM implements just-in-time administration — admins hold eligible assignments and activate the role only when needed, with MFA, approval workflows, justification, and automatic expiry.", "Managed identity — the app's managed identity is granted Get on secrets only — no human ever sees the value. Managed identities give Azure resources an Entra identity; the platform handles credential rotation invisibly.", "Common trap — public endpoints on all PaaS for easier access.", "Common trap — storing the password in appsettings.json with restricted file permissions.", "Common trap — sharing one global admin account.", "Common trap — federating both tenants to a third IdP without Entra.", "Read — Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."]}, {"heading": "Data Solutions", "items": ["SQL MI vs SQL DB — storing data once in open formats (Parquet, Delta Lake) on ADLS Gen2 lets Synapse serverless SQL pools query it with T-SQL and Spark pools process it — the lakehouse pattern.", "Cosmos DB — partition key choice is the most consequential Cosmos DB design decision: it must distribute both data and request volume evenly and match query patterns. Cosmos DB is built for globally distributed NoSQL: multi-region writes, 99.999% SLA options, and five…", "Global distribution — regional relational databases can't match the global latency profile.", "Common trap — copying data into a SQL database and a separate Spark cluster.", "Common trap — azure SQL Database in one region.", "Common trap — SQL Server on Azure VMs.", "Common trap — two separate data lakes.", "Partition key choice — is the most consequential Cosmos DB design decision: it must distribute both data and request volume evenly and match query patterns. A single hot value concentrates all RU consumption on one physical partition — throttling regardless of provisioned through…"]}, {"heading": "Business Continuity", "items": ["BCDR patterns — mature BCDR designs schedule restore drills, document RTO/RPO validation, and keep runbooks current — auditors specifically look for evidence of tested recovery, not just backup jobs succeeding.", "RPO vs RTO — pilot light keeps the minimum viable footprint running (data replication, core services) and scales out during failover — balancing RTO against cost. RPO (recovery point objective) = how much data loss is tolerable, dictating replication/backup frequency.", "Active-active — Active-active serves traffic from multiple regions simultaneously with synchronous or near-synchronous replication — the only pattern approaching zero RTO/RPO across regions. It's the standard answer when active-active is unaffordable but backup/restore RTO…", "Backup vs Site Recovery — site Recovery = workload replication and orchestrated failover/failback of entire VMs and apps to a secondary region. RTO (recovery time objective) = how long downtime is tolerable, dictating how automated and warm the recovery environment must be.", "Common trap — site Recovery backs up files; Backup fails over VMs.", "Common trap — RPO measures downtime; RTO measures data loss.", "Common trap — both numbers describe the backup schedule.", "Common trap — backup and restore to a second region."]}, {"heading": "Infrastructure Design", "items": ["Batch patterns — episodic parallel HPC workloads fit Azure Batch (job scheduling across pooled VMs, including spot) or scale sets that scale to zero — you pay for 6 hours, not 168.", "Container Apps — is excellent for serverless microservices but abstracts the Kubernetes layer away — wrong when the team needs node control and K8s-native tooling.", "AKS — provides managed Kubernetes with full API access, custom node pools (including GPU SKUs), and GitOps integration.", "Azure Arc-enabled servers bring non-Azure machines under ARM — Azure Policy guest configuration, Monitor, Defender, and Update Manager work uniformly.", "Hybrid management — it's the hybrid management answer when migration isn't possible.", "Common trap — a single container instance running 24/7.", "Common trap — dNS-based, no TLS termination or WAF.", "Common trap — premium SSD managed disks for 50 TB/day ingest.", "Common trap — serverless containers without Kubernetes API access."]}, {"heading": "Integration", "items": ["API Management is the full-lifecycle API gateway — policy enforcement (rate limits, transformation, auth), product/subscription key management, analytics, and a self-service developer portal — the designed facade for partner exposure.", "Integration design — event Grid routes discrete events (like BlobCreated) to multiple subscribers with push delivery and filtering — the reactive integration pattern. Private endpoints bring each PaaS into the VNet with private IPs, so integration traffic never leaves the priva…", "Messaging patterns — service Bus = enterprise messaging (queues/topics, transactions, sessions/ordering, dead-lettering) for orders.", "Service Bus vs Event Hubs — event Hubs = big-data streaming ingestion (millions of events/sec, partitions, consumer groups) for telemetry.", "Event Grid = event routing for reactive scenarios — a third distinct pattern.", "Common trap — event Hubs for orders; Service Bus for telemetry.", "Common trap — a raw Azure Function URL per API.", "Common trap — a distributed two-phase commit across databases.", "Common trap — the PaaS public endpoints remain."]}, {"heading": "Migration", "items": ["Azure Migrate — Azure Migrate's discovery and assessment phase maps dependencies, measures actual utilization, and produces right-sized Azure targets with cost estimates — the evidence base for every migration wave plan.", "Assessment phase — cAF's ready phase: establish the landing zone (subscriptions, networking, identity, governance) before migrating workloads. The dependency map from assessment drives the wave sequence.", "6 Rs — the 6 Rs (rehost/lift-and-shift, refactor, rearchitect, rebuild, replace with SaaS, retire) force an explicit strategy per app instead of one-size-fits-all.", "Migration strategy — online migration (DMS or the MI link feature) replicates continuously and cuts over with minutes of downtime — the minimal-downtime pattern for large databases. DNS is the most common hybrid migration breakage.", "Online migration — migrating into an ungoverned tenant creates the sprawl the migration was supposed to fix.", "Common trap — migrate in any order; dependencies resolve automatically.", "Common trap — migrate the web tier first for quick wins.", "Common trap — migrate one app to learn, then design the foundation.", "Common trap — buying reserved instances first."]}]}, "glossary": [{"term": "RTO", "def": "RPO vs RTO: pilot light keeps the minimum viable footprint running (data replication, core services) and scales out during failover — balancing RTO against cost. RPO (recovery point objective) = how much data loss is tolerable, dictating…"}, {"term": "API", "def": "API Management is the full-lifecycle API gateway: policy enforcement (rate limits, transformation, auth), product/subscription key management, analytics, and a self-service developer portal — the designed facade for partner exposure."}, {"term": "RPO", "def": "RPO vs RTO: pilot light keeps the minimum viable footprint running (data replication, core services) and scales out during failover — balancing RTO against cost. RPO (recovery point objective) = how much data loss is tolerable, dictating…"}, {"term": "Azure", "def": "Coexistence requires name resolution both ways: on-premises DNS forwarding Azure private zones (via Azure Private DNS Resolver or forwarders) and Azure resolving on-premises names. DNS is the most common hybrid migration breakage."}, {"term": "WAF", "def": "Global entry + WAF + TLS + latency routing — which service combines all four?"}, {"term": "VMs", "def": "SQL Managed Instance offers near-100% compatibility with on-premises SQL Server (Agent jobs, cross-db queries, CLR) while Microsoft manages patching and HA. Single databases suit cloud-native apps; VMs suit when OS-level control is requi…"}, {"term": "DB", "def": "Cosmos DB: partition key choice is the most consequential Cosmos DB design decision: it must distribute both data and request volume evenly and match query patterns. Cosmos DB is built for globally distributed NoSQL: multi-region writes,…"}, {"term": "DNS", "def": "Migration strategy: online migration (DMS or the MI link feature) replicates continuously and cuts over with minutes of downtime — the minimal-downtime pattern for large databases. DNS is the most common hybrid migration breakage."}, {"term": "AKS", "def": "AKS provides managed Kubernetes with full API access, custom node pools (including GPU SKUs), and GitOps integration."}, {"term": "GPU", "def": "AKS provides managed Kubernetes with full API access, custom node pools (including GPU SKUs), and GitOps integration. Container Apps is excellent for serverless microservices but abstracts the Kubernetes layer away — wrong when the team…"}, {"term": "ARM", "def": "Azure Arc-enabled servers bring non-Azure machines under ARM: Azure Policy guest configuration, Monitor, Defender, and Update Manager work uniformly."}, {"term": "node", "def": "They need the Kubernetes API and GPU node pools. Which service gives both?"}, {"term": "Cosmos DB", "def": "Cosmos DB: partition key choice is the most consequential Cosmos DB design decision: it must distribute both data and request volume evenly and match query patterns. Cosmos DB is built for globally distributed NoSQL: multi-region writes,…"}, {"term": "ADLS", "def": "ADLS Gen2 is the analytics-optimized object store (hierarchical namespace, fine-grained ACLs, Spark/Hadoop compatible); CDN/Front Door caches hot thumbnails at the edge. Managed disks are VM-attached block storage — wrong for shared anal…"}, {"term": "Managed", "def": "Managed identity: the app's managed identity is granted Get on secrets only — no human ever sees the value. Managed identities give Azure resources an Entra identity; the platform handles credential rotation invisibly."}, {"term": "ADLS Gen2", "def": "ADLS Gen2 is the analytics-optimized object store (hierarchical namespace, fine-grained ACLs, Spark/Hadoop compatible); CDN/Front Door caches hot thumbnails at the edge. Managed disks are VM-attached block storage — wrong for shared anal…"}, {"term": "RTOs", "def": "Active-active serves traffic from multiple regions simultaneously with synchronous or near-synchronous replication — the only pattern approaching zero RTO/RPO across regions. It's the standard answer when active-active is unaffordable bu…"}, {"term": "MI", "def": "SQL MI vs SQL DB: storing data once in open formats (Parquet, Delta Lake) on ADLS Gen2 lets Synapse serverless SQL pools query it with T-SQL and Spark pools process it — the lakehouse pattern."}, {"term": "TB", "def": "Minimal downtime for a 4 TB database move — which migration mode?"}, {"term": "Event Grid", "def": "Event Grid = event routing for reactive scenarios — a third distinct pattern."}, {"term": "Service Bus", "def": "Service Bus vs Event Hubs: event Hubs = big-data streaming ingestion (millions of events/sec, partitions, consumer groups) for telemetry."}, {"term": "Recovery", "def": "Backup vs Site Recovery: site Recovery = workload replication and orchestrated failover/failback of entire VMs and apps to a secondary region. RTO (recovery time objective) = how long downtime is tolerable, dictating how automated and wa…"}, {"term": "Hubs", "def": "Service Bus vs Event Hubs: event Hubs = big-data streaming ingestion (millions of events/sec, partitions, consumer groups) for telemetry."}, {"term": "Zones", "def": "Availability zones protect against datacenter-level failure within a region; only cross-region architecture (replication + global load balancing + failover runbooks) survives a regional event. Zones and regions are different tiers of res…"}, {"term": "Minimal", "def": "Minimal always-on, scale up on disaster — which pattern is that?"}], "links": [{"label": "Microsoft — official site", "url": "https://learn.microsoft.com", "note": "Official vendor documentation and certification information"}, {"label": "Microsoft Learn — Azure", "url": "https://learn.microsoft.com/en-us/azure/", "note": "Official Azure documentation"}, {"label": "Microsoft certifications", "url": "https://learn.microsoft.com/en-us/certifications/", "note": "Official certification paths and exam pages"}, {"label": "Azure status and architecture", "url": "https://azure.microsoft.com/en-us/", "note": "Official Azure product pages"}], "checklist": ["Get 7–8 hours of sleep the night before — fatigue destroys recall faster than any topic gap.", "Bring valid government-issued photo ID and arrive at the test center 30 minutes early.", "Eat a real meal beforehand; bring water and a light snack if the center allows them.", "Read every question twice before scanning the answer choices.", "Flag uncertain questions and move on — return with fresh eyes at the end.", "Eliminate the obviously wrong answers first, then compare the survivors.", "Budget your time: answer steadily and keep a 10–15 minute review buffer.", "Re-run your weakest-domain drill until mastery is at least 80%.", "For Identity & Security Design: restate the 'why' behind each scenario answer in your own words — if you can't explain it, you don't own it.", "Redo one Data Solutions lab from scratch without looking at the steps.", "Recite the key Business Continuity terms from the glossary aloud from memory."]}}
+{
+ "slug": "az-305",
+ "title": "Azure Solutions Architect (AZ-305)",
+ "tagline": "Designing infrastructure, data, and integration solutions",
+ "vendor": {
+  "name": "Microsoft",
+  "certs": "AZ-305",
+  "docs": "https://learn.microsoft.com"
+ },
+ "disclaimer": "Independent practice material by Interstitium Labs. Not affiliated with, endorsed by, or sponsored by Microsoft. Confers no certificate. All scenarios are original; no exam content is reproduced.",
+ "domains": [
+  {
+   "id": "identity-security-design",
+   "name": "Identity & Security Design",
+   "scenarios": [
+    {
+     "id": "az305-ca-design",
+     "title": "The acquisition's identities",
+     "situation": "Contoso acquires Fabrikam. Two Entra tenants must collaborate immediately, but Contoso's CISO won't merge directories for a year.",
+     "prompt": "What identity design enables secure cross-tenant collaboration now?",
+     "evidence": [],
+     "choices": [
+      "Cross-tenant access with B2B collaboration, scoped Conditional Access, and access packages",
+      "Merging both tenants this weekend",
+      "Sharing one global admin account",
+      "Federating both tenants to a third IdP without Entra"
+     ],
+     "answer": 0,
+     "why": "Entra's cross-tenant access settings plus B2B collaboration let users from one tenant access the other's resources under explicit trust, Conditional Access, and MFA requirements — the architected path for M&A collaboration without a directory merge.",
+     "hint": "Which Entra feature is built for 'their users, our resources' without merging directories?",
+     "objectives": [
+      "Cross-tenant access",
+      "B2B design"
+     ],
+     "mins": 7
+    },
+    {
+     "id": "az305-pim-design",
+     "title": "Standing admin rights",
+     "situation": "Sixty engineers hold permanent Global Administrator. An audit flags this as the company's top identity risk.",
+     "prompt": "What design removes standing privilege while keeping emergency access possible?",
+     "evidence": [],
+     "choices": [
+      "Privileged Identity Management: eligible (not active) assignments, MFA-gated activation, approval, and time-bound access",
+      "Deleting all admin accounts",
+      "Giving everyone Global Admin so it's 'equal'",
+      "Weekly password rotations for admins"
+     ],
+     "answer": 0,
+     "why": "PIM implements just-in-time administration: admins hold eligible assignments and activate the role only when needed, with MFA, approval workflows, justification, and automatic expiry. This eliminates standing privilege — the core of identity security design.",
+     "hint": "How do you give someone admin power only for the hour they need it?",
+     "objectives": [
+      "PIM",
+      "Just-in-time access"
+     ],
+     "mins": 7
+    },
+    {
+     "id": "az305-managed-id",
+     "title": "The connection string leak",
+     "situation": "An app's SQL connection string with username and password was committed to a public GitHub repo. The architect wants credentials eliminated from code entirely.",
+     "prompt": "What design removes secrets from the application?",
+     "evidence": [],
+     "choices": [
+      "Managed identity — the app authenticates to Azure SQL as its own identity with no stored credentials",
+      "A longer password rotated monthly",
+      "Storing the password in appsettings.json with restricted file permissions",
+      "Using the same credential across all environments"
+     ],
+     "answer": 0,
+     "why": "Managed identities give Azure resources an Entra identity; the platform handles credential rotation invisibly. Apps use DefaultAzureCredential-style flows to get tokens — no passwords in code, config, or vaults to leak. (Key Vault is for secrets you truly must keep, like third-party API keys.)",
+     "hint": "What identity type means the app never holds a password at all?",
+     "objectives": [
+      "Managed identity",
+      "Secretless auth"
+     ],
+     "mins": 6
+    },
+    {
+     "id": "az305-keyvault",
+     "title": "The third-party API key",
+     "situation": "An app needs a third-party payment API key — a secret that can't be replaced by a managed identity.",
+     "prompt": "Where should this secret live, and how should the app read it?",
+     "evidence": [],
+     "choices": [
+      "Azure Key Vault with a private endpoint; the app authenticates via its managed identity and reads the secret at runtime",
+      "In the source code repository",
+      "In an environment variable on the developer's laptop",
+      "In a storage account blob with a SAS token"
+     ],
+     "answer": 0,
+     "why": "Key Vault is the designed home for secrets, keys, and certificates: RBAC-scoped access, private endpoint networking, rotation, and audit logging. The app's managed identity is granted Get on secrets only — no human ever sees the value.",
+     "hint": "Secrets you must keep go in the vault; how does the app prove who it is to the vault?",
+     "objectives": [
+      "Key Vault",
+      "Secret management"
+     ],
+     "mins": 6
+    },
+    {
+     "id": "az305-hub-spoke-sec",
+     "title": "The flat network",
+     "situation": "A startup's Azure footprint is one giant VNet where every workload talks to every other. A breach in the marketing site reached the payment database.",
+     "prompt": "What network security design limits blast radius?",
+     "evidence": [],
+     "choices": [
+      "Hub-and-spoke with NSGs, Azure Firewall in the hub, and private endpoints for PaaS — segmenting tiers",
+      "A bigger single VNet",
+      "Public endpoints on all PaaS for easier access",
+      "Removing all NSGs for performance"
+     ],
+     "answer": 0,
+     "why": "Hub-and-spoke segments workloads into isolated spokes with the hub hosting shared security (Azure Firewall for egress filtering, Bastion, VPN/ExpressRoute). NSGs and private endpoints add per-tier controls so one compromised tier can't reach the others.",
+     "hint": "How do you stop lateral movement between tiers by design?",
+     "objectives": [
+      "Hub-spoke security",
+      "Network segmentation"
+     ],
+     "mins": 7
+    },
+    {
+     "id": "az305-landing-zone",
+     "title": "The subscription sprawl",
+     "situation": "A company creates subscriptions ad hoc — no consistent policies, no network standards, no cost tagging. Audits keep failing.",
+     "prompt": "What enterprise-scale design brings order?",
+     "evidence": [],
+     "choices": [
+      "A landing-zone design: management group hierarchy, baseline policies, hub networking, and identity foundation applied consistently",
+      "One subscription for everything",
+      "Letting each team invent its own standards",
+      "Deleting old subscriptions quarterly"
+     ],
+     "answer": 0,
+     "why": "Landing zones (Cloud Adoption Framework) provide the repeatable foundation: management groups for policy/RBAC inheritance, connectivity hub, identity baseline, and guardrails — so every workload subscription starts compliant instead of drifting.",
+     "hint": "What framework gives every new subscription the same secure starting point?",
+     "objectives": [
+      "Landing zones",
+      "CAF enterprise-scale"
+     ],
+     "mins": 7
+    }
+   ]
+  },
+  {
+   "id": "data-solutions",
+   "name": "Data Solutions",
+   "scenarios": [
+    {
+     "id": "az305-sql-choice",
+     "title": "The lift-and-shift database",
+     "situation": "A legacy app needs SQL Server Agent jobs, cross-database queries, and near-100% compatibility with on-premises SQL Server, but the company wants PaaS management.",
+     "prompt": "Which Azure SQL option fits?",
+     "evidence": [],
+     "choices": [
+      "Azure SQL Managed Instance — near-full SQL Server compatibility as a PaaS",
+      "Azure SQL Database single database — some features like Agent unavailable",
+      "SQL Server on Azure VMs — IaaS, full control but self-managed",
+      "Azure Cosmos DB"
+     ],
+     "answer": 0,
+     "why": "SQL Managed Instance offers near-100% compatibility with on-premises SQL Server (Agent jobs, cross-db queries, CLR) while Microsoft manages patching and HA. Single databases suit cloud-native apps; VMs suit when OS-level control is required.",
+     "hint": "Which PaaS keeps SQL Agent and cross-database queries working?",
+     "objectives": [
+      "SQL MI vs SQL DB",
+      "Database selection"
+     ],
+     "mins": 7
+    },
+    {
+     "id": "az305-cosmos-choice",
+     "title": "The global shopping cart",
+     "situation": "A retailer's cart service needs single-digit-millisecond reads/writes for users on five continents, with automatic failover.",
+     "prompt": "Which data store is designed for this?",
+     "evidence": [],
+     "choices": [
+      "Azure Cosmos DB with multi-region writes — global distribution with tunable consistency",
+      "Azure SQL Database in one region",
+      "Azure Table storage in one region",
+      "SQL Server on a VM with replication"
+     ],
+     "answer": 0,
+     "why": "Cosmos DB is built for globally distributed NoSQL: multi-region writes, 99.999% SLA options, and five tunable consistency levels trading freshness for latency. Regional relational databases can't match the global latency profile.",
+     "hint": "Millisecond global access with automatic failover — which store is purpose-built?",
+     "objectives": [
+      "Cosmos DB",
+      "Global distribution"
+     ],
+     "mins": 6
+    },
+    {
+     "id": "az305-synapse-delta",
+     "title": "The lakehouse",
+     "situation": "Analysts need SQL over the data lake's Parquet files today, and data scientists need Spark over the same files tomorrow — without duplicating data.",
+     "prompt": "What design serves both engines from one copy?",
+     "evidence": [],
+     "choices": [
+      "Open formats (Parquet/Delta Lake) on ADLS Gen2 queried by Synapse serverless SQL and Spark pools",
+      "Copying data into a SQL database and a separate Spark cluster",
+      "CSV files on a file share",
+      "Two separate data lakes"
+     ],
+     "answer": 0,
+     "why": "Storing data once in open formats (Parquet, Delta Lake) on ADLS Gen2 lets Synapse serverless SQL pools query it with T-SQL and Spark pools process it — the lakehouse pattern. Delta Lake adds ACID transactions and time travel on top.",
+     "hint": "One copy of data, two engines. What storage format makes that possible?",
+     "objectives": [
+      "Lakehouse",
+      "Open formats"
+     ],
+     "mins": 7
+    },
+    {
+     "id": "az305-partitioning",
+     "title": "The hot partition",
+     "situation": "A Cosmos DB container with 2 TB of data throttles constantly. All documents share one partition key value — the tenant ID of the largest customer.",
+     "prompt": "What is the design flaw?",
+     "evidence": [
+      [
+       "metrics",
+       "429 rate-limited requests: 38% | normalized RU consumption on partition 7: 100%"
+      ]
+     ],
+     "choices": [
+      "A hot partition — the partition key doesn't distribute throughput; choose a high-cardinality key aligned with query patterns",
+      "Cosmos DB can't handle 2 TB",
+      "Throughput should be set to manual minimum",
+      "The container needs a second region"
+     ],
+     "answer": 0,
+     "why": "Partition key choice is the most consequential Cosmos DB design decision: it must distribute both data and request volume evenly and match query patterns. A single hot value concentrates all RU consumption on one physical partition — throttling regardless of provisioned throughput.",
+     "hint": "All traffic hits one partition. What design decision caused that?",
+     "objectives": [
+      "Partitioning strategy",
+      "Cosmos DB design"
+     ],
+     "mins": 7
+    },
+    {
+     "id": "az305-backup-retention",
+     "title": "The compliance retention",
+     "situation": "A bank must retain database backups for 7 years and be able to restore to any point in the last 30 days.",
+     "prompt": "How should backup be designed?",
+     "evidence": [],
+     "choices": [
+      "Long-term retention (LTR) policies for the 7-year requirement plus point-in-time restore for the 30-day window",
+      "Weekly manual exports to a laptop",
+      "Geo-replication alone",
+      "Relying on the default 7-day retention"
+     ],
+     "answer": 0,
+     "why": "Azure SQL's automated backups give point-in-time restore (7–35 days configurable); long-term retention policies keep full backups in RA-GRS storage for up to 10 years. The two mechanisms cover different requirements — recency vs. compliance archive.",
+     "hint": "Which two backup features cover 'any point in 30 days' versus 'keep for 7 years'?",
+     "objectives": [
+      "Backup design",
+      "LTR and PITR"
+     ],
+     "mins": 6
+    },
+    {
+     "id": "az305-polyglot",
+     "title": "The mixed workload",
+     "situation": "An architect must store: user sessions (key-value, ephemeral), product catalog (flexible documents), and financial transactions (strict ACID).",
+     "prompt": "What is the sound design approach?",
+     "evidence": [],
+     "choices": [
+      "Polyglot persistence — the right store per workload (cache, document DB, relational) rather than one store for all",
+      "One relational database for everything",
+      "One document database for everything",
+      "Flat files for everything"
+     ],
+     "answer": 0,
+     "why": "Polyglot persistence matches each workload to its ideal store: ephemeral sessions in a cache (Redis), flexible catalog in a document DB, transactions in relational. Forcing all three into one store compromises each workload's needs.",
+     "hint": "Three workloads with different shapes and guarantees — one store or three?",
+     "objectives": [
+      "Polyglot persistence",
+      "Data solution design"
+     ],
+     "mins": 6
+    }
+   ]
+  },
+  {
+   "id": "business-continuity",
+   "name": "Business Continuity",
+   "scenarios": [
+    {
+     "id": "az305-rto-rpo",
+     "title": "The two numbers",
+     "situation": "Leadership says 'we can't lose more than 15 minutes of orders, and the site must be back within 4 hours of a regional disaster.'",
+     "prompt": "How does the architect translate this?",
+     "evidence": [],
+     "choices": [
+      "RPO ≤ 15 minutes (max data loss) drives replication frequency; RTO ≤ 4 hours (max downtime) drives recovery automation and architecture",
+      "Both numbers describe the backup schedule",
+      "RPO measures downtime; RTO measures data loss",
+      "These are SLA percentages in disguise"
+     ],
+     "answer": 0,
+     "why": "RPO (recovery point objective) = how much data loss is tolerable, dictating replication/backup frequency. RTO (recovery time objective) = how long downtime is tolerable, dictating how automated and warm the recovery environment must be. Every BCDR design starts here.",
+     "hint": "Which number is about lost data and which is about downtime?",
+     "objectives": [
+      "RPO vs RTO",
+      "BCDR requirements"
+     ],
+     "mins": 6
+    },
+    {
+     "id": "az305-active-active",
+     "title": "The zero-downtime demand",
+     "situation": "A trading platform tolerates essentially zero downtime and zero data loss across a regional outage.",
+     "prompt": "Which architecture meets this?",
+     "evidence": [],
+     "choices": [
+      "Active-active across regions (e.g., Cosmos DB multi-region writes, Front Door routing) — at the highest cost and complexity",
+      "Backup and restore to a second region",
+      "A single region with availability zones only",
+      "Weekly database exports"
+     ],
+     "answer": 0,
+     "why": "Active-active serves traffic from multiple regions simultaneously with synchronous or near-synchronous replication — the only pattern approaching zero RTO/RPO across regions. It costs the most and demands conflict-resolution design; pilot-light and backup/restore accept longer RTOs for lower cost.",
+     "hint": "Zero downtime across a regional failure demands which recovery pattern?",
+     "objectives": [
+      "BCDR patterns",
+      "Active-active"
+     ],
+     "mins": 7
+    },
+    {
+     "id": "az305-pilot-light",
+     "title": "The budget-conscious DR",
+     "situation": "A nonprofit needs regional DR but can't afford to run a full duplicate environment 24/7.",
+     "prompt": "Which pattern fits?",
+     "evidence": [],
+     "choices": [
+      "Pilot light or warm standby — minimal always-on footprint (replicated data, small core) scaled up on failover",
+      "Active-active",
+      "No DR at all",
+      "Running everything twice at full size"
+     ],
+     "answer": 0,
+     "why": "Pilot light keeps the minimum viable footprint running (data replication, core services) and scales out during failover — balancing RTO against cost. It's the standard answer when active-active is unaffordable but backup/restore RTOs are too slow.",
+     "hint": "Minimal always-on, scale up on disaster — which pattern is that?",
+     "objectives": [
+      "BCDR patterns",
+      "Pilot light"
+     ],
+     "mins": 6
+    },
+    {
+     "id": "az305-backup-vs-siterecovery",
+     "title": "Files vs failover",
+     "situation": "A team confuses Azure Backup with Azure Site Recovery, proposing Site Recovery to restore a single deleted file.",
+     "prompt": "What is the correct distinction?",
+     "evidence": [],
+     "choices": [
+      "Azure Backup protects data (files, VMs, databases) for restore; Site Recovery replicates whole workloads for failover to a second site",
+      "They are the same service",
+      "Site Recovery backs up files; Backup fails over VMs",
+      "Neither handles on-premises workloads"
+     ],
+     "answer": 0,
+     "why": "Backup = data protection and granular restore (a file, a database point-in-time). Site Recovery = workload replication and orchestrated failover/failback of entire VMs and apps to a secondary region. Different problems, different tools.",
+     "hint": "Granular restore versus whole-workload failover — which service does each?",
+     "objectives": [
+      "Backup vs Site Recovery",
+      "BCDR services"
+     ],
+     "mins": 6
+    },
+    {
+     "id": "az305-zones-vs-region",
+     "title": "The regional outage",
+     "situation": "An app spread across availability zones in East US survives datacenter failures, but leadership asks about a full East US regional outage.",
+     "prompt": "What must the design add?",
+     "evidence": [],
+     "choices": [
+      "Cross-region replication/failover (paired region, Traffic Manager/Front Door) — zones don't survive regional loss",
+      "More zones in the same region",
+      "Bigger VMs in the same zones",
+      "A second VNet in East US"
+     ],
+     "answer": 0,
+     "why": "Availability zones protect against datacenter-level failure within a region; only cross-region architecture (replication + global load balancing + failover runbooks) survives a regional event. Zones and regions are different tiers of resilience.",
+     "hint": "Zones are in-region. What tier of resilience covers losing the whole region?",
+     "objectives": [
+      "Resilience tiers",
+      "Cross-region design"
+     ],
+     "mins": 6
+    },
+    {
+     "id": "az305-restore-testing",
+     "title": "The untested backup",
+     "situation": "A company has backups running for two years but has never attempted a restore. An auditor asks for proof of recoverability.",
+     "prompt": "What should the design include?",
+     "evidence": [],
+     "choices": [
+      "Regular restore testing and documented runbooks — backups are worthless until a restore is proven",
+      "Longer retention",
+      "More frequent backups",
+      "A second backup vault in the same region"
+     ],
+     "answer": 0,
+     "why": "An untested backup is a hope, not a plan. Mature BCDR designs schedule restore drills, document RTO/RPO validation, and keep runbooks current — auditors specifically look for evidence of tested recovery, not just backup jobs succeeding.",
+     "hint": "What proves a backup actually works?",
+     "objectives": [
+      "DR testing",
+      "Recovery validation"
+     ],
+     "mins": 5
+    }
+   ]
+  },
+  {
+   "id": "infrastructure-design",
+   "name": "Infrastructure Design",
+   "scenarios": [
+    {
+     "id": "az305-compute-choice",
+     "title": "The batch genome job",
+     "situation": "A research team runs a 6-hour parallel genome analysis once a week — no steady load, massive burst compute, then nothing.",
+     "prompt": "Which compute design fits?",
+     "evidence": [],
+     "choices": [
+      "Azure Batch or VMSS with autoscale-to-zero / spot — pay only for burst hours",
+      "Always-on VMs sized for peak",
+      "App Service with Always On",
+      "A single container instance running 24/7"
+     ],
+     "answer": 0,
+     "why": "Episodic parallel HPC workloads fit Azure Batch (job scheduling across pooled VMs, including spot) or scale sets that scale to zero — you pay for 6 hours, not 168. Always-on infrastructure for weekly bursts is pure waste.",
+     "hint": "Six hours a week of massive parallelism — what compute pattern avoids paying for idle time?",
+     "objectives": [
+      "Compute selection",
+      "Batch patterns"
+     ],
+     "mins": 6
+    },
+    {
+     "id": "az305-aks-vs-containerapps",
+     "title": "The microservices call",
+     "situation": "A team runs 12 microservices, wants Kubernetes API compatibility for their GitOps tooling, and needs node-level control for GPU workloads.",
+     "prompt": "Which container platform fits?",
+     "evidence": [],
+     "choices": [
+      "Azure Kubernetes Service — full Kubernetes control including node pools and GPUs",
+      "Azure Container Apps — serverless containers without Kubernetes API access",
+      "Container Instances — single containers, no orchestration",
+      "App Service — not container orchestration"
+     ],
+     "answer": 0,
+     "why": "AKS provides managed Kubernetes with full API access, custom node pools (including GPU SKUs), and GitOps integration. Container Apps is excellent for serverless microservices but abstracts the Kubernetes layer away — wrong when the team needs node control and K8s-native tooling.",
+     "hint": "They need the Kubernetes API and GPU node pools. Which service gives both?",
+     "objectives": [
+      "Container platforms",
+      "AKS vs Container Apps"
+     ],
+     "mins": 7
+    },
+    {
+     "id": "az305-hybrid-arc",
+     "title": "The factory servers",
+     "situation": "A manufacturer has 300 Windows servers on factory floors that can't move to Azure, but IT wants unified policy, monitoring, and patching from Azure.",
+     "prompt": "What extends Azure management to them?",
+     "evidence": [],
+     "choices": [
+      "Azure Arc — projects on-premises/edge servers into Azure Resource Manager for policy, monitoring, and extensions",
+      "ExpressRoute alone",
+      "Migrating them all to Azure VMs",
+      "A site-to-site VPN"
+     ],
+     "answer": 0,
+     "why": "Azure Arc-enabled servers bring non-Azure machines under ARM: Azure Policy guest configuration, Monitor, Defender, and Update Manager work uniformly. It's the hybrid management answer when migration isn't possible.",
+     "hint": "How do you manage servers you can't migrate as if they were Azure resources?",
+     "objectives": [
+      "Azure Arc",
+      "Hybrid management"
+     ],
+     "mins": 6
+    },
+    {
+     "id": "az305-ssl-design",
+     "title": "The TLS termination",
+     "situation": "A global web app needs TLS termination, WAF protection, and routing to regional backends with the lowest-latency choice per user.",
+     "prompt": "Which front-door design fits?",
+     "evidence": [],
+     "choices": [
+      "Azure Front Door — global anycast entry, WAF, TLS termination, latency-based routing to origins",
+      "Application Gateway — regional only",
+      "Azure Firewall — not a reverse proxy/WAF for HTTP",
+      "Traffic Manager — DNS-based, no TLS termination or WAF"
+     ],
+     "answer": 0,
+     "why": "Front Door is the global (multi-region) HTTP entry point: anycast, WAF integration, TLS offload, and latency-based routing. Application Gateway is the regional equivalent; Traffic Manager is DNS-level without HTTP features.",
+     "hint": "Global entry + WAF + TLS + latency routing — which service combines all four?",
+     "objectives": [
+      "Global load balancing",
+      "Front Door design"
+     ],
+     "mins": 7
+    },
+    {
+     "id": "az305-storage-design",
+     "title": "The video pipeline",
+     "situation": "A media pipeline ingests 50 TB/day of video, processes it with Spark, and serves thumbnails worldwide with low latency.",
+     "prompt": "What storage design fits?",
+     "evidence": [],
+     "choices": [
+      "ADLS Gen2 (hierarchical namespace, Spark-optimized) for ingest/process, plus Azure CDN or Front Door caching for global thumbnail delivery",
+      "Premium SSD managed disks for 50 TB/day ingest",
+      "Archive tier for active processing",
+      "A single file share for everything"
+     ],
+     "answer": 0,
+     "why": "ADLS Gen2 is the analytics-optimized object store (hierarchical namespace, fine-grained ACLs, Spark/Hadoop compatible); CDN/Front Door caches hot thumbnails at the edge. Managed disks are VM-attached block storage — wrong for shared analytics at this scale.",
+     "hint": "Shared analytics-scale ingest plus global low-latency reads — which two services?",
+     "objectives": [
+      "Storage design",
+      "ADLS Gen2 and CDN"
+     ],
+     "mins": 7
+    },
+    {
+     "id": "az305-well-architected",
+     "title": "The review framework",
+     "situation": "An architect is asked to systematically review a workload design before production — reliability, security, cost, operations, performance.",
+     "prompt": "Which framework structures this review?",
+     "evidence": [],
+     "choices": [
+      "The Azure Well-Architected Framework — five pillars with assessment reviews",
+      "The Cloud Adoption Framework — migration-focused",
+      "Azure Policy — enforcement, not design review",
+      "The pricing calculator"
+     ],
+     "answer": 0,
+     "why": "The Well-Architected Framework's five pillars (Reliability, Security, Cost Optimization, Operational Excellence, Performance Efficiency) plus the Well-Architected Review tooling give a structured design assessment. CAF covers cloud adoption strategy; WAF covers workload quality.",
+     "hint": "Which framework's pillars are reliability, security, cost, operations, and performance?",
+     "objectives": [
+      "WAF",
+      "Design review"
+     ],
+     "mins": 5
+    }
+   ]
+  },
+  {
+   "id": "integration",
+   "name": "Integration",
+   "scenarios": [
+    {
+     "id": "az305-apim",
+     "title": "The partner API",
+     "situation": "A company must expose internal APIs to partners with rate limits, API keys, usage analytics, and a developer portal — without rewriting the backends.",
+     "prompt": "What provides this API facade?",
+     "evidence": [],
+     "choices": [
+      "Azure API Management — gateway policies, subscriptions/keys, throttling, analytics, developer portal",
+      "A raw Azure Function URL per API",
+      "An NSG in front of the backend",
+      "Application Gateway alone"
+     ],
+     "answer": 0,
+     "why": "API Management is the full-lifecycle API gateway: policy enforcement (rate limits, transformation, auth), product/subscription key management, analytics, and a self-service developer portal — the designed facade for partner exposure.",
+     "hint": "Rate limits, keys, portal, analytics over existing backends — which service?",
+     "objectives": [
+      "API Management",
+      "Integration design"
+     ],
+     "mins": 6
+    },
+    {
+     "id": "az305-messaging",
+     "title": "Orders vs telemetry",
+     "situation": "The architect must choose messaging for: (a) order processing requiring exactly-once, ordered, transactional delivery; (b) 1M/sec device telemetry fan-out.",
+     "prompt": "Which pairing is correct?",
+     "evidence": [],
+     "choices": [
+      "Service Bus for orders (queues, transactions, ordering); Event Hubs for telemetry (high-throughput streaming ingestion)",
+      "Event Hubs for orders; Service Bus for telemetry",
+      "Event Grid for both",
+      "Storage queues for both"
+     ],
+     "answer": 0,
+     "why": "Service Bus = enterprise messaging (queues/topics, transactions, sessions/ordering, dead-lettering) for orders. Event Hubs = big-data streaming ingestion (millions of events/sec, partitions, consumer groups) for telemetry. Event Grid = event routing for reactive scenarios — a third distinct pattern.",
+     "hint": "Transactional ordered delivery versus massive streaming fan-out — which service per workload?",
+     "objectives": [
+      "Messaging patterns",
+      "Service Bus vs Event Hubs"
+     ],
+     "mins": 7
+    },
+    {
+     "id": "az305-event-grid",
+     "title": "The blob-triggered workflow",
+     "situation": "When a file lands in Blob storage, three independent downstream systems must react — a function, a logic app, and a webhook.",
+     "prompt": "Which eventing service fits?",
+     "evidence": [],
+     "choices": [
+      "Event Grid — pub/sub event routing with multiple subscribers per event",
+      "Event Hubs — streaming ingestion, overkill for discrete events",
+      "Service Bus — messaging, not event fan-out",
+      "A timer-triggered function polling the container"
+     ],
+     "answer": 0,
+     "why": "Event Grid routes discrete events (like BlobCreated) to multiple subscribers with push delivery and filtering — the reactive integration pattern. Polling wastes resources; streaming platforms suit continuous data, not discrete notifications.",
+     "hint": "One event, three independent reactions. Which service is pub/sub event routing?",
+     "objectives": [
+      "Event Grid",
+      "Event-driven integration"
+     ],
+     "mins": 6
+    },
+    {
+     "id": "az305-logicapps-funcs",
+     "title": "The SaaS approval flow",
+     "situation": "HR needs: when a ServiceNow ticket closes, post to Teams, wait for manager approval, then create an Entra account. Built by a non-developer team.",
+     "prompt": "Which integration tool fits?",
+     "evidence": [],
+     "choices": [
+      "Logic Apps — visual workflow designer with 1000+ connectors (ServiceNow, Teams, Entra) for citizen integrators",
+      "Azure Functions — code-first, wrong for a non-developer team",
+      "A VM running scripts",
+      "Event Hubs"
+     ],
+     "answer": 0,
+     "why": "Logic Apps' designer and connector ecosystem make human-in-the-loop SaaS workflows buildable without code. Functions suit code-first compute; the scenario's approval step and connector breadth point to Logic Apps.",
+     "hint": "Visual workflow, SaaS connectors, human approval, non-developer builders — which tool?",
+     "objectives": [
+      "Logic Apps vs Functions",
+      "Workflow integration"
+     ],
+     "mins": 6
+    },
+    {
+     "id": "az305-private-paas",
+     "title": "The locked-down integration",
+     "situation": "APIM must call backend Functions and SQL with no traffic traversing the public internet, per a regulatory requirement.",
+     "prompt": "What network design satisfies this?",
+     "evidence": [],
+     "choices": [
+      "Private endpoints for APIM/Functions/SQL on the VNet (Premium/isolated tiers as needed) plus private DNS",
+      "Public endpoints with IP whitelisting",
+      "Service endpoints only — the PaaS public endpoints remain",
+      "A VPN from APIM to the backends"
+     ],
+     "answer": 0,
+     "why": "Private endpoints bring each PaaS into the VNet with private IPs, so integration traffic never leaves the private network. Note tier implications: APIM needs Premium (or Standard v2) for VNet injection/private endpoints — a real design constraint.",
+     "hint": "Regulation says no public internet for integration traffic. Which construct privatizes PaaS?",
+     "objectives": [
+      "Private integration",
+      "Private endpoints"
+     ],
+     "mins": 7
+    },
+    {
+     "id": "az305-saga",
+     "title": "The distributed order",
+     "situation": "An order flow spans inventory service, payment service, and shipping service — each with its own database. A payment failure must undo the inventory reservation.",
+     "prompt": "Which pattern handles this?",
+     "evidence": [],
+     "choices": [
+      "Saga pattern — orchestrated or choreographed compensating transactions across services",
+      "A distributed two-phase commit across databases",
+      "A single shared database for all services",
+      "Ignoring the failure and shipping anyway"
+     ],
+     "answer": 0,
+     "why": "Microservices can't share ACID transactions across databases; the saga pattern sequences local transactions with compensating actions (cancel reservation) on failure. Two-phase commit doesn't scale across autonomous services.",
+     "hint": "No shared database, but failures must roll back prior steps. Which pattern?",
+     "objectives": [
+      "Saga pattern",
+      "Distributed transactions"
+     ],
+     "mins": 7
+    }
+   ]
+  },
+  {
+   "id": "migration",
+   "name": "Migration",
+   "scenarios": [
+    {
+     "id": "az305-migrate-assess",
+     "title": "The unknown estate",
+     "situation": "A company wants to migrate 400 VMs to Azure but doesn't know their utilization, dependencies, or readiness.",
+     "prompt": "What is the correct first step?",
+     "evidence": [],
+     "choices": [
+      "Azure Migrate assessment — agentless discovery, dependency mapping, utilization analysis, and right-sizing recommendations",
+      "Migrating the VMs immediately",
+      "Buying reserved instances first",
+      "Asking each team to guess their usage"
+     ],
+     "answer": 0,
+     "why": "Azure Migrate's discovery and assessment phase maps dependencies, measures actual utilization, and produces right-sized Azure targets with cost estimates — the evidence base for every migration wave plan. Migrating blind guarantees waste and outages.",
+     "hint": "Before moving 400 VMs, what produces the dependency map and right-sizing data?",
+     "objectives": [
+      "Azure Migrate",
+      "Assessment phase"
+     ],
+     "mins": 6
+    },
+    {
+     "id": "az305-6rs",
+     "title": "The strategy choice",
+     "situation": "For each app in the portfolio, the team must pick: rehost, refactor, rearchitect, rebuild, replace, or retire.",
+     "prompt": "What is this decision framework?",
+     "evidence": [],
+     "choices": [
+      "The 6 R's of migration strategy — matching each workload to the right transformation depth",
+      "The 5 pillars of WAF",
+      "The 3 service models",
+      "A licensing audit"
+     ],
+     "answer": 0,
+     "why": "The 6 Rs (rehost/lift-and-shift, refactor, rearchitect, rebuild, replace with SaaS, retire) force an explicit strategy per app instead of one-size-fits-all. Rehost is fastest; replace/retire often deliver the best economics.",
+     "hint": "Which framework assigns each app a migration strategy?",
+     "objectives": [
+      "6 Rs",
+      "Migration strategy"
+     ],
+     "mins": 5
+    },
+    {
+     "id": "az305-dms",
+     "title": "The database move",
+     "situation": "A 4 TB on-premises SQL Server must move to Azure SQL Managed Instance with minimal downtime during cutover.",
+     "prompt": "Which approach fits?",
+     "evidence": [],
+     "choices": [
+      "Azure Database Migration Service / MI link with continuous replication and a planned cutover",
+      "Backup-and-restore over a weekend outage",
+      "Detaching MDF files and copying them",
+      "Rewriting the app for Cosmos DB first"
+     ],
+     "answer": 0,
+     "why": "Online migration (DMS or the MI link feature) replicates continuously and cuts over with minutes of downtime — the minimal-downtime pattern for large databases. Offline backup/restore means the outage lasts as long as the 4 TB transfer.",
+     "hint": "Minimal downtime for a 4 TB database move — which migration mode?",
+     "objectives": [
+      "Online migration",
+      "DMS"
+     ],
+     "mins": 6
+    },
+    {
+     "id": "az305-wave-plan",
+     "title": "The dependency order",
+     "situation": "Assessment shows the web tier depends on an app tier that depends on a database. The team wants to migrate the web tier first.",
+     "prompt": "What does the wave plan say?",
+     "evidence": [],
+     "choices": [
+      "Migrate in dependency order (database → app → web) or as a wave group — migrating dependents first strands them",
+      "Migrate in any order; dependencies resolve automatically",
+      "Migrate the web tier first for quick wins",
+      "Skip the database entirely"
+     ],
+     "answer": 0,
+     "why": "Wave planning groups apps by dependency: migrate dependencies first (or together in one wave) so nothing lands in Azure pointing at a database still on-premises. The dependency map from assessment drives the wave sequence.",
+     "hint": "The web tier needs the app tier needs the database. What order do waves follow?",
+     "objectives": [
+      "Wave planning",
+      "Dependency order"
+     ],
+     "mins": 6
+    },
+    {
+     "id": "az305-hybrid-dns",
+     "title": "The split-brain DNS",
+     "situation": "During migration, some VMs are on-premises and some in Azure, and name resolution breaks for the migrated ones.",
+     "prompt": "What must the design address?",
+     "evidence": [],
+     "choices": [
+      "Hybrid DNS — conditional forwarders / private resolver so both environments resolve each other's names",
+      "More bandwidth",
+      "Bigger VMs",
+      "A second ExpressRoute"
+     ],
+     "answer": 0,
+     "why": "Coexistence requires name resolution both ways: on-premises DNS forwarding Azure private zones (via Azure Private DNS Resolver or forwarders) and Azure resolving on-premises names. DNS is the most common hybrid migration breakage.",
+     "hint": "Migrated and unmigrated servers can't find each other by name. Which design piece is missing?",
+     "objectives": [
+      "Hybrid DNS",
+      "Migration networking"
+     ],
+     "mins": 6
+    },
+    {
+     "id": "az305-landing-migrate",
+     "title": "The migration foundation",
+     "situation": "The team is ready to migrate but has no Azure footprint: no subscriptions structure, no hub network, no baseline policies.",
+     "prompt": "What comes before the first workload migration?",
+     "evidence": [],
+     "choices": [
+      "Build the landing zone first — management groups, connectivity, identity, and guardrails — then migrate into it",
+      "Migrate one app to learn, then design the foundation",
+      "Use the default subscription as-is",
+      "Skip governance for speed"
+     ],
+     "answer": 0,
+     "why": "CAF's ready phase: establish the landing zone (subscriptions, networking, identity, governance) before migrating workloads. Migrating into an ungoverned tenant creates the sprawl the migration was supposed to fix.",
+     "hint": "What must exist before the first workload lands?",
+     "objectives": [
+      "Landing zone readiness",
+      "CAF phases"
+     ],
+     "mins": 6
+    }
+   ]
+  }
+ ],
+ "lessons": [
+  {
+   "domain_id": "identity-security-design",
+   "title": "Identity & Security Design — Core concepts",
+   "concepts": [
+    "Cross-tenant access: entra's cross-tenant access settings plus B2B collaboration let users from one tenant access the other's resources under explicit trust, Conditional Access, and MFA requirements — the architected path for M&A collaboration without a directory merge.",
+    "PIM implements just-in-time administration: admins hold eligible assignments and activate the role only when needed, with MFA, approval workflows, justification, and automatic expiry.",
+    "Managed identity: the app's managed identity is granted Get on secrets only — no human ever sees the value. Managed identities give Azure resources an Entra identity; the platform handles credential rotation invisibly."
+   ],
+   "example": {
+    "lang": "text",
+    "code": "Worked example — cross-tenant access\nSetup: Key Vault is the designed home for secrets, keys, and certificates: RBAC-scoped access, private endpoint networking, rotation, and audit logging.\nReasoning: (Key Vault is for secrets you truly must keep, like third-party API keys.).\nTakeaway: Landing zones (Cloud Adoption Framework) provide the repeatable foundation: management groups for policy/RBAC inheritance, connectivity hub, identity…",
+    "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."
+   },
+   "pitfalls": [
+    "Common trap: public endpoints on all PaaS for easier access.",
+    "Common trap: storing the password in appsettings.json with restricted file permissions.",
+    "Common trap: sharing one global admin account.",
+    "Common trap: federating both tenants to a third IdP without Entra."
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "data-solutions",
+   "title": "Data Solutions — Core concepts",
+   "concepts": [
+    "SQL MI vs SQL DB: storing data once in open formats (Parquet, Delta Lake) on ADLS Gen2 lets Synapse serverless SQL pools query it with T-SQL and Spark pools process it — the lakehouse pattern.",
+    "Cosmos DB: partition key choice is the most consequential Cosmos DB design decision: it must distribute both data and request volume evenly and match query patterns. Cosmos DB is built for globally distributed NoSQL: multi-region writes, 99.999% SLA options, and five tunable consistency levels trading freshness for latency.",
+    "Global distribution: regional relational databases can't match the global latency profile."
+   ],
+   "example": {
+    "lang": "text",
+    "code": "429 rate-limited requests: 38% | normalized RU consumption on partition 7: 100%",
+    "walkthrough": "Partition key choice is the most consequential Cosmos DB design decision: it must distribute both data and request volume evenly and match query patterns. A single hot value concentrates all RU consumption on one physical partition — throttling regardless of provisioned throughput."
+   },
+   "pitfalls": [
+    "Common trap: copying data into a SQL database and a separate Spark cluster.",
+    "Common trap: azure SQL Database in one region.",
+    "Common trap: SQL Server on Azure VMs.",
+    "Common trap: two separate data lakes."
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "business-continuity",
+   "title": "Business Continuity — Core concepts",
+   "concepts": [
+    "BCDR patterns: mature BCDR designs schedule restore drills, document RTO/RPO validation, and keep runbooks current — auditors specifically look for evidence of tested recovery, not just backup jobs succeeding.",
+    "RPO vs RTO: pilot light keeps the minimum viable footprint running (data replication, core services) and scales out during failover — balancing RTO against cost. RPO (recovery point objective) = how much data loss is tolerable, dictating replication/backup frequency.",
+    "Active-active serves traffic from multiple regions simultaneously with synchronous or near-synchronous replication — the only pattern approaching zero RTO/RPO across regions. It's the standard answer when active-active is unaffordable but backup/restore RTOs are too slow.",
+    "Backup vs Site Recovery: site Recovery = workload replication and orchestrated failover/failback of entire VMs and apps to a secondary region. RTO (recovery time objective) = how long downtime is tolerable, dictating how automated and warm the recovery environment must be."
+   ],
+   "example": {
+    "lang": "text",
+    "code": "Worked example — bcdr patterns\nSetup: Pilot light keeps the minimum viable footprint running (data replication, core services) and scales out during failover — balancing RTO against cost.\nReasoning: Mature BCDR designs schedule restore drills, document RTO/RPO validation, and keep runbooks current — auditors specifically look for evidence of…\nTakeaway: RPO (recovery point objective) = how much data loss is tolerable, dictating replication/backup frequency.",
+    "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."
+   },
+   "pitfalls": [
+    "Common trap: site Recovery backs up files; Backup fails over VMs.",
+    "Common trap: RPO measures downtime; RTO measures data loss.",
+    "Common trap: both numbers describe the backup schedule.",
+    "Common trap: backup and restore to a second region."
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "infrastructure-design",
+   "title": "Infrastructure Design — Core concepts",
+   "concepts": [
+    "Batch patterns: episodic parallel HPC workloads fit Azure Batch (job scheduling across pooled VMs, including spot) or scale sets that scale to zero — you pay for 6 hours, not 168.",
+    "Container Apps is excellent for serverless microservices but abstracts the Kubernetes layer away — wrong when the team needs node control and K8s-native tooling.",
+    "AKS provides managed Kubernetes with full API access, custom node pools (including GPU SKUs), and GitOps integration.",
+    "Azure Arc-enabled servers bring non-Azure machines under ARM: Azure Policy guest configuration, Monitor, Defender, and Update Manager work uniformly.",
+    "Hybrid management: it's the hybrid management answer when migration isn't possible."
+   ],
+   "example": {
+    "lang": "text",
+    "code": "Worked example — compute selection\nSetup: Front Door is the global (multi-region) HTTP entry point: anycast, WAF integration, TLS offload, and latency-based routing.\nReasoning: Always-on infrastructure for weekly bursts is pure waste.\nTakeaway: ADLS Gen2 is the analytics-optimized object store (hierarchical namespace, fine-grained ACLs, Spark/Hadoop compatible); CDN/Front Door caches hot…",
+    "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."
+   },
+   "pitfalls": [
+    "Common trap: a single container instance running 24/7.",
+    "Common trap: dNS-based, no TLS termination or WAF.",
+    "Common trap: premium SSD managed disks for 50 TB/day ingest.",
+    "Common trap: serverless containers without Kubernetes API access."
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "integration",
+   "title": "Integration — Core concepts",
+   "concepts": [
+    "API Management is the full-lifecycle API gateway: policy enforcement (rate limits, transformation, auth), product/subscription key management, analytics, and a self-service developer portal — the designed facade for partner exposure.",
+    "Integration design: event Grid routes discrete events (like BlobCreated) to multiple subscribers with push delivery and filtering — the reactive integration pattern. Private endpoints bring each PaaS into the VNet with private IPs, so integration traffic never leaves the private network.",
+    "Messaging patterns: service Bus = enterprise messaging (queues/topics, transactions, sessions/ordering, dead-lettering) for orders.",
+    "Service Bus vs Event Hubs: event Hubs = big-data streaming ingestion (millions of events/sec, partitions, consumer groups) for telemetry.",
+    "Event Grid = event routing for reactive scenarios — a third distinct pattern."
+   ],
+   "example": {
+    "lang": "text",
+    "code": "Worked example — api management\nSetup: Private endpoints bring each PaaS into the VNet with private IPs, so integration traffic never leaves the private network.\nReasoning: API Management is the full-lifecycle API gateway: policy enforcement (rate limits, transformation, auth), product/subscription key management…\nTakeaway: Service Bus = enterprise messaging (queues/topics, transactions, sessions/ordering, dead-lettering) for orders.",
+    "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."
+   },
+   "pitfalls": [
+    "Common trap: event Hubs for orders; Service Bus for telemetry.",
+    "Common trap: a raw Azure Function URL per API.",
+    "Common trap: a distributed two-phase commit across databases.",
+    "Common trap: the PaaS public endpoints remain."
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "migration",
+   "title": "Migration — Core concepts",
+   "concepts": [
+    "Azure Migrate's discovery and assessment phase maps dependencies, measures actual utilization, and produces right-sized Azure targets with cost estimates — the evidence base for every migration wave plan.",
+    "Assessment phase: cAF's ready phase: establish the landing zone (subscriptions, networking, identity, governance) before migrating workloads. The dependency map from assessment drives the wave sequence.",
+    "6 Rs: the 6 Rs (rehost/lift-and-shift, refactor, rearchitect, rebuild, replace with SaaS, retire) force an explicit strategy per app instead of one-size-fits-all.",
+    "Migration strategy: online migration (DMS or the MI link feature) replicates continuously and cuts over with minutes of downtime — the minimal-downtime pattern for large databases. DNS is the most common hybrid migration breakage.",
+    "Online migration: migrating into an ungoverned tenant creates the sprawl the migration was supposed to fix."
+   ],
+   "example": {
+    "lang": "text",
+    "code": "Worked example — azure migrate\nSetup: Azure Migrate's discovery and assessment phase maps dependencies, measures actual utilization, and produces right-sized Azure targets with cost…\nReasoning: Wave planning groups apps by dependency: migrate dependencies first (or together in one wave) so nothing lands in Azure pointing at a database still…\nTakeaway: CAF's ready phase: establish the landing zone (subscriptions, networking, identity, governance) before migrating workloads.",
+    "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."
+   },
+   "pitfalls": [
+    "Common trap: migrate in any order; dependencies resolve automatically.",
+    "Common trap: migrate the web tier first for quick wins.",
+    "Common trap: migrate one app to learn, then design the foundation.",
+    "Common trap: buying reserved instances first."
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "identity-security-design",
+   "title": "Azure Solutions Architect — Core concepts",
+   "concepts": [
+    "Landing zones organize scale: management groups carry inheritable policy and RBAC, subscriptions separate environments and blast radius, and consistent naming/tagging makes cost and ownership visible.",
+    "Hybrid connectivity is a spectrum: site-to-site VPN over the internet is cheap and variable; ExpressRoute is a private circuit with predictable latency for steady, sensitive traffic; both can coexist with VPN as failover.",
+    "Data platform choice follows access patterns: relational (Azure SQL) for transactional integrity, Cosmos DB for global distribution and flexible schema, Synapse/Databricks for analytics — each with a distinct cost and consistency model.",
+    "BCDR starts from RPO (how much data loss is tolerable) and RTO (how fast recovery must complete); tighter objectives cost more in replication, standby, and automation, so objectives must be explicitly accepted by the business.",
+    "Regional pairs are the default DR target: platform-coordinated updates, prioritized recovery order, and reduced-cost geo-replication for several services all assume the pair.",
+    "Hub-and-spoke networks centralize shared services (firewall, gateway, DNS) in the hub; because peering is non-transitive, transit requires gateway-transit settings and UDRs steering spoke traffic through the hub."
+   ],
+   "example": {
+    "lang": "shell",
+    "code": "az account management-group create --name mg-landingzones --display-name \"Landing Zones\"\naz account list-locations --query \"[?metadata.regionCategory=='Recommended'].{Region:name, Paired:metadata.pairedRegion[0].name}\" -o table",
+    "walkthrough": "Create a top-level management group for the landing-zone hierarchy, then list recommended regions with their paired regions. This pairs governance structure with DR geography: policies attach to the management group, failover targets come from the pairings."
+   },
+   "pitfalls": [
+    "Common trap: designing DR to an arbitrary region and losing paired-region benefits like coordinated updates and cheap geo-replication.",
+    "Common trap: promising tight RPO/RTO without costing the replication and standby capacity they require.",
+    "Common trap: assuming peered spokes can reach each other through the hub without transit settings and UDRs.",
+    "Common trap: defaulting to the familiar database instead of the one matching the access pattern — global low-latency reads and evolving schemas point away from relational."
+   ],
+   "try_it": "Work through this in the Labs tab.",
+   "domain_id_remapped_from": "az-305",
+   "merged_from": "cbt-individual/az-305"
+  }
+ ],
+ "sections": [
+  {
+   "id": "foundations",
+   "title": "Foundations",
+   "kind": "foundation",
+   "lectures": [
+    "f-cloud-concepts-0",
+    "f-cloud-concepts-1",
+    "f-cloud-concepts-2",
+    "f-networking-0",
+    "f-networking-1",
+    "f-networking-2",
+    "f-networking-3"
+   ],
+   "lab_ids": [],
+   "drill_domain_ids": []
+  },
+  {
+   "id": "core",
+   "title": "Core",
+   "kind": "core",
+   "lectures": [
+    "c-data-solutions",
+    "c-business-continuity",
+    "c-integration",
+    "c-migration"
+   ],
+   "lab_ids": [
+    "az-305-lab-1",
+    "az-305-lab-2"
+   ],
+   "drill_domain_ids": [
+    "data-solutions",
+    "business-continuity",
+    "integration",
+    "migration"
+   ]
+  },
+  {
+   "id": "advanced",
+   "title": "Advanced",
+   "kind": "advanced",
+   "lectures": [
+    "c-identity-security-design",
+    "c-infrastructure-design"
+   ],
+   "lab_ids": [
+    "az-305-lab-3",
+    "az-305-lab-4"
+   ],
+   "drill_domain_ids": [
+    "identity-security-design",
+    "infrastructure-design"
+   ]
+  },
+  {
+   "id": "exam-prep",
+   "title": "Exam Prep",
+   "kind": "exam-prep",
+   "lectures": [],
+   "lab_ids": [],
+   "drill_domain_ids": [
+    "identity-security-design",
+    "data-solutions",
+    "business-continuity",
+    "infrastructure-design",
+    "integration",
+    "migration"
+   ]
+  }
+ ],
+ "behavioral": [
+  {
+   "prompt": "Tell me about a time you had to defend an architecture decision to skeptical stakeholders.",
+   "framework": "STAR",
+   "points": [
+    "The decision and the objections",
+    "How you presented trade-offs",
+    "The outcome and what you'd keep"
+   ],
+   "pitfalls": [
+    "Dismissing the objections",
+    "No trade-off analysis"
+   ]
+  },
+  {
+   "prompt": "Describe a time your design had to balance cost against reliability or performance.",
+   "framework": "STAR",
+   "points": [
+    "The competing requirements",
+    "Options you evaluated",
+    "The balance you struck and why"
+   ],
+   "pitfalls": [
+    "Optimizing one axis blindly",
+    "No stakeholder alignment"
+   ]
+  },
+  {
+   "prompt": "Tell me about a design that failed in production and what you changed.",
+   "framework": "STAR",
+   "points": [
+    "The failure and its blast radius",
+    "Root cause in the design",
+    "Design changes afterward"
+   ],
+   "pitfalls": [
+    "Blaming implementation only",
+    "No design lesson"
+   ]
+  },
+  {
+   "prompt": "Describe a time you had to choose between two viable architectures with incomplete information.",
+   "framework": "STAR",
+   "points": [
+    "What was unknown and what you assumed",
+    "How you de-risked the choice",
+    "How it played out"
+   ],
+   "pitfalls": [
+    "Analysis paralysis",
+    "Ignoring the unknowns"
+   ]
+  },
+  {
+   "prompt": "Tell me about a time you designed for a non-functional requirement (security, DR, compliance) that others undervalued.",
+   "framework": "STAR",
+   "points": [
+    "The requirement and why it mattered",
+    "How you got buy-in",
+    "The protection it provided"
+   ],
+   "pitfalls": [
+    "Gold-plating without justification",
+    "No buy-in story"
+   ]
+  },
+  {
+   "prompt": "Describe a migration or modernization you architected.",
+   "framework": "STAR",
+   "points": [
+    "The starting state and target",
+    "Phasing and risk controls",
+    "Measured results"
+   ],
+   "pitfalls": [
+    "Big-bang with no rollback",
+    "No success metrics"
+   ]
+  },
+  {
+   "prompt": "Tell me about a time you had to simplify an over-engineered design.",
+   "framework": "STAR",
+   "points": [
+    "The complexity and its cost",
+    "What you removed and why it was safe",
+    "The result"
+   ],
+   "pitfalls": [
+    "Simplifying away real requirements",
+    "No rationale"
+   ]
+  },
+  {
+   "prompt": "Why are you pursuing the Azure Solutions Architect Expert certification, and what kinds of systems do you want to design?",
+   "framework": "PAR",
+   "points": [
+    "Your motivation",
+    "The design scope you target",
+    "What comes after"
+   ],
+   "pitfalls": [
+    "Title-chasing with no substance",
+    "No design direction"
+   ]
+  }
+ ],
+ "chat": {
+  "persona": "You are a demanding but fair solutions-architect interviewer running a mock AZ-305 assessment. Push for trade-off reasoning: every design choice must name what it costs and what it risks. Correct imprecise service selection and demand RPO/RTO, consistency, and resilience reasoning.",
+  "topics": [
+   {
+    "id": "identity-security-design",
+    "name": "Identity & Security Design",
+    "key_points": [
+     "cross-tenant access and B2B",
+     "PIM and just-in-time access",
+     "managed identities",
+     "Key Vault design",
+     "hub-and-spoke security",
+     "landing zones"
+    ],
+    "followups": [
+     "What does this choice cost in complexity?",
+     "How does privilege get activated and expire?"
+    ]
+   },
+   {
+    "id": "data-solutions",
+    "name": "Data Solutions",
+    "key_points": [
+     "SQL MI vs SQL DB vs Cosmos DB selection",
+     "global distribution and consistency",
+     "lakehouse and open formats",
+     "partition key design",
+     "backup retention vs point-in-time",
+     "polyglot persistence"
+    ],
+    "followups": [
+     "Which consistency model fits?",
+     "What happens at 10x the data volume?"
+    ]
+   },
+   {
+    "id": "business-continuity",
+    "name": "Business Continuity",
+    "key_points": [
+     "RPO vs RTO",
+     "active-active vs pilot light vs backup-restore",
+     "Backup vs Site Recovery",
+     "zones vs cross-region resilience",
+     "restore testing"
+    ],
+    "followups": [
+     "State the RPO/RTO this design actually delivers.",
+     "What fails first in a regional outage?"
+    ]
+   },
+   {
+    "id": "infrastructure-design",
+    "name": "Infrastructure Design",
+    "key_points": [
+     "compute selection for workload shape",
+     "AKS vs Container Apps",
+     "Azure Arc for hybrid",
+     "Front Door vs App Gateway",
+     "ADLS Gen2 for analytics",
+     "Well-Architected Framework pillars"
+    ],
+    "followups": [
+     "Why this compute and not the alternative?",
+     "Which pillar does this decision serve?"
+    ]
+   },
+   {
+    "id": "integration",
+    "name": "Integration",
+    "key_points": [
+     "API Management as facade",
+     "Service Bus vs Event Hubs vs Event Grid",
+     "Logic Apps vs Functions",
+     "private endpoints for PaaS",
+     "saga pattern"
+    ],
+    "followups": [
+     "Which messaging semantic does this need?",
+     "What happens when a downstream step fails?"
+    ]
+   },
+   {
+    "id": "migration",
+    "name": "Migration",
+    "key_points": [
+     "Azure Migrate assessment",
+     "the 6 Rs",
+     "online vs offline database migration",
+     "wave planning by dependency",
+     "hybrid DNS",
+     "landing zone readiness"
+    ],
+    "followups": [
+     "What did the assessment reveal?",
+     "What migrates first and why?"
+    ]
+   }
+  ]
+ },
+ "labs": [
+  {
+   "id": "az-305-lab-1",
+   "title": "Cross-tenant access — Azure CLI drill",
+   "objective": "Run a short sequence of Azure CLI commands that demonstrates cross-tenant access, then verify each result against the expected output.",
+   "steps": [
+    "This lab reworks the Identity & Security Design practice scenario \"The acquisition's identities\" into commands you run yourself — same concept, hands-on instead of multiple choice.",
+    "Open the Terminal tab for this bootcamp — every command below runs there.",
+    "Type exactly: az account show — the account document includes the subscription name",
+    "Type exactly: az group list — each resource group entry carries a name",
+    "Type exactly: az vm list — each VM entry carries a name",
+    "In your own words, say what each command's output taught you about cross-tenant access."
+   ],
+   "checks": [
+    {
+     "command_pattern": "az account show",
+     "expect_contains": "name",
+     "hint": "In the Terminal tab, run `az account show`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+    },
+    {
+     "command_pattern": "az group list",
+     "expect_contains": "name",
+     "hint": "In the Terminal tab, run `az group list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+    },
+    {
+     "command_pattern": "az vm list",
+     "expect_contains": "name",
+     "hint": "In the Terminal tab, run `az vm list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+    }
+   ],
+   "success_message": "Lab complete — cross-tenant access practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."
+  },
+  {
+   "id": "az-305-lab-2",
+   "title": "SQL MI vs SQL DB — Azure CLI drill",
+   "objective": "Use the Azure CLI to explore SQL MI vs SQL DB hands-on: type each command, read what comes back, and connect the output to the concept.",
+   "steps": [
+    "Inspired by the Data Solutions scenario \"The lift-and-shift database\": take its core idea and prove it live in the terminal instead of answering on paper.",
+    "Open the Terminal tab for this bootcamp — every command below runs there.",
+    "Type exactly: az vm list — each VM entry carries a name",
+    "Type exactly: az account show — the account document includes the subscription name",
+    "Type exactly: az group list — each resource group entry carries a name",
+    "In your own words, say what each command's output taught you about SQL MI vs SQL DB."
+   ],
+   "checks": [
+    {
+     "command_pattern": "az vm list",
+     "expect_contains": "name",
+     "hint": "In the Terminal tab, run `az vm list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+    },
+    {
+     "command_pattern": "az account show",
+     "expect_contains": "name",
+     "hint": "In the Terminal tab, run `az account show`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+    },
+    {
+     "command_pattern": "az group list",
+     "expect_contains": "name",
+     "hint": "In the Terminal tab, run `az group list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+    }
+   ],
+   "success_message": "Lab complete — SQL MI vs SQL DB practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."
+  },
+  {
+   "id": "az-305-lab-3",
+   "title": "RPO vs RTO — Azure CLI drill",
+   "objective": "Prove you can apply RPO vs RTO in the Azure CLI — follow the steps, watch the output, and confirm every check passes.",
+   "steps": [
+    "The Business Continuity scenario \"The two numbers\" tests this concept as a question. This lab makes you demonstrate it with real commands.",
+    "Open the Terminal tab for this bootcamp — every command below runs there.",
+    "Type exactly: az group list — each resource group entry carries a name",
+    "Type exactly: az vm list — each VM entry carries a name",
+    "Type exactly: az account show — the account document includes the subscription name",
+    "In your own words, say what each command's output taught you about RPO vs RTO."
+   ],
+   "checks": [
+    {
+     "command_pattern": "az group list",
+     "expect_contains": "name",
+     "hint": "In the Terminal tab, run `az group list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+    },
+    {
+     "command_pattern": "az vm list",
+     "expect_contains": "name",
+     "hint": "In the Terminal tab, run `az vm list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+    },
+    {
+     "command_pattern": "az account show",
+     "expect_contains": "name",
+     "hint": "In the Terminal tab, run `az account show`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+    }
+   ],
+   "success_message": "Lab complete — RPO vs RTO practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."
+  },
+  {
+   "id": "az-305-lab-4",
+   "title": "Compute selection — Azure CLI drill",
+   "objective": "Run a short sequence of Azure CLI commands that demonstrates compute selection, then verify each result against the expected output.",
+   "steps": [
+    "This lab reworks the Infrastructure Design practice scenario \"The batch genome job\" into commands you run yourself — same concept, hands-on instead of multiple choice.",
+    "Open the Terminal tab for this bootcamp — every command below runs there.",
+    "Type exactly: az account show — the account document includes the subscription name",
+    "Type exactly: az group list — each resource group entry carries a name",
+    "Type exactly: az vm list — each VM entry carries a name",
+    "In your own words, say what each command's output taught you about compute selection."
+   ],
+   "checks": [
+    {
+     "command_pattern": "az account show",
+     "expect_contains": "name",
+     "hint": "In the Terminal tab, run `az account show`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+    },
+    {
+     "command_pattern": "az group list",
+     "expect_contains": "name",
+     "hint": "In the Terminal tab, run `az group list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+    },
+    {
+     "command_pattern": "az vm list",
+     "expect_contains": "name",
+     "hint": "In the Terminal tab, run `az vm list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+    }
+   ],
+   "success_message": "Lab complete — compute selection practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."
+  },
+  {
+   "id": "az305-lab-landing-zone",
+   "title": "Survey the landing zone",
+   "objective": "Architects start with the foundation: subscriptions, resource groups, and regions already in place.",
+   "difficulty": 1,
+   "steps": [
+    "Open the Terminal tab for this bootcamp.",
+    "Type exactly: az account list — the subscriptions the landing zone spans",
+    "Type exactly: az group list — the resource groups and their regions",
+    "In your own words, say what a landing zone gives a new workload on day one."
+   ],
+   "checks": [
+    {
+     "command_pattern": "^az account list$",
+     "expect_contains": "ILB-Playground",
+     "hint": "In the Terminal tab, run `az account list`. If the check fails, confirm you typed it exactly and that the output contains \"ILB-Playground\"."
+    },
+    {
+     "command_pattern": "^az group list$",
+     "expect_contains": "ilb-network-rg",
+     "hint": "In the Terminal tab, run `az group list`. If the check fails, confirm you typed it exactly and that the output contains \"ilb-network-rg\"."
+    }
+   ],
+   "success_message": "Lab complete — landing zone surveyed."
+  },
+  {
+   "id": "az305-lab-data-tier",
+   "title": "Evaluate the data tier",
+   "objective": "Data solutions start with the storage inventory. List the storage accounts backing the platform.",
+   "difficulty": 1,
+   "steps": [
+    "Open the Terminal tab for this bootcamp.",
+    "Type exactly: az storage account list — storage account names and SKUs",
+    "In your own words, say when you would choose locally-redundant versus geo-redundant storage."
+   ],
+   "checks": [
+    {
+     "command_pattern": "^az storage account list$",
+     "expect_contains": "ilbartifacts",
+     "hint": "In the Terminal tab, run `az storage account list`. If the check fails, confirm you typed it exactly and that the output contains \"ilbartifacts\"."
+    }
+   ],
+   "success_message": "Lab complete — data tier inventoried."
+  },
+  {
+   "id": "az305-lab-ha",
+   "title": "Assess the high-availability footprint",
+   "objective": "Business continuity is designed, not hoped for. Assess the compute footprint: VM sizes, states, and the AKS cluster.",
+   "difficulty": 2,
+   "steps": [
+    "Open the Terminal tab for this bootcamp.",
+    "Type exactly: az vm list — VM sizes and power states across the fleet",
+    "Type exactly: az aks list — the managed Kubernetes cluster and node count",
+    "In your own words, say what a 3-node AKS cluster buys you that a single VM cannot."
+   ],
+   "checks": [
+    {
+     "command_pattern": "^az vm list$",
+     "expect_contains": "Standard_D2s_v3",
+     "hint": "In the Terminal tab, run `az vm list`. If the check fails, confirm you typed it exactly and that the output contains \"Standard_D2s_v3\"."
+    },
+    {
+     "command_pattern": "^az aks list$",
+     "expect_contains": "3",
+     "hint": "In the Terminal tab, run `az aks list`. If the check fails, confirm you typed it exactly and that the output contains \"3\"."
+    }
+   ],
+   "success_message": "Lab complete — HA footprint assessed."
+  },
+  {
+   "id": "az305-lab-dr",
+   "title": "Design the DR region presence",
+   "objective": "A DR design needs a foothold in the secondary region. Create the DR resource group and verify the network inventory.",
+   "difficulty": 3,
+   "steps": [
+    "Open the Terminal tab for this bootcamp.",
+    "Type exactly: az group create --name ilb-dr-rg --location westus — the DR region foothold",
+    "Type exactly: az network vnet list — the primary region network you will peer or replicate from",
+    "In your own words, say why the DR region should differ from the primary region's geography."
+   ],
+   "checks": [
+    {
+     "command_pattern": "^az group create --name ilb-dr-rg --location westus$",
+     "expect_contains": "ilb-dr-rg",
+     "hint": "In the Terminal tab, run `az group create --name ilb-dr-rg --location westus`. If the check fails, confirm you typed it exactly and that the output contains \"ilb-dr-rg\"."
+    },
+    {
+     "command_pattern": "^az network vnet list$",
+     "expect_contains": "ilb-vnet",
+     "hint": "In the Terminal tab, run `az network vnet list`. If the check fails, confirm you typed it exactly and that the output contains \"ilb-vnet\"."
+    }
+   ],
+   "success_message": "Lab complete — DR foothold established."
+  },
+  {
+   "id": "az-305-lab1",
+   "domain_id": "identity-security-design",
+   "title": "Sketch a landing-zone hierarchy",
+   "objective": "Create a management-group hierarchy and assign a policy that all child subscriptions will inherit.",
+   "steps": [
+    "Create management group mg-lab-root.",
+    "Create child management group mg-lab-prod under it.",
+    "List the hierarchy to confirm parent-child linkage.",
+    "Assign the built-in 'Require a tag on resources' policy at mg-lab-prod scope.",
+    "Verify the assignment shows an inherited scope path."
+   ],
+   "checks": [
+    {
+     "command_pattern": "^az account management-group create\\s",
+     "expect_contains": "mg-lab",
+     "hint": "Create the groups with az account management-group create --name mg-lab-root."
+    },
+    {
+     "command_pattern": "^az policy assignment create\\s",
+     "expect_contains": "assignment",
+     "hint": "Assign with az policy assignment create at the management-group scope."
+    }
+   ],
+   "domain_id_remapped_from": "az-305",
+   "merged_from": "cbt-individual/az-305"
+  },
+  {
+   "id": "az-305-lab2",
+   "domain_id": "identity-security-design",
+   "title": "Map a BCDR geography",
+   "objective": "Identify regional pairs and replication-capable services for a DR design.",
+   "steps": [
+    "List recommended regions and their paired regions.",
+    "Pick a primary region and record its pair as the DR target.",
+    "Check which storage SKUs mention geo-replication for your design notes.",
+    "Draft the RPO/RTO table: one row per tier with objective and mechanism."
+   ],
+   "checks": [
+    {
+     "command_pattern": "^az account list-locations\\s",
+     "expect_contains": "pairedRegion",
+     "hint": "Use az account list-locations and look for the pairedRegion metadata."
+    }
+   ],
+   "domain_id_remapped_from": "az-305",
+   "merged_from": "cbt-individual/az-305"
+  }
+ ],
+ "foundations": [
+  {
+   "track": "cloud-concepts",
+   "why_needed": "Designing solutions assumes you already think in regions, zones, and services. This track builds that thinking."
+  },
+  {
+   "track": "networking",
+   "why_needed": "Infrastructure design is network design: VNets, connectivity, and private access throughout."
+  }
+ ],
+ "math": [],
+ "simulations": [
+  {
+   "id": "az305-sim-arch-choice",
+   "title": "Design the order service",
+   "kind": "branching",
+   "domain_id": "infrastructure-design",
+   "difficulty": 3,
+   "brief": "You are the solutions architect for an order service: spiky traffic, strict latency SLO, regulated data. Each choice compounds.",
+   "steps": [
+    {
+     "id": "s1",
+     "text": "Traffic spikes 10x during sales events. Compute choice?",
+     "choices": [
+      {
+       "label": "Fixed VM fleet sized for peak — simple",
+       "next": "s2a",
+       "points": 0,
+       "feedback": "Sizing fixed capacity for a 10x spike means paying for idle iron 360 days a year."
+      },
+      {
+       "label": "Autoscaling VM scale set behind a load balancer",
+       "next": "s2",
+       "points": 2,
+       "feedback": "Correct — elastic compute matches spiky demand without paying for idle peak capacity."
+      }
+     ]
+    },
+    {
+     "id": "s2a",
+     "text": "Finance rejects the idle-peak bill. Reconsider:",
+     "choices": [
+      {
+       "label": "Autoscaling scale set behind a load balancer",
+       "next": "s2",
+       "points": 1,
+       "feedback": "Right — elasticity is the cloud's answer to spiky demand."
+      }
+     ]
+    },
+    {
+     "id": "s2",
+     "text": "Order data is regulated and must survive a regional outage. Data choice?",
+     "choices": [
+      {
+       "label": "Single-region database with weekly backups",
+       "next": "END",
+       "points": 0,
+       "outcome": "bad",
+       "feedback": "Weekly backups on regulated data in one region fails both the RPO and the regional-outage requirement."
+      },
+      {
+       "label": "Geo-replicated database with automated failover",
+       "next": "END",
+       "points": 2,
+       "outcome": "good",
+       "feedback": "Correct — geo-replication meets the regional-outage requirement and tight RPO for regulated data."
+      }
+     ]
+    }
+   ],
+   "debrief": "You designed to the requirements: elastic compute for spiky traffic, geo-replicated data for regulated resilience. Requirements drive architecture, not preferences.",
+   "points": 15
+  },
+  {
+   "id": "az305-sim-migration-waves",
+   "title": "Plan the migration waves",
+   "kind": "ordering",
+   "domain_id": "migration",
+   "difficulty": 2,
+   "brief": "Twenty apps are moving to Azure. Order the migration waves so dependencies land before dependents.",
+   "steps": {
+    "context": "Migration waves: dependencies first, then the apps that need them.",
+    "items": [
+     "Migrate the customer-facing web apps",
+     "Migrate shared databases and identity",
+     "Assess and discover all dependencies",
+     "Migrate batch and internal tools",
+     "Validate networking and connectivity to on-premises"
+    ],
+    "correct_order": [
+     2,
+     4,
+     1,
+     0,
+     3
+    ]
+   },
+   "debrief": "You sequenced the migration: discover, connect, shared services, then front-ends, then batch. Dependents never land before their dependencies.",
+   "points": 10
+  },
+  {
+   "id": "az305-sim-failover",
+   "title": "The regional outage",
+   "kind": "troubleshoot",
+   "domain_id": "business-continuity",
+   "difficulty": 3,
+   "brief": "The primary region is impaired and the runbook says fail over. The failover stalls halfway — work it.",
+   "steps": [
+    {
+     "symptom": "Failover initiated; traffic still hits the primary region 30 minutes later.",
+     "evidence": [
+      [
+       "az network vnet list",
+       "ilb-vnet  ilb-network-rg  10.0.0.0/16"
+      ]
+     ],
+     "options": [
+      "Check DNS failover and traffic-manager endpoints — traffic follows DNS, not the runbook's hopes",
+      "Restart the primary region workloads to force traffic away",
+      "Wait longer — failovers always take hours",
+      "Fail back immediately — the secondary must be broken"
+     ],
+     "correct": 0,
+     "explain": "Traffic routing is DNS-driven: if health checks or DNS failover did not flip, clients keep hitting primary. Verify the traffic-management layer before touching workloads."
+    },
+    {
+     "symptom": "DNS still resolves to the primary endpoints; the failover profile never flipped.",
+     "evidence": [
+      [
+       "az account show",
+       "\"name\": \"ILB-Playground\""
+      ]
+     ],
+     "options": [
+      "Manually flip the traffic profile to the secondary endpoints and verify resolution",
+      "Delete the primary endpoints so DNS has no choice",
+      "Page the network team and wait",
+      "Declare the outage over — 30 minutes is acceptable"
+     ],
+     "correct": 0,
+     "explain": "Execute the flip the automation missed, then verify end-to-end. Deleting primary endpoints destroys the failback path; waiting is not a strategy."
+    }
+   ],
+   "debrief": "You troubleshot the failover at the right layer: traffic follows DNS, so verify and flip the routing before touching any workload.",
+   "points": 15
+  },
+  {
+   "id": "az305-sim-backup-config",
+   "title": "The backup policy gap",
+   "kind": "config-check",
+   "domain_id": "business-continuity",
+   "difficulty": 2,
+   "brief": "Audit the backup policy against the 24-hour RPO the business signed. Click the lines that breach it.",
+   "steps": {
+    "config": "Backup policy: standard-weekly\n1. Frequency: weekly full, Sunday 02:00\n2. Retention: 4 weeks\n3. RPO target: 24 hours\n4. Databases: covered\n5. File shares: not covered",
+    "find": 2,
+    "issues": [
+     {
+      "line": 1,
+      "description": "Weekly backups cannot meet a 24-hour RPO — up to 7 days of data loss is possible.",
+      "fix": "Move to daily backups (or continuous) so the worst case fits inside 24 hours."
+     },
+     {
+      "line": 5,
+      "description": "File shares are outside the policy entirely — an unprotected data class.",
+      "fix": "Extend the policy to cover file shares or document the accepted risk."
+     }
+    ]
+   },
+   "debrief": "You matched the policy to the RPO: the backup frequency must fit inside the recovery objective, and every data class must be covered or explicitly accepted.",
+   "points": 10
+  }
+ ],
+ "consoleSims": [
+  {
+   "id": "az305-console-portal-sku-1",
+   "title": "Right-size the design",
+   "console": "azure-portal",
+   "domain_id": "infrastructure-design",
+   "difficulty": 2,
+   "brief": "The design doc specifies burstable B-series for the dev tier, but ilb-web-01 runs D2s_v3. Correct the design drift.",
+   "tasks": [
+    {
+     "id": "t1",
+     "instruction": "Change ilb-web-01's SKU to Standard_B2s per the design document.",
+     "validate": {
+      "action": "set-field",
+      "params": {
+       "field": "vm.ilb-web-01.size",
+       "value": "Standard_B2s"
+      }
+     },
+     "hint": "Open the VM size blade and select the design-specified SKU."
+    },
+    {
+     "id": "t2",
+     "instruction": "Record the change in the design log field.",
+     "validate": {
+      "action": "set-field",
+      "params": {
+       "field": "vm.ilb-web-01.design_log",
+       "value": "resized to B2s per design v3"
+      }
+     },
+     "hint": "Find the design/notes field on the VM and log the change."
+    }
+   ],
+   "debrief": "You enforced design governance: the deployed estate matches the approved design, and the change is logged."
+  },
+  {
+   "id": "az305-console-portal-dr-1",
+   "title": "Configure geo-replication",
+   "console": "azure-portal",
+   "domain_id": "business-continuity",
+   "difficulty": 3,
+   "brief": "The storage account holds regulated data. Enable geo-replication so a regional outage does not become a data-loss event.",
+   "tasks": [
+    {
+     "id": "t1",
+     "instruction": "Change ilbartifacts replication from LRS to GRS.",
+     "validate": {
+      "action": "set-field",
+      "params": {
+       "field": "storage.ilbartifacts.replication",
+       "value": "GRS"
+      }
+     },
+     "hint": "Open the storage account's replication blade and select geo-redundant storage."
+    },
+    {
+     "id": "t2",
+     "instruction": "Verify the secondary region shows as available.",
+     "validate": {
+      "action": "click",
+      "params": {
+       "target": "storage.ilbartifacts.secondary-status"
+      }
+     },
+     "hint": "Check the secondary endpoint status indicator."
+    }
+   ],
+   "debrief": "You closed the regional-outage gap: data now replicates to the paired region automatically."
+  }
+ ],
+ "terminalMissions": [
+  {
+   "id": "az305-mission-cloud",
+   "title": "Confirm the cloud",
+   "domain_id": "infrastructure-design",
+   "difficulty": 1,
+   "brief": "Verify the environment metadata on the account document.",
+   "objectives": [
+    "Show the Azure account",
+    "Confirm the cloud environment"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^az account show$",
+     "expect_contains": "AzureCloud",
+     "hint": "In the Terminal tab, run `az account show`. If the check fails, confirm you typed it exactly and that the output contains \"AzureCloud\"."
+    }
+   ],
+   "success_message": "Environment confirmed — AzureCloud."
+  },
+  {
+   "id": "az305-mission-regions",
+   "title": "List the regions in use",
+   "domain_id": "infrastructure-design",
+   "difficulty": 1,
+   "brief": "List the resource groups and read which regions the footprint spans.",
+   "objectives": [
+    "List all resource groups"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^az group list$",
+     "expect_contains": "eastus2",
+     "hint": "In the Terminal tab, run `az group list`. If the check fails, confirm you typed it exactly and that the output contains \"eastus2\"."
+    }
+   ],
+   "success_message": "Regions mapped — eastus and eastus2."
+  },
+  {
+   "id": "az305-mission-vms",
+   "title": "Survey the compute",
+   "domain_id": "infrastructure-design",
+   "difficulty": 2,
+   "brief": "List the VMs an architect would evaluate for consolidation.",
+   "objectives": [
+    "List all virtual machines"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^az vm list$",
+     "expect_contains": "ilb-web-01",
+     "hint": "In the Terminal tab, run `az vm list`. If the check fails, confirm you typed it exactly and that the output contains \"ilb-web-01\"."
+    }
+   ],
+   "success_message": "Compute surveyed."
+  },
+  {
+   "id": "az305-mission-storage",
+   "title": "Evaluate the data tier",
+   "domain_id": "data-solutions",
+   "difficulty": 2,
+   "brief": "List the storage accounts the data design builds on.",
+   "objectives": [
+    "List all storage accounts"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^az storage account list$",
+     "expect_contains": "ilbartifacts",
+     "hint": "In the Terminal tab, run `az storage account list`. If the check fails, confirm you typed it exactly and that the output contains \"ilbartifacts\"."
+    }
+   ],
+   "success_message": "Data tier evaluated."
+  },
+  {
+   "id": "az305-mission-network",
+   "title": "Read the network design",
+   "domain_id": "infrastructure-design",
+   "difficulty": 2,
+   "brief": "List the VNets and identify the resource group owning the network.",
+   "objectives": [
+    "List all virtual networks"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^az network vnet list$",
+     "expect_contains": "ilb-network-rg",
+     "hint": "In the Terminal tab, run `az network vnet list`. If the check fails, confirm you typed it exactly and that the output contains \"ilb-network-rg\"."
+    }
+   ],
+   "success_message": "Network design read."
+  },
+  {
+   "id": "az305-mission-nodes",
+   "title": "Count the cluster nodes",
+   "domain_id": "integration",
+   "difficulty": 3,
+   "brief": "The integration design leans on AKS. Confirm the node count supports the workload.",
+   "objectives": [
+    "List all AKS clusters",
+    "Read the node count"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^az aks list$",
+     "expect_contains": "3",
+     "hint": "In the Terminal tab, run `az aks list`. If the check fails, confirm you typed it exactly and that the output contains \"3\"."
+    }
+   ],
+   "success_message": "Node count confirmed — 3 nodes online."
+  }
+ ],
+ "media": [
+  {
+   "id": "az-305-identity-security-design-diag",
+   "kind": "diagram",
+   "title": "Identity & Security Design",
+   "svg": "assets/diagrams/az-305-identity-security-design.svg",
+   "lesson_ref": "c-identity-security-design",
+   "caption": "Design flow: identify actors, then layer controls.",
+   "alt": "Identity & Security Design. Shows: Actors, Entra ID, Conditional Access, Privileged access, Monitoring."
+  },
+  {
+   "id": "az-305-data-solutions-diag",
+   "kind": "diagram",
+   "title": "Azure Data Platform Choices",
+   "svg": "assets/diagrams/az-305-data-solutions.svg",
+   "lesson_ref": "c-data-solutions",
+   "caption": "Relational, NoSQL, lake — by consistency and scale needs.",
+   "alt": "Azure Data Platform Choices. Table with 4 rows."
+  },
+  {
+   "id": "az-305-business-continuity-diag",
+   "kind": "diagram",
+   "title": "Business Continuity Design",
+   "svg": "assets/diagrams/az-305-business-continuity.svg",
+   "lesson_ref": "c-business-continuity",
+   "caption": "RTO/RPO drive every continuity decision.",
+   "alt": "Business Continuity Design. Shows: RTO, RPO, MTTR, MTBF, 3 copies, 2 media types."
+  },
+  {
+   "id": "az-305-infrastructure-design-diag",
+   "kind": "diagram",
+   "title": "Landing Zone Design",
+   "svg": "assets/diagrams/az-305-infrastructure-design.svg",
+   "lesson_ref": "c-infrastructure-design",
+   "caption": "Enterprise-scale structure for Azure estates.",
+   "alt": "Landing Zone Design. Tiers: Management, Connectivity, Workloads."
+  },
+  {
+   "id": "az-305-integration-diag",
+   "kind": "diagram",
+   "title": "Integration Services Flow",
+   "svg": "assets/diagrams/az-305-integration.svg",
+   "lesson_ref": "c-integration",
+   "caption": "Events in, orchestrated actions out.",
+   "alt": "Integration Services Flow. Shows: Event Grid, Service Bus, Logic Apps, API Management."
+  },
+  {
+   "id": "az-305-migration-diag",
+   "kind": "diagram",
+   "title": "Cloud Migration Stages",
+   "svg": "assets/diagrams/az-305-migration.svg",
+   "lesson_ref": "c-migration",
+   "caption": "Assess, move, then optimize — in waves.",
+   "alt": "Cloud Migration Stages. Shows: Assess, Migrate, Optimize, Secure."
+  }
+ ],
+ "resources": {
+  "cheatsheet": {
+   "title": "Azure Solutions Architect (AZ-305) — Cheat Sheet",
+   "sections": [
+    {
+     "heading": "Identity & Security Design",
+     "items": [
+      "Cross-tenant access — entra's cross-tenant access settings plus B2B collaboration let users from one tenant access the other's resources under explicit trust, Conditional Access, and MFA requirements — the architected path for M&A collaboration without a directory merge.",
+      "PIM implements just-in-time administration — admins hold eligible assignments and activate the role only when needed, with MFA, approval workflows, justification, and automatic expiry.",
+      "Managed identity — the app's managed identity is granted Get on secrets only — no human ever sees the value. Managed identities give Azure resources an Entra identity; the platform handles credential rotation invisibly.",
+      "Common trap — public endpoints on all PaaS for easier access.",
+      "Common trap — storing the password in appsettings.json with restricted file permissions.",
+      "Common trap — sharing one global admin account.",
+      "Common trap — federating both tenants to a third IdP without Entra.",
+      "Read — Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."
+     ]
+    },
+    {
+     "heading": "Data Solutions",
+     "items": [
+      "SQL MI vs SQL DB — storing data once in open formats (Parquet, Delta Lake) on ADLS Gen2 lets Synapse serverless SQL pools query it with T-SQL and Spark pools process it — the lakehouse pattern.",
+      "Cosmos DB — partition key choice is the most consequential Cosmos DB design decision: it must distribute both data and request volume evenly and match query patterns. Cosmos DB is built for globally distributed NoSQL: multi-region writes, 99.999% SLA options, and five…",
+      "Global distribution — regional relational databases can't match the global latency profile.",
+      "Common trap — copying data into a SQL database and a separate Spark cluster.",
+      "Common trap — azure SQL Database in one region.",
+      "Common trap — SQL Server on Azure VMs.",
+      "Common trap — two separate data lakes.",
+      "Partition key choice — is the most consequential Cosmos DB design decision: it must distribute both data and request volume evenly and match query patterns. A single hot value concentrates all RU consumption on one physical partition — throttling regardless of provisioned through…"
+     ]
+    },
+    {
+     "heading": "Business Continuity",
+     "items": [
+      "BCDR patterns — mature BCDR designs schedule restore drills, document RTO/RPO validation, and keep runbooks current — auditors specifically look for evidence of tested recovery, not just backup jobs succeeding.",
+      "RPO vs RTO — pilot light keeps the minimum viable footprint running (data replication, core services) and scales out during failover — balancing RTO against cost. RPO (recovery point objective) = how much data loss is tolerable, dictating replication/backup frequency.",
+      "Active-active — Active-active serves traffic from multiple regions simultaneously with synchronous or near-synchronous replication — the only pattern approaching zero RTO/RPO across regions. It's the standard answer when active-active is unaffordable but backup/restore RTO…",
+      "Backup vs Site Recovery — site Recovery = workload replication and orchestrated failover/failback of entire VMs and apps to a secondary region. RTO (recovery time objective) = how long downtime is tolerable, dictating how automated and warm the recovery environment must be.",
+      "Common trap — site Recovery backs up files; Backup fails over VMs.",
+      "Common trap — RPO measures downtime; RTO measures data loss.",
+      "Common trap — both numbers describe the backup schedule.",
+      "Common trap — backup and restore to a second region."
+     ]
+    },
+    {
+     "heading": "Infrastructure Design",
+     "items": [
+      "Batch patterns — episodic parallel HPC workloads fit Azure Batch (job scheduling across pooled VMs, including spot) or scale sets that scale to zero — you pay for 6 hours, not 168.",
+      "Container Apps — is excellent for serverless microservices but abstracts the Kubernetes layer away — wrong when the team needs node control and K8s-native tooling.",
+      "AKS — provides managed Kubernetes with full API access, custom node pools (including GPU SKUs), and GitOps integration.",
+      "Azure Arc-enabled servers bring non-Azure machines under ARM — Azure Policy guest configuration, Monitor, Defender, and Update Manager work uniformly.",
+      "Hybrid management — it's the hybrid management answer when migration isn't possible.",
+      "Common trap — a single container instance running 24/7.",
+      "Common trap — dNS-based, no TLS termination or WAF.",
+      "Common trap — premium SSD managed disks for 50 TB/day ingest.",
+      "Common trap — serverless containers without Kubernetes API access."
+     ]
+    },
+    {
+     "heading": "Integration",
+     "items": [
+      "API Management is the full-lifecycle API gateway — policy enforcement (rate limits, transformation, auth), product/subscription key management, analytics, and a self-service developer portal — the designed facade for partner exposure.",
+      "Integration design — event Grid routes discrete events (like BlobCreated) to multiple subscribers with push delivery and filtering — the reactive integration pattern. Private endpoints bring each PaaS into the VNet with private IPs, so integration traffic never leaves the priva…",
+      "Messaging patterns — service Bus = enterprise messaging (queues/topics, transactions, sessions/ordering, dead-lettering) for orders.",
+      "Service Bus vs Event Hubs — event Hubs = big-data streaming ingestion (millions of events/sec, partitions, consumer groups) for telemetry.",
+      "Event Grid = event routing for reactive scenarios — a third distinct pattern.",
+      "Common trap — event Hubs for orders; Service Bus for telemetry.",
+      "Common trap — a raw Azure Function URL per API.",
+      "Common trap — a distributed two-phase commit across databases.",
+      "Common trap — the PaaS public endpoints remain."
+     ]
+    },
+    {
+     "heading": "Migration",
+     "items": [
+      "Azure Migrate — Azure Migrate's discovery and assessment phase maps dependencies, measures actual utilization, and produces right-sized Azure targets with cost estimates — the evidence base for every migration wave plan.",
+      "Assessment phase — cAF's ready phase: establish the landing zone (subscriptions, networking, identity, governance) before migrating workloads. The dependency map from assessment drives the wave sequence.",
+      "6 Rs — the 6 Rs (rehost/lift-and-shift, refactor, rearchitect, rebuild, replace with SaaS, retire) force an explicit strategy per app instead of one-size-fits-all.",
+      "Migration strategy — online migration (DMS or the MI link feature) replicates continuously and cuts over with minutes of downtime — the minimal-downtime pattern for large databases. DNS is the most common hybrid migration breakage.",
+      "Online migration — migrating into an ungoverned tenant creates the sprawl the migration was supposed to fix.",
+      "Common trap — migrate in any order; dependencies resolve automatically.",
+      "Common trap — migrate the web tier first for quick wins.",
+      "Common trap — migrate one app to learn, then design the foundation.",
+      "Common trap — buying reserved instances first."
+     ]
+    }
+   ]
+  },
+  "glossary": [
+   {
+    "term": "RTO",
+    "def": "RPO vs RTO: pilot light keeps the minimum viable footprint running (data replication, core services) and scales out during failover — balancing RTO against cost. RPO (recovery point objective) = how much data loss is tolerable, dictating…"
+   },
+   {
+    "term": "API",
+    "def": "API Management is the full-lifecycle API gateway: policy enforcement (rate limits, transformation, auth), product/subscription key management, analytics, and a self-service developer portal — the designed facade for partner exposure."
+   },
+   {
+    "term": "RPO",
+    "def": "RPO vs RTO: pilot light keeps the minimum viable footprint running (data replication, core services) and scales out during failover — balancing RTO against cost. RPO (recovery point objective) = how much data loss is tolerable, dictating…"
+   },
+   {
+    "term": "Azure",
+    "def": "Coexistence requires name resolution both ways: on-premises DNS forwarding Azure private zones (via Azure Private DNS Resolver or forwarders) and Azure resolving on-premises names. DNS is the most common hybrid migration breakage."
+   },
+   {
+    "term": "WAF",
+    "def": "Global entry + WAF + TLS + latency routing — which service combines all four?"
+   },
+   {
+    "term": "VMs",
+    "def": "SQL Managed Instance offers near-100% compatibility with on-premises SQL Server (Agent jobs, cross-db queries, CLR) while Microsoft manages patching and HA. Single databases suit cloud-native apps; VMs suit when OS-level control is requi…"
+   },
+   {
+    "term": "DB",
+    "def": "Cosmos DB: partition key choice is the most consequential Cosmos DB design decision: it must distribute both data and request volume evenly and match query patterns. Cosmos DB is built for globally distributed NoSQL: multi-region writes,…"
+   },
+   {
+    "term": "DNS",
+    "def": "Migration strategy: online migration (DMS or the MI link feature) replicates continuously and cuts over with minutes of downtime — the minimal-downtime pattern for large databases. DNS is the most common hybrid migration breakage."
+   },
+   {
+    "term": "AKS",
+    "def": "AKS provides managed Kubernetes with full API access, custom node pools (including GPU SKUs), and GitOps integration."
+   },
+   {
+    "term": "GPU",
+    "def": "AKS provides managed Kubernetes with full API access, custom node pools (including GPU SKUs), and GitOps integration. Container Apps is excellent for serverless microservices but abstracts the Kubernetes layer away — wrong when the team…"
+   },
+   {
+    "term": "ARM",
+    "def": "Azure Arc-enabled servers bring non-Azure machines under ARM: Azure Policy guest configuration, Monitor, Defender, and Update Manager work uniformly."
+   },
+   {
+    "term": "node",
+    "def": "They need the Kubernetes API and GPU node pools. Which service gives both?"
+   },
+   {
+    "term": "Cosmos DB",
+    "def": "Cosmos DB: partition key choice is the most consequential Cosmos DB design decision: it must distribute both data and request volume evenly and match query patterns. Cosmos DB is built for globally distributed NoSQL: multi-region writes,…"
+   },
+   {
+    "term": "ADLS",
+    "def": "ADLS Gen2 is the analytics-optimized object store (hierarchical namespace, fine-grained ACLs, Spark/Hadoop compatible); CDN/Front Door caches hot thumbnails at the edge. Managed disks are VM-attached block storage — wrong for shared anal…"
+   },
+   {
+    "term": "Managed",
+    "def": "Managed identity: the app's managed identity is granted Get on secrets only — no human ever sees the value. Managed identities give Azure resources an Entra identity; the platform handles credential rotation invisibly."
+   },
+   {
+    "term": "ADLS Gen2",
+    "def": "ADLS Gen2 is the analytics-optimized object store (hierarchical namespace, fine-grained ACLs, Spark/Hadoop compatible); CDN/Front Door caches hot thumbnails at the edge. Managed disks are VM-attached block storage — wrong for shared anal…"
+   },
+   {
+    "term": "RTOs",
+    "def": "Active-active serves traffic from multiple regions simultaneously with synchronous or near-synchronous replication — the only pattern approaching zero RTO/RPO across regions. It's the standard answer when active-active is unaffordable bu…"
+   },
+   {
+    "term": "MI",
+    "def": "SQL MI vs SQL DB: storing data once in open formats (Parquet, Delta Lake) on ADLS Gen2 lets Synapse serverless SQL pools query it with T-SQL and Spark pools process it — the lakehouse pattern."
+   },
+   {
+    "term": "TB",
+    "def": "Minimal downtime for a 4 TB database move — which migration mode?"
+   },
+   {
+    "term": "Event Grid",
+    "def": "Event Grid = event routing for reactive scenarios — a third distinct pattern."
+   },
+   {
+    "term": "Service Bus",
+    "def": "Service Bus vs Event Hubs: event Hubs = big-data streaming ingestion (millions of events/sec, partitions, consumer groups) for telemetry."
+   },
+   {
+    "term": "Recovery",
+    "def": "Backup vs Site Recovery: site Recovery = workload replication and orchestrated failover/failback of entire VMs and apps to a secondary region. RTO (recovery time objective) = how long downtime is tolerable, dictating how automated and wa…"
+   },
+   {
+    "term": "Hubs",
+    "def": "Service Bus vs Event Hubs: event Hubs = big-data streaming ingestion (millions of events/sec, partitions, consumer groups) for telemetry."
+   },
+   {
+    "term": "Zones",
+    "def": "Availability zones protect against datacenter-level failure within a region; only cross-region architecture (replication + global load balancing + failover runbooks) survives a regional event. Zones and regions are different tiers of res…"
+   },
+   {
+    "term": "Minimal",
+    "def": "Minimal always-on, scale up on disaster — which pattern is that?"
+   }
+  ],
+  "links": [
+   {
+    "label": "Microsoft — official site",
+    "url": "https://learn.microsoft.com",
+    "note": "Official vendor documentation and certification information"
+   },
+   {
+    "label": "Microsoft Learn — Azure",
+    "url": "https://learn.microsoft.com/en-us/azure/",
+    "note": "Official Azure documentation"
+   },
+   {
+    "label": "Microsoft certifications",
+    "url": "https://learn.microsoft.com/en-us/certifications/",
+    "note": "Official certification paths and exam pages"
+   },
+   {
+    "label": "Azure status and architecture",
+    "url": "https://azure.microsoft.com/en-us/",
+    "note": "Official Azure product pages"
+   }
+  ],
+  "checklist": [
+   "Get 7–8 hours of sleep the night before — fatigue destroys recall faster than any topic gap.",
+   "Bring valid government-issued photo ID and arrive at the test center 30 minutes early.",
+   "Eat a real meal beforehand; bring water and a light snack if the center allows them.",
+   "Read every question twice before scanning the answer choices.",
+   "Flag uncertain questions and move on — return with fresh eyes at the end.",
+   "Eliminate the obviously wrong answers first, then compare the survivors.",
+   "Budget your time: answer steadily and keep a 10–15 minute review buffer.",
+   "Re-run your weakest-domain drill until mastery is at least 80%.",
+   "For Identity & Security Design: restate the 'why' behind each scenario answer in your own words — if you can't explain it, you don't own it.",
+   "Redo one Data Solutions lab from scratch without looking at the steps.",
+   "Recite the key Business Continuity terms from the glossary aloud from memory."
+  ]
+ }
+}

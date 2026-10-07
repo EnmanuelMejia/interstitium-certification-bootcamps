@@ -142,6 +142,170 @@
      "difficulty": 3
     }
    ]
+  },
+  {
+   "id": "adfind-recon-hunting",
+   "name": "AdFind & Active Directory Reconnaissance Hunting",
+   "summary": "How ransomware operators map Active Directory with the free AdFind query tool — and how defenders detect the recon, hunt it with behavior-based logic, and use its artifacts to rebuild the intrusion timeline.",
+   "scenarios": [
+    {
+     "id": "adfind-helpdesk-ticket",
+     "title": "The recon that wore a helpdesk badge",
+     "situation": "Tuesday 09:14. Your EDR fires on WKSTN-214 in accounting: adfind.exe executed by marisol.vega, a standard user with no admin rights. The parent process is cmd.exe launched from a batch file. Command line: adfind -f (objectcategory=computer) -sc computers_pwdnotreqd > C:\\Windows\\Temp\\c.txt. Marisol says she was ‘running a script IT sent her.’",
+     "prompt": "What is your triage call?",
+     "evidence": [
+      [
+       "EDR process event",
+       "adfind.exe | parent: cmd.exe (recon.bat)\nuser: marisol.vega (standard, non-admin)\ncmdline: adfind -f (objectcategory=computer) -sc computers_pwdnotreqd > C:\\Windows\\Temp\\c.txt"
+      ],
+      [
+       "Context",
+       "Marisol has no admin duties. No change ticket references recon.bat. Two more adfind runs followed within 90 seconds: (objectcategory=person), then trustdmp."
+      ]
+     ],
+     "choices": [
+      "Close as benign: AdFind is a legitimate admin tool and Marisol says IT sent the script.",
+      "Escalate as suspected ransomware reconnaissance: non-admin user, batch wrapper, burst of discovery queries with output staged to Temp.",
+      "Block the adfind.exe hash enterprise-wide and close the alert.",
+      "Reimage the workstation immediately without further investigation."
+     ],
+     "answer": 1,
+     "why": "AdFind is dual-use: legitimate for admins, but a ransomware-affiliate recon staple. The discriminating facts are context, not the binary — a non-admin user, a batch wrapper, a burst of discovery queries (computers, people, trusts), and output staged to Temp. That pattern matches pre-ransomware AD mapping. Blocking the hash alone is theater, since the tool is trivially renamed, and reimaging destroys the forensic artifacts (those Temp output files) that anchor your timeline.",
+     "hint": "Ask what separates an admin's AdFind from an attacker's: who ran it, from where, how many queries, and where the output went.",
+     "objectives": [
+      "AdFind triage",
+      "dual-use tools",
+      "recon detection"
+     ],
+     "mins": 7
+    },
+    {
+     "id": "adfind-detection-tuning",
+     "title": "Three queries in ninety seconds",
+     "situation": "You are writing the detection for AdFind abuse. The SOC is drowning in noise: your first draft fired on every domain admin who ever ran the tool. You need logic that catches ransomware-affiliate recon while letting legitimate administration through.",
+     "prompt": "Which detection design is most defensible?",
+     "evidence": [
+      [
+       "Candidate signals",
+       "A: any adfind.exe execution\nB: 3+ distinct recon tokens (objectcategory=person/computer, trustdmp, dcmodes, computers_pwdnotreqd, ‘Domain Admins’) with output redirect (>) inside 2 minutes\nC: adfind.exe only on domain controllers\nD: command lines containing the word ‘trust’"
+      ]
+     ],
+     "choices": [
+      "A: alert on any adfind.exe execution — simplest, catches everything.",
+      "B: burst of distinct recon query types plus output redirection in a short window, on hosts where the user is not a known admin — behavior over filename.",
+      "C: only monitor domain controllers — that is where AD lives.",
+      "D: match the substring ‘trust’ — trusts are the attacker’s real goal."
+     ],
+     "answer": 1,
+     "why": "Behavior beats filename: attackers rename binaries freely, so hash and name matching is brittle. The published hunting logic (Microsoft’s Defender query, Sigma’s win_susp_adfind) keys on distinctive command-line tokens — objectcategory filters, trustdmp, dcmodes, computers_pwdnotreqd — combined with output redirection and a burst threshold, scoped to unexpected users and hosts. That is what separates a ransomware affiliate’s recon batch from a domain admin’s one-off query, and it survives renaming.",
+     "hint": "What survives when the attacker renames adfind.exe to svchost.exe?",
+     "objectives": [
+      "detection engineering",
+      "Sigma",
+      "behavior-based detection"
+     ],
+     "mins": 8
+    },
+    {
+     "id": "adfind-timeline-forensics",
+     "title": "The timestamps that moved the breach",
+     "situation": "During scoping you find C:\\Windows\\Temp\\ad1.txt, ad2.txt, ad3.txt on a file server — AdFind outputs enumerating users, computers, and trusts. Their creation timestamps are 11 days older than your assumed initial-access date. Legal is drafting the breach notification on the old timeline.",
+     "prompt": "What do you do with these files?",
+     "evidence": [
+      [
+       "File timestamps",
+       "ad1.txt (users) — created 11 days before assumed initial access\nad2.txt (computers) — same day, 4 minutes later\nad3.txt (trusts) — same day, 9 minutes later"
+      ],
+      [
+       "Assumption under review",
+       "Initial access was estimated from the first EDR alert. No earlier evidence was found — until these files."
+      ]
+     ],
+     "choices": [
+      "Ignore them: text files in Temp are junk, and the EDR alert is the authoritative start.",
+      "Treat the AdFind output timestamps as the earliest hard evidence of recon, extend the intrusion window back 11 days, and tell legal the notification scope and deadlines may change.",
+      "Delete them to keep the timeline clean for the report.",
+      "Attribute them to a penetration test without checking for an engagement record."
+     ],
+     "answer": 1,
+     "why": "Recon output files are timeline anchors: they prove an attacker-controlled process was enumerating the domain on that date. Practitioners note these Temp-staged AdFind outputs are often the earliest hard evidence that recon began — which can push the whole intrusion timeline back. That changes dwell-time math, the scope of log review, and potentially breach-notification deadlines. Deleting them would be destruction of evidence; assuming a pen test without a record is wishful thinking.",
+     "hint": "What does a file creation timestamp prove that an alert timestamp doesn’t?",
+     "objectives": [
+      "DFIR timeline",
+      "forensic artifacts",
+      "breach notification"
+     ],
+     "mins": 7
+    },
+    {
+     "id": "adfind-attck-mapping",
+     "title": "Map the batch to ATT&CK",
+     "situation": "You recover the attacker’s recon batch file. It runs four AdFind passes: (objectcategory=person), (objectcategory=computer), -sc trustdmp, and a subnet enumeration. Your detection coverage map needs the ATT&CK techniques.",
+     "prompt": "Which mapping is correct?",
+     "evidence": [],
+     "choices": [
+      "All four are T1087 Account Discovery — discovery is discovery.",
+      "T1087.002 Domain Account, T1018 Remote System Discovery, T1482 Domain Trust Discovery, T1016 System Network Configuration Discovery.",
+      "T1190 Exploit Public-Facing Application for all four — they came from the internet.",
+      "T1003 Credential Dumping — enumeration is a form of dumping."
+     ],
+     "answer": 1,
+     "why": "ATT&CK discovery techniques split by what is being discovered: domain accounts (T1087.002), remote systems (T1018), domain trusts (T1482), and network configuration (T1016). Mapping precisely matters because coverage maps, hunt hypotheses, and Sigma rules key off technique IDs — lumping everything under one ID hides gaps. T1190 is initial access, not discovery; T1003 is credential theft, a different tactic entirely.",
+     "hint": "Discovery techniques are named for the thing discovered. What four different things did the batch enumerate?",
+     "objectives": [
+      "MITRE ATT&CK",
+      "T1087",
+      "T1018",
+      "T1482",
+      "T1016"
+     ],
+     "mins": 6
+    },
+    {
+     "id": "adfind-legit-or-lateral",
+     "title": "Legit or lateral?",
+     "situation": "Two AdFind executions, same week. Case A: a domain admin runs AdFind from the admin jump host during a change window to audit stale computer accounts. Case B: a service-desk user runs it at 2:14 AM from a workstation, parented by a batch file, output to Temp. Same binary, same query syntax.",
+     "prompt": "Which contextual signals decide the triage?",
+     "evidence": [],
+     "choices": [
+      "The binary hash — if it matches the known-good AdFind, both are benign.",
+      "Context: account privilege, host role, parent process, time of day, and output destination. Case B’s combination is the attacker pattern; Case A is administration.",
+      "The query syntax — attackers use different LDAP filters than admins.",
+      "Neither can be judged; AdFind is too common to triage."
+     ],
+     "answer": 1,
+     "why": "Dual-use tools are judged by context, not by binary. The hash is identical in both cases — it is the same legitimate tool. What differs is who ran it (privileged admin vs standard user), from where (jump host vs workstation), how (interactive audit vs batch wrapper at 2 AM), and where the output went. Train the SOC on that five-signal checklist and AdFind stops being either ‘always fine’ or ‘always evil’.",
+     "hint": "The binary is identical in both cases. So what isn’t?",
+     "objectives": [
+      "triage",
+      "dual-use tools",
+      "contextual analysis"
+     ],
+     "mins": 6
+    },
+    {
+     "id": "adfind-after-recon",
+     "title": "After the recon",
+     "situation": "AdFind reconnaissance is confirmed on a domain-joined host: users, computers, and trusts were enumerated six hours ago. No lateral movement alerts yet. The helpdesk wants to ‘just delete the tool and move on.’",
+     "prompt": "What is the correct immediate response?",
+     "evidence": [],
+     "choices": [
+      "Delete adfind.exe from the host and close the ticket — tool removed, problem solved.",
+      "Isolate the host, preserve the Temp output files, hunt for lateral movement (PsExec, RDP, WMI), and scope which credentials and trusts the recon exposed — recon is the precursor, not the incident.",
+      "Force a password reset for every user in the domain immediately.",
+      "Wait for the ransomware to detonate so you have a confirmed incident."
+     ],
+     "answer": 1,
+     "why": "Recon is the precursor to lateral movement, not the whole incident: deleting the tool removes nothing the attacker needs (they can bring it back in seconds) and destroys your evidence. The correct sequence is isolate to stop the clock, preserve the recon outputs for timeline and scoping, then hunt the techniques that follow discovery — remote execution and lateral movement — because ransomware affiliates enumerate precisely so they can move next. Domain-wide password resets before scoping are disruptive theater; waiting for detonation is negligence.",
+     "hint": "Recon answers the attacker’s question ‘what can I reach next?’ — what do you do about the answer?",
+     "objectives": [
+      "incident response",
+      "containment",
+      "lateral movement"
+     ],
+     "mins": 7
+    }
+   ]
   }
  ],
  "lessons": [
@@ -169,6 +333,30 @@
     "Common trap: hardening servers while leaving 40 standing Domain Admins on workstations — tiering and LAPS address the credential-exposure path that attackers actually use."
    ],
    "try_it": "Work through this in the Labs tab."
+  },
+  {
+   "domain_id": "adfind-recon-hunting",
+   "title": "AdFind & AD Reconnaissance Hunting — Core concepts",
+   "concepts": [
+    "AdFind is a free command-line Active Directory query tool (joeware) — a legitimate admin utility that ransomware affiliates adopted as a recon staple. It is dual-use, not malware, and notably absent from LOLBAS: defenders must detect its abuse, not its existence.",
+    "The classic recon query set: (objectcategory=person) and (objectcategory=computer) for accounts and hosts, -sc trustdmp / domainlist / dcmodes / adinfo for trust and domain topology, computers_pwdnotreqd for weak-password footholds, and ‘Domain Admins’ for the crown jewels. Each query answers one attacker question.",
+    "Detection is behavioral: process creation for adfind.exe (or its renamed twin) plus distinctive command-line tokens, output redirection (>), and a burst threshold — e.g., 3+ distinct query types in two minutes — on hosts and accounts where it is unexpected. Public coverage exists: Sigma (win_susp_adfind, win_ad_find_discovery), Elastic, Splunk, Sentinel, and Microsoft’s Defender hunting query.",
+    "Map precisely to ATT&CK discovery: T1087.002 Domain Account, T1069.002 Domain Groups, T1018 Remote System Discovery, T1482 Domain Trust Discovery, T1016 System Network Configuration Discovery. Precise mapping exposes coverage gaps.",
+    "Recon outputs are forensic gold: .txt files staged in Temp or staging folders carry creation timestamps that often predate every alert — the earliest hard evidence of when recon began. Extending the timeline can change log-review scope and breach-notification deadlines.",
+    "Triage on context: account privilege, host role, parent process (batch/cmd wrappers), time of day, and output destination separate the domain admin’s audit from the affiliate’s recon batch."
+   ],
+   "example": {
+    "lang": "text",
+    "code": "adfind -f (objectcategory=computer) -sc computers_pwdnotreqd > C:\\Windows\\Temp\\c.txt",
+    "walkthrough": "One line, three tells: an objectcategory discovery filter, a canned query for accounts that don’t require passwords, and output redirected to Temp. A domain admin auditing stale machines runs this from a jump host with a ticket; a ransomware affiliate runs it from a workstation at 2 AM inside a batch file. Same syntax — the context is the detection."
+   },
+   "pitfalls": [
+    "Common trap: blocking the filename or hash. Attackers rename adfind.exe freely — match on command-line behavior, not the binary name.",
+    "Common trap: alerting on every AdFind execution. Domain admins use it legitimately; without user/host scoping and a burst threshold, the rule is pure noise.",
+    "Common trap: ignoring the output files. Deleting Temp ‘junk’ during cleanup can destroy the earliest timeline anchor you have.",
+    "Common trap: treating recon as the incident. Discovery is the precursor — the response must hunt what comes next: lateral movement."
+   ],
+   "try_it": "Open the Terminal tab and draft the Sigma detection for burst AdFind recon, then walk the timeline-reconstruction lab."
   }
  ],
  "labs": [
@@ -223,6 +411,63 @@
      "hint": "Run gpolock to verify GPO edit rights are restricted to Tier 0."
     }
    ]
+  },
+  {
+   "id": "adfind-recon-hunting-lab1",
+   "domain_id": "adfind-recon-hunting",
+   "title": "Hunt AdFind Recon in Process Telemetry",
+   "objective": "Write behavior-based hunt logic that flags ransomware-affiliate AdFind reconnaissance while excluding legitimate admin use.",
+   "steps": [
+    "Open the Terminal tab. You will draft hunt tokens; the terminal echoes each back into your rule draft.",
+    "Type exactly: objectcategory=person — the token for user enumeration.",
+    "Type exactly: trustdmp — the token for trust enumeration.",
+    "Type exactly: computers_pwdnotreqd — the token for weak-password-account discovery.",
+    "Type exactly: threshold 3 in 2 minutes — your burst condition across distinct tokens.",
+    "Review the assembled draft and write the exclusion in your notes: suppress only when the user is a documented admin AND the host is an admin jump host."
+   ],
+   "checks": [
+    {
+     "command_pattern": "objectcategory=person",
+     "expect_contains": "objectcategory=person",
+     "hint": "Type the user-enumeration token: objectcategory=person."
+    },
+    {
+     "command_pattern": "trustdmp",
+     "expect_contains": "trustdmp",
+     "hint": "Type the trust-enumeration token: trustdmp."
+    },
+    {
+     "command_pattern": "computers_pwdnotreqd",
+     "expect_contains": "computers_pwdnotreqd",
+     "hint": "Type the weak-password-account token: computers_pwdnotreqd."
+    }
+   ]
+  },
+  {
+   "id": "adfind-recon-hunting-lab2",
+   "domain_id": "adfind-recon-hunting",
+   "title": "Rebuild the Intrusion Timeline from Recon Artifacts",
+   "objective": "Use AdFind output-file timestamps to correct an intrusion timeline and state the notification impact.",
+   "steps": [
+    "Three AdFind output files sit in C:\\Windows\\Temp on the file server: ad1.txt (users), ad2.txt (computers), ad3.txt (trusts).",
+    "Type exactly: ad1.txt created 11 days before first alert — record the earliest artifact.",
+    "Type exactly: timeline extended 11 days — state the correction to the intrusion window.",
+    "List what must now be re-reviewed: 11 more days of firewall, VPN, and authentication logs.",
+    "Write the notification note: the breach-notification deadline clock may restart from the earlier date — flag it for legal.",
+    "Document the preservation rule: image the host before any cleanup touches Temp."
+   ],
+   "checks": [
+    {
+     "command_pattern": "ad1\\.txt created 11 days before first alert",
+     "expect_contains": "ad1.txt created 11 days before first alert",
+     "hint": "Record the earliest artifact: ad1.txt created 11 days before first alert."
+    },
+    {
+     "command_pattern": "timeline extended 11 days",
+     "expect_contains": "timeline extended 11 days",
+     "hint": "State the correction: timeline extended 11 days."
+    }
+   ]
   }
  ],
  "sections": [
@@ -233,10 +478,13 @@
    "lectures": [],
    "lab_ids": [
     "active-directory-defense-lab1",
-    "active-directory-defense-lab2"
+    "active-directory-defense-lab2",
+    "adfind-recon-hunting-lab1",
+    "adfind-recon-hunting-lab2"
    ],
    "drill_domain_ids": [
-    "active-directory-defense"
+    "active-directory-defense",
+    "adfind-recon-hunting"
    ]
   }
  ],
@@ -455,7 +703,8 @@
    "Tiered admin model and privileged-access design",
    "LAPS, Credential Guard, phishing-resistant MFA",
    "Auditing AD: finding misconfigurations before attackers do",
-   "Incident response for identity compromise"
+   "Incident response for identity compromise",
+   "AdFind reconnaissance: detection tokens, Sigma/ATT&CK mapping, and timeline forensics from recon artifacts"
   ]
  },
  "simulation": {

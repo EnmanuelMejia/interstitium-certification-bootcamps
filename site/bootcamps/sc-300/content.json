@@ -1,1 +1,2150 @@
-{"slug": "sc-300", "title": "Entra Identity Admin (SC-300)", "tagline": "Identity lifecycle, access, and governance", "vendor": {"name": "Microsoft", "certs": "SC-300", "docs": "https://learn.microsoft.com"}, "disclaimer": "Independent practice material by Interstitium Labs. Not affiliated with, endorsed by, or sponsored by Microsoft. Confers no certificate. All scenarios are original; no exam content is reproduced.", "domains": [{"id": "user-group-lifecycle", "name": "User & Group Lifecycle", "scenarios": [{"id": "sc300-joiner", "title": "The Monday-morning hire", "situation": "New hires wait 3 days for accounts, groups, and app access — all provisioned by manual tickets.", "prompt": "What automates the joiner process?", "evidence": [], "choices": ["Lifecycle workflows + dynamic groups + group-based licensing/app assignment — HR-driven provisioning from day one", "More help-desk staff", "A shared new-hire account", "Emailing IT faster"], "answer": 0, "why": "Entra lifecycle workflows trigger joiner/mover/leaver tasks (account creation, group adds, access packages, manager notifications) from HR signals. Combined with dynamic groups, day-one access becomes automatic instead of ticket-driven.", "hint": "What turns HR's 'new hire' signal into automatic provisioning?", "objectives": ["Lifecycle workflows", "Joiner-mover-leaver"], "mins": 6}, {"id": "sc300-leaver", "title": "The lingering ex-employee", "situation": "An audit finds 40 departed employees still have active accounts and app access months after leaving.", "prompt": "What prevents this going forward?", "evidence": [], "choices": ["Leaver lifecycle workflows — disable accounts, remove licenses/groups, revoke sessions on the HR termination signal", "Trusting managers to file tickets", "Annual manual reviews", "Disabling MFA"], "answer": 0, "why": "Leaver workflows automate deprovisioning at termination: disable sign-in, revoke refresh tokens (killing active sessions), remove group/license assignments. Lingering access is the #1 identity hygiene failure — automation is the fix, not reminders.", "hint": "What kills accounts, sessions, and access the moment HR records a departure?", "objectives": ["Leaver workflows", "Deprovisioning"], "mins": 6}, {"id": "sc300-scim", "title": "The SaaS sprawl", "situation": "HR creates users in Entra, but each of 30 SaaS apps needs separate manual account creation.", "prompt": "What automates SaaS provisioning?", "evidence": [], "choices": ["SCIM-based automatic provisioning — Entra provisions/deprovisions users in SCIM-enabled apps from group membership", "CSV uploads per app", "Shared credentials per app", "One password for all apps"], "answer": 0, "why": "Entra's provisioning service speaks SCIM to supported apps: assign a group to the app, and users are created/updated/deprovisioned automatically. Group membership becomes the single control point for SaaS access.", "hint": "Which protocol lets Entra push user lifecycle into SaaS apps?", "objectives": ["SCIM provisioning", "SaaS lifecycle"], "mins": 6}, {"id": "sc300-access-package", "title": "The contractor request", "situation": "Contractors email IT for access to five different resources; approvals wander between managers for weeks.", "prompt": "What packages this into a self-service flow?", "evidence": [], "choices": ["Entitlement management access packages — bundled resources with policy, approval workflow, and automatic expiry", "More email threads", "A shared contractor account", "Permanent access for all"], "answer": 0, "why": "Access packages bundle the resources a role needs (groups, apps, SharePoint) with request policies: who can request, who approves, and automatic expiration. Self-service requesting with governed approval replaces email chaos.", "hint": "What bundles resources + approvals + expiry into one requestable package?", "objectives": ["Access packages", "Entitlement management"], "mins": 7}, {"id": "sc300-dynamic-rule", "title": "The attribute typo", "situation": "A dynamic group rule user.department -eq 'Sales ' (trailing space) silently excludes half the sales team.", "prompt": "What is the lesson for dynamic group design?", "evidence": [], "choices": ["Validate rules and monitor membership — attribute hygiene and rule testing prevent silent exclusion; use 'what-if'/preview", "Dynamic groups always work perfectly", "Manual groups are better", "Deleting the group"], "answer": 0, "why": "Dynamic membership is only as good as attribute data and rule syntax — silent mismatches (trailing spaces, case, null attributes) exclude people without errors. Preview membership, monitor counts, and keep HR attributes clean.", "hint": "The rule ran with no error but excluded people. What practice catches this?", "objectives": ["Dynamic groups", "Rule validation"], "mins": 6}, {"id": "sc300-au", "title": "The delegated help desk", "situation": "The help desk needs to reset passwords for the Chicago office only — not for executives or other sites.", "prompt": "What scopes their admin power?", "evidence": [], "choices": ["Administrative units — partition users/groups so scoped admin roles apply to one AU only", "Global Administrator for the help desk", "No roles at all", "A separate tenant per office"], "answer": 0, "why": "Administrative units scope directory roles to a subset of users/groups/devices — the Chicago help desk gets User Administrator over the Chicago AU only. Without AUs, directory roles are tenant-wide.", "hint": "What partitions the directory so admin roles apply to one office only?", "objectives": ["Administrative units", "Scoped administration"], "mins": 6}]}, {"id": "authentication", "name": "Authentication", "scenarios": [{"id": "sc300-phs-pta", "title": "The auth method choice", "situation": "A company with Entra Connect must choose: password hash sync, pass-through, or federation for sign-in.", "prompt": "What is the key trade-off?", "evidence": [], "choices": ["PHS: cloud auth, leaked-credential detection, simplest; PTA: on-prem validation, needs high-availability agents; Federation: most control, most complexity", "They are identical", "Federation is always required", "PHS sends plaintext passwords"], "answer": 0, "why": "PHS syncs password hashes (with leaked-credential detection) and authenticates in the cloud — simplest and most resilient. PTA validates against on-premises AD via agents (needs agent HA). Federation (AD FS) offers deepest control at the highest complexity. Most orgs should prefer PHS + seamless SSO.", "hint": "Cloud-validated, on-prem-validated, or federated — what distinguishes them?", "objectives": ["Hybrid auth", "PHS vs PTA vs federation"], "mins": 7}, {"id": "sc300-sso", "title": "The double login", "situation": "On the corporate network, users sign into Entra apps but still get prompted for credentials despite being logged into Windows.", "prompt": "What provides silent sign-in on-domain?", "evidence": [], "choices": ["Seamless SSO — Kerberos-based silent authentication for domain-joined machines on the corporate network", "Disabling passwords", "A VPN", "Faster typing"], "answer": 0, "why": "Seamless SSO lets domain-joined machines on the corporate network sign into Entra silently via Kerberos — no password prompt. It's the 'log into Windows, access cloud apps' experience, complementary to PHS/PTA.", "hint": "Domain-joined on the LAN, no password prompt — which feature?", "objectives": ["Seamless SSO", "Silent auth"], "mins": 5}, {"id": "sc300-mfa-methods", "title": "The SIM-swap victim", "situation": "An executive's phone number was SIM-swapped and the attacker intercepted SMS MFA codes.", "prompt": "What authentication hardening prevents this class of attack?", "evidence": [], "choices": ["Phishing-resistant MFA — FIDO2 security keys or Windows Hello for Business / certificate-based auth instead of SMS", "Longer SMS codes", "SMS to two phones", "Security questions"], "answer": 0, "why": "SMS is the weakest MFA (SIM swap, interception); authenticator push is better; FIDO2/WebAuthn and WHfB are phishing-resistant (bound to origin, no shared secret to intercept). High-value targets need the strong end of the spectrum.", "hint": "Which MFA methods can't be intercepted via SIM swap?", "objectives": ["MFA strength", "Phishing resistance"], "mins": 7}, {"id": "sc300-temp-pass", "title": "The first-day login", "situation": "New hires need initial credentials, but emailed passwords keep getting phished or lost.", "prompt": "What is the secure onboarding credential?", "evidence": [], "choices": ["Temporary Access Pass — time-limited, single-use passcode for first sign-in and MFA registration", "The same default password for everyone", "No credentials; accounts active immediately", "A sticky note"], "answer": 0, "why": "Temporary Access Passes give new hires a short-lived passcode to sign in and register strong MFA — no emailed permanent passwords to phish. Scoped lifetime (hours/days) and one-time use by default.", "hint": "What time-limited credential bootstraps a new hire's strong auth?", "objectives": ["Temporary Access Pass", "Onboarding auth"], "mins": 6}, {"id": "sc300-capolicy-auth", "title": "The legacy protocol", "situation": "Sign-in logs show attackers using IMAP/SMTP basic auth to password-spray mailboxes, bypassing MFA.", "prompt": "What blocks legacy authentication?", "evidence": [["sign-in log", "clientApp: IMAP4 | status: Success | MFA: not applied | 400 attempts from 1 IP"]], "choices": ["A Conditional Access policy blocking legacy authentication protocols — basic auth can't do MFA", "Longer passwords", "Disabling the mailboxes", "An email to attackers"], "answer": 0, "why": "Legacy protocols (IMAP, POP, SMTP basic auth) can't enforce MFA — they're the classic MFA-bypass path. The standard control is a CA policy blocking legacy auth (Microsoft now disables basic auth broadly), forcing modern auth everywhere.", "hint": "Basic auth bypasses MFA. What policy kills the bypass?", "objectives": ["Legacy auth", "CA blocking"], "mins": 6}, {"id": "sc300-passwordless", "title": "The passwordless push", "situation": "The CISO wants to eliminate passwords for office staff entirely.", "prompt": "What are the enterprise passwordless options?", "evidence": [], "choices": ["Windows Hello for Business, FIDO2 security keys, or Microsoft Authenticator phone sign-in", "Longer passwords", "Password expiry every 30 days", "Sticky notes with complex passwords"], "answer": 0, "why": "Entra supports true passwordless: WHfB (device-bound biometrics/PIN), FIDO2 keys (phishing-resistant roaming), and Authenticator phone sign-in. Each removes the phishable shared secret — the password — from the flow.", "hint": "Which three methods let users sign in with no password at all?", "objectives": ["Passwordless", "WHfB/FIDO2/Authenticator"], "mins": 6}]}, {"id": "conditional-access", "name": "Conditional Access", "scenarios": [{"id": "sc300-ca-design2", "title": "The CA rollout", "situation": "An admin creates a 'require MFA for all users' policy and enables it directly — then gets locked out along with the CEO.", "prompt": "What rollout discipline was skipped?", "evidence": [], "choices": ["Report-only mode + staged rollout + emergency access (break-glass) accounts excluded from CA", "Policies don't need testing", "Break-glass accounts should be deleted", "MFA for everyone is wrong"], "answer": 0, "why": "CA changes go: report-only (measure impact without enforcing) → pilot → enforce, always excluding emergency-access break-glass accounts. Enabling untested tenant-wide policies is how admins lock themselves out.", "hint": "What mode measures impact without enforcing, and which accounts must always be excluded?", "objectives": ["CA deployment", "Report-only and break-glass"], "mins": 7}, {"id": "sc300-ca-signals", "title": "The compliant device", "situation": "The policy should require MFA only when the device is unmanaged or the location is unfamiliar — managed office devices should sign in smoothly.", "prompt": "Which CA signals enable this?", "evidence": [], "choices": ["Device compliance (Intune) + network location (named locations) as conditions with appropriate grants", "User risk only", "The time of day", "The user's manager"], "answer": 0, "why": "CA conditions combine signals — device state (hybrid-joined/compliant via Intune), named locations, client apps, risk — and grants (require MFA, require compliant device, block) apply when conditions match. Precision beats blanket policies.", "hint": "Which two signals distinguish 'managed office device' from everything else?", "objectives": ["CA signals", "Conditions and grants"], "mins": 7}, {"id": "sc300-ca-gaps", "title": "The excluded guest", "situation": "A CA policy targets 'All users' but guests keep bypassing MFA requirements.", "prompt": "What is the likely misconfiguration?", "evidence": [], "choices": ["Guest/external user exclusions or 'all guest users' not included in scope — verify the Users assignment includes guests", "Guests are exempt from CA by design", "MFA doesn't work for guests", "Policies don't apply to B2B"], "answer": 0, "why": "CA applies to guests when they're in scope — but policies often exclude them accidentally (or target only 'members'). Cross-tenant access settings plus CA for external users need explicit design; 'All users' includes guests unless excluded.", "hint": "Do CA policies cover guests, and where would they be excluded?", "objectives": ["CA scope", "Guest coverage"], "mins": 6}, {"id": "sc300-named-loc", "title": "The office IP change", "situation": "The company changes ISPs; the office's public IP changes and suddenly everyone is prompted for MFA as 'unfamiliar location'.", "prompt": "What must be maintained?", "evidence": [], "choices": ["Named locations — keep the trusted IP ranges current; stale definitions cause false unfamiliar-location signals", "Nothing; CA adapts automatically", "Deleting the location condition", "Disabling MFA"], "answer": 0, "why": "Named locations encode your trusted networks; when egress IPs change (new ISP, new VPN concentrator), the definitions go stale and location-based policies misfire. IP hygiene is CA hygiene.", "hint": "Egress IPs changed. Which CA definition went stale?", "objectives": ["Named locations", "Location hygiene"], "mins": 5}, {"id": "sc300-ca-per-app", "title": "The sensitive app", "situation": "The finance app needs phishing-resistant MFA always, while the intranet needs only single-factor on managed devices.", "prompt": "How is this expressed?", "evidence": [], "choices": ["Per-app (target resources) CA policies — different grants for different cloud apps", "One policy for everything", "No policies for the intranet", "Blocking the finance app"], "answer": 0, "why": "CA's 'target resources' selector lets policies apply per app: strict grants (require authentication strength = phishing-resistant MFA) for finance, lighter for the intranet. Granular policy beats one-size-fits-all.", "hint": "How do different apps get different auth requirements?", "objectives": ["CA targeting", "Per-app policies"], "mins": 6}, {"id": "sc300-auth-strength", "title": "The grant precision", "situation": "The CISO wants 'MFA' to mean specifically phishing-resistant methods for admins, not just any MFA.", "prompt": "What CA grant enforces this?", "evidence": [], "choices": ["Authentication strengths — require 'phishing-resistant MFA' strength instead of generic 'require MFA'", "A longer password policy", "An email reminder", "Blocking admins"], "answer": 0, "why": "Authentication strengths let CA demand a specific MFA caliber (e.g., phishing-resistant MFA: FIDO2/WHfB/certificate) rather than any MFA. Generic 'require MFA' still permits SMS — precision matters for privileged users.", "hint": "How do you require FIDO2-grade MFA specifically, not just any MFA?", "objectives": ["Authentication strengths", "Grant precision"], "mins": 7}]}, {"id": "pim-access-reviews", "name": "PIM & Access Reviews", "scenarios": [{"id": "sc300-pim-activate", "title": "The midnight change", "situation": "An on-call engineer needs Global Admin for an outage but holds only an eligible assignment.", "prompt": "What is the activation flow?", "evidence": [], "choices": ["PIM activation — MFA, justification, ticket number, time-bound (e.g., 4 hours), then automatic deactivation", "Email the CEO", "Permanent assignment", "Shared admin password"], "answer": 0, "why": "Eligible assignments activate just-in-time: the engineer requests, completes MFA, gives justification, gets the role for a bounded window, and it expires automatically. Every activation is logged for audit.", "hint": "Eligible but not active — what turns it on for the outage window?", "objectives": ["PIM activation", "Just-in-time elevation"], "mins": 6}, {"id": "sc300-pim-approval", "title": "The sensitive role", "situation": "Activations of Privileged Authentication Administrator should require a second person's approval.", "prompt": "What PIM control adds this?", "evidence": [], "choices": ["Approval workflow on the role's PIM settings — designated approvers must approve before activation", "An email notification only", "No control possible", "Deleting the role"], "answer": 0, "why": "PIM role settings support approval workflows: activation requests route to approvers with justification. The most sensitive roles get approvers; routine ones may allow self-approval with MFA — tiered by risk.", "hint": "Which PIM setting puts a human gate before activation?", "objectives": ["PIM approvals", "Role settings"], "mins": 6}, {"id": "sc300-access-review", "title": "The stale access", "situation": "Guest accounts from a 2022 project still have Teams and SharePoint access; nobody remembers approving them.", "prompt": "What recurring control catches this?", "evidence": [], "choices": ["Access reviews — periodic reviewer attestation of guests' continued need, auto-removing denied/ignored access", "A one-time cleanup", "Trusting project memory", "More guests"], "answer": 0, "why": "Access reviews ask designated reviewers (managers, group owners) to certify continued access; denied or unreviewed access is removed automatically. They're the recurring hygiene for guests, access packages, and role assignments.", "hint": "What periodically asks 'does this person still need access?'", "objectives": ["Access reviews", "Recertification"], "mins": 6}, {"id": "sc300-pim-alert", "title": "The rogue assignment", "situation": "Someone grants a user permanent Global Admin outside PIM; nobody notices for weeks.", "prompt": "What detects privileged role drift?", "evidence": [], "choices": ["PIM alerts + access reviews on role assignments — alert on permanent assignments and out-of-policy grants", "Manual portal checks yearly", "Trust", "Deleting PIM"], "answer": 0, "why": "PIM's security alerts flag risky assignments (permanent privileged roles, assignments outside PIM); pairing with recurring access reviews on the roles themselves catches drift. Permanent privileged assignment is the finding, not the norm.", "hint": "What notices a permanent Global Admin grant that bypassed PIM?", "objectives": ["PIM alerts", "Role hygiene"], "mins": 7}, {"id": "sc300-entitlement-expire", "title": "The never-ending contractor", "situation": "Contractor access packages were approved 'for the project' but never expire; contractors from 2023 still have access.", "prompt": "What enforces an end date?", "evidence": [], "choices": ["Access package assignment policies with expiration + recurring access reviews — time-bound access by design", "Permanent assignments", "A calendar reminder", "Hope"], "answer": 0, "why": "Entitlement management bakes in lifetimes: assignment policies set durations, and access reviews re-certify. 'For the project' must translate to a date — otherwise every temporary grant becomes permanent.", "hint": "How do you make 'temporary access' actually temporary?", "objectives": ["Access lifecycle", "Expiration policies"], "mins": 6}, {"id": "sc300-jit-vm", "title": "The standing VM admin", "situation": "Admins hold permanent local admin on 200 Azure VMs.", "prompt": "What reduces this standing privilege?", "evidence": [], "choices": ["Just-in-time VM access (Defender for Cloud) + PIM for Azure roles — time-bound, approved, logged elevation instead of permanent rights", "More local admins", "Shared local passwords", "Disabling RDP"], "answer": 0, "why": "JIT VM access opens management ports only for approved, time-bound windows with MFA; combined with PIM for the Azure roles, standing admin evaporates. Permanent local admin on fleets is the legacy pattern.", "hint": "What replaces always-on admin ports with approved time windows?", "objectives": ["JIT access", "Standing privilege"], "mins": 6}]}, {"id": "app-integration", "name": "App Integration", "scenarios": [{"id": "sc300-sso-saml", "title": "The legacy app", "situation": "A 15-year-old internal app supports SAML but not modern OAuth2/OIDC.", "prompt": "How does Entra single sign-on work for it?", "evidence": [], "choices": ["Entra SAML SSO from the app gallery (or custom SAML app) — Entra acts as the IdP via SAML assertions", "It can't integrate", "Shared passwords", "A VPN"], "answer": 0, "why": "Entra supports SAML 2.0 apps: it becomes the identity provider, issuing SAML assertions the app trusts. The gallery has thousands of pre-integrated apps; custom SAML covers the rest. Legacy protocol support doesn't mean legacy passwords.", "hint": "The app speaks SAML only. How does Entra SSO it?", "objectives": ["SAML SSO", "Legacy app integration"], "mins": 6}, {"id": "sc300-oidc", "title": "The modern app", "situation": "A new internal SPA needs sign-in with tokens for API calls.", "prompt": "Which protocol and library fit?", "evidence": [], "choices": ["OpenID Connect with MSAL — standardized auth code flow with PKCE, token acquisition and caching handled", "SAML for the SPA", "Basic auth headers", "Cookies with passwords"], "answer": 0, "why": "OIDC (built on OAuth2) is the modern app protocol; MSAL implements it correctly (auth code + PKCE, token cache, silent renewal). SPAs must never use implicit flow or handle passwords — the library enforces the safe patterns.", "hint": "Modern SPA needing tokens — which protocol and library?", "objectives": ["OIDC and MSAL", "Modern auth"], "mins": 6}, {"id": "sc300-consent", "title": "The overreaching app", "situation": "A simple time-tracking app requests 'Read all mail' permissions; users are consenting blindly.", "prompt": "What admin controls prevent excessive consent?", "evidence": [], "choices": ["Consent policies + admin consent workflow — restrict which permissions users can consent to; risky permissions need admin approval", "Letting users consent to anything", "Deleting the app", "Ignoring it"], "answer": 0, "why": "Admin consent workflows and consent policies gate which app permissions users can grant themselves; high-privilege permissions (like Mail.Read) require admin approval. Blind consent is how overreaching apps get enterprise data.", "hint": "Who approves an app asking for 'read all mail'?", "objectives": ["Consent framework", "Admin consent"], "mins": 7}, {"id": "sc300-app-proxy", "title": "The on-prem app", "situation": "An on-premises intranet app (IIS, Windows auth) must be reachable by remote users without a VPN, with Entra pre-authentication.", "prompt": "What publishes it securely?", "evidence": [], "choices": ["Entra Application Proxy — cloud pre-auth + connector-driven private access, no inbound firewall holes", "A public IP on the IIS server", "VPN for everyone", "Exposing Windows auth to the internet"], "answer": 0, "why": "Application Proxy's lightweight connectors make outbound connections; Entra pre-authenticates users in the cloud, then the connector delivers traffic to the internal app. No DMZ, no inbound ports, modern auth for legacy apps.", "hint": "How do remote users reach an on-prem app with no VPN and no inbound ports?", "objectives": ["Application Proxy", "Remote app publishing"], "mins": 7}, {"id": "sc300-managed-app", "title": "The app ownership", "situation": "Nobody knows who owns the 300 enterprise apps in the tenant; orphaned apps accumulate permissions.", "prompt": "What governance applies?", "evidence": [], "choices": ["App owners assigned + access reviews on app role assignments + periodic app inventory hygiene", "Deleting random apps", "Ignoring ownership", "More apps"], "answer": 0, "why": "Enterprise apps need owners (accountable humans), reviewed role assignments, and lifecycle hygiene — orphaned apps with broad permissions are a standing attack surface. Governance treats apps like identities: provisioned, reviewed, deprovisioned.", "hint": "Who is accountable for each enterprise app's permissions?", "objectives": ["App governance", "Ownership"], "mins": 5}, {"id": "sc300-token-protect", "title": "The stolen token", "situation": "An attacker steals a user's access token from a compromised device and replays it elsewhere.", "prompt": "What limits the blast radius of token theft?", "evidence": [], "choices": ["Token protection (token binding) + Conditional Access token protection policies + short lifetimes + continuous access evaluation", "Longer token lifetimes", "No protection possible", "Disabling the app"], "answer": 0, "why": "Defenses layer: token protection binds tokens to devices, CAE enables near-real-time revocation on risk signals, and short lifetimes shrink the replay window. Token theft is expected — the design must contain it.", "hint": "The token is stolen. What makes the stolen token useless?", "objectives": ["Token protection", "Replay defense"], "mins": 7}]}, {"id": "monitoring", "name": "Monitoring", "scenarios": [{"id": "sc300-signin-log", "title": "The spray pattern", "situation": "The SOC sees thousands of failed logins across hundreds of accounts from a few IPs.", "prompt": "Where is this investigated, and what is it?", "evidence": [["sign-in log sample", "result: 50126 (bad password) | 4,200 events | 380 users | 3 source IPs | 1 success ← investigate"]], "choices": ["Sign-in logs in Entra — password spray pattern; investigate via KQL, then block IPs / enforce MFA / check for successes", "The firewall logs only", "The application logs", "Nowhere — it's normal"], "answer": 0, "why": "Sign-in logs are the identity investigation surface: filter failures by IP, look for any success amid the spray (compromise!), then respond — block, force password reset, require MFA. A spray with one success is a breach, not noise.", "hint": "Thousands of failures, hundreds of accounts — what attack, and where do you hunt it?", "objectives": ["Sign-in logs", "Password spray"], "mins": 7}, {"id": "sc300-audit-log", "title": "The mystery role grant", "situation": "A user gained Global Admin last Tuesday; nobody admits to granting it.", "prompt": "Where is the authoritative record?", "evidence": [], "choices": ["Entra audit logs — every directory change (who, what, when) is logged; filter for role assignment events", "The user's word", "The activity log of Azure resources", "Guessing"], "answer": 0, "why": "Audit logs record all Entra control-plane changes with actor, target, and timestamp — the non-repudiable record for 'who granted what'. Sign-in logs show authentication; audit logs show administration.", "hint": "Who granted the role, and where is that fact recorded?", "objectives": ["Audit logs", "Change tracking"], "mins": 6}, {"id": "sc300-identity-protection", "title": "The leaked credential", "situation": "An employee reused their work password on a breached gaming forum.", "prompt": "What detects and remediates this?", "evidence": [], "choices": ["Identity Protection leaked-credentials detection — flags the user risk, forces password reset via risk policies", "Nothing; it's a personal problem", "Annual training", "Hope"], "answer": 0, "why": "Identity Protection ingests breach corpuses and matches them to your users (via PHS hash comparison) — user-risk policies then force password change. Password reuse is the threat; leaked-credential detection is the control.", "hint": "Work password found in a breach dump — what detects it?", "objectives": ["Identity Protection", "Leaked credentials"], "mins": 6}, {"id": "sc300-kql-identity", "title": "The dormant admin", "situation": "The CISO asks which privileged accounts haven't signed in for 90 days.", "prompt": "Which data answers this?", "evidence": [], "choices": ["Sign-in logs + role assignments joined in KQL (or access reviews) — last sign-in per privileged user", "Guessing", "The org chart", "Password age"], "answer": 0, "why": "Joining role assignments to sign-in activity reveals dormant privilege — prime targets for attackers and prime candidates for removal. Identity hygiene is measured, not assumed.", "hint": "How do you find privileged accounts nobody uses?", "objectives": ["KQL identity", "Dormant privilege"], "mins": 6}, {"id": "sc300-workbook", "title": "The identity dashboard", "situation": "Leadership wants a weekly view: MFA coverage, risky users, dormant admins, guest counts.", "prompt": "What builds this from Entra data?", "evidence": [], "choices": ["Workbooks over Log Analytics — parameterized dashboards joining sign-in/audit data", "Screenshots", "A weekly meeting", "Spreadsheets"], "answer": 0, "why": "Workbooks query the streamed Entra logs (sign-in, audit, risk) into living dashboards — MFA registration gaps, risk trends, stale access — the identity posture view leadership actually needs.", "hint": "What turns Entra logs into a living posture dashboard?", "objectives": ["Workbooks", "Identity reporting"], "mins": 5}, {"id": "sc300-alert-flow", "title": "The risk spike", "situation": "The SOC wants a ticket opened automatically when Identity Protection marks a user high risk.", "prompt": "What connects the signal to the ticket?", "evidence": [], "choices": ["Risk-based CA policy (require password change) + alerting via Sentinel/Logic App on risk detections — detect, contain, and ticket automatically", "Manual log checks", "Email alerts only", "Nothing"], "answer": 0, "why": "The full loop: risk policy contains (force password change at high user risk), and risk detections stream to Sentinel/SOAR for ticketing and investigation. Detection without automated containment leaves the window open.", "hint": "High-risk user detected — what contains and tickets automatically?", "objectives": ["Risk response", "Automated remediation"], "mins": 7}]}], "lessons": [{"domain_id": "user-group-lifecycle", "title": "User & Group Lifecycle — Core concepts", "concepts": ["Lifecycle workflows: entra lifecycle workflows trigger joiner/mover/leaver tasks (account creation, group adds, access packages, manager notifications) from HR signals. Leaver workflows automate deprovisioning at termination: disable sign-in, revoke refresh tokens (killing active sessions), remove group/license assignments.", "SCIM provisioning: entra's provisioning service speaks SCIM to supported apps: assign a group to the app, and users are created/updated/deprovisioned automatically.", "SaaS lifecycle: group membership becomes the single control point for SaaS access."], "example": {"lang": "text", "code": "Worked example — lifecycle workflows\nSetup: Entra lifecycle workflows trigger joiner/mover/leaver tasks (account creation, group adds, access packages, manager notifications) from HR signals.\nReasoning: Dynamic membership is only as good as attribute data and rule syntax — silent mismatches (trailing spaces, case, null attributes) exclude people…\nTakeaway: Combined with dynamic groups, day-one access becomes automatic instead of ticket-driven.", "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."}, "pitfalls": ["Common trap: dynamic groups always work perfectly.", "Common trap: trusting managers to file tickets.", "Common trap: global Administrator for the help desk."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "authentication", "title": "Authentication — Core concepts", "concepts": ["Hybrid auth: legacy protocols (IMAP, POP, SMTP basic auth) can't enforce MFA — they're the classic MFA-bypass path.", "PHS vs PTA vs federation: most orgs should prefer PHS + seamless SSO.", "Seamless SSO lets domain-joined machines on the corporate network sign into Entra silently via Kerberos — no password prompt.", "Silent auth: the standard control is a CA policy blocking legacy auth (Microsoft now disables basic auth broadly), forcing modern auth everywhere.", "MFA strength: temporary Access Passes give new hires a short-lived passcode to sign in and register strong MFA — no emailed permanent passwords to phish. SMS is the weakest MFA (SIM swap, interception); authenticator push is better; FIDO2/WebAuthn and WHfB are phishing-resistant (bound to origin, no shared secret to intercept)."], "example": {"lang": "text", "code": "clientApp: IMAP4 | status: Success | MFA: not applied | 400 attempts from 1 IP", "walkthrough": "Legacy protocols (IMAP, POP, SMTP basic auth) can't enforce MFA — they're the classic MFA-bypass path. The standard control is a CA policy blocking legacy auth (Microsoft now disables basic auth broadly), forcing modern auth everywhere."}, "pitfalls": ["Common trap: PHS sends plaintext passwords.", "Common trap: no credentials; accounts active immediately.", "Common trap: password expiry every 30 days.", "Common trap: sticky notes with complex passwords."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "conditional-access", "title": "Conditional Access — Core concepts", "concepts": ["Report-only and break-glass: CA changes go: report-only (measure impact without enforcing) → pilot → enforce, always excluding emergency-access break-glass accounts.", "CA conditions combine signals — device state (hybrid-joined/compliant via Intune), named locations, client apps, risk — and grants (require MFA, require compliant device, block) apply when conditions match.", "Conditions and grants: cA's 'target resources' selector lets policies apply per app: strict grants (require authentication strength = phishing-resistant MFA) for finance, lighter for the intranet.", "CA applies to guests when they're in scope — but policies often exclude them accidentally (or target only 'members')."], "example": {"lang": "text", "code": "Worked example — ca deployment\nSetup: CA conditions combine signals — device state (hybrid-joined/compliant via Intune), named locations, client apps, risk — and grants (require MFA…\nReasoning: CA changes go: report-only (measure impact without enforcing) → pilot → enforce, always excluding emergency-access break-glass accounts.\nTakeaway: Named locations encode your trusted networks; when egress IPs change (new ISP, new VPN concentrator), the definitions go stale and location-based…", "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."}, "pitfalls": ["Common trap: MFA doesn't work for guests.", "Skipping the key question: what mode measures impact without enforcing, and which accounts must always be excluded.", "Skipping the key question: which two signals distinguish 'managed office device' from everything else."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "pim-access-reviews", "title": "PIM & Access Reviews — Core concepts", "concepts": ["PIM role settings support approval workflows: activation requests route to approvers with justification. PIM's security alerts flag risky assignments (permanent privileged roles, assignments outside PIM); pairing with recurring access reviews on the roles themselves catches drift.", "Just-in-time elevation: eligible assignments activate just-in-time: the engineer requests, completes MFA, gives justification, gets the role for a bounded window, and it expires automatically.", "PIM approvals: JIT VM access opens management ports only for approved, time-bound windows with MFA; combined with PIM for the Azure roles, standing admin evaporates.", "Role settings: they're the recurring hygiene for guests, access packages, and role assignments.", "Access reviews: entitlement management bakes in lifetimes: assignment policies set durations, and access reviews re-certify. Access reviews ask designated reviewers (managers, group owners) to certify continued access; denied or unreviewed access is removed automatically."], "example": {"lang": "text", "code": "Worked example — pim activation\nSetup: PIM role settings support approval workflows: activation requests route to approvers with justification.\nReasoning: PIM's security alerts flag risky assignments (permanent privileged roles, assignments outside PIM); pairing with recurring access reviews on the…\nTakeaway: JIT VM access opens management ports only for approved, time-bound windows with MFA; combined with PIM for the Azure roles, standing admin evaporates.", "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."}, "pitfalls": ["Common trap: manual portal checks yearly.", "Skipping the key question: eligible but not active — what turns it on for the outage window.", "Skipping the key question: which PIM setting puts a human gate before activation."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "app-integration", "title": "App Integration — Core concepts", "concepts": ["SAML SSO: entra supports SAML 2.0 apps: it becomes the identity provider, issuing SAML assertions the app trusts.", "Legacy app integration: OIDC (built on OAuth2) is the modern app protocol; MSAL implements it correctly (auth code + PKCE, token cache, silent renewal). Admin consent workflows and consent policies gate which app permissions users can grant themselves; high-privilege permissions (like Mail.Read) require admin approval.", "Modern auth: no DMZ, no inbound ports, modern auth for legacy apps.", "Consent framework: blind consent is how overreaching apps get enterprise data."], "example": {"lang": "text", "code": "Worked example — saml sso\nSetup: OIDC (built on OAuth2) is the modern app protocol; MSAL implements it correctly (auth code + PKCE, token cache, silent renewal).\nReasoning: Admin consent workflows and consent policies gate which app permissions users can grant themselves; high-privilege permissions (like Mail.Read)…\nTakeaway: No DMZ, no inbound ports, modern auth for legacy apps.", "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."}, "pitfalls": ["Common trap: letting users consent to anything.", "Common trap: exposing Windows auth to the internet."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "monitoring", "title": "Monitoring — Core concepts", "concepts": ["Sign-in logs are the identity investigation surface: filter failures by IP, look for any success amid the spray (compromise!), then respond — block, force password reset, require MFA. Sign-in logs show authentication; audit logs show administration.", "Password spray: identity Protection ingests breach corpuses and matches them to your users (via PHS hash comparison) — user-risk policies then force password change. The full loop: risk policy contains (force password change at high user risk), and risk detections stream to Sentinel/SOAR for ticketing and investigation.", "Audit logs record all Entra control-plane changes with actor, target, and timestamp — the non-repudiable record for 'who granted what'. Workbooks query the streamed Entra logs (sign-in, audit, risk) into living dashboards — MFA registration gaps, risk trends, stale access — the identity posture view leadership actually needs.", "Identity hygiene is measured, not assumed."], "example": {"lang": "text", "code": "result: 50126 (bad password) | 4,200 events | 380 users | 3 source IPs | 1 success ← investigate", "walkthrough": "Sign-in logs are the identity investigation surface: filter failures by IP, look for any success amid the spray (compromise!), then respond — block, force password reset, require MFA. A spray with one success is a breach, not noise."}, "pitfalls": ["Common trap: the activity log of Azure resources.", "Skipping the key question: thousands of failures, hundreds of accounts — what attack, and where do you hunt it.", "Skipping the key question: who granted the role, and where is that fact recorded."], "try_it": "Work through this in the Terminal tab →"}], "sections": [{"id": "foundations", "title": "Foundations", "kind": "foundation", "lectures": ["f-iam-concepts-0", "f-iam-concepts-1", "f-iam-concepts-2", "f-security-basics-0", "f-security-basics-1", "f-security-basics-2"], "lab_ids": [], "drill_domain_ids": []}, {"id": "core", "title": "Core", "kind": "core", "lectures": ["c-user-group-lifecycle", "c-authentication", "c-conditional-access"], "lab_ids": ["sc-300-lab-1", "sc-300-lab-2"], "drill_domain_ids": ["user-group-lifecycle", "authentication", "conditional-access"]}, {"id": "advanced", "title": "Advanced", "kind": "advanced", "lectures": ["c-pim-access-reviews", "c-app-integration", "c-monitoring"], "lab_ids": ["sc-300-lab-3", "sc-300-lab-4"], "drill_domain_ids": ["pim-access-reviews", "app-integration", "monitoring"]}, {"id": "exam-prep", "title": "Exam Prep", "kind": "exam-prep", "lectures": [], "lab_ids": [], "drill_domain_ids": ["user-group-lifecycle", "authentication", "conditional-access", "pim-access-reviews", "app-integration", "monitoring"]}], "behavioral": [{"prompt": "Tell me about a time you led an identity-related change that users resisted (MFA rollout, passwordless, access cleanup).", "framework": "STAR", "points": ["The resistance and its cause", "How you drove adoption", "Adoption metrics"], "pitfalls": ["Forcing without communication", "No adoption measurement"]}, {"prompt": "Describe a time you discovered excessive access or standing privilege and fixed it.", "framework": "STAR", "points": ["How you found it", "The remediation", "How you prevent recurrence"], "pitfalls": ["One-time cleanup only", "No preventive control"]}, {"prompt": "Tell me about a time you responded to an identity-based attack (phishing, spray, token theft).", "framework": "STAR", "points": ["The attack signals", "Your containment steps", "Hardening afterward"], "pitfalls": ["Treating it as an IT ticket", "No hardening follow-up"]}, {"prompt": "Describe a complex Conditional Access or identity architecture decision you made.", "framework": "STAR", "points": ["The requirements", "Options and trade-offs", "The design and rollout"], "pitfalls": ["Big-bang rollout", "No break-glass planning"]}, {"prompt": "Tell me about a time you automated identity lifecycle or governance work.", "framework": "STAR", "points": ["The manual process", "What you automated", "Errors eliminated or time saved"], "pitfalls": ["Automation with no validation", "No measurable benefit"]}, {"prompt": "Describe a time you had to balance security controls with user productivity.", "framework": "STAR", "points": ["The tension", "The compromise design", "How both sides fared"], "pitfalls": ["Security theater", "Blocking with no alternative"]}, {"prompt": "Tell me about a disagreement over an identity/security approach and how you resolved it.", "framework": "STAR", "points": ["Both positions", "Data that decided it", "The outcome"], "pitfalls": ["Deciding on authority", "No evidence"]}, {"prompt": "Why are you pursuing the Identity Administrator certification, and what identity responsibilities are you targeting?", "framework": "PAR", "points": ["Your motivation", "The identity scope you want", "What comes after"], "pitfalls": ["Generic answers", "No connection to real duties"]}], "chat": {"persona": "You are a meticulous identity-administrator interviewer running a mock SC-300 assessment. Demand lifecycle thinking: every access must have a beginning, an owner, and an end. Probe CA mechanics, PIM flows, and the difference between authentication methods with phishing in mind.", "topics": [{"id": "user-group-lifecycle", "name": "User & Group Lifecycle", "key_points": ["lifecycle workflows", "leaver deprovisioning", "SCIM provisioning", "access packages", "dynamic group hygiene", "administrative units"], "followups": ["What triggers this automatically?", "What happens when they leave?"]}, {"id": "authentication", "name": "Authentication", "key_points": ["PHS vs PTA vs federation", "seamless SSO", "MFA strength tiers", "Temporary Access Pass", "legacy auth blocking", "passwordless options"], "followups": ["Which method resists phishing?", "Where does validation happen?"]}, {"id": "conditional-access", "name": "Conditional Access", "key_points": ["report-only rollout", "signals and grants", "guest scoping", "named location hygiene", "per-app policies", "authentication strengths"], "followups": ["What breaks if you enable this now?", "Which signal distinguishes this case?"]}, {"id": "pim-access-reviews", "name": "PIM & Access Reviews", "key_points": ["eligible vs active", "activation flow", "approval workflows", "access reviews", "PIM alerts", "JIT elevation"], "followups": ["Who approves this activation?", "What catches drift?"]}, {"id": "app-integration", "name": "App Integration", "key_points": ["SAML vs OIDC", "MSAL patterns", "consent governance", "Application Proxy", "app ownership", "token protection"], "followups": ["Which protocol for this app?", "Who approved these permissions?"]}, {"id": "monitoring", "name": "Monitoring", "key_points": ["sign-in log hunting", "audit log change tracking", "Identity Protection", "dormant privilege", "workbooks", "risk-driven response"], "followups": ["Where is this recorded?", "What contains the risk automatically?"]}]}, "labs": [{"id": "sc-300-lab-1", "title": "Lifecycle workflows — Azure CLI drill", "objective": "Run a short sequence of Azure CLI commands that demonstrates lifecycle workflows, then verify each result against the expected output.", "steps": ["This lab reworks the User & Group Lifecycle practice scenario \"The Monday-morning hire\" into commands you run yourself — same concept, hands-on instead of multiple choice.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: az account show — the account document includes the subscription name", "Type exactly: az group list — each resource group entry carries a name", "Type exactly: az vm list — each VM entry carries a name", "In your own words, say what each command's output taught you about lifecycle workflows."], "checks": [{"command_pattern": "az account show", "expect_contains": "name", "hint": "In the Terminal tab, run `az account show`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."}, {"command_pattern": "az group list", "expect_contains": "name", "hint": "In the Terminal tab, run `az group list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."}, {"command_pattern": "az vm list", "expect_contains": "name", "hint": "In the Terminal tab, run `az vm list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."}], "success_message": "Lab complete — lifecycle workflows practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"id": "sc-300-lab-2", "title": "Hybrid auth — Azure CLI drill", "objective": "Use the Azure CLI to explore hybrid auth hands-on: type each command, read what comes back, and connect the output to the concept.", "steps": ["Inspired by the Authentication scenario \"The auth method choice\": take its core idea and prove it live in the terminal instead of answering on paper.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: az vm list — each VM entry carries a name", "Type exactly: az account show — the account document includes the subscription name", "Type exactly: az group list — each resource group entry carries a name", "In your own words, say what each command's output taught you about hybrid auth."], "checks": [{"command_pattern": "az vm list", "expect_contains": "name", "hint": "In the Terminal tab, run `az vm list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."}, {"command_pattern": "az account show", "expect_contains": "name", "hint": "In the Terminal tab, run `az account show`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."}, {"command_pattern": "az group list", "expect_contains": "name", "hint": "In the Terminal tab, run `az group list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."}], "success_message": "Lab complete — hybrid auth practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"id": "sc-300-lab-3", "title": "CA deployment — Azure CLI drill", "objective": "Prove you can apply CA deployment in the Azure CLI — follow the steps, watch the output, and confirm every check passes.", "steps": ["The Conditional Access scenario \"The CA rollout\" tests this concept as a question. This lab makes you demonstrate it with real commands.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: az group list — each resource group entry carries a name", "Type exactly: az vm list — each VM entry carries a name", "Type exactly: az account show — the account document includes the subscription name", "In your own words, say what each command's output taught you about CA deployment."], "checks": [{"command_pattern": "az group list", "expect_contains": "name", "hint": "In the Terminal tab, run `az group list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."}, {"command_pattern": "az vm list", "expect_contains": "name", "hint": "In the Terminal tab, run `az vm list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."}, {"command_pattern": "az account show", "expect_contains": "name", "hint": "In the Terminal tab, run `az account show`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."}], "success_message": "Lab complete — CA deployment practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"id": "sc-300-lab-4", "title": "PIM activation — Azure CLI drill", "objective": "Run a short sequence of Azure CLI commands that demonstrates PIM activation, then verify each result against the expected output.", "steps": ["This lab reworks the PIM & Access Reviews practice scenario \"The midnight change\" into commands you run yourself — same concept, hands-on instead of multiple choice.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: az account show — the account document includes the subscription name", "Type exactly: az group list — each resource group entry carries a name", "Type exactly: az vm list — each VM entry carries a name", "In your own words, say what each command's output taught you about PIM activation."], "checks": [{"command_pattern": "az account show", "expect_contains": "name", "hint": "In the Terminal tab, run `az account show`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."}, {"command_pattern": "az group list", "expect_contains": "name", "hint": "In the Terminal tab, run `az group list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."}, {"command_pattern": "az vm list", "expect_contains": "name", "hint": "In the Terminal tab, run `az vm list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."}], "success_message": "Lab complete — PIM activation practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"id": "sc300-lab-tenant", "title": "Tenant orientation", "objective": "Identity administration starts with the tenant. Verify the sign-in, the subscription, and the tenant id.", "difficulty": 1, "steps": ["Open the Terminal tab for this bootcamp.", "Type exactly: az account show — tenant id, subscription, signed-in user", "Type exactly: az login — confirm the session identity", "In your own words, say why identity admins verify tenant context before directory changes."], "checks": [{"command_pattern": "^az account show$", "expect_contains": "tenantId", "hint": "In the Terminal tab, run `az account show`. If the check fails, confirm you typed it exactly and that the output contains \"tenantId\"."}, {"command_pattern": "^az login$", "expect_contains": "candidate@interstitium", "hint": "In the Terminal tab, run `az login`. If the check fails, confirm you typed it exactly and that the output contains \"candidate@interstitium\"."}], "success_message": "Lab complete — tenant oriented."}, {"id": "sc300-lab-directory-scope", "title": "Directory scope — subscriptions and groups", "objective": "Scope your administration: list the subscriptions (directory tenants in this lab) and the resource groups.", "difficulty": 1, "steps": ["Open the Terminal tab for this bootcamp.", "Type exactly: az account list — every subscription in administrative scope", "Type exactly: az group list — the resource groups under management", "In your own words, say why admin scope should be as narrow as the task allows."], "checks": [{"command_pattern": "^az account list$", "expect_contains": "ILB-Playground", "hint": "In the Terminal tab, run `az account list`. If the check fails, confirm you typed it exactly and that the output contains \"ILB-Playground\"."}, {"command_pattern": "^az group list$", "expect_contains": "eastus", "hint": "In the Terminal tab, run `az group list`. If the check fails, confirm you typed it exactly and that the output contains \"eastus\"."}], "success_message": "Lab complete — administrative scope mapped."}, {"id": "sc300-lab-app-inventory", "title": "Application identity footprint", "objective": "Apps authenticate as identities too. Survey the compute and cluster footprint apps run on.", "difficulty": 2, "steps": ["Open the Terminal tab for this bootcamp.", "Type exactly: az aks list — the cluster hosting workload identities", "Type exactly: az vm list — the VMs that can carry managed identities", "In your own words, say why workload identities beat stored secrets for app authentication."], "checks": [{"command_pattern": "^az aks list$", "expect_contains": "ilb-aks", "hint": "In the Terminal tab, run `az aks list`. If the check fails, confirm you typed it exactly and that the output contains \"ilb-aks\"."}, {"command_pattern": "^az vm list$", "expect_contains": "PowerState", "hint": "In the Terminal tab, run `az vm list`. If the check fails, confirm you typed it exactly and that the output contains \"PowerState\"."}], "success_message": "Lab complete — application identity footprint surveyed."}, {"id": "sc300-lab-breakglass", "title": "Break-glass readiness", "objective": "Emergency access accounts need a dedicated, monitored home. Create the break-glass resource group and verify it.", "difficulty": 3, "steps": ["Open the Terminal tab for this bootcamp.", "Type exactly: az group create --name ilb-breakglass --location eastus — the emergency-access home", "Type exactly: az group list — confirm ilb-breakglass appears", "In your own words, say why break-glass accounts are excluded from Conditional Access but heavily monitored."], "checks": [{"command_pattern": "^az group create --name ilb-breakglass --location eastus$", "expect_contains": "ilb-breakglass", "hint": "In the Terminal tab, run `az group create --name ilb-breakglass --location eastus`. If the check fails, confirm you typed it exactly and that the output contains \"ilb-breakglass\"."}, {"command_pattern": "^az group list$", "expect_contains": "ilb-breakglass", "hint": "In the Terminal tab, run `az group list`. If the check fails, confirm you typed it exactly and that the output contains \"ilb-breakglass\"."}], "success_message": "Lab complete — break-glass home established."}], "foundations": [{"track": "iam-concepts", "why_needed": "Entra ID is identity and access management as a product. Learn users, groups, roles, and policies before the lifecycle topics."}, {"track": "security-basics", "why_needed": "Conditional Access and identity protection are risk decisions. The threat and risk vocabulary comes first."}], "math": [], "simulations": [{"id": "sc300-sim-ca-decision", "title": "Write the Conditional Access policy", "kind": "branching", "domain_id": "conditional-access", "difficulty": 2, "brief": "The CISO wants: admins always do MFA, legacy auth blocked everywhere, break-glass excluded. Build the policy logic.", "steps": [{"id": "s1", "text": "First: which users does the admin-MFA policy target?", "choices": [{"label": "All users — simplest", "next": "s2a", "points": 0, "feedback": "Blanket MFA on all users on day one creates helpdesk chaos. Start with the highest-risk population."}, {"label": "Directory roles (admins) — highest privilege first", "next": "s2", "points": 2, "feedback": "Correct — admins are the highest-value targets; require MFA there first."}]}, {"id": "s2a", "text": "The helpdesk is drowning in MFA lockouts from the rollout. Reconsider:", "choices": [{"label": "Target directory roles first, phase the rest", "next": "s2", "points": 1, "feedback": "Right — phased rollout by risk, not big-bang."}]}, {"id": "s2", "text": "The break-glass accounts: include them in the MFA policy?", "choices": [{"label": "Yes — no exceptions", "next": "END", "points": 0, "outcome": "bad", "feedback": "If MFA breaks, the break-glass accounts are your only way back in. Excluding them (with monitoring) is the standard."}, {"label": "No — exclude them, but alert on any use", "next": "END", "points": 2, "outcome": "good", "feedback": "Correct — break-glass stays excluded from CA but every use pages the SOC."}]}], "debrief": "You built the CA logic like an identity admin: admins first, phased rollout, break-glass excluded but monitored.", "points": 15}, {"id": "sc300-sim-ca-policy", "title": "The CA policy with a hole", "kind": "config-check", "domain_id": "conditional-access", "difficulty": 3, "brief": "This Conditional Access policy looks complete. Click the lines that leave a hole attackers drive through.", "steps": {"config": "CA policy: admin-baseline\n1. Users: all directory roles\n2. Cloud apps: all\n3. Conditions: none\n4. Grant: require MFA\n5. Session: none\n6. Enabled: report-only", "find": 2, "issues": [{"line": 3, "description": "No conditions means the policy cannot scope by risk, location, or device — it is all-or-nothing.", "fix": "Add conditions (e.g. risky sign-ins, non-compliant devices) so the policy adapts to context."}, {"line": 6, "description": "Report-only mode evaluates but never enforces — the policy protects nothing.", "fix": "After validating in report-only, switch the policy to On."}]}, "debrief": "You found the CA holes: no conditions and report-only forever. A policy that never enforces is documentation, not protection.", "points": 10}, {"id": "sc300-sim-lifecycle-order", "title": "Joiner-mover-leaver", "kind": "ordering", "domain_id": "user-group-lifecycle", "difficulty": 1, "brief": "Order the identity lifecycle so access follows the person — granted on arrival, adjusted on move, removed on exit.", "steps": {"context": "Identity lifecycle: joiner, mover, leaver.", "items": ["Revoke all access and disable the account", "Provision account and baseline access", "Adjust group memberships for the new role", "HR triggers the joiner event"], "correct_order": [3, 1, 2, 0]}, "debrief": "You ordered the lifecycle: trigger, provision, adjust on move, revoke on leave. Orphaned accounts are a joiner-mover-leaver failure.", "points": 10}, {"id": "sc300-sim-mfa-fail", "title": "The MFA outage", "kind": "troubleshoot", "domain_id": "authentication", "difficulty": 2, "brief": "Users report MFA push never arrives. The auth service is healthy. Work it before the helpdesk melts.", "steps": [{"symptom": "MFA push notifications never arrive; SMS codes work fine.", "evidence": [["az login", "Already signed in as candidate@interstitium (simulated — no real auth)."]], "options": ["Check the push notification service / app registration health — pushes ride a different path than SMS", "Reset every user's MFA registration immediately", "Disable MFA until the pushes recover", "Tell users to keep retrying — pushes are flaky"], "correct": 0, "explain": "Push and SMS are different delivery paths — one failing while the other works isolates the fault to the push path (notification hub / app). Mass resets or disabling MFA punish users for a platform issue."}], "debrief": "You isolated the fault by comparing paths: SMS works, push does not, so the push delivery path is the suspect. Compare, don't guess.", "points": 10}], "consoleSims": [{"id": "sc300-console-portal-ca-1", "title": "Create the admin CA policy", "console": "azure-portal", "domain_id": "conditional-access", "difficulty": 2, "brief": "Create the Conditional Access policy requiring MFA for directory roles, with break-glass excluded.", "tasks": [{"id": "t1", "instruction": "Create a Conditional Access policy named admin-mfa-required targeting directory roles.", "validate": {"action": "create", "params": {"type": "ca-policy", "name": "admin-mfa-required", "users": "directory-roles"}}, "hint": "Create the policy and scope it to directory roles."}, {"id": "t2", "instruction": "Set the grant control to require MFA and exclude the break-glass accounts.", "validate": {"action": "set-field", "params": {"field": "ca-policy.admin-mfa-required.grant", "value": "require-mfa"}}, "hint": "Set the grant to MFA and add the break-glass exclusion."}], "debrief": "You built the baseline CA policy: admins get MFA, break-glass stays excluded. The most common real-world CA policy, done right."}, {"id": "sc300-console-portal-pim-1", "title": "Activate the eligible role", "console": "azure-portal", "domain_id": "pim-access-reviews", "difficulty": 3, "brief": "You are eligible for the admin role via PIM. Activate it with justification and a bounded duration.", "tasks": [{"id": "t1", "instruction": "Activate the eligible admin role with justification 'incident INC-2042'.", "validate": {"action": "click", "params": {"target": "pim.activate"}}, "hint": "Open PIM and activate the eligible assignment with the incident justification."}, {"id": "t2", "instruction": "Set the activation duration to 4 hours (not the maximum).", "validate": {"action": "set-field", "params": {"field": "pim.activation.duration", "value": "4h"}}, "hint": "Bound the activation to 4 hours — just enough for the incident."}], "debrief": "You used PIM the way it is designed: just-in-time, justified, time-bounded. Standing admin access is the vulnerability PIM removes."}], "terminalMissions": [{"id": "sc300-mission-signin", "title": "Verify the admin sign-in", "domain_id": "authentication", "difficulty": 1, "brief": "Confirm the identity this admin session runs as.", "objectives": ["Sign in (verify the session)"], "checks": [{"command_pattern": "^az login$", "expect_contains": "candidate@interstitium", "hint": "In the Terminal tab, run `az login`. If the check fails, confirm you typed it exactly and that the output contains \"candidate@interstitium\"."}], "success_message": "Admin sign-in verified."}, {"id": "sc300-mission-tenants", "title": "List the directory scope", "domain_id": "user-group-lifecycle", "difficulty": 1, "brief": "List the subscriptions in the identity admin's scope.", "objectives": ["List all subscriptions"], "checks": [{"command_pattern": "^az account list$", "expect_contains": "ILB-Playground", "hint": "In the Terminal tab, run `az account list`. If the check fails, confirm you typed it exactly and that the output contains \"ILB-Playground\"."}], "success_message": "Directory scope listed."}, {"id": "sc300-mission-groups", "title": "List the managed groups", "domain_id": "user-group-lifecycle", "difficulty": 2, "brief": "List the resource groups under identity governance.", "objectives": ["List all resource groups"], "checks": [{"command_pattern": "^az group list$", "expect_contains": "eastus", "hint": "In the Terminal tab, run `az group list`. If the check fails, confirm you typed it exactly and that the output contains \"eastus\"."}], "success_message": "Managed groups listed."}, {"id": "sc300-mission-vms", "title": "Check managed identities", "domain_id": "app-integration", "difficulty": 2, "brief": "List the VMs that can carry managed identities for apps.", "objectives": ["List all virtual machines"], "checks": [{"command_pattern": "^az vm list$", "expect_contains": "PowerState", "hint": "In the Terminal tab, run `az vm list`. If the check fails, confirm you typed it exactly and that the output contains \"PowerState\"."}], "success_message": "Identity-capable hosts listed."}, {"id": "sc300-mission-nodes", "title": "Count the workload nodes", "domain_id": "app-integration", "difficulty": 2, "brief": "List the AKS clusters hosting workload identities and read node counts.", "objectives": ["List all AKS clusters"], "checks": [{"command_pattern": "^az aks list$", "expect_contains": "3", "hint": "In the Terminal tab, run `az aks list`. If the check fails, confirm you typed it exactly and that the output contains \"3\"."}], "success_message": "Workload nodes counted."}, {"id": "sc300-mission-network", "title": "Verify the identity network", "domain_id": "monitoring", "difficulty": 3, "brief": "List the VNets carrying identity traffic and read their prefixes.", "objectives": ["List all virtual networks"], "checks": [{"command_pattern": "^az network vnet list$", "expect_contains": "AddressPrefix", "hint": "In the Terminal tab, run `az network vnet list`. If the check fails, confirm you typed it exactly and that the output contains \"AddressPrefix\"."}], "success_message": "Identity network verified."}], "media": [{"id": "sc-300-user-group-lifecycle-diag", "kind": "diagram", "title": "Identity Lifecycle", "svg": "assets/diagrams/sc-300-user-group-lifecycle.svg", "lesson_ref": "c-user-group-lifecycle", "caption": "Joiner → mover → leaver, automated.", "alt": "Identity Lifecycle. Shows: Joiner, Mover, Access reviews, Leaver."}, {"id": "sc-300-authentication-diag", "kind": "diagram", "title": "Modern Authentication Flow", "svg": "assets/diagrams/sc-300-authentication.svg", "lesson_ref": "c-authentication", "caption": "Passwords plus a second factor — or none at all.", "alt": "Modern Authentication Flow. Shows: Factor 1, Challenge, Verify, Session."}, {"id": "sc-300-conditional-access-diag", "kind": "diagram", "title": "Conditional Access Policy", "svg": "assets/diagrams/sc-300-conditional-access.svg", "lesson_ref": "c-conditional-access", "caption": "If-then rules evaluated at every sign-in.", "alt": "Conditional Access Policy. Shows: Signals, Policy match, Grant controls, Decision."}, {"id": "sc-300-pim-access-reviews-diag", "kind": "diagram", "title": "PIM & Access Reviews", "svg": "assets/diagrams/sc-300-pim-access-reviews.svg", "lesson_ref": "c-pim-access-reviews", "caption": "Just-in-time privilege with oversight.", "alt": "PIM & Access Reviews. Shows: Eligible vs Active, Just-in-time, Approval, Access reviews."}, {"id": "sc-300-app-integration-diag", "kind": "diagram", "title": "SSO App Integration", "svg": "assets/diagrams/sc-300-app-integration.svg", "lesson_ref": "c-app-integration", "caption": "Wire SaaS apps into Entra ID once.", "alt": "SSO App Integration. Shows: Register, SSO mode, Attributes, Assign, Test."}, {"id": "sc-300-monitoring-diag", "kind": "diagram", "title": "Identity Monitoring", "svg": "assets/diagrams/sc-300-monitoring.svg", "lesson_ref": "c-monitoring", "caption": "Watch the front door continuously.", "alt": "Identity Monitoring. Shows: Sign-in logs, Audit logs, Identity Protection, Access reviews."}], "resources": {"cheatsheet": {"title": "Entra Identity Admin (SC-300) — Cheat Sheet", "sections": [{"heading": "User & Group Lifecycle", "items": ["Lifecycle workflows — entra lifecycle workflows trigger joiner/mover/leaver tasks (account creation, group adds, access packages, manager notifications) from HR signals. Leaver workflows automate deprovisioning at termination: disable sign-in, revoke refresh tokens (killing acti…", "SCIM provisioning — entra's provisioning service speaks SCIM to supported apps: assign a group to the app, and users are created/updated/deprovisioned automatically.", "SaaS lifecycle — group membership becomes the single control point for SaaS access.", "Common trap — dynamic groups always work perfectly.", "Common trap — trusting managers to file tickets.", "Common trap — global Administrator for the help desk.", "Read — Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."]}, {"heading": "Authentication", "items": ["Hybrid auth — legacy protocols (IMAP, POP, SMTP basic auth) can't enforce MFA — they're the classic MFA-bypass path.", "PHS vs PTA vs federation — most orgs should prefer PHS + seamless SSO.", "Seamless SSO — Seamless SSO lets domain-joined machines on the corporate network sign into Entra silently via Kerberos — no password prompt.", "Silent auth — the standard control is a CA policy blocking legacy auth (Microsoft now disables basic auth broadly), forcing modern auth everywhere.", "MFA strength — temporary Access Passes give new hires a short-lived passcode to sign in and register strong MFA — no emailed permanent passwords to phish. SMS is the weakest MFA (SIM swap, interception); authenticator push is better; FIDO2/WebAuthn and WHfB are phishing-r…", "Common trap — PHS sends plaintext passwords.", "Common trap — no credentials; accounts active immediately.", "Common trap — password expiry every 30 days.", "Common trap — sticky notes with complex passwords.", "Legacy protocols (IMAP, POP, SMTP basic auth) can't enforce MFA — they're the classic MFA-bypass path. The standard control is a CA policy blocking legacy auth (Microsoft now disables basic auth broadly), forcing modern auth everywhere."]}, {"heading": "Conditional Access", "items": ["Report-only and break-glass — CA changes go: report-only (measure impact without enforcing) → pilot → enforce, always excluding emergency-access break-glass accounts.", "CA conditions combine signals — device state (hybrid-joined/compliant via Intune), named locations, client apps, risk — and grants (require MFA, require compliant device, block) apply when conditions match.", "Conditions and grants — cA's 'target resources' selector lets policies apply per app: strict grants (require authentication strength = phishing-resistant MFA) for finance, lighter for the intranet.", "CA applies to guests when they're in scope — but policies often exclude them accidentally (or target only 'members').", "Common trap — MFA doesn't work for guests.", "Skipping the key question — what mode measures impact without enforcing, and which accounts must always be excluded.", "Skipping the key question — which two signals distinguish 'managed office device' from everything else."]}, {"heading": "PIM & Access Reviews", "items": ["PIM role settings support approval workflows — activation requests route to approvers with justification. PIM's security alerts flag risky assignments (permanent privileged roles, assignments outside PIM); pairing with recurring access reviews on the roles themselves catches drift.", "Just-in-time elevation — eligible assignments activate just-in-time: the engineer requests, completes MFA, gives justification, gets the role for a bounded window, and it expires automatically.", "PIM approvals — JIT VM access opens management ports only for approved, time-bound windows with MFA; combined with PIM for the Azure roles, standing admin evaporates.", "Role settings — they're the recurring hygiene for guests, access packages, and role assignments.", "Access reviews — entitlement management bakes in lifetimes: assignment policies set durations, and access reviews re-certify. Access reviews ask designated reviewers (managers, group owners) to certify continued access; denied or unreviewed access is removed automatically.", "Common trap — manual portal checks yearly.", "Skipping the key question — eligible but not active — what turns it on for the outage window.", "Skipping the key question — which PIM setting puts a human gate before activation."]}, {"heading": "App Integration", "items": ["SAML SSO — entra supports SAML 2.0 apps: it becomes the identity provider, issuing SAML assertions the app trusts.", "Legacy app integration — OIDC (built on OAuth2) is the modern app protocol; MSAL implements it correctly (auth code + PKCE, token cache, silent renewal). Admin consent workflows and consent policies gate which app permissions users can grant themselves; high-privilege permissions (…", "Modern auth — no DMZ, no inbound ports, modern auth for legacy apps.", "Consent framework — blind consent is how overreaching apps get enterprise data.", "Common trap — letting users consent to anything.", "Common trap — exposing Windows auth to the internet."]}, {"heading": "Monitoring", "items": ["Sign-in logs are the identity investigation surface — filter failures by IP, look for any success amid the spray (compromise!), then respond — block, force password reset, require MFA. Sign-in logs show authentication; audit logs show administration.", "Password spray — identity Protection ingests breach corpuses and matches them to your users (via PHS hash comparison) — user-risk policies then force password change. The full loop: risk policy contains (force password change at high user risk), and risk detections stream t…", "Audit logs record all Entra — control -plane changes with actor, target, and timestamp — the non-repudiable record for 'who granted what'. Workbooks query the streamed Entra logs (sign-in, audit, risk) into living dashboards — MFA registration gaps, risk trends, stale access — the ident…", "Identity hygiene — is measured, not assumed.", "Common trap — the activity log of Azure resources.", "Skipping the key question — thousands of failures, hundreds of accounts — what attack, and where do you hunt it.", "Skipping the key question — who granted the role, and where is that fact recorded.", "Sign-in logs are the identity investigation surface — filter failures by IP, look for any success amid the spray (compromise!), then respond — block, force password reset, require MFA. A spray with one success is a breach, not noise."]}]}, "glossary": [{"term": "MFA", "def": "Authentication strengths let CA demand a specific MFA caliber (e.g., phishing-resistant MFA: FIDO2/WHfB/certificate) rather than any MFA. Generic 'require MFA' still permits SMS — precision matters for privileged users."}, {"term": "PIM", "def": "PIM role settings support approval workflows: activation requests route to approvers with justification. PIM's security alerts flag risky assignments (permanent privileged roles, assignments outside PIM); pairing with recurring access re…"}, {"term": "CA", "def": "Silent auth: the standard control is a CA policy blocking legacy auth (Microsoft now disables basic auth broadly), forcing modern auth everywhere."}, {"term": "Entra", "def": "Entra supports true passwordless: WHfB (device-bound biometrics/PIN), FIDO2 keys (phishing-resistant roaming), and Authenticator phone sign-in. Each removes the phishable shared secret — the password — from the flow."}, {"term": "SSO", "def": "SAML SSO: entra supports SAML 2.0 apps: it becomes the identity provider, issuing SAML assertions the app trusts."}, {"term": "SMS", "def": "SMS is the weakest MFA (SIM swap, interception); authenticator push is better; FIDO2/WebAuthn and WHfB are phishing-resistant (bound to origin, no shared secret to intercept). High-value targets need the strong end of the spectrum."}, {"term": "SIM", "def": "SMS is the weakest MFA (SIM swap, interception); authenticator push is better; FIDO2/WebAuthn and WHfB are phishing-resistant (bound to origin, no shared secret to intercept). High-value targets need the strong end of the spectrum."}, {"term": "How", "def": "How do you require FIDO2-grade MFA specifically, not just any MFA?"}, {"term": "SAML", "def": "SAML SSO: entra supports SAML 2.0 apps: it becomes the identity provider, issuing SAML assertions the app trusts."}, {"term": "HR", "def": "What turns HR's 'new hire' signal into automatic provisioning?"}, {"term": "PTA", "def": "PHS vs PTA vs federation: most orgs should prefer PHS + seamless SSO."}, {"term": "OIDC", "def": "Legacy app integration: OIDC (built on OAuth2) is the modern app protocol; MSAL implements it correctly (auth code + PKCE, token cache, silent renewal). Admin consent workflows and consent policies gate which app permissions users can gr…"}, {"term": "PKCE", "def": "OIDC (built on OAuth2) is the modern app protocol; MSAL implements it correctly (auth code + PKCE, token cache, silent renewal). SPAs must never use implicit flow or handle passwords — the library enforces the safe patterns."}, {"term": "IMAP", "def": "Hybrid auth: legacy protocols (IMAP, POP, SMTP basic auth) can't enforce MFA — they're the classic MFA-bypass path."}, {"term": "Who", "def": "Who is accountable for each enterprise app's permissions?"}, {"term": "Legacy", "def": "Legacy app integration: OIDC (built on OAuth2) is the modern app protocol; MSAL implements it correctly (auth code + PKCE, token cache, silent renewal). Admin consent workflows and consent policies gate which app permissions users can gr…"}, {"term": "Access", "def": "Access reviews: entitlement management bakes in lifetimes: assignment policies set durations, and access reviews re-certify. Access reviews ask designated reviewers (managers, group owners) to certify continued access; denied or unreview…"}, {"term": "Sign-in", "def": "Sign-in logs are the identity investigation surface: filter failures by IP, look for any success amid the spray (compromise!), then respond — block, force password reset, require MFA. Sign-in logs show authentication; audit logs show adm…"}, {"term": "IP", "def": "Named locations encode your trusted networks; when egress IPs change (new ISP, new VPN concentrator), the definitions go stale and location-based policies misfire. IP hygiene is CA hygiene."}, {"term": "WHfB", "def": "MFA strength: temporary Access Passes give new hires a short-lived passcode to sign in and register strong MFA — no emailed permanent passwords to phish. SMS is the weakest MFA (SIM swap, interception); authenticator push is better; FIDO…"}, {"term": "DMZ", "def": "Modern auth: no DMZ, no inbound ports, modern auth for legacy apps."}, {"term": "Admin", "def": "Admin consent workflows and consent policies gate which app permissions users can grant themselves; high-privilege permissions (like Mail.Read) require admin approval. Blind consent is how overreaching apps get enterprise data."}, {"term": "OAuth2", "def": "Legacy app integration: OIDC (built on OAuth2) is the modern app protocol; MSAL implements it correctly (auth code + PKCE, token cache, silent renewal). Admin consent workflows and consent policies gate which app permissions users can gr…"}, {"term": "Identity", "def": "Identity hygiene is measured, not assumed."}, {"term": "CAE", "def": "Defenses layer: token protection binds tokens to devices, CAE enables near-real-time revocation on risk signals, and short lifetimes shrink the replay window. Token theft is expected — the design must contain it."}], "links": [{"label": "Microsoft — official site", "url": "https://learn.microsoft.com", "note": "Official vendor documentation and certification information"}, {"label": "Microsoft Learn — Azure", "url": "https://learn.microsoft.com/en-us/azure/", "note": "Official Azure documentation"}, {"label": "Microsoft certifications", "url": "https://learn.microsoft.com/en-us/certifications/", "note": "Official certification paths and exam pages"}, {"label": "Azure status and architecture", "url": "https://azure.microsoft.com/en-us/", "note": "Official Azure product pages"}, {"label": "NIST SP 800-53 Rev. 5", "url": "https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final", "note": "Official NIST security controls catalog"}, {"label": "NIST Cybersecurity Framework", "url": "https://www.nist.gov/cyberframework", "note": "Official NIST CSF"}, {"label": "OWASP Top Ten", "url": "https://owasp.org/www-project-top-ten/", "note": "OWASP's top web application risks"}, {"label": "MITRE ATT&CK", "url": "https://attack.mitre.org/", "note": "MITRE's adversary tactics knowledge base"}], "checklist": ["Get 7–8 hours of sleep the night before — fatigue destroys recall faster than any topic gap.", "Bring valid government-issued photo ID and arrive at the test center 30 minutes early.", "Eat a real meal beforehand; bring water and a light snack if the center allows them.", "Read every question twice before scanning the answer choices.", "Flag uncertain questions and move on — return with fresh eyes at the end.", "Eliminate the obviously wrong answers first, then compare the survivors.", "Budget your time: answer steadily and keep a 10–15 minute review buffer.", "Re-run your weakest-domain drill until mastery is at least 80%.", "For User & Group Lifecycle: restate the 'why' behind each scenario answer in your own words — if you can't explain it, you don't own it.", "Redo one Authentication lab from scratch without looking at the steps.", "Recite the key Conditional Access terms from the glossary aloud from memory."]}}
+{
+ "slug": "sc-300",
+ "title": "Entra Identity Admin (SC-300)",
+ "tagline": "Identity lifecycle, access, and governance",
+ "vendor": {
+  "name": "Microsoft",
+  "certs": "SC-300",
+  "docs": "https://learn.microsoft.com"
+ },
+ "disclaimer": "Independent practice material by Interstitium Labs. Not affiliated with, endorsed by, or sponsored by Microsoft. Confers no certificate. All scenarios are original; no exam content is reproduced.",
+ "domains": [
+  {
+   "id": "user-group-lifecycle",
+   "name": "User & Group Lifecycle",
+   "scenarios": [
+    {
+     "id": "sc300-joiner",
+     "title": "The Monday-morning hire",
+     "situation": "New hires wait 3 days for accounts, groups, and app access — all provisioned by manual tickets.",
+     "prompt": "What automates the joiner process?",
+     "evidence": [],
+     "choices": [
+      "Lifecycle workflows + dynamic groups + group-based licensing/app assignment — HR-driven provisioning from day one",
+      "More help-desk staff",
+      "A shared new-hire account",
+      "Emailing IT faster"
+     ],
+     "answer": 0,
+     "why": "Entra lifecycle workflows trigger joiner/mover/leaver tasks (account creation, group adds, access packages, manager notifications) from HR signals. Combined with dynamic groups, day-one access becomes automatic instead of ticket-driven.",
+     "hint": "What turns HR's 'new hire' signal into automatic provisioning?",
+     "objectives": [
+      "Lifecycle workflows",
+      "Joiner-mover-leaver"
+     ],
+     "mins": 6
+    },
+    {
+     "id": "sc300-leaver",
+     "title": "The lingering ex-employee",
+     "situation": "An audit finds 40 departed employees still have active accounts and app access months after leaving.",
+     "prompt": "What prevents this going forward?",
+     "evidence": [],
+     "choices": [
+      "Leaver lifecycle workflows — disable accounts, remove licenses/groups, revoke sessions on the HR termination signal",
+      "Trusting managers to file tickets",
+      "Annual manual reviews",
+      "Disabling MFA"
+     ],
+     "answer": 0,
+     "why": "Leaver workflows automate deprovisioning at termination: disable sign-in, revoke refresh tokens (killing active sessions), remove group/license assignments. Lingering access is the #1 identity hygiene failure — automation is the fix, not reminders.",
+     "hint": "What kills accounts, sessions, and access the moment HR records a departure?",
+     "objectives": [
+      "Leaver workflows",
+      "Deprovisioning"
+     ],
+     "mins": 6
+    },
+    {
+     "id": "sc300-scim",
+     "title": "The SaaS sprawl",
+     "situation": "HR creates users in Entra, but each of 30 SaaS apps needs separate manual account creation.",
+     "prompt": "What automates SaaS provisioning?",
+     "evidence": [],
+     "choices": [
+      "SCIM-based automatic provisioning — Entra provisions/deprovisions users in SCIM-enabled apps from group membership",
+      "CSV uploads per app",
+      "Shared credentials per app",
+      "One password for all apps"
+     ],
+     "answer": 0,
+     "why": "Entra's provisioning service speaks SCIM to supported apps: assign a group to the app, and users are created/updated/deprovisioned automatically. Group membership becomes the single control point for SaaS access.",
+     "hint": "Which protocol lets Entra push user lifecycle into SaaS apps?",
+     "objectives": [
+      "SCIM provisioning",
+      "SaaS lifecycle"
+     ],
+     "mins": 6
+    },
+    {
+     "id": "sc300-access-package",
+     "title": "The contractor request",
+     "situation": "Contractors email IT for access to five different resources; approvals wander between managers for weeks.",
+     "prompt": "What packages this into a self-service flow?",
+     "evidence": [],
+     "choices": [
+      "Entitlement management access packages — bundled resources with policy, approval workflow, and automatic expiry",
+      "More email threads",
+      "A shared contractor account",
+      "Permanent access for all"
+     ],
+     "answer": 0,
+     "why": "Access packages bundle the resources a role needs (groups, apps, SharePoint) with request policies: who can request, who approves, and automatic expiration. Self-service requesting with governed approval replaces email chaos.",
+     "hint": "What bundles resources + approvals + expiry into one requestable package?",
+     "objectives": [
+      "Access packages",
+      "Entitlement management"
+     ],
+     "mins": 7
+    },
+    {
+     "id": "sc300-dynamic-rule",
+     "title": "The attribute typo",
+     "situation": "A dynamic group rule user.department -eq 'Sales ' (trailing space) silently excludes half the sales team.",
+     "prompt": "What is the lesson for dynamic group design?",
+     "evidence": [],
+     "choices": [
+      "Validate rules and monitor membership — attribute hygiene and rule testing prevent silent exclusion; use 'what-if'/preview",
+      "Dynamic groups always work perfectly",
+      "Manual groups are better",
+      "Deleting the group"
+     ],
+     "answer": 0,
+     "why": "Dynamic membership is only as good as attribute data and rule syntax — silent mismatches (trailing spaces, case, null attributes) exclude people without errors. Preview membership, monitor counts, and keep HR attributes clean.",
+     "hint": "The rule ran with no error but excluded people. What practice catches this?",
+     "objectives": [
+      "Dynamic groups",
+      "Rule validation"
+     ],
+     "mins": 6
+    },
+    {
+     "id": "sc300-au",
+     "title": "The delegated help desk",
+     "situation": "The help desk needs to reset passwords for the Chicago office only — not for executives or other sites.",
+     "prompt": "What scopes their admin power?",
+     "evidence": [],
+     "choices": [
+      "Administrative units — partition users/groups so scoped admin roles apply to one AU only",
+      "Global Administrator for the help desk",
+      "No roles at all",
+      "A separate tenant per office"
+     ],
+     "answer": 0,
+     "why": "Administrative units scope directory roles to a subset of users/groups/devices — the Chicago help desk gets User Administrator over the Chicago AU only. Without AUs, directory roles are tenant-wide.",
+     "hint": "What partitions the directory so admin roles apply to one office only?",
+     "objectives": [
+      "Administrative units",
+      "Scoped administration"
+     ],
+     "mins": 6
+    }
+   ]
+  },
+  {
+   "id": "authentication",
+   "name": "Authentication",
+   "scenarios": [
+    {
+     "id": "sc300-phs-pta",
+     "title": "The auth method choice",
+     "situation": "A company with Entra Connect must choose: password hash sync, pass-through, or federation for sign-in.",
+     "prompt": "What is the key trade-off?",
+     "evidence": [],
+     "choices": [
+      "PHS: cloud auth, leaked-credential detection, simplest; PTA: on-prem validation, needs high-availability agents; Federation: most control, most complexity",
+      "They are identical",
+      "Federation is always required",
+      "PHS sends plaintext passwords"
+     ],
+     "answer": 0,
+     "why": "PHS syncs password hashes (with leaked-credential detection) and authenticates in the cloud — simplest and most resilient. PTA validates against on-premises AD via agents (needs agent HA). Federation (AD FS) offers deepest control at the highest complexity. Most orgs should prefer PHS + seamless SSO.",
+     "hint": "Cloud-validated, on-prem-validated, or federated — what distinguishes them?",
+     "objectives": [
+      "Hybrid auth",
+      "PHS vs PTA vs federation"
+     ],
+     "mins": 7
+    },
+    {
+     "id": "sc300-sso",
+     "title": "The double login",
+     "situation": "On the corporate network, users sign into Entra apps but still get prompted for credentials despite being logged into Windows.",
+     "prompt": "What provides silent sign-in on-domain?",
+     "evidence": [],
+     "choices": [
+      "Seamless SSO — Kerberos-based silent authentication for domain-joined machines on the corporate network",
+      "Disabling passwords",
+      "A VPN",
+      "Faster typing"
+     ],
+     "answer": 0,
+     "why": "Seamless SSO lets domain-joined machines on the corporate network sign into Entra silently via Kerberos — no password prompt. It's the 'log into Windows, access cloud apps' experience, complementary to PHS/PTA.",
+     "hint": "Domain-joined on the LAN, no password prompt — which feature?",
+     "objectives": [
+      "Seamless SSO",
+      "Silent auth"
+     ],
+     "mins": 5
+    },
+    {
+     "id": "sc300-mfa-methods",
+     "title": "The SIM-swap victim",
+     "situation": "An executive's phone number was SIM-swapped and the attacker intercepted SMS MFA codes.",
+     "prompt": "What authentication hardening prevents this class of attack?",
+     "evidence": [],
+     "choices": [
+      "Phishing-resistant MFA — FIDO2 security keys or Windows Hello for Business / certificate-based auth instead of SMS",
+      "Longer SMS codes",
+      "SMS to two phones",
+      "Security questions"
+     ],
+     "answer": 0,
+     "why": "SMS is the weakest MFA (SIM swap, interception); authenticator push is better; FIDO2/WebAuthn and WHfB are phishing-resistant (bound to origin, no shared secret to intercept). High-value targets need the strong end of the spectrum.",
+     "hint": "Which MFA methods can't be intercepted via SIM swap?",
+     "objectives": [
+      "MFA strength",
+      "Phishing resistance"
+     ],
+     "mins": 7
+    },
+    {
+     "id": "sc300-temp-pass",
+     "title": "The first-day login",
+     "situation": "New hires need initial credentials, but emailed passwords keep getting phished or lost.",
+     "prompt": "What is the secure onboarding credential?",
+     "evidence": [],
+     "choices": [
+      "Temporary Access Pass — time-limited, single-use passcode for first sign-in and MFA registration",
+      "The same default password for everyone",
+      "No credentials; accounts active immediately",
+      "A sticky note"
+     ],
+     "answer": 0,
+     "why": "Temporary Access Passes give new hires a short-lived passcode to sign in and register strong MFA — no emailed permanent passwords to phish. Scoped lifetime (hours/days) and one-time use by default.",
+     "hint": "What time-limited credential bootstraps a new hire's strong auth?",
+     "objectives": [
+      "Temporary Access Pass",
+      "Onboarding auth"
+     ],
+     "mins": 6
+    },
+    {
+     "id": "sc300-capolicy-auth",
+     "title": "The legacy protocol",
+     "situation": "Sign-in logs show attackers using IMAP/SMTP basic auth to password-spray mailboxes, bypassing MFA.",
+     "prompt": "What blocks legacy authentication?",
+     "evidence": [
+      [
+       "sign-in log",
+       "clientApp: IMAP4 | status: Success | MFA: not applied | 400 attempts from 1 IP"
+      ]
+     ],
+     "choices": [
+      "A Conditional Access policy blocking legacy authentication protocols — basic auth can't do MFA",
+      "Longer passwords",
+      "Disabling the mailboxes",
+      "An email to attackers"
+     ],
+     "answer": 0,
+     "why": "Legacy protocols (IMAP, POP, SMTP basic auth) can't enforce MFA — they're the classic MFA-bypass path. The standard control is a CA policy blocking legacy auth (Microsoft now disables basic auth broadly), forcing modern auth everywhere.",
+     "hint": "Basic auth bypasses MFA. What policy kills the bypass?",
+     "objectives": [
+      "Legacy auth",
+      "CA blocking"
+     ],
+     "mins": 6
+    },
+    {
+     "id": "sc300-passwordless",
+     "title": "The passwordless push",
+     "situation": "The CISO wants to eliminate passwords for office staff entirely.",
+     "prompt": "What are the enterprise passwordless options?",
+     "evidence": [],
+     "choices": [
+      "Windows Hello for Business, FIDO2 security keys, or Microsoft Authenticator phone sign-in",
+      "Longer passwords",
+      "Password expiry every 30 days",
+      "Sticky notes with complex passwords"
+     ],
+     "answer": 0,
+     "why": "Entra supports true passwordless: WHfB (device-bound biometrics/PIN), FIDO2 keys (phishing-resistant roaming), and Authenticator phone sign-in. Each removes the phishable shared secret — the password — from the flow.",
+     "hint": "Which three methods let users sign in with no password at all?",
+     "objectives": [
+      "Passwordless",
+      "WHfB/FIDO2/Authenticator"
+     ],
+     "mins": 6
+    }
+   ]
+  },
+  {
+   "id": "conditional-access",
+   "name": "Conditional Access",
+   "scenarios": [
+    {
+     "id": "sc300-ca-design2",
+     "title": "The CA rollout",
+     "situation": "An admin creates a 'require MFA for all users' policy and enables it directly — then gets locked out along with the CEO.",
+     "prompt": "What rollout discipline was skipped?",
+     "evidence": [],
+     "choices": [
+      "Report-only mode + staged rollout + emergency access (break-glass) accounts excluded from CA",
+      "Policies don't need testing",
+      "Break-glass accounts should be deleted",
+      "MFA for everyone is wrong"
+     ],
+     "answer": 0,
+     "why": "CA changes go: report-only (measure impact without enforcing) → pilot → enforce, always excluding emergency-access break-glass accounts. Enabling untested tenant-wide policies is how admins lock themselves out.",
+     "hint": "What mode measures impact without enforcing, and which accounts must always be excluded?",
+     "objectives": [
+      "CA deployment",
+      "Report-only and break-glass"
+     ],
+     "mins": 7
+    },
+    {
+     "id": "sc300-ca-signals",
+     "title": "The compliant device",
+     "situation": "The policy should require MFA only when the device is unmanaged or the location is unfamiliar — managed office devices should sign in smoothly.",
+     "prompt": "Which CA signals enable this?",
+     "evidence": [],
+     "choices": [
+      "Device compliance (Intune) + network location (named locations) as conditions with appropriate grants",
+      "User risk only",
+      "The time of day",
+      "The user's manager"
+     ],
+     "answer": 0,
+     "why": "CA conditions combine signals — device state (hybrid-joined/compliant via Intune), named locations, client apps, risk — and grants (require MFA, require compliant device, block) apply when conditions match. Precision beats blanket policies.",
+     "hint": "Which two signals distinguish 'managed office device' from everything else?",
+     "objectives": [
+      "CA signals",
+      "Conditions and grants"
+     ],
+     "mins": 7
+    },
+    {
+     "id": "sc300-ca-gaps",
+     "title": "The excluded guest",
+     "situation": "A CA policy targets 'All users' but guests keep bypassing MFA requirements.",
+     "prompt": "What is the likely misconfiguration?",
+     "evidence": [],
+     "choices": [
+      "Guest/external user exclusions or 'all guest users' not included in scope — verify the Users assignment includes guests",
+      "Guests are exempt from CA by design",
+      "MFA doesn't work for guests",
+      "Policies don't apply to B2B"
+     ],
+     "answer": 0,
+     "why": "CA applies to guests when they're in scope — but policies often exclude them accidentally (or target only 'members'). Cross-tenant access settings plus CA for external users need explicit design; 'All users' includes guests unless excluded.",
+     "hint": "Do CA policies cover guests, and where would they be excluded?",
+     "objectives": [
+      "CA scope",
+      "Guest coverage"
+     ],
+     "mins": 6
+    },
+    {
+     "id": "sc300-named-loc",
+     "title": "The office IP change",
+     "situation": "The company changes ISPs; the office's public IP changes and suddenly everyone is prompted for MFA as 'unfamiliar location'.",
+     "prompt": "What must be maintained?",
+     "evidence": [],
+     "choices": [
+      "Named locations — keep the trusted IP ranges current; stale definitions cause false unfamiliar-location signals",
+      "Nothing; CA adapts automatically",
+      "Deleting the location condition",
+      "Disabling MFA"
+     ],
+     "answer": 0,
+     "why": "Named locations encode your trusted networks; when egress IPs change (new ISP, new VPN concentrator), the definitions go stale and location-based policies misfire. IP hygiene is CA hygiene.",
+     "hint": "Egress IPs changed. Which CA definition went stale?",
+     "objectives": [
+      "Named locations",
+      "Location hygiene"
+     ],
+     "mins": 5
+    },
+    {
+     "id": "sc300-ca-per-app",
+     "title": "The sensitive app",
+     "situation": "The finance app needs phishing-resistant MFA always, while the intranet needs only single-factor on managed devices.",
+     "prompt": "How is this expressed?",
+     "evidence": [],
+     "choices": [
+      "Per-app (target resources) CA policies — different grants for different cloud apps",
+      "One policy for everything",
+      "No policies for the intranet",
+      "Blocking the finance app"
+     ],
+     "answer": 0,
+     "why": "CA's 'target resources' selector lets policies apply per app: strict grants (require authentication strength = phishing-resistant MFA) for finance, lighter for the intranet. Granular policy beats one-size-fits-all.",
+     "hint": "How do different apps get different auth requirements?",
+     "objectives": [
+      "CA targeting",
+      "Per-app policies"
+     ],
+     "mins": 6
+    },
+    {
+     "id": "sc300-auth-strength",
+     "title": "The grant precision",
+     "situation": "The CISO wants 'MFA' to mean specifically phishing-resistant methods for admins, not just any MFA.",
+     "prompt": "What CA grant enforces this?",
+     "evidence": [],
+     "choices": [
+      "Authentication strengths — require 'phishing-resistant MFA' strength instead of generic 'require MFA'",
+      "A longer password policy",
+      "An email reminder",
+      "Blocking admins"
+     ],
+     "answer": 0,
+     "why": "Authentication strengths let CA demand a specific MFA caliber (e.g., phishing-resistant MFA: FIDO2/WHfB/certificate) rather than any MFA. Generic 'require MFA' still permits SMS — precision matters for privileged users.",
+     "hint": "How do you require FIDO2-grade MFA specifically, not just any MFA?",
+     "objectives": [
+      "Authentication strengths",
+      "Grant precision"
+     ],
+     "mins": 7
+    }
+   ]
+  },
+  {
+   "id": "pim-access-reviews",
+   "name": "PIM & Access Reviews",
+   "scenarios": [
+    {
+     "id": "sc300-pim-activate",
+     "title": "The midnight change",
+     "situation": "An on-call engineer needs Global Admin for an outage but holds only an eligible assignment.",
+     "prompt": "What is the activation flow?",
+     "evidence": [],
+     "choices": [
+      "PIM activation — MFA, justification, ticket number, time-bound (e.g., 4 hours), then automatic deactivation",
+      "Email the CEO",
+      "Permanent assignment",
+      "Shared admin password"
+     ],
+     "answer": 0,
+     "why": "Eligible assignments activate just-in-time: the engineer requests, completes MFA, gives justification, gets the role for a bounded window, and it expires automatically. Every activation is logged for audit.",
+     "hint": "Eligible but not active — what turns it on for the outage window?",
+     "objectives": [
+      "PIM activation",
+      "Just-in-time elevation"
+     ],
+     "mins": 6
+    },
+    {
+     "id": "sc300-pim-approval",
+     "title": "The sensitive role",
+     "situation": "Activations of Privileged Authentication Administrator should require a second person's approval.",
+     "prompt": "What PIM control adds this?",
+     "evidence": [],
+     "choices": [
+      "Approval workflow on the role's PIM settings — designated approvers must approve before activation",
+      "An email notification only",
+      "No control possible",
+      "Deleting the role"
+     ],
+     "answer": 0,
+     "why": "PIM role settings support approval workflows: activation requests route to approvers with justification. The most sensitive roles get approvers; routine ones may allow self-approval with MFA — tiered by risk.",
+     "hint": "Which PIM setting puts a human gate before activation?",
+     "objectives": [
+      "PIM approvals",
+      "Role settings"
+     ],
+     "mins": 6
+    },
+    {
+     "id": "sc300-access-review",
+     "title": "The stale access",
+     "situation": "Guest accounts from a 2022 project still have Teams and SharePoint access; nobody remembers approving them.",
+     "prompt": "What recurring control catches this?",
+     "evidence": [],
+     "choices": [
+      "Access reviews — periodic reviewer attestation of guests' continued need, auto-removing denied/ignored access",
+      "A one-time cleanup",
+      "Trusting project memory",
+      "More guests"
+     ],
+     "answer": 0,
+     "why": "Access reviews ask designated reviewers (managers, group owners) to certify continued access; denied or unreviewed access is removed automatically. They're the recurring hygiene for guests, access packages, and role assignments.",
+     "hint": "What periodically asks 'does this person still need access?'",
+     "objectives": [
+      "Access reviews",
+      "Recertification"
+     ],
+     "mins": 6
+    },
+    {
+     "id": "sc300-pim-alert",
+     "title": "The rogue assignment",
+     "situation": "Someone grants a user permanent Global Admin outside PIM; nobody notices for weeks.",
+     "prompt": "What detects privileged role drift?",
+     "evidence": [],
+     "choices": [
+      "PIM alerts + access reviews on role assignments — alert on permanent assignments and out-of-policy grants",
+      "Manual portal checks yearly",
+      "Trust",
+      "Deleting PIM"
+     ],
+     "answer": 0,
+     "why": "PIM's security alerts flag risky assignments (permanent privileged roles, assignments outside PIM); pairing with recurring access reviews on the roles themselves catches drift. Permanent privileged assignment is the finding, not the norm.",
+     "hint": "What notices a permanent Global Admin grant that bypassed PIM?",
+     "objectives": [
+      "PIM alerts",
+      "Role hygiene"
+     ],
+     "mins": 7
+    },
+    {
+     "id": "sc300-entitlement-expire",
+     "title": "The never-ending contractor",
+     "situation": "Contractor access packages were approved 'for the project' but never expire; contractors from 2023 still have access.",
+     "prompt": "What enforces an end date?",
+     "evidence": [],
+     "choices": [
+      "Access package assignment policies with expiration + recurring access reviews — time-bound access by design",
+      "Permanent assignments",
+      "A calendar reminder",
+      "Hope"
+     ],
+     "answer": 0,
+     "why": "Entitlement management bakes in lifetimes: assignment policies set durations, and access reviews re-certify. 'For the project' must translate to a date — otherwise every temporary grant becomes permanent.",
+     "hint": "How do you make 'temporary access' actually temporary?",
+     "objectives": [
+      "Access lifecycle",
+      "Expiration policies"
+     ],
+     "mins": 6
+    },
+    {
+     "id": "sc300-jit-vm",
+     "title": "The standing VM admin",
+     "situation": "Admins hold permanent local admin on 200 Azure VMs.",
+     "prompt": "What reduces this standing privilege?",
+     "evidence": [],
+     "choices": [
+      "Just-in-time VM access (Defender for Cloud) + PIM for Azure roles — time-bound, approved, logged elevation instead of permanent rights",
+      "More local admins",
+      "Shared local passwords",
+      "Disabling RDP"
+     ],
+     "answer": 0,
+     "why": "JIT VM access opens management ports only for approved, time-bound windows with MFA; combined with PIM for the Azure roles, standing admin evaporates. Permanent local admin on fleets is the legacy pattern.",
+     "hint": "What replaces always-on admin ports with approved time windows?",
+     "objectives": [
+      "JIT access",
+      "Standing privilege"
+     ],
+     "mins": 6
+    }
+   ]
+  },
+  {
+   "id": "app-integration",
+   "name": "App Integration",
+   "scenarios": [
+    {
+     "id": "sc300-sso-saml",
+     "title": "The legacy app",
+     "situation": "A 15-year-old internal app supports SAML but not modern OAuth2/OIDC.",
+     "prompt": "How does Entra single sign-on work for it?",
+     "evidence": [],
+     "choices": [
+      "Entra SAML SSO from the app gallery (or custom SAML app) — Entra acts as the IdP via SAML assertions",
+      "It can't integrate",
+      "Shared passwords",
+      "A VPN"
+     ],
+     "answer": 0,
+     "why": "Entra supports SAML 2.0 apps: it becomes the identity provider, issuing SAML assertions the app trusts. The gallery has thousands of pre-integrated apps; custom SAML covers the rest. Legacy protocol support doesn't mean legacy passwords.",
+     "hint": "The app speaks SAML only. How does Entra SSO it?",
+     "objectives": [
+      "SAML SSO",
+      "Legacy app integration"
+     ],
+     "mins": 6
+    },
+    {
+     "id": "sc300-oidc",
+     "title": "The modern app",
+     "situation": "A new internal SPA needs sign-in with tokens for API calls.",
+     "prompt": "Which protocol and library fit?",
+     "evidence": [],
+     "choices": [
+      "OpenID Connect with MSAL — standardized auth code flow with PKCE, token acquisition and caching handled",
+      "SAML for the SPA",
+      "Basic auth headers",
+      "Cookies with passwords"
+     ],
+     "answer": 0,
+     "why": "OIDC (built on OAuth2) is the modern app protocol; MSAL implements it correctly (auth code + PKCE, token cache, silent renewal). SPAs must never use implicit flow or handle passwords — the library enforces the safe patterns.",
+     "hint": "Modern SPA needing tokens — which protocol and library?",
+     "objectives": [
+      "OIDC and MSAL",
+      "Modern auth"
+     ],
+     "mins": 6
+    },
+    {
+     "id": "sc300-consent",
+     "title": "The overreaching app",
+     "situation": "A simple time-tracking app requests 'Read all mail' permissions; users are consenting blindly.",
+     "prompt": "What admin controls prevent excessive consent?",
+     "evidence": [],
+     "choices": [
+      "Consent policies + admin consent workflow — restrict which permissions users can consent to; risky permissions need admin approval",
+      "Letting users consent to anything",
+      "Deleting the app",
+      "Ignoring it"
+     ],
+     "answer": 0,
+     "why": "Admin consent workflows and consent policies gate which app permissions users can grant themselves; high-privilege permissions (like Mail.Read) require admin approval. Blind consent is how overreaching apps get enterprise data.",
+     "hint": "Who approves an app asking for 'read all mail'?",
+     "objectives": [
+      "Consent framework",
+      "Admin consent"
+     ],
+     "mins": 7
+    },
+    {
+     "id": "sc300-app-proxy",
+     "title": "The on-prem app",
+     "situation": "An on-premises intranet app (IIS, Windows auth) must be reachable by remote users without a VPN, with Entra pre-authentication.",
+     "prompt": "What publishes it securely?",
+     "evidence": [],
+     "choices": [
+      "Entra Application Proxy — cloud pre-auth + connector-driven private access, no inbound firewall holes",
+      "A public IP on the IIS server",
+      "VPN for everyone",
+      "Exposing Windows auth to the internet"
+     ],
+     "answer": 0,
+     "why": "Application Proxy's lightweight connectors make outbound connections; Entra pre-authenticates users in the cloud, then the connector delivers traffic to the internal app. No DMZ, no inbound ports, modern auth for legacy apps.",
+     "hint": "How do remote users reach an on-prem app with no VPN and no inbound ports?",
+     "objectives": [
+      "Application Proxy",
+      "Remote app publishing"
+     ],
+     "mins": 7
+    },
+    {
+     "id": "sc300-managed-app",
+     "title": "The app ownership",
+     "situation": "Nobody knows who owns the 300 enterprise apps in the tenant; orphaned apps accumulate permissions.",
+     "prompt": "What governance applies?",
+     "evidence": [],
+     "choices": [
+      "App owners assigned + access reviews on app role assignments + periodic app inventory hygiene",
+      "Deleting random apps",
+      "Ignoring ownership",
+      "More apps"
+     ],
+     "answer": 0,
+     "why": "Enterprise apps need owners (accountable humans), reviewed role assignments, and lifecycle hygiene — orphaned apps with broad permissions are a standing attack surface. Governance treats apps like identities: provisioned, reviewed, deprovisioned.",
+     "hint": "Who is accountable for each enterprise app's permissions?",
+     "objectives": [
+      "App governance",
+      "Ownership"
+     ],
+     "mins": 5
+    },
+    {
+     "id": "sc300-token-protect",
+     "title": "The stolen token",
+     "situation": "An attacker steals a user's access token from a compromised device and replays it elsewhere.",
+     "prompt": "What limits the blast radius of token theft?",
+     "evidence": [],
+     "choices": [
+      "Token protection (token binding) + Conditional Access token protection policies + short lifetimes + continuous access evaluation",
+      "Longer token lifetimes",
+      "No protection possible",
+      "Disabling the app"
+     ],
+     "answer": 0,
+     "why": "Defenses layer: token protection binds tokens to devices, CAE enables near-real-time revocation on risk signals, and short lifetimes shrink the replay window. Token theft is expected — the design must contain it.",
+     "hint": "The token is stolen. What makes the stolen token useless?",
+     "objectives": [
+      "Token protection",
+      "Replay defense"
+     ],
+     "mins": 7
+    }
+   ]
+  },
+  {
+   "id": "monitoring",
+   "name": "Monitoring",
+   "scenarios": [
+    {
+     "id": "sc300-signin-log",
+     "title": "The spray pattern",
+     "situation": "The SOC sees thousands of failed logins across hundreds of accounts from a few IPs.",
+     "prompt": "Where is this investigated, and what is it?",
+     "evidence": [
+      [
+       "sign-in log sample",
+       "result: 50126 (bad password) | 4,200 events | 380 users | 3 source IPs | 1 success ← investigate"
+      ]
+     ],
+     "choices": [
+      "Sign-in logs in Entra — password spray pattern; investigate via KQL, then block IPs / enforce MFA / check for successes",
+      "The firewall logs only",
+      "The application logs",
+      "Nowhere — it's normal"
+     ],
+     "answer": 0,
+     "why": "Sign-in logs are the identity investigation surface: filter failures by IP, look for any success amid the spray (compromise!), then respond — block, force password reset, require MFA. A spray with one success is a breach, not noise.",
+     "hint": "Thousands of failures, hundreds of accounts — what attack, and where do you hunt it?",
+     "objectives": [
+      "Sign-in logs",
+      "Password spray"
+     ],
+     "mins": 7
+    },
+    {
+     "id": "sc300-audit-log",
+     "title": "The mystery role grant",
+     "situation": "A user gained Global Admin last Tuesday; nobody admits to granting it.",
+     "prompt": "Where is the authoritative record?",
+     "evidence": [],
+     "choices": [
+      "Entra audit logs — every directory change (who, what, when) is logged; filter for role assignment events",
+      "The user's word",
+      "The activity log of Azure resources",
+      "Guessing"
+     ],
+     "answer": 0,
+     "why": "Audit logs record all Entra control-plane changes with actor, target, and timestamp — the non-repudiable record for 'who granted what'. Sign-in logs show authentication; audit logs show administration.",
+     "hint": "Who granted the role, and where is that fact recorded?",
+     "objectives": [
+      "Audit logs",
+      "Change tracking"
+     ],
+     "mins": 6
+    },
+    {
+     "id": "sc300-identity-protection",
+     "title": "The leaked credential",
+     "situation": "An employee reused their work password on a breached gaming forum.",
+     "prompt": "What detects and remediates this?",
+     "evidence": [],
+     "choices": [
+      "Identity Protection leaked-credentials detection — flags the user risk, forces password reset via risk policies",
+      "Nothing; it's a personal problem",
+      "Annual training",
+      "Hope"
+     ],
+     "answer": 0,
+     "why": "Identity Protection ingests breach corpuses and matches them to your users (via PHS hash comparison) — user-risk policies then force password change. Password reuse is the threat; leaked-credential detection is the control.",
+     "hint": "Work password found in a breach dump — what detects it?",
+     "objectives": [
+      "Identity Protection",
+      "Leaked credentials"
+     ],
+     "mins": 6
+    },
+    {
+     "id": "sc300-kql-identity",
+     "title": "The dormant admin",
+     "situation": "The CISO asks which privileged accounts haven't signed in for 90 days.",
+     "prompt": "Which data answers this?",
+     "evidence": [],
+     "choices": [
+      "Sign-in logs + role assignments joined in KQL (or access reviews) — last sign-in per privileged user",
+      "Guessing",
+      "The org chart",
+      "Password age"
+     ],
+     "answer": 0,
+     "why": "Joining role assignments to sign-in activity reveals dormant privilege — prime targets for attackers and prime candidates for removal. Identity hygiene is measured, not assumed.",
+     "hint": "How do you find privileged accounts nobody uses?",
+     "objectives": [
+      "KQL identity",
+      "Dormant privilege"
+     ],
+     "mins": 6
+    },
+    {
+     "id": "sc300-workbook",
+     "title": "The identity dashboard",
+     "situation": "Leadership wants a weekly view: MFA coverage, risky users, dormant admins, guest counts.",
+     "prompt": "What builds this from Entra data?",
+     "evidence": [],
+     "choices": [
+      "Workbooks over Log Analytics — parameterized dashboards joining sign-in/audit data",
+      "Screenshots",
+      "A weekly meeting",
+      "Spreadsheets"
+     ],
+     "answer": 0,
+     "why": "Workbooks query the streamed Entra logs (sign-in, audit, risk) into living dashboards — MFA registration gaps, risk trends, stale access — the identity posture view leadership actually needs.",
+     "hint": "What turns Entra logs into a living posture dashboard?",
+     "objectives": [
+      "Workbooks",
+      "Identity reporting"
+     ],
+     "mins": 5
+    },
+    {
+     "id": "sc300-alert-flow",
+     "title": "The risk spike",
+     "situation": "The SOC wants a ticket opened automatically when Identity Protection marks a user high risk.",
+     "prompt": "What connects the signal to the ticket?",
+     "evidence": [],
+     "choices": [
+      "Risk-based CA policy (require password change) + alerting via Sentinel/Logic App on risk detections — detect, contain, and ticket automatically",
+      "Manual log checks",
+      "Email alerts only",
+      "Nothing"
+     ],
+     "answer": 0,
+     "why": "The full loop: risk policy contains (force password change at high user risk), and risk detections stream to Sentinel/SOAR for ticketing and investigation. Detection without automated containment leaves the window open.",
+     "hint": "High-risk user detected — what contains and tickets automatically?",
+     "objectives": [
+      "Risk response",
+      "Automated remediation"
+     ],
+     "mins": 7
+    }
+   ]
+  }
+ ],
+ "lessons": [
+  {
+   "domain_id": "user-group-lifecycle",
+   "title": "User & Group Lifecycle — Core concepts",
+   "concepts": [
+    "Lifecycle workflows: entra lifecycle workflows trigger joiner/mover/leaver tasks (account creation, group adds, access packages, manager notifications) from HR signals. Leaver workflows automate deprovisioning at termination: disable sign-in, revoke refresh tokens (killing active sessions), remove group/license assignments.",
+    "SCIM provisioning: entra's provisioning service speaks SCIM to supported apps: assign a group to the app, and users are created/updated/deprovisioned automatically.",
+    "SaaS lifecycle: group membership becomes the single control point for SaaS access."
+   ],
+   "example": {
+    "lang": "text",
+    "code": "Worked example — lifecycle workflows\nSetup: Entra lifecycle workflows trigger joiner/mover/leaver tasks (account creation, group adds, access packages, manager notifications) from HR signals.\nReasoning: Dynamic membership is only as good as attribute data and rule syntax — silent mismatches (trailing spaces, case, null attributes) exclude people…\nTakeaway: Combined with dynamic groups, day-one access becomes automatic instead of ticket-driven.",
+    "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."
+   },
+   "pitfalls": [
+    "Common trap: dynamic groups always work perfectly.",
+    "Common trap: trusting managers to file tickets.",
+    "Common trap: global Administrator for the help desk."
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "authentication",
+   "title": "Authentication — Core concepts",
+   "concepts": [
+    "Hybrid auth: legacy protocols (IMAP, POP, SMTP basic auth) can't enforce MFA — they're the classic MFA-bypass path.",
+    "PHS vs PTA vs federation: most orgs should prefer PHS + seamless SSO.",
+    "Seamless SSO lets domain-joined machines on the corporate network sign into Entra silently via Kerberos — no password prompt.",
+    "Silent auth: the standard control is a CA policy blocking legacy auth (Microsoft now disables basic auth broadly), forcing modern auth everywhere.",
+    "MFA strength: temporary Access Passes give new hires a short-lived passcode to sign in and register strong MFA — no emailed permanent passwords to phish. SMS is the weakest MFA (SIM swap, interception); authenticator push is better; FIDO2/WebAuthn and WHfB are phishing-resistant (bound to origin, no shared secret to intercept)."
+   ],
+   "example": {
+    "lang": "text",
+    "code": "clientApp: IMAP4 | status: Success | MFA: not applied | 400 attempts from 1 IP",
+    "walkthrough": "Legacy protocols (IMAP, POP, SMTP basic auth) can't enforce MFA — they're the classic MFA-bypass path. The standard control is a CA policy blocking legacy auth (Microsoft now disables basic auth broadly), forcing modern auth everywhere."
+   },
+   "pitfalls": [
+    "Common trap: PHS sends plaintext passwords.",
+    "Common trap: no credentials; accounts active immediately.",
+    "Common trap: password expiry every 30 days.",
+    "Common trap: sticky notes with complex passwords."
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "conditional-access",
+   "title": "Conditional Access — Core concepts",
+   "concepts": [
+    "Report-only and break-glass: CA changes go: report-only (measure impact without enforcing) → pilot → enforce, always excluding emergency-access break-glass accounts.",
+    "CA conditions combine signals — device state (hybrid-joined/compliant via Intune), named locations, client apps, risk — and grants (require MFA, require compliant device, block) apply when conditions match.",
+    "Conditions and grants: cA's 'target resources' selector lets policies apply per app: strict grants (require authentication strength = phishing-resistant MFA) for finance, lighter for the intranet.",
+    "CA applies to guests when they're in scope — but policies often exclude them accidentally (or target only 'members')."
+   ],
+   "example": {
+    "lang": "text",
+    "code": "Worked example — ca deployment\nSetup: CA conditions combine signals — device state (hybrid-joined/compliant via Intune), named locations, client apps, risk — and grants (require MFA…\nReasoning: CA changes go: report-only (measure impact without enforcing) → pilot → enforce, always excluding emergency-access break-glass accounts.\nTakeaway: Named locations encode your trusted networks; when egress IPs change (new ISP, new VPN concentrator), the definitions go stale and location-based…",
+    "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."
+   },
+   "pitfalls": [
+    "Common trap: MFA doesn't work for guests.",
+    "Skipping the key question: what mode measures impact without enforcing, and which accounts must always be excluded.",
+    "Skipping the key question: which two signals distinguish 'managed office device' from everything else."
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "pim-access-reviews",
+   "title": "PIM & Access Reviews — Core concepts",
+   "concepts": [
+    "PIM role settings support approval workflows: activation requests route to approvers with justification. PIM's security alerts flag risky assignments (permanent privileged roles, assignments outside PIM); pairing with recurring access reviews on the roles themselves catches drift.",
+    "Just-in-time elevation: eligible assignments activate just-in-time: the engineer requests, completes MFA, gives justification, gets the role for a bounded window, and it expires automatically.",
+    "PIM approvals: JIT VM access opens management ports only for approved, time-bound windows with MFA; combined with PIM for the Azure roles, standing admin evaporates.",
+    "Role settings: they're the recurring hygiene for guests, access packages, and role assignments.",
+    "Access reviews: entitlement management bakes in lifetimes: assignment policies set durations, and access reviews re-certify. Access reviews ask designated reviewers (managers, group owners) to certify continued access; denied or unreviewed access is removed automatically."
+   ],
+   "example": {
+    "lang": "text",
+    "code": "Worked example — pim activation\nSetup: PIM role settings support approval workflows: activation requests route to approvers with justification.\nReasoning: PIM's security alerts flag risky assignments (permanent privileged roles, assignments outside PIM); pairing with recurring access reviews on the…\nTakeaway: JIT VM access opens management ports only for approved, time-bound windows with MFA; combined with PIM for the Azure roles, standing admin evaporates.",
+    "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."
+   },
+   "pitfalls": [
+    "Common trap: manual portal checks yearly.",
+    "Skipping the key question: eligible but not active — what turns it on for the outage window.",
+    "Skipping the key question: which PIM setting puts a human gate before activation."
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "app-integration",
+   "title": "App Integration — Core concepts",
+   "concepts": [
+    "SAML SSO: entra supports SAML 2.0 apps: it becomes the identity provider, issuing SAML assertions the app trusts.",
+    "Legacy app integration: OIDC (built on OAuth2) is the modern app protocol; MSAL implements it correctly (auth code + PKCE, token cache, silent renewal). Admin consent workflows and consent policies gate which app permissions users can grant themselves; high-privilege permissions (like Mail.Read) require admin approval.",
+    "Modern auth: no DMZ, no inbound ports, modern auth for legacy apps.",
+    "Consent framework: blind consent is how overreaching apps get enterprise data."
+   ],
+   "example": {
+    "lang": "text",
+    "code": "Worked example — saml sso\nSetup: OIDC (built on OAuth2) is the modern app protocol; MSAL implements it correctly (auth code + PKCE, token cache, silent renewal).\nReasoning: Admin consent workflows and consent policies gate which app permissions users can grant themselves; high-privilege permissions (like Mail.Read)…\nTakeaway: No DMZ, no inbound ports, modern auth for legacy apps.",
+    "walkthrough": "Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."
+   },
+   "pitfalls": [
+    "Common trap: letting users consent to anything.",
+    "Common trap: exposing Windows auth to the internet."
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "monitoring",
+   "title": "Monitoring — Core concepts",
+   "concepts": [
+    "Sign-in logs are the identity investigation surface: filter failures by IP, look for any success amid the spray (compromise!), then respond — block, force password reset, require MFA. Sign-in logs show authentication; audit logs show administration.",
+    "Password spray: identity Protection ingests breach corpuses and matches them to your users (via PHS hash comparison) — user-risk policies then force password change. The full loop: risk policy contains (force password change at high user risk), and risk detections stream to Sentinel/SOAR for ticketing and investigation.",
+    "Audit logs record all Entra control-plane changes with actor, target, and timestamp — the non-repudiable record for 'who granted what'. Workbooks query the streamed Entra logs (sign-in, audit, risk) into living dashboards — MFA registration gaps, risk trends, stale access — the identity posture view leadership actually needs.",
+    "Identity hygiene is measured, not assumed."
+   ],
+   "example": {
+    "lang": "text",
+    "code": "result: 50126 (bad password) | 4,200 events | 380 users | 3 source IPs | 1 success ← investigate",
+    "walkthrough": "Sign-in logs are the identity investigation surface: filter failures by IP, look for any success amid the spray (compromise!), then respond — block, force password reset, require MFA. A spray with one success is a breach, not noise."
+   },
+   "pitfalls": [
+    "Common trap: the activity log of Azure resources.",
+    "Skipping the key question: thousands of failures, hundreds of accounts — what attack, and where do you hunt it.",
+    "Skipping the key question: who granted the role, and where is that fact recorded."
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "user-group-lifecycle",
+   "title": "Identity and Access (Entra ID) — Core concepts",
+   "concepts": [
+    "Entra ID is the identity plane: tenants hold users, groups, and app registrations; Conditional Access policies evaluate signals (who, what device, where, what risk) and enforce grant controls (MFA, compliant device, block).",
+    "PIM makes privilege just-in-time: assignments are eligible (can activate) rather than active (standing), with MFA-gated activation, approval, justification, and automatic expiry.",
+    "Identity Protection turns risk detections (unfamiliar locations, leaked credentials, anomalous tokens) into policy: require MFA at medium risk, block or force password change at high risk — notify-only is not protection.",
+    "Emergency-access (break-glass) accounts are excluded from Conditional Access by design, monitored with sign-in alerts, and kept offline — they are the recovery path when policy itself fails.",
+    "Access reviews sustain least privilege: resource owners periodically attest guest and privileged access, with auto-removal for non-response, so grants decay instead of accumulating.",
+    "Legacy authentication (basic auth, old protocols) cannot do MFA and is a top attack vector: block it for users, and handle the rare immovable service account as a narrow, monitored, time-boxed exception."
+   ],
+   "example": {
+    "lang": "shell",
+    "code": "az rest --method get --url \"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies?$select=displayName,state\" -o table\naz ad user list --filter \"userType eq 'Guest'\" --query \"[].{UPN:userPrincipalName}\" -o table",
+    "walkthrough": "List Conditional Access policies and their states via Graph, then enumerate guest users. Together these answer the auditor's two questions: what policies guard access, and how many guests hold it."
+   },
+   "pitfalls": [
+    "Common trap: including break-glass accounts in Conditional Access and locking out your own recovery path.",
+    "Common trap: making privilege permanently eligible with no activation gates — eligibility without controls is standing access with extra steps.",
+    "Common trap: writing a CA policy with broad targets and silent exclusions/conditions, then wondering why it never fires — diagnose with What If and sign-in logs.",
+    "Common trap: treating a legacy-auth exception as permanent instead of a scoped, monitored, dated migration."
+   ],
+   "try_it": "Work through this in the Labs tab.",
+   "domain_id_remapped_from": "sc-300",
+   "merged_from": "cbt-individual/sc-300"
+  }
+ ],
+ "sections": [
+  {
+   "id": "foundations",
+   "title": "Foundations",
+   "kind": "foundation",
+   "lectures": [
+    "f-iam-concepts-0",
+    "f-iam-concepts-1",
+    "f-iam-concepts-2",
+    "f-security-basics-0",
+    "f-security-basics-1",
+    "f-security-basics-2"
+   ],
+   "lab_ids": [],
+   "drill_domain_ids": []
+  },
+  {
+   "id": "core",
+   "title": "Core",
+   "kind": "core",
+   "lectures": [
+    "c-user-group-lifecycle",
+    "c-authentication",
+    "c-conditional-access"
+   ],
+   "lab_ids": [
+    "sc-300-lab-1",
+    "sc-300-lab-2"
+   ],
+   "drill_domain_ids": [
+    "user-group-lifecycle",
+    "authentication",
+    "conditional-access"
+   ]
+  },
+  {
+   "id": "advanced",
+   "title": "Advanced",
+   "kind": "advanced",
+   "lectures": [
+    "c-pim-access-reviews",
+    "c-app-integration",
+    "c-monitoring"
+   ],
+   "lab_ids": [
+    "sc-300-lab-3",
+    "sc-300-lab-4"
+   ],
+   "drill_domain_ids": [
+    "pim-access-reviews",
+    "app-integration",
+    "monitoring"
+   ]
+  },
+  {
+   "id": "exam-prep",
+   "title": "Exam Prep",
+   "kind": "exam-prep",
+   "lectures": [],
+   "lab_ids": [],
+   "drill_domain_ids": [
+    "user-group-lifecycle",
+    "authentication",
+    "conditional-access",
+    "pim-access-reviews",
+    "app-integration",
+    "monitoring"
+   ]
+  }
+ ],
+ "behavioral": [
+  {
+   "prompt": "Tell me about a time you led an identity-related change that users resisted (MFA rollout, passwordless, access cleanup).",
+   "framework": "STAR",
+   "points": [
+    "The resistance and its cause",
+    "How you drove adoption",
+    "Adoption metrics"
+   ],
+   "pitfalls": [
+    "Forcing without communication",
+    "No adoption measurement"
+   ]
+  },
+  {
+   "prompt": "Describe a time you discovered excessive access or standing privilege and fixed it.",
+   "framework": "STAR",
+   "points": [
+    "How you found it",
+    "The remediation",
+    "How you prevent recurrence"
+   ],
+   "pitfalls": [
+    "One-time cleanup only",
+    "No preventive control"
+   ]
+  },
+  {
+   "prompt": "Tell me about a time you responded to an identity-based attack (phishing, spray, token theft).",
+   "framework": "STAR",
+   "points": [
+    "The attack signals",
+    "Your containment steps",
+    "Hardening afterward"
+   ],
+   "pitfalls": [
+    "Treating it as an IT ticket",
+    "No hardening follow-up"
+   ]
+  },
+  {
+   "prompt": "Describe a complex Conditional Access or identity architecture decision you made.",
+   "framework": "STAR",
+   "points": [
+    "The requirements",
+    "Options and trade-offs",
+    "The design and rollout"
+   ],
+   "pitfalls": [
+    "Big-bang rollout",
+    "No break-glass planning"
+   ]
+  },
+  {
+   "prompt": "Tell me about a time you automated identity lifecycle or governance work.",
+   "framework": "STAR",
+   "points": [
+    "The manual process",
+    "What you automated",
+    "Errors eliminated or time saved"
+   ],
+   "pitfalls": [
+    "Automation with no validation",
+    "No measurable benefit"
+   ]
+  },
+  {
+   "prompt": "Describe a time you had to balance security controls with user productivity.",
+   "framework": "STAR",
+   "points": [
+    "The tension",
+    "The compromise design",
+    "How both sides fared"
+   ],
+   "pitfalls": [
+    "Security theater",
+    "Blocking with no alternative"
+   ]
+  },
+  {
+   "prompt": "Tell me about a disagreement over an identity/security approach and how you resolved it.",
+   "framework": "STAR",
+   "points": [
+    "Both positions",
+    "Data that decided it",
+    "The outcome"
+   ],
+   "pitfalls": [
+    "Deciding on authority",
+    "No evidence"
+   ]
+  },
+  {
+   "prompt": "Why are you pursuing the Identity Administrator certification, and what identity responsibilities are you targeting?",
+   "framework": "PAR",
+   "points": [
+    "Your motivation",
+    "The identity scope you want",
+    "What comes after"
+   ],
+   "pitfalls": [
+    "Generic answers",
+    "No connection to real duties"
+   ]
+  }
+ ],
+ "chat": {
+  "persona": "You are a meticulous identity-administrator interviewer running a mock SC-300 assessment. Demand lifecycle thinking: every access must have a beginning, an owner, and an end. Probe CA mechanics, PIM flows, and the difference between authentication methods with phishing in mind.",
+  "topics": [
+   {
+    "id": "user-group-lifecycle",
+    "name": "User & Group Lifecycle",
+    "key_points": [
+     "lifecycle workflows",
+     "leaver deprovisioning",
+     "SCIM provisioning",
+     "access packages",
+     "dynamic group hygiene",
+     "administrative units"
+    ],
+    "followups": [
+     "What triggers this automatically?",
+     "What happens when they leave?"
+    ]
+   },
+   {
+    "id": "authentication",
+    "name": "Authentication",
+    "key_points": [
+     "PHS vs PTA vs federation",
+     "seamless SSO",
+     "MFA strength tiers",
+     "Temporary Access Pass",
+     "legacy auth blocking",
+     "passwordless options"
+    ],
+    "followups": [
+     "Which method resists phishing?",
+     "Where does validation happen?"
+    ]
+   },
+   {
+    "id": "conditional-access",
+    "name": "Conditional Access",
+    "key_points": [
+     "report-only rollout",
+     "signals and grants",
+     "guest scoping",
+     "named location hygiene",
+     "per-app policies",
+     "authentication strengths"
+    ],
+    "followups": [
+     "What breaks if you enable this now?",
+     "Which signal distinguishes this case?"
+    ]
+   },
+   {
+    "id": "pim-access-reviews",
+    "name": "PIM & Access Reviews",
+    "key_points": [
+     "eligible vs active",
+     "activation flow",
+     "approval workflows",
+     "access reviews",
+     "PIM alerts",
+     "JIT elevation"
+    ],
+    "followups": [
+     "Who approves this activation?",
+     "What catches drift?"
+    ]
+   },
+   {
+    "id": "app-integration",
+    "name": "App Integration",
+    "key_points": [
+     "SAML vs OIDC",
+     "MSAL patterns",
+     "consent governance",
+     "Application Proxy",
+     "app ownership",
+     "token protection"
+    ],
+    "followups": [
+     "Which protocol for this app?",
+     "Who approved these permissions?"
+    ]
+   },
+   {
+    "id": "monitoring",
+    "name": "Monitoring",
+    "key_points": [
+     "sign-in log hunting",
+     "audit log change tracking",
+     "Identity Protection",
+     "dormant privilege",
+     "workbooks",
+     "risk-driven response"
+    ],
+    "followups": [
+     "Where is this recorded?",
+     "What contains the risk automatically?"
+    ]
+   }
+  ]
+ },
+ "labs": [
+  {
+   "id": "sc-300-lab-1",
+   "title": "Lifecycle workflows — Azure CLI drill",
+   "objective": "Run a short sequence of Azure CLI commands that demonstrates lifecycle workflows, then verify each result against the expected output.",
+   "steps": [
+    "This lab reworks the User & Group Lifecycle practice scenario \"The Monday-morning hire\" into commands you run yourself — same concept, hands-on instead of multiple choice.",
+    "Open the Terminal tab for this bootcamp — every command below runs there.",
+    "Type exactly: az account show — the account document includes the subscription name",
+    "Type exactly: az group list — each resource group entry carries a name",
+    "Type exactly: az vm list — each VM entry carries a name",
+    "In your own words, say what each command's output taught you about lifecycle workflows."
+   ],
+   "checks": [
+    {
+     "command_pattern": "az account show",
+     "expect_contains": "name",
+     "hint": "In the Terminal tab, run `az account show`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+    },
+    {
+     "command_pattern": "az group list",
+     "expect_contains": "name",
+     "hint": "In the Terminal tab, run `az group list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+    },
+    {
+     "command_pattern": "az vm list",
+     "expect_contains": "name",
+     "hint": "In the Terminal tab, run `az vm list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+    }
+   ],
+   "success_message": "Lab complete — lifecycle workflows practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."
+  },
+  {
+   "id": "sc-300-lab-2",
+   "title": "Hybrid auth — Azure CLI drill",
+   "objective": "Use the Azure CLI to explore hybrid auth hands-on: type each command, read what comes back, and connect the output to the concept.",
+   "steps": [
+    "Inspired by the Authentication scenario \"The auth method choice\": take its core idea and prove it live in the terminal instead of answering on paper.",
+    "Open the Terminal tab for this bootcamp — every command below runs there.",
+    "Type exactly: az vm list — each VM entry carries a name",
+    "Type exactly: az account show — the account document includes the subscription name",
+    "Type exactly: az group list — each resource group entry carries a name",
+    "In your own words, say what each command's output taught you about hybrid auth."
+   ],
+   "checks": [
+    {
+     "command_pattern": "az vm list",
+     "expect_contains": "name",
+     "hint": "In the Terminal tab, run `az vm list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+    },
+    {
+     "command_pattern": "az account show",
+     "expect_contains": "name",
+     "hint": "In the Terminal tab, run `az account show`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+    },
+    {
+     "command_pattern": "az group list",
+     "expect_contains": "name",
+     "hint": "In the Terminal tab, run `az group list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+    }
+   ],
+   "success_message": "Lab complete — hybrid auth practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."
+  },
+  {
+   "id": "sc-300-lab-3",
+   "title": "CA deployment — Azure CLI drill",
+   "objective": "Prove you can apply CA deployment in the Azure CLI — follow the steps, watch the output, and confirm every check passes.",
+   "steps": [
+    "The Conditional Access scenario \"The CA rollout\" tests this concept as a question. This lab makes you demonstrate it with real commands.",
+    "Open the Terminal tab for this bootcamp — every command below runs there.",
+    "Type exactly: az group list — each resource group entry carries a name",
+    "Type exactly: az vm list — each VM entry carries a name",
+    "Type exactly: az account show — the account document includes the subscription name",
+    "In your own words, say what each command's output taught you about CA deployment."
+   ],
+   "checks": [
+    {
+     "command_pattern": "az group list",
+     "expect_contains": "name",
+     "hint": "In the Terminal tab, run `az group list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+    },
+    {
+     "command_pattern": "az vm list",
+     "expect_contains": "name",
+     "hint": "In the Terminal tab, run `az vm list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+    },
+    {
+     "command_pattern": "az account show",
+     "expect_contains": "name",
+     "hint": "In the Terminal tab, run `az account show`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+    }
+   ],
+   "success_message": "Lab complete — CA deployment practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."
+  },
+  {
+   "id": "sc-300-lab-4",
+   "title": "PIM activation — Azure CLI drill",
+   "objective": "Run a short sequence of Azure CLI commands that demonstrates PIM activation, then verify each result against the expected output.",
+   "steps": [
+    "This lab reworks the PIM & Access Reviews practice scenario \"The midnight change\" into commands you run yourself — same concept, hands-on instead of multiple choice.",
+    "Open the Terminal tab for this bootcamp — every command below runs there.",
+    "Type exactly: az account show — the account document includes the subscription name",
+    "Type exactly: az group list — each resource group entry carries a name",
+    "Type exactly: az vm list — each VM entry carries a name",
+    "In your own words, say what each command's output taught you about PIM activation."
+   ],
+   "checks": [
+    {
+     "command_pattern": "az account show",
+     "expect_contains": "name",
+     "hint": "In the Terminal tab, run `az account show`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+    },
+    {
+     "command_pattern": "az group list",
+     "expect_contains": "name",
+     "hint": "In the Terminal tab, run `az group list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+    },
+    {
+     "command_pattern": "az vm list",
+     "expect_contains": "name",
+     "hint": "In the Terminal tab, run `az vm list`. If the check fails, confirm you typed it exactly and that the output contains \"name\"."
+    }
+   ],
+   "success_message": "Lab complete — PIM activation practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."
+  },
+  {
+   "id": "sc300-lab-tenant",
+   "title": "Tenant orientation",
+   "objective": "Identity administration starts with the tenant. Verify the sign-in, the subscription, and the tenant id.",
+   "difficulty": 1,
+   "steps": [
+    "Open the Terminal tab for this bootcamp.",
+    "Type exactly: az account show — tenant id, subscription, signed-in user",
+    "Type exactly: az login — confirm the session identity",
+    "In your own words, say why identity admins verify tenant context before directory changes."
+   ],
+   "checks": [
+    {
+     "command_pattern": "^az account show$",
+     "expect_contains": "tenantId",
+     "hint": "In the Terminal tab, run `az account show`. If the check fails, confirm you typed it exactly and that the output contains \"tenantId\"."
+    },
+    {
+     "command_pattern": "^az login$",
+     "expect_contains": "candidate@interstitium",
+     "hint": "In the Terminal tab, run `az login`. If the check fails, confirm you typed it exactly and that the output contains \"candidate@interstitium\"."
+    }
+   ],
+   "success_message": "Lab complete — tenant oriented."
+  },
+  {
+   "id": "sc300-lab-directory-scope",
+   "title": "Directory scope — subscriptions and groups",
+   "objective": "Scope your administration: list the subscriptions (directory tenants in this lab) and the resource groups.",
+   "difficulty": 1,
+   "steps": [
+    "Open the Terminal tab for this bootcamp.",
+    "Type exactly: az account list — every subscription in administrative scope",
+    "Type exactly: az group list — the resource groups under management",
+    "In your own words, say why admin scope should be as narrow as the task allows."
+   ],
+   "checks": [
+    {
+     "command_pattern": "^az account list$",
+     "expect_contains": "ILB-Playground",
+     "hint": "In the Terminal tab, run `az account list`. If the check fails, confirm you typed it exactly and that the output contains \"ILB-Playground\"."
+    },
+    {
+     "command_pattern": "^az group list$",
+     "expect_contains": "eastus",
+     "hint": "In the Terminal tab, run `az group list`. If the check fails, confirm you typed it exactly and that the output contains \"eastus\"."
+    }
+   ],
+   "success_message": "Lab complete — administrative scope mapped."
+  },
+  {
+   "id": "sc300-lab-app-inventory",
+   "title": "Application identity footprint",
+   "objective": "Apps authenticate as identities too. Survey the compute and cluster footprint apps run on.",
+   "difficulty": 2,
+   "steps": [
+    "Open the Terminal tab for this bootcamp.",
+    "Type exactly: az aks list — the cluster hosting workload identities",
+    "Type exactly: az vm list — the VMs that can carry managed identities",
+    "In your own words, say why workload identities beat stored secrets for app authentication."
+   ],
+   "checks": [
+    {
+     "command_pattern": "^az aks list$",
+     "expect_contains": "ilb-aks",
+     "hint": "In the Terminal tab, run `az aks list`. If the check fails, confirm you typed it exactly and that the output contains \"ilb-aks\"."
+    },
+    {
+     "command_pattern": "^az vm list$",
+     "expect_contains": "PowerState",
+     "hint": "In the Terminal tab, run `az vm list`. If the check fails, confirm you typed it exactly and that the output contains \"PowerState\"."
+    }
+   ],
+   "success_message": "Lab complete — application identity footprint surveyed."
+  },
+  {
+   "id": "sc300-lab-breakglass",
+   "title": "Break-glass readiness",
+   "objective": "Emergency access accounts need a dedicated, monitored home. Create the break-glass resource group and verify it.",
+   "difficulty": 3,
+   "steps": [
+    "Open the Terminal tab for this bootcamp.",
+    "Type exactly: az group create --name ilb-breakglass --location eastus — the emergency-access home",
+    "Type exactly: az group list — confirm ilb-breakglass appears",
+    "In your own words, say why break-glass accounts are excluded from Conditional Access but heavily monitored."
+   ],
+   "checks": [
+    {
+     "command_pattern": "^az group create --name ilb-breakglass --location eastus$",
+     "expect_contains": "ilb-breakglass",
+     "hint": "In the Terminal tab, run `az group create --name ilb-breakglass --location eastus`. If the check fails, confirm you typed it exactly and that the output contains \"ilb-breakglass\"."
+    },
+    {
+     "command_pattern": "^az group list$",
+     "expect_contains": "ilb-breakglass",
+     "hint": "In the Terminal tab, run `az group list`. If the check fails, confirm you typed it exactly and that the output contains \"ilb-breakglass\"."
+    }
+   ],
+   "success_message": "Lab complete — break-glass home established."
+  },
+  {
+   "id": "sc-300-lab1",
+   "domain_id": "user-group-lifecycle",
+   "title": "Audit Conditional Access coverage",
+   "objective": "Inventory CA policies and identify coverage gaps.",
+   "steps": [
+    "Query all Conditional Access policies with display name and state.",
+    "Note which policies are in report-only vs on.",
+    "Check for break-glass exclusions (documented, not accidental).",
+    "List guest users and confirm an access review exists for them.",
+    "Write the gap list: policies missing, stale, or mis-scoped."
+   ],
+   "checks": [
+    {
+     "command_pattern": "^az rest\\s",
+     "expect_contains": "conditionalAccess",
+     "hint": "Query Graph with az rest --method get --url \"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies\"."
+    }
+   ],
+   "domain_id_remapped_from": "sc-300",
+   "merged_from": "cbt-individual/sc-300"
+  },
+  {
+   "id": "sc-300-lab2",
+   "domain_id": "user-group-lifecycle",
+   "title": "Review PIM assignments",
+   "objective": "Find standing privilege that should be eligible instead.",
+   "steps": [
+    "List role assignments scoped to the tenant's privileged roles.",
+    "Separate active (standing) from eligible assignments.",
+    "Flag any permanent active Global Admin outside break-glass.",
+    "Draft the remediation: convert to eligible with activation policy.",
+    "Set a review cadence note for the next access review cycle."
+   ],
+   "checks": [
+    {
+     "command_pattern": "^az ad user list\\s",
+     "expect_contains": "userPrincipalName",
+     "hint": "Start by listing users with az ad user list to scope the review."
+    }
+   ],
+   "domain_id_remapped_from": "sc-300",
+   "merged_from": "cbt-individual/sc-300"
+  }
+ ],
+ "foundations": [
+  {
+   "track": "iam-concepts",
+   "why_needed": "Entra ID is identity and access management as a product. Learn users, groups, roles, and policies before the lifecycle topics."
+  },
+  {
+   "track": "security-basics",
+   "why_needed": "Conditional Access and identity protection are risk decisions. The threat and risk vocabulary comes first."
+  }
+ ],
+ "math": [],
+ "simulations": [
+  {
+   "id": "sc300-sim-ca-decision",
+   "title": "Write the Conditional Access policy",
+   "kind": "branching",
+   "domain_id": "conditional-access",
+   "difficulty": 2,
+   "brief": "The CISO wants: admins always do MFA, legacy auth blocked everywhere, break-glass excluded. Build the policy logic.",
+   "steps": [
+    {
+     "id": "s1",
+     "text": "First: which users does the admin-MFA policy target?",
+     "choices": [
+      {
+       "label": "All users — simplest",
+       "next": "s2a",
+       "points": 0,
+       "feedback": "Blanket MFA on all users on day one creates helpdesk chaos. Start with the highest-risk population."
+      },
+      {
+       "label": "Directory roles (admins) — highest privilege first",
+       "next": "s2",
+       "points": 2,
+       "feedback": "Correct — admins are the highest-value targets; require MFA there first."
+      }
+     ]
+    },
+    {
+     "id": "s2a",
+     "text": "The helpdesk is drowning in MFA lockouts from the rollout. Reconsider:",
+     "choices": [
+      {
+       "label": "Target directory roles first, phase the rest",
+       "next": "s2",
+       "points": 1,
+       "feedback": "Right — phased rollout by risk, not big-bang."
+      }
+     ]
+    },
+    {
+     "id": "s2",
+     "text": "The break-glass accounts: include them in the MFA policy?",
+     "choices": [
+      {
+       "label": "Yes — no exceptions",
+       "next": "END",
+       "points": 0,
+       "outcome": "bad",
+       "feedback": "If MFA breaks, the break-glass accounts are your only way back in. Excluding them (with monitoring) is the standard."
+      },
+      {
+       "label": "No — exclude them, but alert on any use",
+       "next": "END",
+       "points": 2,
+       "outcome": "good",
+       "feedback": "Correct — break-glass stays excluded from CA but every use pages the SOC."
+      }
+     ]
+    }
+   ],
+   "debrief": "You built the CA logic like an identity admin: admins first, phased rollout, break-glass excluded but monitored.",
+   "points": 15
+  },
+  {
+   "id": "sc300-sim-ca-policy",
+   "title": "The CA policy with a hole",
+   "kind": "config-check",
+   "domain_id": "conditional-access",
+   "difficulty": 3,
+   "brief": "This Conditional Access policy looks complete. Click the lines that leave a hole attackers drive through.",
+   "steps": {
+    "config": "CA policy: admin-baseline\n1. Users: all directory roles\n2. Cloud apps: all\n3. Conditions: none\n4. Grant: require MFA\n5. Session: none\n6. Enabled: report-only",
+    "find": 2,
+    "issues": [
+     {
+      "line": 3,
+      "description": "No conditions means the policy cannot scope by risk, location, or device — it is all-or-nothing.",
+      "fix": "Add conditions (e.g. risky sign-ins, non-compliant devices) so the policy adapts to context."
+     },
+     {
+      "line": 6,
+      "description": "Report-only mode evaluates but never enforces — the policy protects nothing.",
+      "fix": "After validating in report-only, switch the policy to On."
+     }
+    ]
+   },
+   "debrief": "You found the CA holes: no conditions and report-only forever. A policy that never enforces is documentation, not protection.",
+   "points": 10
+  },
+  {
+   "id": "sc300-sim-lifecycle-order",
+   "title": "Joiner-mover-leaver",
+   "kind": "ordering",
+   "domain_id": "user-group-lifecycle",
+   "difficulty": 1,
+   "brief": "Order the identity lifecycle so access follows the person — granted on arrival, adjusted on move, removed on exit.",
+   "steps": {
+    "context": "Identity lifecycle: joiner, mover, leaver.",
+    "items": [
+     "Revoke all access and disable the account",
+     "Provision account and baseline access",
+     "Adjust group memberships for the new role",
+     "HR triggers the joiner event"
+    ],
+    "correct_order": [
+     3,
+     1,
+     2,
+     0
+    ]
+   },
+   "debrief": "You ordered the lifecycle: trigger, provision, adjust on move, revoke on leave. Orphaned accounts are a joiner-mover-leaver failure.",
+   "points": 10
+  },
+  {
+   "id": "sc300-sim-mfa-fail",
+   "title": "The MFA outage",
+   "kind": "troubleshoot",
+   "domain_id": "authentication",
+   "difficulty": 2,
+   "brief": "Users report MFA push never arrives. The auth service is healthy. Work it before the helpdesk melts.",
+   "steps": [
+    {
+     "symptom": "MFA push notifications never arrive; SMS codes work fine.",
+     "evidence": [
+      [
+       "az login",
+       "Already signed in as candidate@interstitium (simulated — no real auth)."
+      ]
+     ],
+     "options": [
+      "Check the push notification service / app registration health — pushes ride a different path than SMS",
+      "Reset every user's MFA registration immediately",
+      "Disable MFA until the pushes recover",
+      "Tell users to keep retrying — pushes are flaky"
+     ],
+     "correct": 0,
+     "explain": "Push and SMS are different delivery paths — one failing while the other works isolates the fault to the push path (notification hub / app). Mass resets or disabling MFA punish users for a platform issue."
+    }
+   ],
+   "debrief": "You isolated the fault by comparing paths: SMS works, push does not, so the push delivery path is the suspect. Compare, don't guess.",
+   "points": 10
+  }
+ ],
+ "consoleSims": [
+  {
+   "id": "sc300-console-portal-ca-1",
+   "title": "Create the admin CA policy",
+   "console": "azure-portal",
+   "domain_id": "conditional-access",
+   "difficulty": 2,
+   "brief": "Create the Conditional Access policy requiring MFA for directory roles, with break-glass excluded.",
+   "tasks": [
+    {
+     "id": "t1",
+     "instruction": "Create a Conditional Access policy named admin-mfa-required targeting directory roles.",
+     "validate": {
+      "action": "create",
+      "params": {
+       "type": "ca-policy",
+       "name": "admin-mfa-required",
+       "users": "directory-roles"
+      }
+     },
+     "hint": "Create the policy and scope it to directory roles."
+    },
+    {
+     "id": "t2",
+     "instruction": "Set the grant control to require MFA and exclude the break-glass accounts.",
+     "validate": {
+      "action": "set-field",
+      "params": {
+       "field": "ca-policy.admin-mfa-required.grant",
+       "value": "require-mfa"
+      }
+     },
+     "hint": "Set the grant to MFA and add the break-glass exclusion."
+    }
+   ],
+   "debrief": "You built the baseline CA policy: admins get MFA, break-glass stays excluded. The most common real-world CA policy, done right."
+  },
+  {
+   "id": "sc300-console-portal-pim-1",
+   "title": "Activate the eligible role",
+   "console": "azure-portal",
+   "domain_id": "pim-access-reviews",
+   "difficulty": 3,
+   "brief": "You are eligible for the admin role via PIM. Activate it with justification and a bounded duration.",
+   "tasks": [
+    {
+     "id": "t1",
+     "instruction": "Activate the eligible admin role with justification 'incident INC-2042'.",
+     "validate": {
+      "action": "click",
+      "params": {
+       "target": "pim.activate"
+      }
+     },
+     "hint": "Open PIM and activate the eligible assignment with the incident justification."
+    },
+    {
+     "id": "t2",
+     "instruction": "Set the activation duration to 4 hours (not the maximum).",
+     "validate": {
+      "action": "set-field",
+      "params": {
+       "field": "pim.activation.duration",
+       "value": "4h"
+      }
+     },
+     "hint": "Bound the activation to 4 hours — just enough for the incident."
+    }
+   ],
+   "debrief": "You used PIM the way it is designed: just-in-time, justified, time-bounded. Standing admin access is the vulnerability PIM removes."
+  }
+ ],
+ "terminalMissions": [
+  {
+   "id": "sc300-mission-signin",
+   "title": "Verify the admin sign-in",
+   "domain_id": "authentication",
+   "difficulty": 1,
+   "brief": "Confirm the identity this admin session runs as.",
+   "objectives": [
+    "Sign in (verify the session)"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^az login$",
+     "expect_contains": "candidate@interstitium",
+     "hint": "In the Terminal tab, run `az login`. If the check fails, confirm you typed it exactly and that the output contains \"candidate@interstitium\"."
+    }
+   ],
+   "success_message": "Admin sign-in verified."
+  },
+  {
+   "id": "sc300-mission-tenants",
+   "title": "List the directory scope",
+   "domain_id": "user-group-lifecycle",
+   "difficulty": 1,
+   "brief": "List the subscriptions in the identity admin's scope.",
+   "objectives": [
+    "List all subscriptions"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^az account list$",
+     "expect_contains": "ILB-Playground",
+     "hint": "In the Terminal tab, run `az account list`. If the check fails, confirm you typed it exactly and that the output contains \"ILB-Playground\"."
+    }
+   ],
+   "success_message": "Directory scope listed."
+  },
+  {
+   "id": "sc300-mission-groups",
+   "title": "List the managed groups",
+   "domain_id": "user-group-lifecycle",
+   "difficulty": 2,
+   "brief": "List the resource groups under identity governance.",
+   "objectives": [
+    "List all resource groups"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^az group list$",
+     "expect_contains": "eastus",
+     "hint": "In the Terminal tab, run `az group list`. If the check fails, confirm you typed it exactly and that the output contains \"eastus\"."
+    }
+   ],
+   "success_message": "Managed groups listed."
+  },
+  {
+   "id": "sc300-mission-vms",
+   "title": "Check managed identities",
+   "domain_id": "app-integration",
+   "difficulty": 2,
+   "brief": "List the VMs that can carry managed identities for apps.",
+   "objectives": [
+    "List all virtual machines"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^az vm list$",
+     "expect_contains": "PowerState",
+     "hint": "In the Terminal tab, run `az vm list`. If the check fails, confirm you typed it exactly and that the output contains \"PowerState\"."
+    }
+   ],
+   "success_message": "Identity-capable hosts listed."
+  },
+  {
+   "id": "sc300-mission-nodes",
+   "title": "Count the workload nodes",
+   "domain_id": "app-integration",
+   "difficulty": 2,
+   "brief": "List the AKS clusters hosting workload identities and read node counts.",
+   "objectives": [
+    "List all AKS clusters"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^az aks list$",
+     "expect_contains": "3",
+     "hint": "In the Terminal tab, run `az aks list`. If the check fails, confirm you typed it exactly and that the output contains \"3\"."
+    }
+   ],
+   "success_message": "Workload nodes counted."
+  },
+  {
+   "id": "sc300-mission-network",
+   "title": "Verify the identity network",
+   "domain_id": "monitoring",
+   "difficulty": 3,
+   "brief": "List the VNets carrying identity traffic and read their prefixes.",
+   "objectives": [
+    "List all virtual networks"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^az network vnet list$",
+     "expect_contains": "AddressPrefix",
+     "hint": "In the Terminal tab, run `az network vnet list`. If the check fails, confirm you typed it exactly and that the output contains \"AddressPrefix\"."
+    }
+   ],
+   "success_message": "Identity network verified."
+  }
+ ],
+ "media": [
+  {
+   "id": "sc-300-user-group-lifecycle-diag",
+   "kind": "diagram",
+   "title": "Identity Lifecycle",
+   "svg": "assets/diagrams/sc-300-user-group-lifecycle.svg",
+   "lesson_ref": "c-user-group-lifecycle",
+   "caption": "Joiner → mover → leaver, automated.",
+   "alt": "Identity Lifecycle. Shows: Joiner, Mover, Access reviews, Leaver."
+  },
+  {
+   "id": "sc-300-authentication-diag",
+   "kind": "diagram",
+   "title": "Modern Authentication Flow",
+   "svg": "assets/diagrams/sc-300-authentication.svg",
+   "lesson_ref": "c-authentication",
+   "caption": "Passwords plus a second factor — or none at all.",
+   "alt": "Modern Authentication Flow. Shows: Factor 1, Challenge, Verify, Session."
+  },
+  {
+   "id": "sc-300-conditional-access-diag",
+   "kind": "diagram",
+   "title": "Conditional Access Policy",
+   "svg": "assets/diagrams/sc-300-conditional-access.svg",
+   "lesson_ref": "c-conditional-access",
+   "caption": "If-then rules evaluated at every sign-in.",
+   "alt": "Conditional Access Policy. Shows: Signals, Policy match, Grant controls, Decision."
+  },
+  {
+   "id": "sc-300-pim-access-reviews-diag",
+   "kind": "diagram",
+   "title": "PIM & Access Reviews",
+   "svg": "assets/diagrams/sc-300-pim-access-reviews.svg",
+   "lesson_ref": "c-pim-access-reviews",
+   "caption": "Just-in-time privilege with oversight.",
+   "alt": "PIM & Access Reviews. Shows: Eligible vs Active, Just-in-time, Approval, Access reviews."
+  },
+  {
+   "id": "sc-300-app-integration-diag",
+   "kind": "diagram",
+   "title": "SSO App Integration",
+   "svg": "assets/diagrams/sc-300-app-integration.svg",
+   "lesson_ref": "c-app-integration",
+   "caption": "Wire SaaS apps into Entra ID once.",
+   "alt": "SSO App Integration. Shows: Register, SSO mode, Attributes, Assign, Test."
+  },
+  {
+   "id": "sc-300-monitoring-diag",
+   "kind": "diagram",
+   "title": "Identity Monitoring",
+   "svg": "assets/diagrams/sc-300-monitoring.svg",
+   "lesson_ref": "c-monitoring",
+   "caption": "Watch the front door continuously.",
+   "alt": "Identity Monitoring. Shows: Sign-in logs, Audit logs, Identity Protection, Access reviews."
+  }
+ ],
+ "resources": {
+  "cheatsheet": {
+   "title": "Entra Identity Admin (SC-300) — Cheat Sheet",
+   "sections": [
+    {
+     "heading": "User & Group Lifecycle",
+     "items": [
+      "Lifecycle workflows — entra lifecycle workflows trigger joiner/mover/leaver tasks (account creation, group adds, access packages, manager notifications) from HR signals. Leaver workflows automate deprovisioning at termination: disable sign-in, revoke refresh tokens (killing acti…",
+      "SCIM provisioning — entra's provisioning service speaks SCIM to supported apps: assign a group to the app, and users are created/updated/deprovisioned automatically.",
+      "SaaS lifecycle — group membership becomes the single control point for SaaS access.",
+      "Common trap — dynamic groups always work perfectly.",
+      "Common trap — trusting managers to file tickets.",
+      "Common trap — global Administrator for the help desk.",
+      "Read — Read the setup and name the principle at play before looking at the reasoning. Then compare your answer with the takeaway — if they differ, re-read the concepts above and try the drill scenarios for this domain."
+     ]
+    },
+    {
+     "heading": "Authentication",
+     "items": [
+      "Hybrid auth — legacy protocols (IMAP, POP, SMTP basic auth) can't enforce MFA — they're the classic MFA-bypass path.",
+      "PHS vs PTA vs federation — most orgs should prefer PHS + seamless SSO.",
+      "Seamless SSO — Seamless SSO lets domain-joined machines on the corporate network sign into Entra silently via Kerberos — no password prompt.",
+      "Silent auth — the standard control is a CA policy blocking legacy auth (Microsoft now disables basic auth broadly), forcing modern auth everywhere.",
+      "MFA strength — temporary Access Passes give new hires a short-lived passcode to sign in and register strong MFA — no emailed permanent passwords to phish. SMS is the weakest MFA (SIM swap, interception); authenticator push is better; FIDO2/WebAuthn and WHfB are phishing-r…",
+      "Common trap — PHS sends plaintext passwords.",
+      "Common trap — no credentials; accounts active immediately.",
+      "Common trap — password expiry every 30 days.",
+      "Common trap — sticky notes with complex passwords.",
+      "Legacy protocols (IMAP, POP, SMTP basic auth) can't enforce MFA — they're the classic MFA-bypass path. The standard control is a CA policy blocking legacy auth (Microsoft now disables basic auth broadly), forcing modern auth everywhere."
+     ]
+    },
+    {
+     "heading": "Conditional Access",
+     "items": [
+      "Report-only and break-glass — CA changes go: report-only (measure impact without enforcing) → pilot → enforce, always excluding emergency-access break-glass accounts.",
+      "CA conditions combine signals — device state (hybrid-joined/compliant via Intune), named locations, client apps, risk — and grants (require MFA, require compliant device, block) apply when conditions match.",
+      "Conditions and grants — cA's 'target resources' selector lets policies apply per app: strict grants (require authentication strength = phishing-resistant MFA) for finance, lighter for the intranet.",
+      "CA applies to guests when they're in scope — but policies often exclude them accidentally (or target only 'members').",
+      "Common trap — MFA doesn't work for guests.",
+      "Skipping the key question — what mode measures impact without enforcing, and which accounts must always be excluded.",
+      "Skipping the key question — which two signals distinguish 'managed office device' from everything else."
+     ]
+    },
+    {
+     "heading": "PIM & Access Reviews",
+     "items": [
+      "PIM role settings support approval workflows — activation requests route to approvers with justification. PIM's security alerts flag risky assignments (permanent privileged roles, assignments outside PIM); pairing with recurring access reviews on the roles themselves catches drift.",
+      "Just-in-time elevation — eligible assignments activate just-in-time: the engineer requests, completes MFA, gives justification, gets the role for a bounded window, and it expires automatically.",
+      "PIM approvals — JIT VM access opens management ports only for approved, time-bound windows with MFA; combined with PIM for the Azure roles, standing admin evaporates.",
+      "Role settings — they're the recurring hygiene for guests, access packages, and role assignments.",
+      "Access reviews — entitlement management bakes in lifetimes: assignment policies set durations, and access reviews re-certify. Access reviews ask designated reviewers (managers, group owners) to certify continued access; denied or unreviewed access is removed automatically.",
+      "Common trap — manual portal checks yearly.",
+      "Skipping the key question — eligible but not active — what turns it on for the outage window.",
+      "Skipping the key question — which PIM setting puts a human gate before activation."
+     ]
+    },
+    {
+     "heading": "App Integration",
+     "items": [
+      "SAML SSO — entra supports SAML 2.0 apps: it becomes the identity provider, issuing SAML assertions the app trusts.",
+      "Legacy app integration — OIDC (built on OAuth2) is the modern app protocol; MSAL implements it correctly (auth code + PKCE, token cache, silent renewal). Admin consent workflows and consent policies gate which app permissions users can grant themselves; high-privilege permissions (…",
+      "Modern auth — no DMZ, no inbound ports, modern auth for legacy apps.",
+      "Consent framework — blind consent is how overreaching apps get enterprise data.",
+      "Common trap — letting users consent to anything.",
+      "Common trap — exposing Windows auth to the internet."
+     ]
+    },
+    {
+     "heading": "Monitoring",
+     "items": [
+      "Sign-in logs are the identity investigation surface — filter failures by IP, look for any success amid the spray (compromise!), then respond — block, force password reset, require MFA. Sign-in logs show authentication; audit logs show administration.",
+      "Password spray — identity Protection ingests breach corpuses and matches them to your users (via PHS hash comparison) — user-risk policies then force password change. The full loop: risk policy contains (force password change at high user risk), and risk detections stream t…",
+      "Audit logs record all Entra — control -plane changes with actor, target, and timestamp — the non-repudiable record for 'who granted what'. Workbooks query the streamed Entra logs (sign-in, audit, risk) into living dashboards — MFA registration gaps, risk trends, stale access — the ident…",
+      "Identity hygiene — is measured, not assumed.",
+      "Common trap — the activity log of Azure resources.",
+      "Skipping the key question — thousands of failures, hundreds of accounts — what attack, and where do you hunt it.",
+      "Skipping the key question — who granted the role, and where is that fact recorded.",
+      "Sign-in logs are the identity investigation surface — filter failures by IP, look for any success amid the spray (compromise!), then respond — block, force password reset, require MFA. A spray with one success is a breach, not noise."
+     ]
+    }
+   ]
+  },
+  "glossary": [
+   {
+    "term": "MFA",
+    "def": "Authentication strengths let CA demand a specific MFA caliber (e.g., phishing-resistant MFA: FIDO2/WHfB/certificate) rather than any MFA. Generic 'require MFA' still permits SMS — precision matters for privileged users."
+   },
+   {
+    "term": "PIM",
+    "def": "PIM role settings support approval workflows: activation requests route to approvers with justification. PIM's security alerts flag risky assignments (permanent privileged roles, assignments outside PIM); pairing with recurring access re…"
+   },
+   {
+    "term": "CA",
+    "def": "Silent auth: the standard control is a CA policy blocking legacy auth (Microsoft now disables basic auth broadly), forcing modern auth everywhere."
+   },
+   {
+    "term": "Entra",
+    "def": "Entra supports true passwordless: WHfB (device-bound biometrics/PIN), FIDO2 keys (phishing-resistant roaming), and Authenticator phone sign-in. Each removes the phishable shared secret — the password — from the flow."
+   },
+   {
+    "term": "SSO",
+    "def": "SAML SSO: entra supports SAML 2.0 apps: it becomes the identity provider, issuing SAML assertions the app trusts."
+   },
+   {
+    "term": "SMS",
+    "def": "SMS is the weakest MFA (SIM swap, interception); authenticator push is better; FIDO2/WebAuthn and WHfB are phishing-resistant (bound to origin, no shared secret to intercept). High-value targets need the strong end of the spectrum."
+   },
+   {
+    "term": "SIM",
+    "def": "SMS is the weakest MFA (SIM swap, interception); authenticator push is better; FIDO2/WebAuthn and WHfB are phishing-resistant (bound to origin, no shared secret to intercept). High-value targets need the strong end of the spectrum."
+   },
+   {
+    "term": "How",
+    "def": "How do you require FIDO2-grade MFA specifically, not just any MFA?"
+   },
+   {
+    "term": "SAML",
+    "def": "SAML SSO: entra supports SAML 2.0 apps: it becomes the identity provider, issuing SAML assertions the app trusts."
+   },
+   {
+    "term": "HR",
+    "def": "What turns HR's 'new hire' signal into automatic provisioning?"
+   },
+   {
+    "term": "PTA",
+    "def": "PHS vs PTA vs federation: most orgs should prefer PHS + seamless SSO."
+   },
+   {
+    "term": "OIDC",
+    "def": "Legacy app integration: OIDC (built on OAuth2) is the modern app protocol; MSAL implements it correctly (auth code + PKCE, token cache, silent renewal). Admin consent workflows and consent policies gate which app permissions users can gr…"
+   },
+   {
+    "term": "PKCE",
+    "def": "OIDC (built on OAuth2) is the modern app protocol; MSAL implements it correctly (auth code + PKCE, token cache, silent renewal). SPAs must never use implicit flow or handle passwords — the library enforces the safe patterns."
+   },
+   {
+    "term": "IMAP",
+    "def": "Hybrid auth: legacy protocols (IMAP, POP, SMTP basic auth) can't enforce MFA — they're the classic MFA-bypass path."
+   },
+   {
+    "term": "Who",
+    "def": "Who is accountable for each enterprise app's permissions?"
+   },
+   {
+    "term": "Legacy",
+    "def": "Legacy app integration: OIDC (built on OAuth2) is the modern app protocol; MSAL implements it correctly (auth code + PKCE, token cache, silent renewal). Admin consent workflows and consent policies gate which app permissions users can gr…"
+   },
+   {
+    "term": "Access",
+    "def": "Access reviews: entitlement management bakes in lifetimes: assignment policies set durations, and access reviews re-certify. Access reviews ask designated reviewers (managers, group owners) to certify continued access; denied or unreview…"
+   },
+   {
+    "term": "Sign-in",
+    "def": "Sign-in logs are the identity investigation surface: filter failures by IP, look for any success amid the spray (compromise!), then respond — block, force password reset, require MFA. Sign-in logs show authentication; audit logs show adm…"
+   },
+   {
+    "term": "IP",
+    "def": "Named locations encode your trusted networks; when egress IPs change (new ISP, new VPN concentrator), the definitions go stale and location-based policies misfire. IP hygiene is CA hygiene."
+   },
+   {
+    "term": "WHfB",
+    "def": "MFA strength: temporary Access Passes give new hires a short-lived passcode to sign in and register strong MFA — no emailed permanent passwords to phish. SMS is the weakest MFA (SIM swap, interception); authenticator push is better; FIDO…"
+   },
+   {
+    "term": "DMZ",
+    "def": "Modern auth: no DMZ, no inbound ports, modern auth for legacy apps."
+   },
+   {
+    "term": "Admin",
+    "def": "Admin consent workflows and consent policies gate which app permissions users can grant themselves; high-privilege permissions (like Mail.Read) require admin approval. Blind consent is how overreaching apps get enterprise data."
+   },
+   {
+    "term": "OAuth2",
+    "def": "Legacy app integration: OIDC (built on OAuth2) is the modern app protocol; MSAL implements it correctly (auth code + PKCE, token cache, silent renewal). Admin consent workflows and consent policies gate which app permissions users can gr…"
+   },
+   {
+    "term": "Identity",
+    "def": "Identity hygiene is measured, not assumed."
+   },
+   {
+    "term": "CAE",
+    "def": "Defenses layer: token protection binds tokens to devices, CAE enables near-real-time revocation on risk signals, and short lifetimes shrink the replay window. Token theft is expected — the design must contain it."
+   }
+  ],
+  "links": [
+   {
+    "label": "Microsoft — official site",
+    "url": "https://learn.microsoft.com",
+    "note": "Official vendor documentation and certification information"
+   },
+   {
+    "label": "Microsoft Learn — Azure",
+    "url": "https://learn.microsoft.com/en-us/azure/",
+    "note": "Official Azure documentation"
+   },
+   {
+    "label": "Microsoft certifications",
+    "url": "https://learn.microsoft.com/en-us/certifications/",
+    "note": "Official certification paths and exam pages"
+   },
+   {
+    "label": "Azure status and architecture",
+    "url": "https://azure.microsoft.com/en-us/",
+    "note": "Official Azure product pages"
+   },
+   {
+    "label": "NIST SP 800-53 Rev. 5",
+    "url": "https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final",
+    "note": "Official NIST security controls catalog"
+   },
+   {
+    "label": "NIST Cybersecurity Framework",
+    "url": "https://www.nist.gov/cyberframework",
+    "note": "Official NIST CSF"
+   },
+   {
+    "label": "OWASP Top Ten",
+    "url": "https://owasp.org/www-project-top-ten/",
+    "note": "OWASP's top web application risks"
+   },
+   {
+    "label": "MITRE ATT&CK",
+    "url": "https://attack.mitre.org/",
+    "note": "MITRE's adversary tactics knowledge base"
+   }
+  ],
+  "checklist": [
+   "Get 7–8 hours of sleep the night before — fatigue destroys recall faster than any topic gap.",
+   "Bring valid government-issued photo ID and arrive at the test center 30 minutes early.",
+   "Eat a real meal beforehand; bring water and a light snack if the center allows them.",
+   "Read every question twice before scanning the answer choices.",
+   "Flag uncertain questions and move on — return with fresh eyes at the end.",
+   "Eliminate the obviously wrong answers first, then compare the survivors.",
+   "Budget your time: answer steadily and keep a 10–15 minute review buffer.",
+   "Re-run your weakest-domain drill until mastery is at least 80%.",
+   "For User & Group Lifecycle: restate the 'why' behind each scenario answer in your own words — if you can't explain it, you don't own it.",
+   "Redo one Authentication lab from scratch without looking at the steps.",
+   "Recite the key Conditional Access terms from the glossary aloud from memory."
+  ]
+ }
+}

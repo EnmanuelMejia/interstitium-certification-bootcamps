@@ -1,1 +1,2353 @@
-{"disclaimer": "Independent practice material by Interstitium Labs. Not affiliated with, endorsed by, or sponsored by Amazon Web Services. Confers no certificate. All scenarios are original; no exam content is reproduced.", "domains": [{"id": "data-ingestion", "name": "Data Ingestion", "scenarios": [{"answer": 1, "choices": ["SQS", "Amazon Kinesis Data Streams", "S3 batch uploads", "RDS"], "evidence": [["stream.txt", "IoT sensors: 50k events/sec,\nsub-second latency needed,\nmultiple consumers."]], "hint": "Which service is built for high-throughput ordered event streams with multiple consumers?", "id": "data-di-01", "mins": 6, "objectives": ["Kinesis Data Streams", "Streaming ingestion"], "prompt": "Which ingestion service fits?", "situation": "50k IoT events/sec need sub-second ingestion with multiple consumers reading the same stream.", "title": "Fifty thousand events a second", "why": "Kinesis Data Streams provides ordered, replayable, high-throughput streaming with multiple consumers per shard. SQS is queue-based (not replayable multi-consumer streaming); S3 batch uploads aren't sub-second; RDS isn't an ingestion service."}, {"answer": 0, "choices": ["Kinesis Data Firehose to S3", "Kinesis Data Streams with custom consumers", "MSK with self-managed consumers", "Direct PUT to DynamoDB"], "evidence": [["firehose.txt", "Clickstream: 20k events/sec.\nNeed: land in S3 as Parquet,\nnear-real-time, zero consumer code."]], "hint": "Which service loads streaming data to destinations with no consumer code?", "id": "data-di-02", "mins": 5, "objectives": ["Firehose", "Managed delivery"], "prompt": "Which service delivers with zero consumer code?", "situation": "Clickstream at 20k events/sec must land in S3 as Parquet near-real-time with no custom consumer code.", "title": "No consumer code required", "why": "Kinesis Data Firehose is the managed delivery service: it buffers, converts (e.g., to Parquet), and loads streaming data into S3 and other destinations with no consumer code. Data Streams and MSK require consumers; DynamoDB direct PUT isn't a streaming pipeline."}, {"answer": 2, "choices": ["Firehose", "Data Streams", "Amazon MSK (Managed Streaming for Kafka)", "SQS FIFO"], "evidence": [["kafka.txt", "Team knows Kafka deeply.\nNeed: Kafka API compatibility,\nlong retention, exactly-once\nsemantics."]], "hint": "Which AWS service is Kafka-compatible and managed?", "id": "data-di-03", "mins": 6, "objectives": ["MSK", "Kafka"], "prompt": "Which service fits the Kafka team?", "situation": "A team with deep Kafka expertise needs Kafka API compatibility, long retention, and exactly-once semantics on AWS.", "title": "Kafka, managed", "why": "Amazon MSK provides managed Apache Kafka with Kafka API compatibility, configurable long retention, and exactly-once semantics support. Firehose/Data Streams aren't Kafka-compatible; SQS FIFO lacks Kafka's log semantics and retention model."}, {"answer": 1, "choices": ["Manual CSV uploads", "AWS Database Migration Service (DMS)", "Rewriting the app", "Screenshots of the database"], "evidence": [["dms.txt", "On-prem Oracle -> Aurora PostgreSQL.\nNeed: minimal downtime, continuous\nreplication until cutover."]], "hint": "Which service replicates databases continuously with minimal downtime?", "id": "data-di-04", "mins": 6, "objectives": ["DMS", "Database migration"], "prompt": "Which service migrates with minimal downtime?", "situation": "An on-prem Oracle database must migrate to Aurora PostgreSQL with minimal downtime and continuous replication until cutover.", "title": "Moving Oracle without stopping", "why": "DMS performs full-load plus change-data-capture replication, keeping the target in sync until cutover for minimal downtime. Manual uploads can't do CDC; rewriting the app is unnecessary; screenshots aren't a migration strategy."}, {"answer": 3, "choices": ["Kinesis Data Streams", "Firehose", "MSK", "AWS Transfer Family"], "evidence": [["sftp.txt", "Partners send nightly CSVs via SFTP.\nNeed: land in S3, keep the SFTP\ninterface, managed service."]], "hint": "Which managed service speaks SFTP/S3 natively?", "id": "data-di-05", "mins": 5, "objectives": ["Transfer Family", "Partner ingestion"], "prompt": "Which service keeps the SFTP interface?", "situation": "Partners send nightly CSVs via SFTP; the files must land in S3 while keeping the SFTP interface as a managed service.", "title": "SFTP, but it lands in S3", "why": "AWS Transfer Family provides managed SFTP/FTPS/FTP endpoints backed by S3 — partners keep their workflow, files land in S3. The streaming services don't speak SFTP; they're for event streams, not file transfers."}, {"answer": 0, "choices": ["S3 with Event Notifications -> Lambda/SQS", "Polling S3 every minute", "FTP to EC2", "Emailing the files"], "evidence": [["s3events.txt", "Files land in S3 unpredictably.\nNeed: trigger processing within\nseconds of arrival."]], "hint": "Which S3 feature pushes events on object creation?", "id": "data-di-06", "mins": 5, "objectives": ["S3 Event Notifications"], "prompt": "What triggers processing on arrival?", "situation": "Files land in S3 unpredictably; processing must trigger within seconds of arrival.", "title": "The file just landed — go", "why": "S3 Event Notifications push events on object creation to Lambda, SQS, or SNS within seconds — event-driven and serverless. Polling adds latency and cost; FTP/EC2 and email are manual anti-patterns."}]}, {"id": "data-lakes-warehouses", "name": "Data Lakes & Warehouses", "scenarios": [{"answer": 1, "choices": ["A data warehouse only", "S3-based data lake with Glue Data Catalog", "RDS for analytics", "EBS volumes"], "evidence": [["lake.txt", "Data: structured, semi-structured,\nunstructured. Consumers: analysts,\nML team, ad-hoc SQL. Schema: evolves."]], "hint": "Which architecture handles all data types with evolving schema?", "id": "data-dl-01", "mins": 6, "objectives": ["Data lakes", "S3"], "prompt": "Which architecture fits?", "situation": "Structured, semi-structured, and unstructured data serve analysts, ML, and ad-hoc SQL with evolving schemas.", "title": "The lake, not the warehouse (yet)", "why": "An S3-based data lake with the Glue Data Catalog stores all data types in open formats with evolving schemas, serving diverse consumers. A warehouse alone forces schema-on-write; RDS isn't analytics storage; EBS isn't a lake."}, {"answer": 2, "choices": ["Redshift provisioned cluster", "Amazon Redshift Serverless", "RDS", "DynamoDB"], "evidence": [["rs.txt", "Analytics: spiky, 2h/day.\nNeed: petabyte scale, SQL,\nno cluster management."]], "hint": "Which warehouse option scales to zero operationally for spiky use?", "id": "data-dl-02", "mins": 6, "objectives": ["Redshift Serverless"], "prompt": "Which warehouse fits spiky analytics?", "situation": "Petabyte-scale SQL analytics runs 2 hours/day with spikes; no cluster management wanted.", "title": "A warehouse for two hours a day", "why": "Redshift Serverless automatically provisions and scales warehouse capacity for the workload, paying for usage — ideal for spiky analytics. Provisioned clusters idle 22h/day; RDS isn't a warehouse; DynamoDB isn't SQL analytics."}, {"answer": 0, "choices": ["AWS Glue Data Catalog", "A spreadsheet of table names", "Hardcoded schemas in each job", "A wiki page"], "evidence": [["catalog.txt", "500+ tables in S3.\nTeams can't find data;\nschemas drift undocumented."]], "hint": "Which service is the central metadata store queryable by Athena, Redshift, and EMR?", "id": "data-dl-03", "mins": 5, "objectives": ["Glue Data Catalog"], "prompt": "What makes the data discoverable?", "situation": "500+ tables in S3; teams can't find data and schemas drift undocumented.", "title": "Finding table 437", "why": "The Glue Data Catalog provides a central, queryable metadata store (databases, tables, schemas, partitions) integrated with Athena, Redshift Spectrum, and EMR. Spreadsheets, hardcoded schemas, and wikis don't integrate or stay current."}, {"answer": 3, "choices": ["CSV in S3", "JSON in S3", "Apache Parquet in S3 (columnar)", "Plain text logs"], "evidence": [["parquet.txt", "Analytics scans 10 TB/day but\nqueries touch 5 of 200 columns.\nNeed: cut scan cost."]], "hint": "Which format lets queries read only the columns they need?", "id": "data-dl-04", "mins": 6, "objectives": ["Parquet", "Columnar formats"], "prompt": "Which storage format cuts the scan cost?", "situation": "Analytics scans 10 TB/day but queries touch only 5 of 200 columns.", "title": "Reading 5 columns, not 200", "why": "Parquet's columnar format lets engines read only the needed columns (plus compression and predicate pushdown), slashing scanned data and cost. Row-based CSV/JSON force full scans; plain text is worse."}, {"answer": 1, "choices": ["Copying data into Redshift", "Redshift Spectrum querying S3 directly", "Moving the lake to RDS", "Downloading to laptops"], "evidence": [["spectrum.txt", "Cold data in S3 (5 PB).\nNeed: occasional SQL over it\nwithout loading a warehouse."]], "hint": "Which Redshift feature queries S3 in place?", "id": "data-dl-05", "mins": 6, "objectives": ["Redshift Spectrum"], "prompt": "What queries the cold data in place?", "situation": "5 PB of cold data in S3 needs occasional SQL without loading it into a warehouse.", "title": "SQL over five petabytes, in place", "why": "Redshift Spectrum extends Redshift SQL queries to S3 data in place — no loading, paying per query. Copying petabytes for occasional queries is wasteful; RDS/laptops can't handle the scale."}, {"answer": 2, "choices": ["One bucket, no structure", "S3 with bronze/silver/gold zones + Lake Formation permissions", "Public buckets", "A single database"], "evidence": [["zones.txt", "Raw events -> cleaned ->\ncurated marts. Need: clear lineage,\ncolumn-level access control."]], "hint": "Which zone pattern plus which service gives fine-grained lake security?", "id": "data-dl-06", "mins": 7, "objectives": ["Lake Formation", "Medallion architecture"], "prompt": "What organizes the lake with proper access control?", "situation": "Raw events flow to cleaned data to curated marts, needing clear lineage and column-level access control.", "title": "Bronze, silver, gold", "why": "Bronze/silver/gold zones organize the refinement lineage, and Lake Formation provides centralized fine-grained permissions (table/column-level) on the lake. One unstructured bucket has no lineage or control; public buckets are a breach; a single database can't hold the lake."}]}, {"id": "processing-frameworks", "name": "Processing Frameworks", "scenarios": [{"answer": 0, "choices": ["AWS Glue (serverless Spark)", "Self-managed Spark on EC2", "Lambda for 4-hour jobs", "RDS stored procedures"], "evidence": [["glue.txt", "Nightly ETL: 500 GB, Spark jobs.\nNeed: no cluster management,\nauto-scaling workers."]], "hint": "Which service runs serverless Spark with auto-scaling?", "id": "data-pf-01", "mins": 6, "objectives": ["Glue", "Serverless Spark"], "prompt": "Which processing service fits?", "situation": "Nightly 500 GB Spark ETL jobs need no cluster management with auto-scaling workers.", "title": "Spark without the cluster", "why": "AWS Glue provides serverless Spark ETL with auto-scaling workers — no clusters to manage. Self-managed EC2 reintroduces ops; Lambda can't run 4-hour Spark jobs; RDS procedures aren't a big-data engine."}, {"answer": 1, "choices": ["Glue", "Amazon EMR", "Lambda", "Athena"], "evidence": [["emr.txt", "Team needs: Spark + Flink + Presto,\ncustom libraries, long-running\ninteractive notebooks."]], "hint": "Which service gives you a managed big-data cluster with many frameworks?", "id": "data-pf-02", "mins": 6, "objectives": ["EMR", "Big data clusters"], "prompt": "Which service fits the multi-framework team?", "situation": "The team needs Spark, Flink, and Presto with custom libraries and long-running interactive notebooks.", "title": "The whole big-data toolbox", "why": "EMR provides managed clusters with the full big-data ecosystem (Spark, Flink, Presto/Trino) and notebook support. Glue is Spark-centric serverless; Lambda isn't for clusters; Athena is serverless SQL, not a framework platform."}, {"answer": 2, "choices": ["EMR", "Glue", "Amazon Athena", "Redshift"], "evidence": [["athena.txt", "Ad-hoc SQL over S3 logs.\nUsage: 10 queries/day.\nNeed: no infrastructure, pay per query."]], "hint": "Which service is serverless SQL directly on S3?", "id": "data-pf-03", "mins": 5, "objectives": ["Athena", "Serverless SQL"], "prompt": "Which service fits ad-hoc queries?", "situation": "Ten ad-hoc SQL queries per day over S3 logs; no infrastructure wanted, pay per query.", "title": "Ten queries a day", "why": "Athena provides serverless SQL directly on S3, paying per byte scanned — perfect for low-volume ad-hoc analysis. EMR/Glue clusters idle between queries; Redshift is a provisioned warehouse."}, {"answer": 3, "choices": ["Batch nightly", "Amazon Managed Streaming for Kafka + Flink (or Kinesis Data Analytics)", "Cron on EC2", "Manual runs"], "evidence": [["realtime.txt", "Fraud scoring: must score\ntransactions within 30 seconds\nof occurrence."]], "hint": "30-second SLA — which processing paradigm fits?", "id": "data-pf-04", "mins": 6, "objectives": ["Stream processing", "Flink"], "prompt": "What meets the 30-second SLA?", "situation": "Fraud scoring must complete within 30 seconds of each transaction.", "title": "Thirty seconds to score fraud", "why": "Stream processing (MSK + Flink, or Kinesis Data Analytics with Flink) processes events continuously with sub-minute latency. Nightly batch, cron, and manual runs can't meet a 30-second SLA."}, {"answer": 1, "choices": ["Rewriting all data daily", "Glue bookmarks / incremental processing", "Full reloads weekly", "No deduplication"], "evidence": [["incr.txt", "Source: 2 TB/day appended.\nJob reruns process everything;\nruntime growing unboundedly."]], "hint": "What tracks already-processed data so jobs handle only new arrivals?", "id": "data-pf-05", "mins": 6, "objectives": ["Incremental processing", "Glue bookmarks"], "prompt": "What stops the unbounded runtime growth?", "situation": "A daily job reprocesses all 2 TB every run; runtime grows unboundedly as data accumulates.", "title": "Processing everything, every day", "why": "Incremental processing (e.g., Glue job bookmarks tracking processed offsets) handles only new data each run, keeping runtime flat. Full daily rewrites scale with total data; weekly reloads still reprocess; no dedup compounds the waste."}, {"answer": 0, "choices": ["AWS Lambda for event-driven transforms", "An always-on EC2 fleet", "EMR for 200ms transforms", "Bare metal servers"], "evidence": [["micro.txt", "Transform: 200ms per record,\nevent-driven, spiky, 0-10k/sec."]], "hint": "Sub-second, spiky, event-driven — which compute scales to zero?", "id": "data-pf-06", "mins": 5, "objectives": ["Lambda", "Micro-batch transforms"], "prompt": "Which compute fits the transform?", "situation": "A 200ms per-record transform is event-driven and spiky, from 0 to 10k events/sec.", "title": "Two hundred milliseconds, ten thousand times", "why": "Lambda scales from zero to 10k concurrent executions for short event-driven transforms with per-millisecond billing. Always-on EC2 idles at zero; EMR is for cluster analytics, not 200ms functions; bare metal is the opposite of elastic."}]}, {"id": "data-governance", "name": "Data Governance", "scenarios": [{"answer": 2, "choices": ["Everyone gets full access", "Lake Formation fine-grained permissions (table/column/row level)", "One IAM role for all analysts", "Public S3 buckets"], "evidence": [["gov2.txt", "Analysts need: sales sees all,\nsupport sees only their region,\nPII columns hidden from most."]], "hint": "Which service enforces column- and row-level access on the lake?", "id": "data-dg-01", "mins": 6, "objectives": ["Lake Formation", "Fine-grained access"], "prompt": "What enforces the differentiated access?", "situation": "Analysts need differentiated access: full sales data for some, regional rows for support, PII columns hidden from most.", "title": "Who sees which column?", "why": "Lake Formation provides centralized fine-grained permissions at table, column, and row level on the data lake. Full access or one shared role can't differentiate; public buckets are a breach."}, {"answer": 1, "choices": ["Tribal knowledge", "AWS Glue Data Catalog + data lineage tracking", "File names with dates", "No documentation"], "evidence": [["lineage.txt", "Regulator asks: where did this\nreport's numbers come from?\nPipeline: 6 stages, 3 teams."]], "hint": "Which catalog feature traces data from source to report?", "id": "data-dg-02", "mins": 6, "objectives": ["Data lineage", "Catalog"], "prompt": "What answers the regulator?", "situation": "A regulator asks for the lineage of a report's numbers across a 6-stage, 3-team pipeline.", "title": "Where did this number come from?", "why": "The Glue Data Catalog with lineage tracking records how data flows and transforms from source to report — the auditable answer. Tribal knowledge, filenames, and no docs can't satisfy a regulator."}, {"answer": 0, "choices": ["De-identification/masking (e.g., Macie findings + masking in views)", "Copying production data as-is", "Trusting analysts", "Deleting the data"], "evidence": [["pii2.txt", "Analysts need realistic data.\nRequirement: no real PII in\nnon-production environments."]], "hint": "What keeps data realistic while removing the sensitive values?", "id": "data-dg-03", "mins": 6, "objectives": ["PII handling", "Data masking"], "prompt": "What protects PII in lower environments?", "situation": "Analysts need realistic data in non-production, but no real PII may exist there.", "title": "Realistic, but not real", "why": "De-identification and masking (finding PII with Macie, masking in views/exports) preserves analytical realism without real PII. Copying production as-is violates the requirement; trust isn't a control; deletion removes the utility."}, {"answer": 3, "choices": ["Keeping everything forever", "S3 Lifecycle policies aligned to retention requirements", "Manual deletion reviews", "No retention policy"], "evidence": [["ret2.txt", "Regulations: 7-year retention for\nfinancial data; 90-day for clickstream.\nVolume: 3 TB/day."]], "hint": "Which mechanism enforces different retention per dataset automatically?", "id": "data-dg-04", "mins": 5, "objectives": ["Retention policies", "Lifecycle"], "prompt": "What enforces the retention rules?", "situation": "Financial data needs 7-year retention; clickstream 90 days; volume is 3 TB/day.", "title": "Retention by regulation", "why": "S3 Lifecycle policies enforce per-dataset retention and archival automatically at 3 TB/day scale. Keeping everything forever wastes money and may violate minimization; manual reviews don't scale; no policy is non-compliance."}, {"answer": 1, "choices": ["No quality checks", "Deequ/Glue Data Quality rules in the pipeline with quarantine", "Eyeballing dashboards", "Fixing data after reports ship"], "evidence": [["dq.txt", "Bad upstream data corrupted\n3 executive reports last quarter.\nNeed: catch it before it lands."]], "hint": "Which approach validates data in the pipeline and quarantines failures?", "id": "data-dg-05", "mins": 6, "objectives": ["Data quality"], "prompt": "What catches bad data before it lands?", "situation": "Bad upstream data corrupted executive reports; quality must be enforced before data lands.", "title": "Trust, but verify the data", "why": "Data quality rules (e.g., Glue Data Quality / Deequ checks) in the pipeline validate schema, completeness, and ranges, quarantining failures before they corrupt downstream. Eyeballing and post-ship fixes are the current failure; no checks guarantees repeats."}, {"answer": 2, "choices": ["One giant shared database", "Data mesh principles: domain ownership + data products with contracts", "A single central team doing everything", "Emailing CSVs"], "evidence": [["mesh.txt", "8 domains, 40 engineers.\nCentral team is the bottleneck.\nNeed: scale data ownership."]], "hint": "Which paradigm distributes ownership to domains with contracts?", "id": "data-dg-06", "mins": 7, "objectives": ["Data mesh", "Domain ownership"], "prompt": "What scales data ownership?", "situation": "Eight domains and 40 engineers; the central data team is the bottleneck.", "title": "Beyond the central bottleneck", "why": "Data mesh distributes ownership to domain teams who publish data products with contracts/SLAs, scaling ownership with the organization. A central-everything team is the current bottleneck; one giant database doesn't distribute ownership; emailed CSVs aren't governance."}]}, {"id": "orchestration", "name": "Orchestration", "scenarios": [{"answer": 1, "choices": ["Cron on a single EC2", "Amazon MWAA (Managed Workflows for Apache Airflow)", "Manual runs", "Lambda alone for 50-step DAGs"], "evidence": [["airflow.txt", "Pipeline: 50 tasks, dependencies,\nretries, SLAs. Team knows Airflow.\nNeed: managed service."]], "hint": "Which managed service runs Airflow?", "id": "data-or-01", "mins": 6, "objectives": ["MWAA", "Workflow orchestration"], "prompt": "What orchestrates the 50-task pipeline?", "situation": "A 50-task pipeline with dependencies, retries, and SLAs; the team knows Airflow and wants it managed.", "title": "Fifty tasks, one DAG", "why": "MWAA provides managed Apache Airflow — DAGs with dependencies, retries, and SLA monitoring without managing the orchestrator. Single-EC2 cron is a single point of failure; manual runs don't scale; Lambda alone lacks DAG orchestration semantics."}, {"answer": 0, "choices": ["AWS Step Functions", "Chaining Lambda invocations manually", "One giant Lambda", "EC2 with bash scripts"], "evidence": [["sfn.txt", "Workflow: ingest -> validate ->\ntransform -> load -> notify.\nNeed: visual workflow, retries,\nerror handling per step."]], "hint": "Which serverless service orchestrates steps with visual workflows and built-in error handling?", "id": "data-or-02", "mins": 6, "objectives": ["Step Functions"], "prompt": "What orchestrates the workflow?", "situation": "A 5-step workflow needs visual monitoring, per-step retries, and error handling.", "title": "Steps with a safety net", "why": "Step Functions orchestrates serverless workflows with visual execution graphs, per-state retries/catches, and integrations to Lambda, Glue, and more. Manual Lambda chaining reinvents error handling; one giant Lambda couples everything; bash on EC2 is fragile."}, {"answer": 2, "choices": ["Time-based schedules only", "Event-driven triggers (S3 events, EventBridge) + idempotent tasks", "Polling every 5 minutes", "Manual triggers"], "evidence": [["event.txt", "Files arrive unpredictably.\nNeed: pipeline starts on arrival,\nhandles duplicates safely."]], "hint": "What starts work on arrival and survives duplicate events?", "id": "data-or-03", "mins": 6, "objectives": ["Event-driven orchestration", "Idempotency"], "prompt": "What triggers the pipeline correctly?", "situation": "Files arrive unpredictably; the pipeline must start on arrival and handle duplicate events safely.", "title": "Start when the file lands", "why": "Event-driven triggers (S3 Event Notifications, EventBridge) start pipelines on arrival with low latency, and idempotent tasks make duplicate events safe. Fixed schedules add latency; polling wastes resources; manual triggers don't scale."}, {"answer": 1, "choices": ["Retrying blindly forever", "Dead-letter queues + alerting + backoff with jitter", "Ignoring failures", "Deleting failed tasks"], "evidence": [["fail.txt", "Task fails intermittently.\nCurrent: infinite immediate retries\nthundering the downstream."]], "hint": "What handles failure gracefully without hammering downstream?", "id": "data-or-04", "mins": 6, "objectives": ["Failure handling", "Backoff"], "prompt": "What fixes the retry storm?", "situation": "Intermittent task failures trigger infinite immediate retries that thunder the downstream service.", "title": "The retry thundering herd", "why": "Backoff with jitter spreads retries, DLQs isolate persistent failures for inspection, and alerting notifies humans — graceful degradation instead of a retry storm. Blind infinite retries are the current failure; ignoring/deleting loses data."}, {"answer": 3, "choices": ["One pipeline for dev and prod", "Separate dev/staging/prod with promotion of tested artifacts", "Developing in production", "No environments"], "evidence": [["promo.txt", "Pipeline changes broke prod.\nNeed: test changes safely,\npromote what works."]], "hint": "What keeps experiments out of production?", "id": "data-or-05", "mins": 5, "objectives": ["Environment promotion"], "prompt": "What prevents the next prod breakage?", "situation": "Pipeline changes broke production; changes need safe testing and promotion.", "title": "Don't develop in production", "why": "Separate environments with promotion of tested artifacts (code, not just data) let changes prove themselves before production. One shared pipeline couples experiments to prod; developing in prod is the current failure."}, {"answer": 0, "choices": ["CloudWatch + pipeline-native monitoring with SLA alerts", "No monitoring", "Checking manually each morning", "Only monitoring the final output"], "evidence": [["sla2.txt", "SLA: data ready by 6 AM.\nNeed: alert if any upstream\ntask risks the SLA."]], "hint": "What watches every task against the deadline, not just the end?", "id": "data-or-06", "mins": 6, "objectives": ["Pipeline monitoring", "SLAs"], "prompt": "What guards the 6 AM SLA?", "situation": "Data must be ready by 6 AM; the team needs alerts when any upstream task risks the SLA.", "title": "Data by 6 AM, guaranteed", "why": "Pipeline-native monitoring (Airflow SLAs, Step Functions/CloudWatch alarms on task duration) watches every task against the deadline and alerts early. Manual checks and output-only monitoring detect misses too late; no monitoring is blindness."}]}, {"id": "analytics", "name": "Analytics", "scenarios": [{"answer": 2, "choices": ["Building custom dashboards from scratch", "Amazon QuickSight", "Excel email chains", "Screenshots of queries"], "evidence": [["bi.txt", "200 business users need\ninteractive dashboards over the\nwarehouse. No BI infrastructure."]], "hint": "Which managed BI service integrates with AWS data sources?", "id": "data-an-01", "mins": 5, "objectives": ["QuickSight", "BI"], "prompt": "What serves the 200 business users?", "situation": "200 business users need interactive dashboards over the warehouse with no BI infrastructure to manage.", "title": "Dashboards for two hundred users", "why": "QuickSight provides managed BI with SPICE in-memory engine, integrating natively with AWS data sources and scaling to hundreds of users. Custom builds reintroduce ops; email chains and screenshots aren't BI."}, {"answer": 1, "choices": ["Moving data to the ML platform", "SageMaker Canvas / ML in SQL (Redshift ML)", "Training models on laptops", "No ML; gut feeling"], "evidence": [["mlsql.txt", "Analysts know SQL, not Python.\nNeed: churn predictions from\nwarehouse data, quickly."]], "hint": "Which options let SQL users build models without moving data?", "id": "data-an-02", "mins": 6, "objectives": ["ML for analysts"], "prompt": "What gives SQL analysts ML?", "situation": "SQL-fluent analysts need churn predictions from warehouse data without learning Python or moving data.", "title": "Machine learning in SQL", "why": "Redshift ML and SageMaker Canvas let analysts build and use models with SQL or no-code interfaces against warehouse data in place. Moving data adds pipelines; laptop training doesn't scale; gut feeling isn't ML."}, {"answer": 0, "choices": ["Apache Hudi/Iceberg-style table formats on S3 (upserts, time travel)", "Overwriting full datasets", "Keeping every version as separate files", "A relational database for the lake"], "evidence": [["upsert.txt", "Lake table: 10B rows.\nNeed: upserts/deletes and\ntime-travel queries on S3."]], "hint": "Which open table formats bring warehouse features to S3?", "id": "data-an-03", "mins": 7, "objectives": ["Open table formats", "Upserts on S3"], "prompt": "What enables upserts and time travel on the lake?", "situation": "A 10B-row lake table needs upserts, deletes, and time-travel queries on S3.", "title": "Upserts on the data lake", "why": "Open table formats (Apache Hudi, Iceberg — supported by Athena, EMR, Glue) bring upserts, deletes, and time travel to S3 data lakes. Full overwrites at 10B rows are infeasible; version-file sprawl is unmanageable; a relational DB can't hold the lake."}, {"answer": 3, "choices": ["One-off queries", "Materialized views / scheduled aggregations", "Bigger warehouse for every query", "Caching in the BI tool only"], "evidence": [["agg.txt", "Dashboard queries scan 2 TB\neach load. 500 loads/day.\nSame aggregations repeatedly."]], "hint": "What precomputes the repeated aggregations?", "id": "data-an-04", "mins": 6, "objectives": ["Materialized views", "Aggregation"], "prompt": "What cuts the repeated 2 TB scans?", "situation": "Dashboards repeatedly scan 2 TB for the same aggregations, 500 times a day.", "title": "Scanning two terabytes, five hundred times", "why": "Materialized views or scheduled aggregation tables precompute the repeated aggregations once, so dashboards read megabytes instead of terabytes. One-off queries repeat the waste; bigger warehouses just scan faster at higher cost; BI-only caching is fragile."}, {"answer": 1, "choices": ["Granting everyone full access", "Row/column-level security in the BI and lake layers", "One dashboard for all", "Trusting users"], "evidence": [["rls.txt", "Requirement: managers see only\ntheir region's data in dashboards."]], "hint": "Which security feature filters rows by viewer?", "id": "data-an-05", "mins": 6, "objectives": ["Row-level security"], "prompt": "What enforces the regional visibility?", "situation": "Dashboard viewers must see only their own region's data.", "title": "Your region, your numbers", "why": "Row-level (and column-level) security in QuickSight and Lake Formation filters data by viewer identity — enforced, not advisory. Full access violates the requirement; one shared dashboard can't differentiate; trust isn't enforcement."}, {"answer": 2, "choices": ["Guessing", "Cost allocation tags + query-level cost attribution (e.g., Athena workgroups, Redshift concurrency scaling) + lifecycle policies", "One bill for everything", "Ignoring costs"], "evidence": [["cost2.txt", "Analytics bill tripled.\nNobody knows which team or\nworkload caused it."]], "hint": "What attributes analytics spend to teams and workloads?", "id": "data-an-06", "mins": 6, "objectives": ["Analytics cost governance"], "prompt": "What brings the analytics spend under control?", "situation": "The analytics bill tripled with no attribution to teams or workloads.", "title": "The tripled analytics bill", "why": "Cost allocation tags plus query-level attribution (Athena workgroups with per-workgroup limits, Redshift usage tracking) identify who spent what, and lifecycle policies curb storage growth. A single undivided bill can't be managed; ignoring it repeats the tripling."}]}], "lessons": [{"domain_id": "data-ingestion", "title": "Data Ingestion — Core concepts", "concepts": ["Kinesis Data Streams provides ordered, replayable, high-throughput streaming with multiple consumers per shard. Kinesis Data Firehose is the managed delivery service: it buffers, converts (e.g., to Parquet), and loads streaming data into S3 and other destinations with no consumer code.", "Streaming ingestion: SQS is queue-based (not replayable multi-consumer streaming); S3 batch uploads aren't sub-second; RDS isn't an ingestion service. Data Streams and MSK require consumers; DynamoDB direct PUT isn't a streaming pipeline.", "Firehose/Data Streams aren't Kafka-compatible; SQS FIFO lacks Kafka's log semantics and retention model.", "Managed delivery: amazon MSK provides managed Apache Kafka with Kafka API compatibility, configurable long retention, and exactly-once semantics support. AWS Transfer Family provides managed SFTP/FTPS/FTP endpoints backed by S3 — partners keep their workflow, files land in S3."], "example": {"lang": "text", "code": "IoT sensors: 50k events/sec,\nsub-second latency needed,\nmultiple consumers.", "walkthrough": "Kinesis Data Streams provides ordered, replayable, high-throughput streaming with multiple consumers per shard. SQS is queue-based (not replayable multi-consumer streaming); S3 batch uploads aren't sub-second; RDS isn't an ingestion service."}, "pitfalls": ["Common trap: kinesis Data Streams with custom consumers.", "Skipping the key question: which service is built for high-throughput ordered event streams with multiple consumers.", "Skipping the key question: which service loads streaming data to destinations with no consumer code."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "data-lakes-warehouses", "title": "Data Lakes & Warehouses — Core concepts", "concepts": ["Data lakes: an S3-based data lake with the Glue Data Catalog stores all data types in open formats with evolving schemas, serving diverse consumers. The Glue Data Catalog provides a central, queryable metadata store (databases, tables, schemas, partitions) integrated with Athena, Redshift Spectrum, and EMR.", "S3: redshift Spectrum extends Redshift SQL queries to S3 data in place — no loading, paying per query.", "Redshift Serverless automatically provisions and scales warehouse capacity for the workload, paying for usage — ideal for spiky analytics.", "Glue Data Catalog: parquet's columnar format lets engines read only the needed columns (plus compression and predicate pushdown), slashing scanned data and cost."], "example": {"lang": "text", "code": "Data: structured, semi-structured,\nunstructured. Consumers: analysts,\nML team, ad-hoc SQL. Schema: evolves.", "walkthrough": "An S3-based data lake with the Glue Data Catalog stores all data types in open formats with evolving schemas, serving diverse consumers. A warehouse alone forces schema-on-write; RDS isn't analytics storage; EBS isn't a lake."}, "pitfalls": ["Common trap: S3 with bronze/silver/gold zones + Lake Formation permissions.", "Skipping the key question: which architecture handles all data types with evolving schema.", "Skipping the key question: which warehouse option scales to zero operationally for spiky use."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "processing-frameworks", "title": "Processing Frameworks — Core concepts", "concepts": ["Glue is Spark-centric serverless; Lambda isn't for clusters; Athena is serverless SQL, not a framework platform. Incremental processing (e.g., Glue job bookmarks tracking processed offsets) handles only new data each run, keeping runtime flat.", "Serverless Spark: AWS Glue provides serverless Spark ETL with auto-scaling workers — no clusters to manage. EMR provides managed clusters with the full big-data ecosystem (Spark, Flink, Presto/Trino) and notebook support.", "EMR: always-on EC2 idles at zero; EMR is for cluster analytics, not 200ms functions; bare metal is the opposite of elastic. EMR/Glue clusters idle between queries; Redshift is a provisioned warehouse.", "Big data clusters: stream processing (MSK + Flink, or Kinesis Data Analytics with Flink) processes events continuously with sub-minute latency. Full daily rewrites scale with total data; weekly reloads still reprocess; no dedup compounds the waste.", "Athena provides serverless SQL directly on S3, paying per byte scanned — perfect for low-volume ad-hoc analysis."], "example": {"lang": "text", "code": "Transform: 200ms per record,\nevent-driven, spiky, 0-10k/sec.", "walkthrough": "Lambda scales from zero to 10k concurrent executions for short event-driven transforms with per-millisecond billing. Always-on EC2 idles at zero; EMR is for cluster analytics, not 200ms functions; bare metal is the opposite of elastic."}, "pitfalls": ["Common trap: amazon Managed Streaming for Kafka + Flink (or Kinesis Data Analytics).", "Skipping the key question: which service runs serverless Spark with auto-scaling.", "Skipping the key question: which service gives you a managed big-data cluster with many frameworks."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "data-governance", "title": "Data Governance — Core concepts", "concepts": ["Lake Formation provides centralized fine-grained permissions at table, column, and row level on the data lake.", "Fine-grained access: full access or one shared role can't differentiate; public buckets are a breach.", "Data lineage: the Glue Data Catalog with lineage tracking records how data flows and transforms from source to report — the auditable answer. Data mesh distributes ownership to domain teams who publish data products with contracts/SLAs, scaling ownership with the organization.", "PII handling: de-identification and masking (finding PII with Macie, masking in views/exports) preserves analytical realism without real PII.", "Data quality rules (e.g., Glue Data Quality / Deequ checks) in the pipeline validate schema, completeness, and ranges, quarantining failures before they corrupt downstream."], "example": {"lang": "text", "code": "Regulations: 7-year retention for\nfinancial data; 90-day for clickstream.\nVolume: 3 TB/day.", "walkthrough": "S3 Lifecycle policies enforce per-dataset retention and archival automatically at 3 TB/day scale. Keeping everything forever wastes money and may violate minimization; manual reviews don't scale; no policy is non-compliance."}, "pitfalls": ["Common trap: data mesh principles: domain ownership + data products with contracts.", "Common trap: lake Formation fine-grained permissions (table/column/row level).", "Common trap: S3 Lifecycle policies aligned to retention requirements.", "Common trap: everyone gets full access."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "orchestration", "title": "Orchestration — Core concepts", "concepts": ["MWAA provides managed Apache Airflow — DAGs with dependencies, retries, and SLA monitoring without managing the orchestrator.", "Workflow orchestration: single-EC2 cron is a single point of failure; manual runs don't scale; Lambda alone lacks DAG orchestration semantics.", "Step Functions orchestrates serverless workflows with visual execution graphs, per-state retries/catches, and integrations to Lambda, Glue, and more. Pipeline-native monitoring (Airflow SLAs, Step Functions/CloudWatch alarms on task duration) watches every task against the deadline and alerts early.", "Event-driven triggers (S3 Event Notifications, EventBridge) start pipelines on arrival with low latency, and idempotent tasks make duplicate events safe.", "Failure handling: manual Lambda chaining reinvents error handling; one giant Lambda couples everything; bash on EC2 is fragile. Blind infinite retries are the current failure; ignoring/deleting loses data."], "example": {"lang": "text", "code": "Pipeline: 50 tasks, dependencies,\nretries, SLAs. Team knows Airflow.\nNeed: managed service.", "walkthrough": "MWAA provides managed Apache Airflow — DAGs with dependencies, retries, and SLA monitoring without managing the orchestrator. Single-EC2 cron is a single point of failure; manual runs don't scale; Lambda alone lacks DAG orchestration semantics."}, "pitfalls": ["Common trap: event-driven triggers (S3 events, EventBridge) + idempotent tasks.", "Common trap: separate dev/staging/prod with promotion of tested artifacts.", "Common trap: lambda alone for 50-step DAGs.", "Common trap: one pipeline for dev and prod."], "try_it": "Work through this in the Terminal tab →"}, {"domain_id": "analytics", "title": "Analytics — Core concepts", "concepts": ["QuickSight: row-level (and column-level) security in QuickSight and Lake Formation filters data by viewer identity — enforced, not advisory. QuickSight provides managed BI with SPICE in-memory engine, integrating natively with AWS data sources and scaling to hundreds of users.", "BI: one-off queries repeat the waste; bigger warehouses just scan faster at higher cost; BI-only caching is fragile. Custom builds reintroduce ops; email chains and screenshots aren't BI.", "ML for analysts: redshift ML and SageMaker Canvas let analysts build and use models with SQL or no-code interfaces against warehouse data in place.", "Open table formats (Apache Hudi, Iceberg — supported by Athena, EMR, Glue) bring upserts, deletes, and time travel to S3 data lakes.", "Materialized views or scheduled aggregation tables precompute the repeated aggregations once, so dashboards read megabytes instead of terabytes."], "example": {"lang": "text", "code": "Requirement: managers see only\ntheir region's data in dashboards.", "walkthrough": "Row-level (and column-level) security in QuickSight and Lake Formation filters data by viewer identity — enforced, not advisory. Full access violates the requirement; one shared dashboard can't differentiate; trust isn't enforcement."}, "pitfalls": ["Common trap: materialized views / scheduled aggregations.", "Common trap: cost allocation tags + query-level cost attribution (e.g., Athena workgroups, Redshift concurrency scaling) + lifecycle policies.", "Common trap: keeping every version as separate files.", "Common trap: building custom dashboards from scratch."], "try_it": "Work through this in the Terminal tab →"}], "sections": [{"id": "foundations", "title": "Foundations", "kind": "foundation", "lectures": ["m-stats", "m-probability", "f-python-0", "f-python-1", "f-python-2", "f-sql-0", "f-sql-1", "f-sql-2", "f-cloud-concepts-0", "f-cloud-concepts-1", "f-cloud-concepts-2"], "lab_ids": [], "drill_domain_ids": []}, {"id": "core", "title": "Core", "kind": "core", "lectures": ["c-data-ingestion", "c-data-lakes-warehouses", "c-processing-frameworks", "c-orchestration", "c-analytics"], "lab_ids": ["aws-data-lab-1", "aws-data-lab-2"], "drill_domain_ids": ["data-ingestion", "data-lakes-warehouses", "processing-frameworks", "orchestration", "analytics"]}, {"id": "advanced", "title": "Advanced", "kind": "advanced", "lectures": ["c-data-governance"], "lab_ids": ["aws-data-lab-3", "aws-data-lab-4"], "drill_domain_ids": ["data-governance"]}, {"id": "exam-prep", "title": "Exam Prep", "kind": "exam-prep", "lectures": [], "lab_ids": [], "drill_domain_ids": ["data-ingestion", "data-lakes-warehouses", "processing-frameworks", "data-governance", "orchestration", "analytics"]}], "behavioral": [{"prompt": "Tell me about a time you designed a data pipeline end to end.", "framework": "STAR", "points": ["The sources and consumers", "Your architecture choices", "How it performed in production"], "pitfalls": ["Ignoring data quality", "No monitoring"]}, {"prompt": "Describe a time you dealt with bad or unexpected data.", "framework": "STAR", "points": ["How you detected it", "Containment and fix", "Prevention afterwards"], "pitfalls": ["Blaming the source team", "No validation added"]}, {"prompt": "Tell me about a time you optimized a slow or expensive pipeline.", "framework": "STAR", "points": ["How you found the bottleneck", "The change", "Before/after numbers"], "pitfalls": ["Optimizing blind", "One metric only"]}, {"prompt": "Describe a disagreement about data modeling or architecture.", "framework": "STAR", "points": ["The options", "How you evaluated them", "The outcome"], "pitfalls": ["Modeling in isolation", "Ignoring consumers"]}, {"prompt": "Tell me about a time you had to meet a tight data SLA.", "framework": "STAR", "points": ["The SLA", "What threatened it", "How you made it"], "pitfalls": ["Heroics without fixes", "No alerting"]}, {"prompt": "Describe a time you improved data governance or security.", "framework": "STAR", "points": ["The gap", "What you implemented", "How you verified it"], "pitfalls": ["Governance theater", "Blocking without enabling"]}, {"prompt": "Tell me about a time you migrated a data workload.", "framework": "STAR", "points": ["The migration strategy", "How you validated correctness", "Cutover and rollback plan"], "pitfalls": ["No validation", "Big-bang cutover"]}, {"prompt": "Describe a time you made analytics accessible to non-technical users.", "framework": "STAR", "points": ["The audience", "What you built", "Adoption and impact"], "pitfalls": ["Building for yourself", "No training"]}], "chat": {"persona": "You are a pragmatic AWS Data Engineer interviewer running a mock DEA-C01 assessment. Focus on real pipeline trade-offs: formats, orchestration, cost, and correctness. Ask how they'd validate and what breaks at scale.", "topics": [{"id": "data-ingestion", "name": "Data Ingestion", "key_points": ["Kinesis Data Streams vs Firehose", "MSK", "DMS", "Transfer Family", "S3 Event Notifications"], "followups": ["Batch or streaming — why?", "How do you handle late or duplicate data?"]}, {"id": "data-lakes-warehouses", "name": "Data Lakes & Warehouses", "key_points": ["S3 data lake", "Glue Data Catalog", "Parquet", "Redshift Spectrum", "Lake Formation"], "followups": ["Lake, warehouse, or both — why?", "How do users find the data?"]}, {"id": "processing-frameworks", "name": "Processing Frameworks", "key_points": ["Glue vs EMR", "Athena", "stream processing", "incremental processing"], "followups": ["How do you avoid reprocessing everything?", "What meets the latency SLA?"]}, {"id": "data-governance", "name": "Data Governance", "key_points": ["fine-grained permissions", "data lineage", "PII masking", "data quality", "data mesh"], "followups": ["Who can see this data?", "How do you prove lineage?"]}, {"id": "orchestration", "name": "Orchestration", "key_points": ["MWAA", "Step Functions", "event-driven triggers", "retry/backoff", "SLA monitoring"], "followups": ["What happens when a task fails?", "How do you protect the SLA?"]}, {"id": "analytics", "name": "Analytics", "key_points": ["QuickSight", "open table formats", "materialized views", "row-level security", "cost attribution"], "followups": ["How do you cut repeated scan costs?", "How do you secure the dashboards?"]}]}, "slug": "aws-data", "title": "AWS Data Engineer", "tagline": "DEA-C01: pipelines, lakes, and analytics on AWS", "vendor": {"certs": "DEA-C01", "docs": "https://aws.amazon.com/certification", "name": "Amazon Web Services"}, "labs": [{"id": "aws-data-lab-1", "title": "Kinesis Data Streams — AWS CLI drill", "objective": "Run a short sequence of AWS CLI commands that demonstrates kinesis Data Streams, then verify each result against the expected output.", "steps": ["This lab reworks the Data Ingestion practice scenario \"Fifty thousand events a second\" into commands you run yourself — same concept, hands-on instead of multiple choice.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: aws s3 ls — the listing names your lab buckets", "Type exactly: aws sts get-caller-identity — the identity document includes your Account id", "Type exactly: aws iam list-users — the user list carries the UserName field", "In your own words, say what each command's output taught you about kinesis Data Streams."], "checks": [{"command_pattern": "aws s3 ls", "expect_contains": "bucket", "hint": "In the Terminal tab, run `aws s3 ls`. If the check fails, confirm you typed it exactly and that the output contains \"bucket\"."}, {"command_pattern": "aws sts get-caller-identity", "expect_contains": "Account", "hint": "In the Terminal tab, run `aws sts get-caller-identity`. If the check fails, confirm you typed it exactly and that the output contains \"Account\"."}, {"command_pattern": "aws iam list-users", "expect_contains": "UserName", "hint": "In the Terminal tab, run `aws iam list-users`. If the check fails, confirm you typed it exactly and that the output contains \"UserName\"."}], "success_message": "Lab complete — kinesis Data Streams practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"id": "aws-data-lab-2", "title": "Data lakes — AWS CLI drill", "objective": "Use the AWS CLI to explore data lakes hands-on: type each command, read what comes back, and connect the output to the concept.", "steps": ["Inspired by the Data Lakes & Warehouses scenario \"The lake, not the warehouse (yet)\": take its core idea and prove it live in the terminal instead of answering on paper.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: aws iam list-users — the user list carries the UserName field", "Type exactly: aws ec2 describe-instances — the reservation output includes the Instances block", "Type exactly: aws s3 ls — the listing names your lab buckets", "In your own words, say what each command's output taught you about data lakes."], "checks": [{"command_pattern": "aws iam list-users", "expect_contains": "UserName", "hint": "In the Terminal tab, run `aws iam list-users`. If the check fails, confirm you typed it exactly and that the output contains \"UserName\"."}, {"command_pattern": "aws ec2 describe-instances", "expect_contains": "Instances", "hint": "In the Terminal tab, run `aws ec2 describe-instances`. If the check fails, confirm you typed it exactly and that the output contains \"Instances\"."}, {"command_pattern": "aws s3 ls", "expect_contains": "bucket", "hint": "In the Terminal tab, run `aws s3 ls`. If the check fails, confirm you typed it exactly and that the output contains \"bucket\"."}], "success_message": "Lab complete — data lakes practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"id": "aws-data-lab-3", "title": "Glue — AWS CLI drill", "objective": "Prove you can apply glue in the AWS CLI — follow the steps, watch the output, and confirm every check passes.", "steps": ["The Processing Frameworks scenario \"Spark without the cluster\" tests this concept as a question. This lab makes you demonstrate it with real commands.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: aws s3 ls — the listing names your lab buckets", "Type exactly: aws sts get-caller-identity — the identity document includes your Account id", "Type exactly: aws iam list-users — the user list carries the UserName field", "In your own words, say what each command's output taught you about glue."], "checks": [{"command_pattern": "aws s3 ls", "expect_contains": "bucket", "hint": "In the Terminal tab, run `aws s3 ls`. If the check fails, confirm you typed it exactly and that the output contains \"bucket\"."}, {"command_pattern": "aws sts get-caller-identity", "expect_contains": "Account", "hint": "In the Terminal tab, run `aws sts get-caller-identity`. If the check fails, confirm you typed it exactly and that the output contains \"Account\"."}, {"command_pattern": "aws iam list-users", "expect_contains": "UserName", "hint": "In the Terminal tab, run `aws iam list-users`. If the check fails, confirm you typed it exactly and that the output contains \"UserName\"."}], "success_message": "Lab complete — glue practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"id": "aws-data-lab-4", "title": "Lake Formation — AWS CLI drill", "objective": "Run a short sequence of AWS CLI commands that demonstrates lake Formation, then verify each result against the expected output.", "steps": ["This lab reworks the Data Governance practice scenario \"Who sees which column?\" into commands you run yourself — same concept, hands-on instead of multiple choice.", "Open the Terminal tab for this bootcamp — every command below runs there.", "Type exactly: aws iam list-users — the user list carries the UserName field", "Type exactly: aws ec2 describe-instances — the reservation output includes the Instances block", "Type exactly: aws s3 ls — the listing names your lab buckets", "In your own words, say what each command's output taught you about lake Formation."], "checks": [{"command_pattern": "aws iam list-users", "expect_contains": "UserName", "hint": "In the Terminal tab, run `aws iam list-users`. If the check fails, confirm you typed it exactly and that the output contains \"UserName\"."}, {"command_pattern": "aws ec2 describe-instances", "expect_contains": "Instances", "hint": "In the Terminal tab, run `aws ec2 describe-instances`. If the check fails, confirm you typed it exactly and that the output contains \"Instances\"."}, {"command_pattern": "aws s3 ls", "expect_contains": "bucket", "hint": "In the Terminal tab, run `aws s3 ls`. If the check fails, confirm you typed it exactly and that the output contains \"bucket\"."}], "success_message": "Lab complete — lake Formation practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."}, {"id": "aws-data-lab-lake-zones", "title": "Lake zones — inventory the buckets", "objective": "Data lakes organize into zones (raw, curated). Inventory the account's buckets and the objects in the artifact zone.", "difficulty": 1, "steps": ["Open the Terminal tab for this bootcamp.", "Type exactly: aws s3 ls — the buckets that act as lake zones", "Type exactly: aws s3 ls s3://ilb-artifacts — objects staged in the artifact zone", "In your own words, say what belongs in a raw zone versus a curated zone."], "checks": [{"command_pattern": "^aws s3 ls$", "expect_contains": "ilb-artifacts", "hint": "In the Terminal tab, run `aws s3 ls`. If the check fails, confirm you typed it exactly and that the output contains \"ilb-artifacts\"."}, {"command_pattern": "^aws s3 ls s3://ilb-artifacts$", "expect_contains": "reports/q3.pdf", "hint": "In the Terminal tab, run `aws s3 ls s3://ilb-artifacts`. If the check fails, confirm you typed it exactly and that the output contains \"reports/q3.pdf\"."}], "success_message": "Lab complete — you inventoried the lake zones."}, {"id": "aws-data-lab-ingest", "title": "Ingest — land a file in the raw zone", "objective": "Ingestion is the lake's front door. Create a raw-zone bucket and upload a local file into it.", "difficulty": 1, "steps": ["Open the Terminal tab for this bootcamp.", "Type exactly: aws s3 mb s3://ilb-data-raw — create the raw zone bucket", "Type exactly: aws s3 cp ./notes.txt s3://ilb-data-raw/notes.txt — ingest the file", "Type exactly: aws s3 ls s3://ilb-data-raw — confirm it landed", "In your own words, say why raw zones keep data immutable."], "checks": [{"command_pattern": "^aws s3 mb s3://ilb-data-raw$", "expect_contains": "make_bucket: ilb-data-raw", "hint": "In the Terminal tab, run `aws s3 mb s3://ilb-data-raw`. If the check fails, confirm you typed it exactly and that the output contains \"make_bucket: ilb-data-raw\"."}, {"command_pattern": "^aws s3 cp \\./notes.txt s3://ilb-data-raw/notes.txt$", "expect_contains": "upload:", "hint": "In the Terminal tab, run `aws s3 cp ./notes.txt s3://ilb-data-raw/notes.txt`. If the check fails, confirm you typed it exactly and that the output contains \"upload:\"."}], "success_message": "Lab complete — you ingested data into the raw zone."}, {"id": "aws-data-lab-promote", "title": "Promote — raw to curated without re-ingest", "objective": "Curated zones hold cleaned, validated data. Promote the ingested file server-side into the artifact bucket's curated prefix.", "difficulty": 2, "steps": ["Open the Terminal tab for this bootcamp.", "Type exactly: aws s3 cp s3://ilb-data-raw/notes.txt s3://ilb-artifacts/curated/notes.txt — promote the object", "Type exactly: aws s3 ls s3://ilb-artifacts/curated — verify the curated copy", "In your own words, say what validation should happen between raw and curated in a real pipeline."], "checks": [{"command_pattern": "^aws s3 cp s3://ilb-data-raw/notes.txt s3://ilb-artifacts/curated/notes.txt$", "expect_contains": "copy:", "hint": "In the Terminal tab, run `aws s3 cp s3://ilb-data-raw/notes.txt s3://ilb-artifacts/curated/notes.txt`. If the check fails, confirm you typed it exactly and that the output contains \"copy:\"."}, {"command_pattern": "^aws s3 ls s3://ilb-artifacts/curated$", "expect_contains": "notes.txt", "hint": "In the Terminal tab, run `aws s3 ls s3://ilb-artifacts/curated`. If the check fails, confirm you typed it exactly and that the output contains \"notes.txt\"."}], "success_message": "Lab complete — you promoted data through the zones."}, {"id": "aws-data-lab-archive", "title": "Archive — cold storage bucket", "objective": "Not all data stays hot. Create an archive bucket and copy a build artifact into it for long-term retention.", "difficulty": 3, "steps": ["Open the Terminal tab for this bootcamp.", "Type exactly: aws s3 mb s3://ilb-data-archive — create the archive bucket", "Type exactly: aws s3 cp s3://ilb-artifacts/builds/bootcamp-v3.zip s3://ilb-data-archive/bootcamp-v3.zip — archive the build", "Type exactly: aws s3 ls s3://ilb-data-archive — confirm archival", "In your own words, say when data moves from curated to archive in a lifecycle policy."], "checks": [{"command_pattern": "^aws s3 mb s3://ilb-data-archive$", "expect_contains": "make_bucket: ilb-data-archive", "hint": "In the Terminal tab, run `aws s3 mb s3://ilb-data-archive`. If the check fails, confirm you typed it exactly and that the output contains \"make_bucket: ilb-data-archive\"."}, {"command_pattern": "^aws s3 cp s3://ilb-artifacts/builds/bootcamp-v3.zip s3://ilb-data-archive/bootcamp-v3.zip$", "expect_contains": "copy:", "hint": "In the Terminal tab, run `aws s3 cp s3://ilb-artifacts/builds/bootcamp-v3.zip s3://ilb-data-archive/bootcamp-v3.zip`. If the check fails, confirm you typed it exactly and that the output contains \"copy:\"."}], "success_message": "Lab complete — you archived data the way lifecycle policies do."}], "foundations": [{"track": "python", "why_needed": "Data engineering on AWS is Python plus SQL: Glue jobs, Lambda transforms, and notebooks all assume scripting."}, {"track": "sql", "why_needed": "Lakes and warehouses are queried with SQL. Learn SELECT, filtering, and sorting before the analytics topics."}, {"track": "cloud-concepts", "why_needed": "S3, storage classes, and regions underpin every data architecture. Get the cloud model first."}], "math": ["stats", "probability"], "simulations": [{"id": "aws-data-sim-etl-order", "title": "Wire the nightly ETL", "kind": "ordering", "domain_id": "orchestration", "difficulty": 1, "brief": "The warehouse refresh runs nightly. Order the pipeline stages so each step reads complete upstream output.", "steps": {"context": "Nightly ETL: extract from sources, transform, load the warehouse, then validate.", "items": ["Transform and clean the extracted records", "Validate row counts and publish the data-quality report", "Extract changed records from the source systems", "Load the transformed data into the warehouse"], "correct_order": [2, 0, 3, 1]}, "debrief": "You ordered the ETL correctly: extract, transform, load, then validate. Validation last means the report covers the whole run.", "points": 10}, {"id": "aws-data-sim-pipeline-fail", "title": "The warehouse is stale", "kind": "troubleshoot", "domain_id": "processing-frameworks", "difficulty": 2, "brief": "The 06:00 warehouse refresh never landed and the dashboard shows yesterday's numbers. The orchestrator log is your evidence.", "steps": [{"symptom": "Warehouse tables are 24h stale; the orchestrator shows the extract stage green, transform red.", "evidence": [["orchestrator.log", "extract: 1.2M rows staged to s3://ilb-data-raw ... OK\ntransform: ERROR schema mismatch on column 'amount' (expected INTEGER, got TEXT)\nload: skipped (upstream failed)"]], "options": ["Re-run the whole pipeline — transient errors clear on retry", "Inspect the raw staged data: the source changed the 'amount' column type", "Drop the warehouse table and reload from scratch", "Disable the transform stage so the load can proceed"], "correct": 1, "explain": "The log names it: a schema mismatch on 'amount'. The source changed the column type — re-running or skipping transform just repeats or hides the failure. Fix the schema handling first."}, {"symptom": "The source now sends 'amount' as TEXT ('2400' instead of 2400).", "evidence": [["aws s3 ls s3://ilb-data-raw", "notes.txt"]], "options": ["Cast TEXT to INTEGER in the transform with validation for bad values", "Change the warehouse column to TEXT to match the source", "Ask the source team to revert — pipelines should never adapt", "Load the TEXT values and fix them in the dashboard queries"], "correct": 0, "explain": "Adapt in the transform with explicit casting and bad-value handling — that is what the transform stage is for. Changing the warehouse type corrupts downstream analytics; dashboard-side fixes hide the problem."}], "debrief": "You diagnosed a schema-drift failure at the right layer: the transform adapts and validates, the warehouse stays clean, and the evidence led every step.", "points": 15}, {"id": "aws-data-sim-schema-choice", "title": "Schema-on-write or schema-on-read?", "kind": "branching", "domain_id": "data-governance", "difficulty": 3, "brief": "The team argues about where to enforce schema: at ingest (strict) or at read (flexible). The workload decides — walk the tree.", "steps": [{"id": "s1", "text": "The new clickstream feed arrives as messy JSON, fields change weekly, and analysts explore it ad hoc. Enforce schema at ingest?", "choices": [{"label": "Yes — strict schema at ingest keeps everything clean", "next": "s2a", "points": 0, "feedback": "Strict ingest schema on a weekly-changing feed means the pipeline breaks weekly. Flexibility matters here."}, {"label": "No — land it raw, enforce schema at read time", "next": "s2", "points": 2, "feedback": "Correct — schema-on-read (data lake pattern) absorbs volatile feeds without breaking ingest."}]}, {"id": "s2a", "text": "The pipeline broke twice this month on new fields. Reconsider:", "choices": [{"label": "Land raw, enforce at read", "next": "s2", "points": 1, "feedback": "Right — let the lake be flexible and push structure to query time."}]}, {"id": "s2", "text": "Now the finance ledger: regulated, audited, downstream reports must reconcile to the cent. Same choice?", "choices": [{"label": "Schema-on-read again — consistency", "next": "END", "points": 0, "outcome": "bad", "feedback": "Wrong: regulated financial data needs schema-on-write with validation at ingest. Flexibility here is a compliance violation."}, {"label": "Schema-on-write with validation — it is regulated data", "next": "END", "points": 2, "outcome": "good", "feedback": "Correct — the workload decides. Volatile exploration data gets schema-on-read; regulated data gets strict schema-on-write."}]}], "debrief": "You learned the real rule: there is no single right answer — volatile exploration data wants schema-on-read, regulated data demands schema-on-write.", "points": 15}, {"id": "aws-data-sim-glue-config", "title": "The crawler that misfires", "kind": "config-check", "domain_id": "processing-frameworks", "difficulty": 2, "brief": "The Glue crawler keeps creating a new table per file instead of one table per dataset. Review the crawler config and click the offending lines.", "steps": {"config": "Crawler: nightly-raw-crawl\n1. S3 path: s3://ilb-data-raw/\n2. Table prefix: raw_\n3. Schema change policy: update table\n4. Partition detection: disabled\n5. Schedule: cron(0 2 * * ? *)", "find": 2, "issues": [{"line": 1, "description": "Crawling the whole bucket root mixes datasets with different schemas into conflicting table definitions.", "fix": "Point the crawler at one dataset prefix per crawler (e.g. s3://ilb-data-raw/clickstream/)."}, {"line": 4, "description": "Partition detection disabled means date-partitioned data crawls as separate tables.", "fix": "Enable partition detection so partitions map to one table."}]}, "debrief": "You found the crawler misconfiguration: scope the path per dataset and let partition detection do its job. One dataset, one table.", "points": 10}], "consoleSims": [{"id": "aws-data-console-catalog-1", "title": "Register the curated table", "console": "db-admin", "domain_id": "analytics", "difficulty": 2, "brief": "Analysts need the curated dataset queryable. Register it in the data catalog with the right schema.", "tasks": [{"id": "t1", "instruction": "Create table curated_sales in the analytics database with columns (id INT, amount DECIMAL, region STRING).", "validate": {"action": "create", "params": {"type": "table", "database": "analytics", "name": "curated_sales", "columns": ["id INT", "amount DECIMAL", "region STRING"]}}, "hint": "Create the table in the analytics database with the exact column definitions."}, {"id": "t2", "instruction": "Set the table location to s3://ilb-artifacts/curated/.", "validate": {"action": "set-field", "params": {"field": "table.curated_sales.location", "value": "s3://ilb-artifacts/curated/"}}, "hint": "Point the table at the curated prefix so queries read the promoted data."}], "debrief": "You registered the curated table: schema declared once, data read from the curated zone. That is the lakehouse contract."}, {"id": "aws-data-console-iam-1", "title": "Read-only for the analysts", "console": "aws-iam", "domain_id": "data-governance", "difficulty": 2, "brief": "The analytics team needs to query the lake but must never modify raw data. Grant scoped read access.", "tasks": [{"id": "t1", "instruction": "Create a group named analysts with no permissions yet.", "validate": {"action": "create", "params": {"type": "group", "name": "analysts"}}, "hint": "Create the group first — permissions attach to groups, not individuals."}, {"id": "t2", "instruction": "Grant the group read-only (GetObject, ListBucket) on the curated prefix only.", "validate": {"action": "set-field", "params": {"field": "group.analysts.policy", "value": "s3:GetObject,s3:ListBucket/curated"}}, "hint": "Scope the policy to the curated prefix — raw stays untouched."}], "debrief": "You implemented data governance at the identity layer: analysts read curated data, raw remains immutable."}], "terminalMissions": [{"id": "aws-data-mission-zones", "title": "List the lake zones", "domain_id": "data-lakes-warehouses", "difficulty": 1, "brief": "Inventory the buckets that serve as lake zones.", "objectives": ["List all S3 buckets"], "checks": [{"command_pattern": "^aws s3 ls$", "expect_contains": "ilb-artifacts", "hint": "In the Terminal tab, run `aws s3 ls`. If the check fails, confirm you typed it exactly and that the output contains \"ilb-artifacts\"."}], "success_message": "Zones inventoried."}, {"id": "aws-data-mission-builds", "title": "List the build artifacts", "domain_id": "data-ingestion", "difficulty": 1, "brief": "List the objects under the builds prefix — these are the versioned inputs.", "objectives": ["List s3://ilb-artifacts/builds"], "checks": [{"command_pattern": "^aws s3 ls s3://ilb-artifacts/builds$", "expect_contains": "bootcamp-v4.zip", "hint": "In the Terminal tab, run `aws s3 ls s3://ilb-artifacts/builds`. If the check fails, confirm you typed it exactly and that the output contains \"bootcamp-v4.zip\"."}], "success_message": "Versioned inputs listed."}, {"id": "aws-data-mission-stage", "title": "Create the staging bucket", "domain_id": "data-ingestion", "difficulty": 2, "brief": "Create a staging bucket for the next ingest batch.", "objectives": ["Create s3://ilb-data-mission"], "checks": [{"command_pattern": "^aws s3 mb s3://ilb-data-mission$", "expect_contains": "make_bucket: ilb-data-mission", "hint": "In the Terminal tab, run `aws s3 mb s3://ilb-data-mission`. If the check fails, confirm you typed it exactly and that the output contains \"make_bucket: ilb-data-mission\"."}], "success_message": "Staging bucket ready."}, {"id": "aws-data-mission-capacity", "title": "Check the processing hosts", "domain_id": "processing-frameworks", "difficulty": 2, "brief": "The transform fleet needs memory-optimized hosts. Confirm the instance types in the fleet.", "objectives": ["Describe all EC2 instances", "Identify the memory-optimized type"], "checks": [{"command_pattern": "^aws ec2 describe-instances$", "expect_contains": "r6g.large", "hint": "In the Terminal tab, run `aws ec2 describe-instances`. If the check fails, confirm you typed it exactly and that the output contains \"r6g.large\"."}], "success_message": "Fleet checked — r6g.large is available for heavy transforms."}, {"id": "aws-data-mission-roles", "title": "List the data roles", "domain_id": "data-governance", "difficulty": 2, "brief": "Inventory the IAM roles the data pipelines can assume.", "objectives": ["List all IAM roles"], "checks": [{"command_pattern": "^aws iam list-roles$", "expect_contains": "RoleName", "hint": "In the Terminal tab, run `aws iam list-roles`. If the check fails, confirm you typed it exactly and that the output contains \"RoleName\"."}], "success_message": "Data roles inventoried."}, {"id": "aws-data-mission-identity", "title": "Confirm the pipeline identity", "domain_id": "orchestration", "difficulty": 3, "brief": "The orchestrator logs every run under an identity. Confirm yours.", "objectives": ["Retrieve the STS caller identity"], "checks": [{"command_pattern": "^aws sts get-caller-identity$", "expect_contains": "arn:aws:iam::123456789012:user/candidate", "hint": "In the Terminal tab, run `aws sts get-caller-identity`. If the check fails, confirm you typed it exactly and that the output contains \"arn:aws:iam::123456789012:user/candidate\"."}], "success_message": "Pipeline identity confirmed."}], "media": [{"id": "aws-data-data-ingestion-diag", "kind": "diagram", "title": "Data Ingestion on AWS", "svg": "assets/diagrams/aws-data-data-ingestion.svg", "lesson_ref": "c-data-ingestion", "caption": "Getting data into AWS reliably, batch or streaming.", "alt": "Data Ingestion on AWS. Shows: Sources, Kinesis / MSK, DMS / DataSync, S3 (raw zone), Glue catalog."}, {"id": "aws-data-data-lakes-warehouses-diag", "kind": "diagram", "title": "Lake → Warehouse on AWS", "svg": "assets/diagrams/aws-data-data-lakes-warehouses.svg", "lesson_ref": "c-data-lakes-warehouses", "caption": "Raw data lands cheap in S3; curated marts serve analytics.", "alt": "Lake → Warehouse on AWS. Tiers: Lake (S3), Catalog + ETL, Serve."}, {"id": "aws-data-processing-frameworks-diag", "kind": "diagram", "title": "Batch & Stream Processing", "svg": "assets/diagrams/aws-data-processing-frameworks.svg", "lesson_ref": "c-processing-frameworks", "caption": "Transform raw data into queryable form.", "alt": "Batch & Stream Processing. Shows: EMR / Spark, Glue ETL, Lambda, Athena views."}, {"id": "aws-data-data-governance-diag", "kind": "diagram", "title": "Data Governance on AWS", "svg": "assets/diagrams/aws-data-data-governance.svg", "lesson_ref": "c-data-governance", "caption": "Know what you have, who touches it, and whether it complies.", "alt": "Data Governance on AWS. Shows: Glue Data Catalog, Lake Formation, Macie, CloudTrail, Tagging."}, {"id": "aws-data-orchestration-diag", "kind": "diagram", "title": "Pipeline Orchestration", "svg": "assets/diagrams/aws-data-orchestration.svg", "lesson_ref": "c-orchestration", "caption": "Schedule and coordinate data workflows.", "alt": "Pipeline Orchestration. Shows: EventBridge, Step Functions, Glue / Lambda, SNS."}, {"id": "aws-data-analytics-diag", "kind": "diagram", "title": "Analytics on AWS", "svg": "assets/diagrams/aws-data-analytics.svg", "lesson_ref": "c-analytics", "caption": "Query and visualize without moving data twice.", "alt": "Analytics on AWS. Shows: Athena, Redshift, QuickSight, OpenSearch."}], "resources": {"cheatsheet": {"title": "AWS Data Engineer — Cheat Sheet", "sections": [{"heading": "Data Ingestion", "items": ["Kinesis Data Streams — provides ordered, replayable, high-throughput streaming with multiple consumers per shard. Kinesis Data Firehose is the managed delivery service: it buffers, converts (e.g., to Parquet), and loads streaming data into S3 and other destinations with no consum…", "Streaming ingestion — SQS is queue-based (not replayable multi-consumer streaming); S3 batch uploads aren't sub-second; RDS isn't an ingestion service. Data Streams and MSK require consumers; DynamoDB direct PUT isn't a streaming pipeline.", "Firehose — Firehose/Data Streams aren't Kafka-compatible; SQS FIFO lacks Kafka's log semantics and retention model.", "Managed delivery — amazon MSK provides managed Apache Kafka with Kafka API compatibility, configurable long retention, and exactly-once semantics support. AWS Transfer Family provides managed SFTP/FTPS/FTP endpoints backed by S3 — partners keep their workflow, files land in S3.", "Common trap — kinesis Data Streams with custom consumers.", "Skipping the key question — which service is built for high-throughput ordered event streams with multiple consumers.", "Skipping the key question — which service loads streaming data to destinations with no consumer code.", "Kinesis Data Streams — provides ordered, replayable, high-throughput streaming with multiple consumers per shard. SQS is queue-based (not replayable multi-consumer streaming); S3 batch uploads aren't sub-second; RDS isn't an ingestion service."]}, {"heading": "Data Lakes & Warehouses", "items": ["Data lakes — an S3-based data lake with the Glue Data Catalog stores all data types in open formats with evolving schemas, serving diverse consumers. The Glue Data Catalog provides a central, queryable metadata store (databases, tables, schemas, partitions) integrated w…", "S3 — S3: redshift Spectrum extends Redshift SQL queries to S3 data in place — no loading, paying per query.", "Redshift Serverless — Redshift Serverless automatically provisions and scales warehouse capacity for the workload, paying for usage — ideal for spiky analytics.", "Glue Data Catalog — parquet's columnar format lets engines read only the needed columns (plus compression and predicate pushdown), slashing scanned data and cost.", "Common trap — S3 with bronze/silver/gold zones + Lake Formation permissions.", "Skipping the key question — which architecture handles all data types with evolving schema.", "Skipping the key question — which warehouse option scales to zero operationally for spiky use.", "An S3-based — An S3-based data lake with the Glue Data Catalog stores all data types in open formats with evolving schemas, serving diverse consumers. A warehouse alone forces schema-on-write; RDS isn't analytics storage; EBS isn't a lake."]}, {"heading": "Processing Frameworks", "items": ["Glue — is Spark-centric serverless; Lambda isn't for clusters; Athena is serverless SQL, not a framework platform. Incremental processing (e.g., Glue job bookmarks tracking processed offsets) handles only new data each run, keeping runtime flat.", "Serverless Spark — AWS Glue provides serverless Spark ETL with auto-scaling workers — no clusters to manage. EMR provides managed clusters with the full big-data ecosystem (Spark, Flink, Presto/Trino) and notebook support.", "EMR — always-on EC2 idles at zero; EMR is for cluster analytics, not 200ms functions; bare metal is the opposite of elastic. EMR/Glue clusters idle between queries; Redshift is a provisioned warehouse.", "Big data clusters — stream processing (MSK + Flink, or Kinesis Data Analytics with Flink) processes events continuously with sub-minute latency. Full daily rewrites scale with total data; weekly reloads still reprocess; no dedup compounds the waste.", "Athena — provides serverless SQL directly on S3, paying per byte scanned — perfect for low-volume ad-hoc analysis.", "Common trap — amazon Managed Streaming for Kafka + Flink (or Kinesis Data Analytics).", "Skipping the key question — which service runs serverless Spark with auto-scaling.", "Skipping the key question — which service gives you a managed big-data cluster with many frameworks.", "Lambda — Lambda scales from zero to 10k concurrent executions for short event-driven transforms with per-millisecond billing. Always-on EC2 idles at zero; EMR is for cluster analytics, not 200ms functions; bare metal is the opposite of elastic."]}, {"heading": "Data Governance", "items": ["Lake Formation — provides centralized fine-grained permissions at table, column, and row level on the data lake.", "Fine-grained access — full access or one shared role can't differentiate; public buckets are a breach.", "Data lineage — the Glue Data Catalog with lineage tracking records how data flows and transforms from source to report — the auditable answer. Data mesh distributes ownership to domain teams who publish data products with contracts/SLAs, scaling ownership with the organiz…", "PII handling — de-identification and masking (finding PII with Macie, masking in views/exports) preserves analytical realism without real PII.", "Data — Data quality rules (e.g., Glue Data Quality / Deequ checks) in the pipeline validate schema, completeness, and ranges, quarantining failures before they corrupt downstream.", "Common trap — data mesh principles: domain ownership + data products with contracts.", "Common trap — lake Formation fine-grained permissions (table/column/row level).", "Common trap — S3 Lifecycle policies aligned to retention requirements.", "Common trap — everyone gets full access.", "S3 Lifecycle — S3 Lifecycle policies enforce per-dataset retention and archival automatically at 3 TB/day scale. Keeping everything forever wastes money and may violate minimization; manual reviews don't scale; no policy is non-compliance."]}, {"heading": "Orchestration", "items": ["MWAA provides managed Apache Airflow — DAGs with dependencies, retries, and SLA monitoring without managing the orchestrator.", "Workflow orchestration — single-EC2 cron is a single point of failure; manual runs don't scale; Lambda alone lacks DAG orchestration semantics.", "Step Functions — Step Functions orchestrates serverless workflows with visual execution graphs, per-state retries/catches, and integrations to Lambda, Glue, and more. Pipeline-native monitoring (Airflow SLAs, Step Functions/CloudWatch alarms on task duration) watches every…", "Event-driven — Event-driven triggers (S3 Event Notifications, EventBridge) start pipelines on arrival with low latency, and idempotent tasks make duplicate events safe.", "Failure handling — manual Lambda chaining reinvents error handling; one giant Lambda couples everything; bash on EC2 is fragile. Blind infinite retries are the current failure; ignoring/deleting loses data.", "Common trap — event-driven triggers (S3 events, EventBridge) + idempotent tasks.", "Common trap — separate dev/staging/prod with promotion of tested artifacts.", "Common trap — lambda alone for 50-step DAGs.", "Common trap — one pipeline for dev and prod.", "MWAA provides managed Apache Airflow — DAGs with dependencies, retries, and SLA monitoring without managing the orchestrator. Single-EC2 cron is a single point of failure; manual runs don't scale; Lambda alone lacks DAG orchestration semantics."]}, {"heading": "Analytics", "items": ["QuickSight — row-level (and column-level) security in QuickSight and Lake Formation filters data by viewer identity — enforced, not advisory. QuickSight provides managed BI with SPICE in-memory engine, integrating natively with AWS data sources and scaling to hundreds o…", "BI — BI: one-off queries repeat the waste; bigger warehouses just scan faster at higher cost; BI-only caching is fragile. Custom builds reintroduce ops; email chains and screenshots aren't BI.", "ML for analysts — redshift ML and SageMaker Canvas let analysts build and use models with SQL or no-code interfaces against warehouse data in place.", "Open table formats (Apache Hudi, Iceberg — supported by Athena, EMR, Glue) bring upserts, deletes, and time travel to S3 data lakes.", "Materialized — Materialized views or scheduled aggregation tables precompute the repeated aggregations once, so dashboards read megabytes instead of terabytes.", "Common trap — materialized views / scheduled aggregations.", "Common trap — cost allocation tags + query-level cost attribution (e.g., Athena workgroups, Redshift concurrency scaling) + lifecycle policies.", "Common trap — keeping every version as separate files.", "Common trap — building custom dashboards from scratch.", "Row-level — Row-level (and column-level) security in QuickSight and Lake Formation filters data by viewer identity — enforced, not advisory. Full access violates the requirement; one shared dashboard can't differentiate; trust isn't enforcement."]}]}, "glossary": [{"term": "SQL", "def": "S3: redshift Spectrum extends Redshift SQL queries to S3 data in place — no loading, paying per query."}, {"term": "EMR", "def": "EMR: always-on EC2 idles at zero; EMR is for cluster analytics, not 200ms functions; bare metal is the opposite of elastic. EMR/Glue clusters idle between queries; Redshift is a provisioned warehouse."}, {"term": "MSK", "def": "Managed delivery: amazon MSK provides managed Apache Kafka with Kafka API compatibility, configurable long retention, and exactly-once semantics support. AWS Transfer Family provides managed SFTP/FTPS/FTP endpoints backed by S3 — partner…"}, {"term": "AWS", "def": "Serverless Spark: AWS Glue provides serverless Spark ETL with auto-scaling workers — no clusters to manage. EMR provides managed clusters with the full big-data ecosystem (Spark, Flink, Presto/Trino) and notebook support."}, {"term": "Athena", "def": "Athena provides serverless SQL directly on S3, paying per byte scanned — perfect for low-volume ad-hoc analysis."}, {"term": "RDS", "def": "Streaming ingestion: SQS is queue-based (not replayable multi-consumer streaming); S3 batch uploads aren't sub-second; RDS isn't an ingestion service. Data Streams and MSK require consumers; DynamoDB direct PUT isn't a streaming pipeline."}, {"term": "Lambda", "def": "Glue is Spark-centric serverless; Lambda isn't for clusters; Athena is serverless SQL, not a framework platform. Incremental processing (e.g., Glue job bookmarks tracking processed offsets) handles only new data each run, keeping runtime…"}, {"term": "SQS", "def": "Streaming ingestion: SQS is queue-based (not replayable multi-consumer streaming); S3 batch uploads aren't sub-second; RDS isn't an ingestion service. Data Streams and MSK require consumers; DynamoDB direct PUT isn't a streaming pipeline."}, {"term": "Glue", "def": "Glue is Spark-centric serverless; Lambda isn't for clusters; Athena is serverless SQL, not a framework platform. Incremental processing (e.g., Glue job bookmarks tracking processed offsets) handles only new data each run, keeping runtime…"}, {"term": "Skipping", "def": "Skipping the key question: which service is built for high-throughput ordered event streams with multiple consumers."}, {"term": "Lake Formation", "def": "Lake Formation provides centralized fine-grained permissions at table, column, and row level on the data lake."}, {"term": "BI", "def": "BI: one-off queries repeat the waste; bigger warehouses just scan faster at higher cost; BI-only caching is fragile. Custom builds reintroduce ops; email chains and screenshots aren't BI."}, {"term": "Spark", "def": "Serverless Spark: AWS Glue provides serverless Spark ETL with auto-scaling workers — no clusters to manage. EMR provides managed clusters with the full big-data ecosystem (Spark, Flink, Presto/Trino) and notebook support."}, {"term": "Data", "def": "Data lakes: an S3-based data lake with the Glue Data Catalog stores all data types in open formats with evolving schemas, serving diverse consumers. The Glue Data Catalog provides a central, queryable metadata store (databases, tables, s…"}, {"term": "Full", "def": "Open table formats (Apache Hudi, Iceberg — supported by Athena, EMR, Glue) bring upserts, deletes, and time travel to S3 data lakes. Full overwrites at 10B rows are infeasible; version-file sprawl is unmanageable; a relational DB can't h…"}, {"term": "Flink", "def": "Serverless Spark: AWS Glue provides serverless Spark ETL with auto-scaling workers — no clusters to manage. EMR provides managed clusters with the full big-data ecosystem (Spark, Flink, Presto/Trino) and notebook support."}, {"term": "Redshift", "def": "EMR: always-on EC2 idles at zero; EMR is for cluster analytics, not 200ms functions; bare metal is the opposite of elastic. EMR/Glue clusters idle between queries; Redshift is a provisioned warehouse."}, {"term": "EC2", "def": "EMR: always-on EC2 idles at zero; EMR is for cluster analytics, not 200ms functions; bare metal is the opposite of elastic. EMR/Glue clusters idle between queries; Redshift is a provisioned warehouse."}, {"term": "PII", "def": "De-identification and masking (finding PII with Macie, masking in views/exports) preserves analytical realism without real PII. Copying production as-is violates the requirement; trust isn't a control; deletion removes the utility."}, {"term": "MWAA", "def": "MWAA provides managed Apache Airflow — DAGs with dependencies, retries, and SLA monitoring without managing the orchestrator."}, {"term": "Glue Data Catalog", "def": "Glue Data Catalog: parquet's columnar format lets engines read only the needed columns (plus compression and predicate pushdown), slashing scanned data and cost."}, {"term": "SFTP", "def": "AWS Transfer Family provides managed SFTP/FTPS/FTP endpoints backed by S3 — partners keep their workflow, files land in S3. The streaming services don't speak SFTP; they're for event streams, not file transfers."}, {"term": "QuickSight", "def": "QuickSight: row-level (and column-level) security in QuickSight and Lake Formation filters data by viewer identity — enforced, not advisory. QuickSight provides managed BI with SPICE in-memory engine, integrating natively with AWS data s…"}, {"term": "Catalog", "def": "The Glue Data Catalog provides a central, queryable metadata store (databases, tables, schemas, partitions) integrated with Athena, Redshift Spectrum, and EMR. Spreadsheets, hardcoded schemas, and wikis don't integrate or stay current."}, {"term": "FTP", "def": "S3 Event Notifications push events on object creation to Lambda, SQS, or SNS within seconds — event-driven and serverless. Polling adds latency and cost; FTP/EC2 and email are manual anti-patterns."}], "links": [{"label": "Amazon Web Services — official site", "url": "https://aws.amazon.com/certification", "note": "Official vendor documentation and certification information"}, {"label": "AWS documentation", "url": "https://docs.aws.amazon.com/", "note": "Official service documentation"}, {"label": "AWS Well-Architected Framework", "url": "https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html", "note": "Official architecture best practices"}, {"label": "AWS Architecture Center", "url": "https://aws.amazon.com/architecture/", "note": "Official AWS architecture guidance"}, {"label": "AWS whitepapers", "url": "https://aws.amazon.com/whitepapers/", "note": "Official AWS whitepapers"}, {"label": "PostgreSQL documentation", "url": "https://www.postgresql.org/docs/", "note": "Official PostgreSQL docs"}, {"label": "PostgreSQL tutorial", "url": "https://www.postgresql.org/docs/current/tutorial.html", "note": "Official PostgreSQL tutorial"}, {"label": "Microsoft Learn — SQL", "url": "https://learn.microsoft.com/en-us/sql/", "note": "Official SQL Server docs"}], "checklist": ["Get 7–8 hours of sleep the night before — fatigue destroys recall faster than any topic gap.", "Bring valid government-issued photo ID and arrive at the test center 30 minutes early.", "Eat a real meal beforehand; bring water and a light snack if the center allows them.", "Read every question twice before scanning the answer choices.", "Flag uncertain questions and move on — return with fresh eyes at the end.", "Eliminate the obviously wrong answers first, then compare the survivors.", "Budget your time: answer steadily and keep a 10–15 minute review buffer.", "Re-run your weakest-domain drill until mastery is at least 80%.", "For Data Ingestion: restate the 'why' behind each scenario answer in your own words — if you can't explain it, you don't own it.", "Redo one Data Lakes & Warehouses lab from scratch without looking at the steps.", "Recite the key Processing Frameworks terms from the glossary aloud from memory."]}}
+{
+ "disclaimer": "Independent practice material by Interstitium Labs. Not affiliated with, endorsed by, or sponsored by Amazon Web Services. Confers no certificate. All scenarios are original; no exam content is reproduced.",
+ "domains": [
+  {
+   "id": "data-ingestion",
+   "name": "Data Ingestion",
+   "scenarios": [
+    {
+     "answer": 1,
+     "choices": [
+      "SQS",
+      "Amazon Kinesis Data Streams",
+      "S3 batch uploads",
+      "RDS"
+     ],
+     "evidence": [
+      [
+       "stream.txt",
+       "IoT sensors: 50k events/sec,\nsub-second latency needed,\nmultiple consumers."
+      ]
+     ],
+     "hint": "Which service is built for high-throughput ordered event streams with multiple consumers?",
+     "id": "data-di-01",
+     "mins": 6,
+     "objectives": [
+      "Kinesis Data Streams",
+      "Streaming ingestion"
+     ],
+     "prompt": "Which ingestion service fits?",
+     "situation": "50k IoT events/sec need sub-second ingestion with multiple consumers reading the same stream.",
+     "title": "Fifty thousand events a second",
+     "why": "Kinesis Data Streams provides ordered, replayable, high-throughput streaming with multiple consumers per shard. SQS is queue-based (not replayable multi-consumer streaming); S3 batch uploads aren't sub-second; RDS isn't an ingestion service."
+    },
+    {
+     "answer": 0,
+     "choices": [
+      "Kinesis Data Firehose to S3",
+      "Kinesis Data Streams with custom consumers",
+      "MSK with self-managed consumers",
+      "Direct PUT to DynamoDB"
+     ],
+     "evidence": [
+      [
+       "firehose.txt",
+       "Clickstream: 20k events/sec.\nNeed: land in S3 as Parquet,\nnear-real-time, zero consumer code."
+      ]
+     ],
+     "hint": "Which service loads streaming data to destinations with no consumer code?",
+     "id": "data-di-02",
+     "mins": 5,
+     "objectives": [
+      "Firehose",
+      "Managed delivery"
+     ],
+     "prompt": "Which service delivers with zero consumer code?",
+     "situation": "Clickstream at 20k events/sec must land in S3 as Parquet near-real-time with no custom consumer code.",
+     "title": "No consumer code required",
+     "why": "Kinesis Data Firehose is the managed delivery service: it buffers, converts (e.g., to Parquet), and loads streaming data into S3 and other destinations with no consumer code. Data Streams and MSK require consumers; DynamoDB direct PUT isn't a streaming pipeline."
+    },
+    {
+     "answer": 2,
+     "choices": [
+      "Firehose",
+      "Data Streams",
+      "Amazon MSK (Managed Streaming for Kafka)",
+      "SQS FIFO"
+     ],
+     "evidence": [
+      [
+       "kafka.txt",
+       "Team knows Kafka deeply.\nNeed: Kafka API compatibility,\nlong retention, exactly-once\nsemantics."
+      ]
+     ],
+     "hint": "Which AWS service is Kafka-compatible and managed?",
+     "id": "data-di-03",
+     "mins": 6,
+     "objectives": [
+      "MSK",
+      "Kafka"
+     ],
+     "prompt": "Which service fits the Kafka team?",
+     "situation": "A team with deep Kafka expertise needs Kafka API compatibility, long retention, and exactly-once semantics on AWS.",
+     "title": "Kafka, managed",
+     "why": "Amazon MSK provides managed Apache Kafka with Kafka API compatibility, configurable long retention, and exactly-once semantics support. Firehose/Data Streams aren't Kafka-compatible; SQS FIFO lacks Kafka's log semantics and retention model."
+    },
+    {
+     "answer": 1,
+     "choices": [
+      "Manual CSV uploads",
+      "AWS Database Migration Service (DMS)",
+      "Rewriting the app",
+      "Screenshots of the database"
+     ],
+     "evidence": [
+      [
+       "dms.txt",
+       "On-prem Oracle -> Aurora PostgreSQL.\nNeed: minimal downtime, continuous\nreplication until cutover."
+      ]
+     ],
+     "hint": "Which service replicates databases continuously with minimal downtime?",
+     "id": "data-di-04",
+     "mins": 6,
+     "objectives": [
+      "DMS",
+      "Database migration"
+     ],
+     "prompt": "Which service migrates with minimal downtime?",
+     "situation": "An on-prem Oracle database must migrate to Aurora PostgreSQL with minimal downtime and continuous replication until cutover.",
+     "title": "Moving Oracle without stopping",
+     "why": "DMS performs full-load plus change-data-capture replication, keeping the target in sync until cutover for minimal downtime. Manual uploads can't do CDC; rewriting the app is unnecessary; screenshots aren't a migration strategy."
+    },
+    {
+     "answer": 3,
+     "choices": [
+      "Kinesis Data Streams",
+      "Firehose",
+      "MSK",
+      "AWS Transfer Family"
+     ],
+     "evidence": [
+      [
+       "sftp.txt",
+       "Partners send nightly CSVs via SFTP.\nNeed: land in S3, keep the SFTP\ninterface, managed service."
+      ]
+     ],
+     "hint": "Which managed service speaks SFTP/S3 natively?",
+     "id": "data-di-05",
+     "mins": 5,
+     "objectives": [
+      "Transfer Family",
+      "Partner ingestion"
+     ],
+     "prompt": "Which service keeps the SFTP interface?",
+     "situation": "Partners send nightly CSVs via SFTP; the files must land in S3 while keeping the SFTP interface as a managed service.",
+     "title": "SFTP, but it lands in S3",
+     "why": "AWS Transfer Family provides managed SFTP/FTPS/FTP endpoints backed by S3 — partners keep their workflow, files land in S3. The streaming services don't speak SFTP; they're for event streams, not file transfers."
+    },
+    {
+     "answer": 0,
+     "choices": [
+      "S3 with Event Notifications -> Lambda/SQS",
+      "Polling S3 every minute",
+      "FTP to EC2",
+      "Emailing the files"
+     ],
+     "evidence": [
+      [
+       "s3events.txt",
+       "Files land in S3 unpredictably.\nNeed: trigger processing within\nseconds of arrival."
+      ]
+     ],
+     "hint": "Which S3 feature pushes events on object creation?",
+     "id": "data-di-06",
+     "mins": 5,
+     "objectives": [
+      "S3 Event Notifications"
+     ],
+     "prompt": "What triggers processing on arrival?",
+     "situation": "Files land in S3 unpredictably; processing must trigger within seconds of arrival.",
+     "title": "The file just landed — go",
+     "why": "S3 Event Notifications push events on object creation to Lambda, SQS, or SNS within seconds — event-driven and serverless. Polling adds latency and cost; FTP/EC2 and email are manual anti-patterns."
+    }
+   ]
+  },
+  {
+   "id": "data-lakes-warehouses",
+   "name": "Data Lakes & Warehouses",
+   "scenarios": [
+    {
+     "answer": 1,
+     "choices": [
+      "A data warehouse only",
+      "S3-based data lake with Glue Data Catalog",
+      "RDS for analytics",
+      "EBS volumes"
+     ],
+     "evidence": [
+      [
+       "lake.txt",
+       "Data: structured, semi-structured,\nunstructured. Consumers: analysts,\nML team, ad-hoc SQL. Schema: evolves."
+      ]
+     ],
+     "hint": "Which architecture handles all data types with evolving schema?",
+     "id": "data-dl-01",
+     "mins": 6,
+     "objectives": [
+      "Data lakes",
+      "S3"
+     ],
+     "prompt": "Which architecture fits?",
+     "situation": "Structured, semi-structured, and unstructured data serve analysts, ML, and ad-hoc SQL with evolving schemas.",
+     "title": "The lake, not the warehouse (yet)",
+     "why": "An S3-based data lake with the Glue Data Catalog stores all data types in open formats with evolving schemas, serving diverse consumers. A warehouse alone forces schema-on-write; RDS isn't analytics storage; EBS isn't a lake."
+    },
+    {
+     "answer": 2,
+     "choices": [
+      "Redshift provisioned cluster",
+      "Amazon Redshift Serverless",
+      "RDS",
+      "DynamoDB"
+     ],
+     "evidence": [
+      [
+       "rs.txt",
+       "Analytics: spiky, 2h/day.\nNeed: petabyte scale, SQL,\nno cluster management."
+      ]
+     ],
+     "hint": "Which warehouse option scales to zero operationally for spiky use?",
+     "id": "data-dl-02",
+     "mins": 6,
+     "objectives": [
+      "Redshift Serverless"
+     ],
+     "prompt": "Which warehouse fits spiky analytics?",
+     "situation": "Petabyte-scale SQL analytics runs 2 hours/day with spikes; no cluster management wanted.",
+     "title": "A warehouse for two hours a day",
+     "why": "Redshift Serverless automatically provisions and scales warehouse capacity for the workload, paying for usage — ideal for spiky analytics. Provisioned clusters idle 22h/day; RDS isn't a warehouse; DynamoDB isn't SQL analytics."
+    },
+    {
+     "answer": 0,
+     "choices": [
+      "AWS Glue Data Catalog",
+      "A spreadsheet of table names",
+      "Hardcoded schemas in each job",
+      "A wiki page"
+     ],
+     "evidence": [
+      [
+       "catalog.txt",
+       "500+ tables in S3.\nTeams can't find data;\nschemas drift undocumented."
+      ]
+     ],
+     "hint": "Which service is the central metadata store queryable by Athena, Redshift, and EMR?",
+     "id": "data-dl-03",
+     "mins": 5,
+     "objectives": [
+      "Glue Data Catalog"
+     ],
+     "prompt": "What makes the data discoverable?",
+     "situation": "500+ tables in S3; teams can't find data and schemas drift undocumented.",
+     "title": "Finding table 437",
+     "why": "The Glue Data Catalog provides a central, queryable metadata store (databases, tables, schemas, partitions) integrated with Athena, Redshift Spectrum, and EMR. Spreadsheets, hardcoded schemas, and wikis don't integrate or stay current."
+    },
+    {
+     "answer": 3,
+     "choices": [
+      "CSV in S3",
+      "JSON in S3",
+      "Apache Parquet in S3 (columnar)",
+      "Plain text logs"
+     ],
+     "evidence": [
+      [
+       "parquet.txt",
+       "Analytics scans 10 TB/day but\nqueries touch 5 of 200 columns.\nNeed: cut scan cost."
+      ]
+     ],
+     "hint": "Which format lets queries read only the columns they need?",
+     "id": "data-dl-04",
+     "mins": 6,
+     "objectives": [
+      "Parquet",
+      "Columnar formats"
+     ],
+     "prompt": "Which storage format cuts the scan cost?",
+     "situation": "Analytics scans 10 TB/day but queries touch only 5 of 200 columns.",
+     "title": "Reading 5 columns, not 200",
+     "why": "Parquet's columnar format lets engines read only the needed columns (plus compression and predicate pushdown), slashing scanned data and cost. Row-based CSV/JSON force full scans; plain text is worse."
+    },
+    {
+     "answer": 1,
+     "choices": [
+      "Copying data into Redshift",
+      "Redshift Spectrum querying S3 directly",
+      "Moving the lake to RDS",
+      "Downloading to laptops"
+     ],
+     "evidence": [
+      [
+       "spectrum.txt",
+       "Cold data in S3 (5 PB).\nNeed: occasional SQL over it\nwithout loading a warehouse."
+      ]
+     ],
+     "hint": "Which Redshift feature queries S3 in place?",
+     "id": "data-dl-05",
+     "mins": 6,
+     "objectives": [
+      "Redshift Spectrum"
+     ],
+     "prompt": "What queries the cold data in place?",
+     "situation": "5 PB of cold data in S3 needs occasional SQL without loading it into a warehouse.",
+     "title": "SQL over five petabytes, in place",
+     "why": "Redshift Spectrum extends Redshift SQL queries to S3 data in place — no loading, paying per query. Copying petabytes for occasional queries is wasteful; RDS/laptops can't handle the scale."
+    },
+    {
+     "answer": 2,
+     "choices": [
+      "One bucket, no structure",
+      "S3 with bronze/silver/gold zones + Lake Formation permissions",
+      "Public buckets",
+      "A single database"
+     ],
+     "evidence": [
+      [
+       "zones.txt",
+       "Raw events -> cleaned ->\ncurated marts. Need: clear lineage,\ncolumn-level access control."
+      ]
+     ],
+     "hint": "Which zone pattern plus which service gives fine-grained lake security?",
+     "id": "data-dl-06",
+     "mins": 7,
+     "objectives": [
+      "Lake Formation",
+      "Medallion architecture"
+     ],
+     "prompt": "What organizes the lake with proper access control?",
+     "situation": "Raw events flow to cleaned data to curated marts, needing clear lineage and column-level access control.",
+     "title": "Bronze, silver, gold",
+     "why": "Bronze/silver/gold zones organize the refinement lineage, and Lake Formation provides centralized fine-grained permissions (table/column-level) on the lake. One unstructured bucket has no lineage or control; public buckets are a breach; a single database can't hold the lake."
+    }
+   ]
+  },
+  {
+   "id": "processing-frameworks",
+   "name": "Processing Frameworks",
+   "scenarios": [
+    {
+     "answer": 0,
+     "choices": [
+      "AWS Glue (serverless Spark)",
+      "Self-managed Spark on EC2",
+      "Lambda for 4-hour jobs",
+      "RDS stored procedures"
+     ],
+     "evidence": [
+      [
+       "glue.txt",
+       "Nightly ETL: 500 GB, Spark jobs.\nNeed: no cluster management,\nauto-scaling workers."
+      ]
+     ],
+     "hint": "Which service runs serverless Spark with auto-scaling?",
+     "id": "data-pf-01",
+     "mins": 6,
+     "objectives": [
+      "Glue",
+      "Serverless Spark"
+     ],
+     "prompt": "Which processing service fits?",
+     "situation": "Nightly 500 GB Spark ETL jobs need no cluster management with auto-scaling workers.",
+     "title": "Spark without the cluster",
+     "why": "AWS Glue provides serverless Spark ETL with auto-scaling workers — no clusters to manage. Self-managed EC2 reintroduces ops; Lambda can't run 4-hour Spark jobs; RDS procedures aren't a big-data engine."
+    },
+    {
+     "answer": 1,
+     "choices": [
+      "Glue",
+      "Amazon EMR",
+      "Lambda",
+      "Athena"
+     ],
+     "evidence": [
+      [
+       "emr.txt",
+       "Team needs: Spark + Flink + Presto,\ncustom libraries, long-running\ninteractive notebooks."
+      ]
+     ],
+     "hint": "Which service gives you a managed big-data cluster with many frameworks?",
+     "id": "data-pf-02",
+     "mins": 6,
+     "objectives": [
+      "EMR",
+      "Big data clusters"
+     ],
+     "prompt": "Which service fits the multi-framework team?",
+     "situation": "The team needs Spark, Flink, and Presto with custom libraries and long-running interactive notebooks.",
+     "title": "The whole big-data toolbox",
+     "why": "EMR provides managed clusters with the full big-data ecosystem (Spark, Flink, Presto/Trino) and notebook support. Glue is Spark-centric serverless; Lambda isn't for clusters; Athena is serverless SQL, not a framework platform."
+    },
+    {
+     "answer": 2,
+     "choices": [
+      "EMR",
+      "Glue",
+      "Amazon Athena",
+      "Redshift"
+     ],
+     "evidence": [
+      [
+       "athena.txt",
+       "Ad-hoc SQL over S3 logs.\nUsage: 10 queries/day.\nNeed: no infrastructure, pay per query."
+      ]
+     ],
+     "hint": "Which service is serverless SQL directly on S3?",
+     "id": "data-pf-03",
+     "mins": 5,
+     "objectives": [
+      "Athena",
+      "Serverless SQL"
+     ],
+     "prompt": "Which service fits ad-hoc queries?",
+     "situation": "Ten ad-hoc SQL queries per day over S3 logs; no infrastructure wanted, pay per query.",
+     "title": "Ten queries a day",
+     "why": "Athena provides serverless SQL directly on S3, paying per byte scanned — perfect for low-volume ad-hoc analysis. EMR/Glue clusters idle between queries; Redshift is a provisioned warehouse."
+    },
+    {
+     "answer": 3,
+     "choices": [
+      "Batch nightly",
+      "Amazon Managed Streaming for Kafka + Flink (or Kinesis Data Analytics)",
+      "Cron on EC2",
+      "Manual runs"
+     ],
+     "evidence": [
+      [
+       "realtime.txt",
+       "Fraud scoring: must score\ntransactions within 30 seconds\nof occurrence."
+      ]
+     ],
+     "hint": "30-second SLA — which processing paradigm fits?",
+     "id": "data-pf-04",
+     "mins": 6,
+     "objectives": [
+      "Stream processing",
+      "Flink"
+     ],
+     "prompt": "What meets the 30-second SLA?",
+     "situation": "Fraud scoring must complete within 30 seconds of each transaction.",
+     "title": "Thirty seconds to score fraud",
+     "why": "Stream processing (MSK + Flink, or Kinesis Data Analytics with Flink) processes events continuously with sub-minute latency. Nightly batch, cron, and manual runs can't meet a 30-second SLA."
+    },
+    {
+     "answer": 1,
+     "choices": [
+      "Rewriting all data daily",
+      "Glue bookmarks / incremental processing",
+      "Full reloads weekly",
+      "No deduplication"
+     ],
+     "evidence": [
+      [
+       "incr.txt",
+       "Source: 2 TB/day appended.\nJob reruns process everything;\nruntime growing unboundedly."
+      ]
+     ],
+     "hint": "What tracks already-processed data so jobs handle only new arrivals?",
+     "id": "data-pf-05",
+     "mins": 6,
+     "objectives": [
+      "Incremental processing",
+      "Glue bookmarks"
+     ],
+     "prompt": "What stops the unbounded runtime growth?",
+     "situation": "A daily job reprocesses all 2 TB every run; runtime grows unboundedly as data accumulates.",
+     "title": "Processing everything, every day",
+     "why": "Incremental processing (e.g., Glue job bookmarks tracking processed offsets) handles only new data each run, keeping runtime flat. Full daily rewrites scale with total data; weekly reloads still reprocess; no dedup compounds the waste."
+    },
+    {
+     "answer": 0,
+     "choices": [
+      "AWS Lambda for event-driven transforms",
+      "An always-on EC2 fleet",
+      "EMR for 200ms transforms",
+      "Bare metal servers"
+     ],
+     "evidence": [
+      [
+       "micro.txt",
+       "Transform: 200ms per record,\nevent-driven, spiky, 0-10k/sec."
+      ]
+     ],
+     "hint": "Sub-second, spiky, event-driven — which compute scales to zero?",
+     "id": "data-pf-06",
+     "mins": 5,
+     "objectives": [
+      "Lambda",
+      "Micro-batch transforms"
+     ],
+     "prompt": "Which compute fits the transform?",
+     "situation": "A 200ms per-record transform is event-driven and spiky, from 0 to 10k events/sec.",
+     "title": "Two hundred milliseconds, ten thousand times",
+     "why": "Lambda scales from zero to 10k concurrent executions for short event-driven transforms with per-millisecond billing. Always-on EC2 idles at zero; EMR is for cluster analytics, not 200ms functions; bare metal is the opposite of elastic."
+    }
+   ]
+  },
+  {
+   "id": "data-governance",
+   "name": "Data Governance",
+   "scenarios": [
+    {
+     "answer": 2,
+     "choices": [
+      "Everyone gets full access",
+      "Lake Formation fine-grained permissions (table/column/row level)",
+      "One IAM role for all analysts",
+      "Public S3 buckets"
+     ],
+     "evidence": [
+      [
+       "gov2.txt",
+       "Analysts need: sales sees all,\nsupport sees only their region,\nPII columns hidden from most."
+      ]
+     ],
+     "hint": "Which service enforces column- and row-level access on the lake?",
+     "id": "data-dg-01",
+     "mins": 6,
+     "objectives": [
+      "Lake Formation",
+      "Fine-grained access"
+     ],
+     "prompt": "What enforces the differentiated access?",
+     "situation": "Analysts need differentiated access: full sales data for some, regional rows for support, PII columns hidden from most.",
+     "title": "Who sees which column?",
+     "why": "Lake Formation provides centralized fine-grained permissions at table, column, and row level on the data lake. Full access or one shared role can't differentiate; public buckets are a breach."
+    },
+    {
+     "answer": 1,
+     "choices": [
+      "Tribal knowledge",
+      "AWS Glue Data Catalog + data lineage tracking",
+      "File names with dates",
+      "No documentation"
+     ],
+     "evidence": [
+      [
+       "lineage.txt",
+       "Regulator asks: where did this\nreport's numbers come from?\nPipeline: 6 stages, 3 teams."
+      ]
+     ],
+     "hint": "Which catalog feature traces data from source to report?",
+     "id": "data-dg-02",
+     "mins": 6,
+     "objectives": [
+      "Data lineage",
+      "Catalog"
+     ],
+     "prompt": "What answers the regulator?",
+     "situation": "A regulator asks for the lineage of a report's numbers across a 6-stage, 3-team pipeline.",
+     "title": "Where did this number come from?",
+     "why": "The Glue Data Catalog with lineage tracking records how data flows and transforms from source to report — the auditable answer. Tribal knowledge, filenames, and no docs can't satisfy a regulator."
+    },
+    {
+     "answer": 0,
+     "choices": [
+      "De-identification/masking (e.g., Macie findings + masking in views)",
+      "Copying production data as-is",
+      "Trusting analysts",
+      "Deleting the data"
+     ],
+     "evidence": [
+      [
+       "pii2.txt",
+       "Analysts need realistic data.\nRequirement: no real PII in\nnon-production environments."
+      ]
+     ],
+     "hint": "What keeps data realistic while removing the sensitive values?",
+     "id": "data-dg-03",
+     "mins": 6,
+     "objectives": [
+      "PII handling",
+      "Data masking"
+     ],
+     "prompt": "What protects PII in lower environments?",
+     "situation": "Analysts need realistic data in non-production, but no real PII may exist there.",
+     "title": "Realistic, but not real",
+     "why": "De-identification and masking (finding PII with Macie, masking in views/exports) preserves analytical realism without real PII. Copying production as-is violates the requirement; trust isn't a control; deletion removes the utility."
+    },
+    {
+     "answer": 3,
+     "choices": [
+      "Keeping everything forever",
+      "S3 Lifecycle policies aligned to retention requirements",
+      "Manual deletion reviews",
+      "No retention policy"
+     ],
+     "evidence": [
+      [
+       "ret2.txt",
+       "Regulations: 7-year retention for\nfinancial data; 90-day for clickstream.\nVolume: 3 TB/day."
+      ]
+     ],
+     "hint": "Which mechanism enforces different retention per dataset automatically?",
+     "id": "data-dg-04",
+     "mins": 5,
+     "objectives": [
+      "Retention policies",
+      "Lifecycle"
+     ],
+     "prompt": "What enforces the retention rules?",
+     "situation": "Financial data needs 7-year retention; clickstream 90 days; volume is 3 TB/day.",
+     "title": "Retention by regulation",
+     "why": "S3 Lifecycle policies enforce per-dataset retention and archival automatically at 3 TB/day scale. Keeping everything forever wastes money and may violate minimization; manual reviews don't scale; no policy is non-compliance."
+    },
+    {
+     "answer": 1,
+     "choices": [
+      "No quality checks",
+      "Deequ/Glue Data Quality rules in the pipeline with quarantine",
+      "Eyeballing dashboards",
+      "Fixing data after reports ship"
+     ],
+     "evidence": [
+      [
+       "dq.txt",
+       "Bad upstream data corrupted\n3 executive reports last quarter.\nNeed: catch it before it lands."
+      ]
+     ],
+     "hint": "Which approach validates data in the pipeline and quarantines failures?",
+     "id": "data-dg-05",
+     "mins": 6,
+     "objectives": [
+      "Data quality"
+     ],
+     "prompt": "What catches bad data before it lands?",
+     "situation": "Bad upstream data corrupted executive reports; quality must be enforced before data lands.",
+     "title": "Trust, but verify the data",
+     "why": "Data quality rules (e.g., Glue Data Quality / Deequ checks) in the pipeline validate schema, completeness, and ranges, quarantining failures before they corrupt downstream. Eyeballing and post-ship fixes are the current failure; no checks guarantees repeats."
+    },
+    {
+     "answer": 2,
+     "choices": [
+      "One giant shared database",
+      "Data mesh principles: domain ownership + data products with contracts",
+      "A single central team doing everything",
+      "Emailing CSVs"
+     ],
+     "evidence": [
+      [
+       "mesh.txt",
+       "8 domains, 40 engineers.\nCentral team is the bottleneck.\nNeed: scale data ownership."
+      ]
+     ],
+     "hint": "Which paradigm distributes ownership to domains with contracts?",
+     "id": "data-dg-06",
+     "mins": 7,
+     "objectives": [
+      "Data mesh",
+      "Domain ownership"
+     ],
+     "prompt": "What scales data ownership?",
+     "situation": "Eight domains and 40 engineers; the central data team is the bottleneck.",
+     "title": "Beyond the central bottleneck",
+     "why": "Data mesh distributes ownership to domain teams who publish data products with contracts/SLAs, scaling ownership with the organization. A central-everything team is the current bottleneck; one giant database doesn't distribute ownership; emailed CSVs aren't governance."
+    }
+   ]
+  },
+  {
+   "id": "orchestration",
+   "name": "Orchestration",
+   "scenarios": [
+    {
+     "answer": 1,
+     "choices": [
+      "Cron on a single EC2",
+      "Amazon MWAA (Managed Workflows for Apache Airflow)",
+      "Manual runs",
+      "Lambda alone for 50-step DAGs"
+     ],
+     "evidence": [
+      [
+       "airflow.txt",
+       "Pipeline: 50 tasks, dependencies,\nretries, SLAs. Team knows Airflow.\nNeed: managed service."
+      ]
+     ],
+     "hint": "Which managed service runs Airflow?",
+     "id": "data-or-01",
+     "mins": 6,
+     "objectives": [
+      "MWAA",
+      "Workflow orchestration"
+     ],
+     "prompt": "What orchestrates the 50-task pipeline?",
+     "situation": "A 50-task pipeline with dependencies, retries, and SLAs; the team knows Airflow and wants it managed.",
+     "title": "Fifty tasks, one DAG",
+     "why": "MWAA provides managed Apache Airflow — DAGs with dependencies, retries, and SLA monitoring without managing the orchestrator. Single-EC2 cron is a single point of failure; manual runs don't scale; Lambda alone lacks DAG orchestration semantics."
+    },
+    {
+     "answer": 0,
+     "choices": [
+      "AWS Step Functions",
+      "Chaining Lambda invocations manually",
+      "One giant Lambda",
+      "EC2 with bash scripts"
+     ],
+     "evidence": [
+      [
+       "sfn.txt",
+       "Workflow: ingest -> validate ->\ntransform -> load -> notify.\nNeed: visual workflow, retries,\nerror handling per step."
+      ]
+     ],
+     "hint": "Which serverless service orchestrates steps with visual workflows and built-in error handling?",
+     "id": "data-or-02",
+     "mins": 6,
+     "objectives": [
+      "Step Functions"
+     ],
+     "prompt": "What orchestrates the workflow?",
+     "situation": "A 5-step workflow needs visual monitoring, per-step retries, and error handling.",
+     "title": "Steps with a safety net",
+     "why": "Step Functions orchestrates serverless workflows with visual execution graphs, per-state retries/catches, and integrations to Lambda, Glue, and more. Manual Lambda chaining reinvents error handling; one giant Lambda couples everything; bash on EC2 is fragile."
+    },
+    {
+     "answer": 2,
+     "choices": [
+      "Time-based schedules only",
+      "Event-driven triggers (S3 events, EventBridge) + idempotent tasks",
+      "Polling every 5 minutes",
+      "Manual triggers"
+     ],
+     "evidence": [
+      [
+       "event.txt",
+       "Files arrive unpredictably.\nNeed: pipeline starts on arrival,\nhandles duplicates safely."
+      ]
+     ],
+     "hint": "What starts work on arrival and survives duplicate events?",
+     "id": "data-or-03",
+     "mins": 6,
+     "objectives": [
+      "Event-driven orchestration",
+      "Idempotency"
+     ],
+     "prompt": "What triggers the pipeline correctly?",
+     "situation": "Files arrive unpredictably; the pipeline must start on arrival and handle duplicate events safely.",
+     "title": "Start when the file lands",
+     "why": "Event-driven triggers (S3 Event Notifications, EventBridge) start pipelines on arrival with low latency, and idempotent tasks make duplicate events safe. Fixed schedules add latency; polling wastes resources; manual triggers don't scale."
+    },
+    {
+     "answer": 1,
+     "choices": [
+      "Retrying blindly forever",
+      "Dead-letter queues + alerting + backoff with jitter",
+      "Ignoring failures",
+      "Deleting failed tasks"
+     ],
+     "evidence": [
+      [
+       "fail.txt",
+       "Task fails intermittently.\nCurrent: infinite immediate retries\nthundering the downstream."
+      ]
+     ],
+     "hint": "What handles failure gracefully without hammering downstream?",
+     "id": "data-or-04",
+     "mins": 6,
+     "objectives": [
+      "Failure handling",
+      "Backoff"
+     ],
+     "prompt": "What fixes the retry storm?",
+     "situation": "Intermittent task failures trigger infinite immediate retries that thunder the downstream service.",
+     "title": "The retry thundering herd",
+     "why": "Backoff with jitter spreads retries, DLQs isolate persistent failures for inspection, and alerting notifies humans — graceful degradation instead of a retry storm. Blind infinite retries are the current failure; ignoring/deleting loses data."
+    },
+    {
+     "answer": 3,
+     "choices": [
+      "One pipeline for dev and prod",
+      "Separate dev/staging/prod with promotion of tested artifacts",
+      "Developing in production",
+      "No environments"
+     ],
+     "evidence": [
+      [
+       "promo.txt",
+       "Pipeline changes broke prod.\nNeed: test changes safely,\npromote what works."
+      ]
+     ],
+     "hint": "What keeps experiments out of production?",
+     "id": "data-or-05",
+     "mins": 5,
+     "objectives": [
+      "Environment promotion"
+     ],
+     "prompt": "What prevents the next prod breakage?",
+     "situation": "Pipeline changes broke production; changes need safe testing and promotion.",
+     "title": "Don't develop in production",
+     "why": "Separate environments with promotion of tested artifacts (code, not just data) let changes prove themselves before production. One shared pipeline couples experiments to prod; developing in prod is the current failure."
+    },
+    {
+     "answer": 0,
+     "choices": [
+      "CloudWatch + pipeline-native monitoring with SLA alerts",
+      "No monitoring",
+      "Checking manually each morning",
+      "Only monitoring the final output"
+     ],
+     "evidence": [
+      [
+       "sla2.txt",
+       "SLA: data ready by 6 AM.\nNeed: alert if any upstream\ntask risks the SLA."
+      ]
+     ],
+     "hint": "What watches every task against the deadline, not just the end?",
+     "id": "data-or-06",
+     "mins": 6,
+     "objectives": [
+      "Pipeline monitoring",
+      "SLAs"
+     ],
+     "prompt": "What guards the 6 AM SLA?",
+     "situation": "Data must be ready by 6 AM; the team needs alerts when any upstream task risks the SLA.",
+     "title": "Data by 6 AM, guaranteed",
+     "why": "Pipeline-native monitoring (Airflow SLAs, Step Functions/CloudWatch alarms on task duration) watches every task against the deadline and alerts early. Manual checks and output-only monitoring detect misses too late; no monitoring is blindness."
+    }
+   ]
+  },
+  {
+   "id": "analytics",
+   "name": "Analytics",
+   "scenarios": [
+    {
+     "answer": 2,
+     "choices": [
+      "Building custom dashboards from scratch",
+      "Amazon QuickSight",
+      "Excel email chains",
+      "Screenshots of queries"
+     ],
+     "evidence": [
+      [
+       "bi.txt",
+       "200 business users need\ninteractive dashboards over the\nwarehouse. No BI infrastructure."
+      ]
+     ],
+     "hint": "Which managed BI service integrates with AWS data sources?",
+     "id": "data-an-01",
+     "mins": 5,
+     "objectives": [
+      "QuickSight",
+      "BI"
+     ],
+     "prompt": "What serves the 200 business users?",
+     "situation": "200 business users need interactive dashboards over the warehouse with no BI infrastructure to manage.",
+     "title": "Dashboards for two hundred users",
+     "why": "QuickSight provides managed BI with SPICE in-memory engine, integrating natively with AWS data sources and scaling to hundreds of users. Custom builds reintroduce ops; email chains and screenshots aren't BI."
+    },
+    {
+     "answer": 1,
+     "choices": [
+      "Moving data to the ML platform",
+      "SageMaker Canvas / ML in SQL (Redshift ML)",
+      "Training models on laptops",
+      "No ML; gut feeling"
+     ],
+     "evidence": [
+      [
+       "mlsql.txt",
+       "Analysts know SQL, not Python.\nNeed: churn predictions from\nwarehouse data, quickly."
+      ]
+     ],
+     "hint": "Which options let SQL users build models without moving data?",
+     "id": "data-an-02",
+     "mins": 6,
+     "objectives": [
+      "ML for analysts"
+     ],
+     "prompt": "What gives SQL analysts ML?",
+     "situation": "SQL-fluent analysts need churn predictions from warehouse data without learning Python or moving data.",
+     "title": "Machine learning in SQL",
+     "why": "Redshift ML and SageMaker Canvas let analysts build and use models with SQL or no-code interfaces against warehouse data in place. Moving data adds pipelines; laptop training doesn't scale; gut feeling isn't ML."
+    },
+    {
+     "answer": 0,
+     "choices": [
+      "Apache Hudi/Iceberg-style table formats on S3 (upserts, time travel)",
+      "Overwriting full datasets",
+      "Keeping every version as separate files",
+      "A relational database for the lake"
+     ],
+     "evidence": [
+      [
+       "upsert.txt",
+       "Lake table: 10B rows.\nNeed: upserts/deletes and\ntime-travel queries on S3."
+      ]
+     ],
+     "hint": "Which open table formats bring warehouse features to S3?",
+     "id": "data-an-03",
+     "mins": 7,
+     "objectives": [
+      "Open table formats",
+      "Upserts on S3"
+     ],
+     "prompt": "What enables upserts and time travel on the lake?",
+     "situation": "A 10B-row lake table needs upserts, deletes, and time-travel queries on S3.",
+     "title": "Upserts on the data lake",
+     "why": "Open table formats (Apache Hudi, Iceberg — supported by Athena, EMR, Glue) bring upserts, deletes, and time travel to S3 data lakes. Full overwrites at 10B rows are infeasible; version-file sprawl is unmanageable; a relational DB can't hold the lake."
+    },
+    {
+     "answer": 3,
+     "choices": [
+      "One-off queries",
+      "Materialized views / scheduled aggregations",
+      "Bigger warehouse for every query",
+      "Caching in the BI tool only"
+     ],
+     "evidence": [
+      [
+       "agg.txt",
+       "Dashboard queries scan 2 TB\neach load. 500 loads/day.\nSame aggregations repeatedly."
+      ]
+     ],
+     "hint": "What precomputes the repeated aggregations?",
+     "id": "data-an-04",
+     "mins": 6,
+     "objectives": [
+      "Materialized views",
+      "Aggregation"
+     ],
+     "prompt": "What cuts the repeated 2 TB scans?",
+     "situation": "Dashboards repeatedly scan 2 TB for the same aggregations, 500 times a day.",
+     "title": "Scanning two terabytes, five hundred times",
+     "why": "Materialized views or scheduled aggregation tables precompute the repeated aggregations once, so dashboards read megabytes instead of terabytes. One-off queries repeat the waste; bigger warehouses just scan faster at higher cost; BI-only caching is fragile."
+    },
+    {
+     "answer": 1,
+     "choices": [
+      "Granting everyone full access",
+      "Row/column-level security in the BI and lake layers",
+      "One dashboard for all",
+      "Trusting users"
+     ],
+     "evidence": [
+      [
+       "rls.txt",
+       "Requirement: managers see only\ntheir region's data in dashboards."
+      ]
+     ],
+     "hint": "Which security feature filters rows by viewer?",
+     "id": "data-an-05",
+     "mins": 6,
+     "objectives": [
+      "Row-level security"
+     ],
+     "prompt": "What enforces the regional visibility?",
+     "situation": "Dashboard viewers must see only their own region's data.",
+     "title": "Your region, your numbers",
+     "why": "Row-level (and column-level) security in QuickSight and Lake Formation filters data by viewer identity — enforced, not advisory. Full access violates the requirement; one shared dashboard can't differentiate; trust isn't enforcement."
+    },
+    {
+     "answer": 2,
+     "choices": [
+      "Guessing",
+      "Cost allocation tags + query-level cost attribution (e.g., Athena workgroups, Redshift concurrency scaling) + lifecycle policies",
+      "One bill for everything",
+      "Ignoring costs"
+     ],
+     "evidence": [
+      [
+       "cost2.txt",
+       "Analytics bill tripled.\nNobody knows which team or\nworkload caused it."
+      ]
+     ],
+     "hint": "What attributes analytics spend to teams and workloads?",
+     "id": "data-an-06",
+     "mins": 6,
+     "objectives": [
+      "Analytics cost governance"
+     ],
+     "prompt": "What brings the analytics spend under control?",
+     "situation": "The analytics bill tripled with no attribution to teams or workloads.",
+     "title": "The tripled analytics bill",
+     "why": "Cost allocation tags plus query-level attribution (Athena workgroups with per-workgroup limits, Redshift usage tracking) identify who spent what, and lifecycle policies curb storage growth. A single undivided bill can't be managed; ignoring it repeats the tripling."
+    }
+   ]
+  }
+ ],
+ "lessons": [
+  {
+   "domain_id": "data-ingestion",
+   "title": "Data Ingestion — Core concepts",
+   "concepts": [
+    "Kinesis Data Streams provides ordered, replayable, high-throughput streaming with multiple consumers per shard. Kinesis Data Firehose is the managed delivery service: it buffers, converts (e.g., to Parquet), and loads streaming data into S3 and other destinations with no consumer code.",
+    "Streaming ingestion: SQS is queue-based (not replayable multi-consumer streaming); S3 batch uploads aren't sub-second; RDS isn't an ingestion service. Data Streams and MSK require consumers; DynamoDB direct PUT isn't a streaming pipeline.",
+    "Firehose/Data Streams aren't Kafka-compatible; SQS FIFO lacks Kafka's log semantics and retention model.",
+    "Managed delivery: amazon MSK provides managed Apache Kafka with Kafka API compatibility, configurable long retention, and exactly-once semantics support. AWS Transfer Family provides managed SFTP/FTPS/FTP endpoints backed by S3 — partners keep their workflow, files land in S3."
+   ],
+   "example": {
+    "lang": "text",
+    "code": "IoT sensors: 50k events/sec,\nsub-second latency needed,\nmultiple consumers.",
+    "walkthrough": "Kinesis Data Streams provides ordered, replayable, high-throughput streaming with multiple consumers per shard. SQS is queue-based (not replayable multi-consumer streaming); S3 batch uploads aren't sub-second; RDS isn't an ingestion service."
+   },
+   "pitfalls": [
+    "Common trap: kinesis Data Streams with custom consumers.",
+    "Skipping the key question: which service is built for high-throughput ordered event streams with multiple consumers.",
+    "Skipping the key question: which service loads streaming data to destinations with no consumer code."
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "data-lakes-warehouses",
+   "title": "Data Lakes & Warehouses — Core concepts",
+   "concepts": [
+    "Data lakes: an S3-based data lake with the Glue Data Catalog stores all data types in open formats with evolving schemas, serving diverse consumers. The Glue Data Catalog provides a central, queryable metadata store (databases, tables, schemas, partitions) integrated with Athena, Redshift Spectrum, and EMR.",
+    "S3: redshift Spectrum extends Redshift SQL queries to S3 data in place — no loading, paying per query.",
+    "Redshift Serverless automatically provisions and scales warehouse capacity for the workload, paying for usage — ideal for spiky analytics.",
+    "Glue Data Catalog: parquet's columnar format lets engines read only the needed columns (plus compression and predicate pushdown), slashing scanned data and cost."
+   ],
+   "example": {
+    "lang": "text",
+    "code": "Data: structured, semi-structured,\nunstructured. Consumers: analysts,\nML team, ad-hoc SQL. Schema: evolves.",
+    "walkthrough": "An S3-based data lake with the Glue Data Catalog stores all data types in open formats with evolving schemas, serving diverse consumers. A warehouse alone forces schema-on-write; RDS isn't analytics storage; EBS isn't a lake."
+   },
+   "pitfalls": [
+    "Common trap: S3 with bronze/silver/gold zones + Lake Formation permissions.",
+    "Skipping the key question: which architecture handles all data types with evolving schema.",
+    "Skipping the key question: which warehouse option scales to zero operationally for spiky use."
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "processing-frameworks",
+   "title": "Processing Frameworks — Core concepts",
+   "concepts": [
+    "Glue is Spark-centric serverless; Lambda isn't for clusters; Athena is serverless SQL, not a framework platform. Incremental processing (e.g., Glue job bookmarks tracking processed offsets) handles only new data each run, keeping runtime flat.",
+    "Serverless Spark: AWS Glue provides serverless Spark ETL with auto-scaling workers — no clusters to manage. EMR provides managed clusters with the full big-data ecosystem (Spark, Flink, Presto/Trino) and notebook support.",
+    "EMR: always-on EC2 idles at zero; EMR is for cluster analytics, not 200ms functions; bare metal is the opposite of elastic. EMR/Glue clusters idle between queries; Redshift is a provisioned warehouse.",
+    "Big data clusters: stream processing (MSK + Flink, or Kinesis Data Analytics with Flink) processes events continuously with sub-minute latency. Full daily rewrites scale with total data; weekly reloads still reprocess; no dedup compounds the waste.",
+    "Athena provides serverless SQL directly on S3, paying per byte scanned — perfect for low-volume ad-hoc analysis."
+   ],
+   "example": {
+    "lang": "text",
+    "code": "Transform: 200ms per record,\nevent-driven, spiky, 0-10k/sec.",
+    "walkthrough": "Lambda scales from zero to 10k concurrent executions for short event-driven transforms with per-millisecond billing. Always-on EC2 idles at zero; EMR is for cluster analytics, not 200ms functions; bare metal is the opposite of elastic."
+   },
+   "pitfalls": [
+    "Common trap: amazon Managed Streaming for Kafka + Flink (or Kinesis Data Analytics).",
+    "Skipping the key question: which service runs serverless Spark with auto-scaling.",
+    "Skipping the key question: which service gives you a managed big-data cluster with many frameworks."
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "data-governance",
+   "title": "Data Governance — Core concepts",
+   "concepts": [
+    "Lake Formation provides centralized fine-grained permissions at table, column, and row level on the data lake.",
+    "Fine-grained access: full access or one shared role can't differentiate; public buckets are a breach.",
+    "Data lineage: the Glue Data Catalog with lineage tracking records how data flows and transforms from source to report — the auditable answer. Data mesh distributes ownership to domain teams who publish data products with contracts/SLAs, scaling ownership with the organization.",
+    "PII handling: de-identification and masking (finding PII with Macie, masking in views/exports) preserves analytical realism without real PII.",
+    "Data quality rules (e.g., Glue Data Quality / Deequ checks) in the pipeline validate schema, completeness, and ranges, quarantining failures before they corrupt downstream."
+   ],
+   "example": {
+    "lang": "text",
+    "code": "Regulations: 7-year retention for\nfinancial data; 90-day for clickstream.\nVolume: 3 TB/day.",
+    "walkthrough": "S3 Lifecycle policies enforce per-dataset retention and archival automatically at 3 TB/day scale. Keeping everything forever wastes money and may violate minimization; manual reviews don't scale; no policy is non-compliance."
+   },
+   "pitfalls": [
+    "Common trap: data mesh principles: domain ownership + data products with contracts.",
+    "Common trap: lake Formation fine-grained permissions (table/column/row level).",
+    "Common trap: S3 Lifecycle policies aligned to retention requirements.",
+    "Common trap: everyone gets full access."
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "orchestration",
+   "title": "Orchestration — Core concepts",
+   "concepts": [
+    "MWAA provides managed Apache Airflow — DAGs with dependencies, retries, and SLA monitoring without managing the orchestrator.",
+    "Workflow orchestration: single-EC2 cron is a single point of failure; manual runs don't scale; Lambda alone lacks DAG orchestration semantics.",
+    "Step Functions orchestrates serverless workflows with visual execution graphs, per-state retries/catches, and integrations to Lambda, Glue, and more. Pipeline-native monitoring (Airflow SLAs, Step Functions/CloudWatch alarms on task duration) watches every task against the deadline and alerts early.",
+    "Event-driven triggers (S3 Event Notifications, EventBridge) start pipelines on arrival with low latency, and idempotent tasks make duplicate events safe.",
+    "Failure handling: manual Lambda chaining reinvents error handling; one giant Lambda couples everything; bash on EC2 is fragile. Blind infinite retries are the current failure; ignoring/deleting loses data."
+   ],
+   "example": {
+    "lang": "text",
+    "code": "Pipeline: 50 tasks, dependencies,\nretries, SLAs. Team knows Airflow.\nNeed: managed service.",
+    "walkthrough": "MWAA provides managed Apache Airflow — DAGs with dependencies, retries, and SLA monitoring without managing the orchestrator. Single-EC2 cron is a single point of failure; manual runs don't scale; Lambda alone lacks DAG orchestration semantics."
+   },
+   "pitfalls": [
+    "Common trap: event-driven triggers (S3 events, EventBridge) + idempotent tasks.",
+    "Common trap: separate dev/staging/prod with promotion of tested artifacts.",
+    "Common trap: lambda alone for 50-step DAGs.",
+    "Common trap: one pipeline for dev and prod."
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "analytics",
+   "title": "Analytics — Core concepts",
+   "concepts": [
+    "QuickSight: row-level (and column-level) security in QuickSight and Lake Formation filters data by viewer identity — enforced, not advisory. QuickSight provides managed BI with SPICE in-memory engine, integrating natively with AWS data sources and scaling to hundreds of users.",
+    "BI: one-off queries repeat the waste; bigger warehouses just scan faster at higher cost; BI-only caching is fragile. Custom builds reintroduce ops; email chains and screenshots aren't BI.",
+    "ML for analysts: redshift ML and SageMaker Canvas let analysts build and use models with SQL or no-code interfaces against warehouse data in place.",
+    "Open table formats (Apache Hudi, Iceberg — supported by Athena, EMR, Glue) bring upserts, deletes, and time travel to S3 data lakes.",
+    "Materialized views or scheduled aggregation tables precompute the repeated aggregations once, so dashboards read megabytes instead of terabytes."
+   ],
+   "example": {
+    "lang": "text",
+    "code": "Requirement: managers see only\ntheir region's data in dashboards.",
+    "walkthrough": "Row-level (and column-level) security in QuickSight and Lake Formation filters data by viewer identity — enforced, not advisory. Full access violates the requirement; one shared dashboard can't differentiate; trust isn't enforcement."
+   },
+   "pitfalls": [
+    "Common trap: materialized views / scheduled aggregations.",
+    "Common trap: cost allocation tags + query-level cost attribution (e.g., Athena workgroups, Redshift concurrency scaling) + lifecycle policies.",
+    "Common trap: keeping every version as separate files.",
+    "Common trap: building custom dashboards from scratch."
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "data-ingestion",
+   "title": "AWS Data Analytics — Core concepts",
+   "concepts": [
+    "Design around the analytics flow: ingest (Kinesis for streaming, batch loads for scheduled), store (S3 data lake in open formats), catalog (Glue Data Catalog as the shared metadata layer), process (Glue/EMR), and consume (Athena for ad-hoc, Redshift for heavy BI, QuickSight for dashboards).",
+    "The data lake's economics live in file layout: partition by time or key, store as Parquet/ORC with compression, and avoid the small-files problem. These choices decide whether Athena queries cost cents or dollars.",
+    "Streaming systems scale on keys and shards: Kinesis throughput is per-shard, so high-cardinality partition keys and right-sized shard counts are the design levers; Firehose fits delivery-to-destination streaming without consumer management.",
+    "Choose the query engine by pattern: Athena for serverless ad-hoc SQL on S3, Redshift (provisioned or Serverless) for complex joins at warehouse scale, EMR for Spark-scale transformations and ML preprocessing. One engine rarely serves all three well.",
+    "Build pipelines that heal: Glue job bookmarks for idempotent retries, dead-letter routing for malformed records, schema evolution in the catalog, and alerts on repeated failure rather than on every hiccup."
+   ],
+   "example": {
+    "lang": "shell",
+    "code": "aws athena start-query-execution \\\n  --query-string \"SELECT event_type, count(*) FROM clicks WHERE year='2026' AND month='10' GROUP BY 1\" \\\n  --query-execution-context Database=weblogs --result-configuration OutputLocation=s3://results-bucket/athena/",
+    "walkthrough": "A serverless SQL query against partitioned S3 data — no cluster involved. The WHERE clause on partition columns (year, month) is what keeps Athena from scanning the whole dataset, which is the difference between a cheap query and an expensive one."
+   },
+   "pitfalls": [
+    "Common trap: querying unpartitioned CSV in Athena and paying to scan terabytes for a megabyte answer — partition and use Parquet.",
+    "Common trap: low-cardinality Kinesis partition keys — one hot shard throttles the whole stream regardless of shard count.",
+    "Common trap: treating the data lake as a file dump with no catalog — undocumented data is undead data; crawl it into the Glue Data Catalog.",
+    "Common trap: no job bookmarks on Glue ETL — every retry reprocesses everything and duplicates output."
+   ],
+   "try_it": "Work through this in the Labs tab.",
+   "domain_id_remapped_from": "aws-data",
+   "merged_from": "cbt-individual/aws-data"
+  }
+ ],
+ "sections": [
+  {
+   "id": "foundations",
+   "title": "Foundations",
+   "kind": "foundation",
+   "lectures": [
+    "m-stats",
+    "m-probability",
+    "f-python-0",
+    "f-python-1",
+    "f-python-2",
+    "f-sql-0",
+    "f-sql-1",
+    "f-sql-2",
+    "f-cloud-concepts-0",
+    "f-cloud-concepts-1",
+    "f-cloud-concepts-2"
+   ],
+   "lab_ids": [],
+   "drill_domain_ids": []
+  },
+  {
+   "id": "core",
+   "title": "Core",
+   "kind": "core",
+   "lectures": [
+    "c-data-ingestion",
+    "c-data-lakes-warehouses",
+    "c-processing-frameworks",
+    "c-orchestration",
+    "c-analytics"
+   ],
+   "lab_ids": [
+    "aws-data-lab-1",
+    "aws-data-lab-2"
+   ],
+   "drill_domain_ids": [
+    "data-ingestion",
+    "data-lakes-warehouses",
+    "processing-frameworks",
+    "orchestration",
+    "analytics"
+   ]
+  },
+  {
+   "id": "advanced",
+   "title": "Advanced",
+   "kind": "advanced",
+   "lectures": [
+    "c-data-governance"
+   ],
+   "lab_ids": [
+    "aws-data-lab-3",
+    "aws-data-lab-4"
+   ],
+   "drill_domain_ids": [
+    "data-governance"
+   ]
+  },
+  {
+   "id": "exam-prep",
+   "title": "Exam Prep",
+   "kind": "exam-prep",
+   "lectures": [],
+   "lab_ids": [],
+   "drill_domain_ids": [
+    "data-ingestion",
+    "data-lakes-warehouses",
+    "processing-frameworks",
+    "data-governance",
+    "orchestration",
+    "analytics"
+   ]
+  }
+ ],
+ "behavioral": [
+  {
+   "prompt": "Tell me about a time you designed a data pipeline end to end.",
+   "framework": "STAR",
+   "points": [
+    "The sources and consumers",
+    "Your architecture choices",
+    "How it performed in production"
+   ],
+   "pitfalls": [
+    "Ignoring data quality",
+    "No monitoring"
+   ]
+  },
+  {
+   "prompt": "Describe a time you dealt with bad or unexpected data.",
+   "framework": "STAR",
+   "points": [
+    "How you detected it",
+    "Containment and fix",
+    "Prevention afterwards"
+   ],
+   "pitfalls": [
+    "Blaming the source team",
+    "No validation added"
+   ]
+  },
+  {
+   "prompt": "Tell me about a time you optimized a slow or expensive pipeline.",
+   "framework": "STAR",
+   "points": [
+    "How you found the bottleneck",
+    "The change",
+    "Before/after numbers"
+   ],
+   "pitfalls": [
+    "Optimizing blind",
+    "One metric only"
+   ]
+  },
+  {
+   "prompt": "Describe a disagreement about data modeling or architecture.",
+   "framework": "STAR",
+   "points": [
+    "The options",
+    "How you evaluated them",
+    "The outcome"
+   ],
+   "pitfalls": [
+    "Modeling in isolation",
+    "Ignoring consumers"
+   ]
+  },
+  {
+   "prompt": "Tell me about a time you had to meet a tight data SLA.",
+   "framework": "STAR",
+   "points": [
+    "The SLA",
+    "What threatened it",
+    "How you made it"
+   ],
+   "pitfalls": [
+    "Heroics without fixes",
+    "No alerting"
+   ]
+  },
+  {
+   "prompt": "Describe a time you improved data governance or security.",
+   "framework": "STAR",
+   "points": [
+    "The gap",
+    "What you implemented",
+    "How you verified it"
+   ],
+   "pitfalls": [
+    "Governance theater",
+    "Blocking without enabling"
+   ]
+  },
+  {
+   "prompt": "Tell me about a time you migrated a data workload.",
+   "framework": "STAR",
+   "points": [
+    "The migration strategy",
+    "How you validated correctness",
+    "Cutover and rollback plan"
+   ],
+   "pitfalls": [
+    "No validation",
+    "Big-bang cutover"
+   ]
+  },
+  {
+   "prompt": "Describe a time you made analytics accessible to non-technical users.",
+   "framework": "STAR",
+   "points": [
+    "The audience",
+    "What you built",
+    "Adoption and impact"
+   ],
+   "pitfalls": [
+    "Building for yourself",
+    "No training"
+   ]
+  }
+ ],
+ "chat": {
+  "persona": "You are a pragmatic AWS Data Engineer interviewer running a mock DEA-C01 assessment. Focus on real pipeline trade-offs: formats, orchestration, cost, and correctness. Ask how they'd validate and what breaks at scale.",
+  "topics": [
+   {
+    "id": "data-ingestion",
+    "name": "Data Ingestion",
+    "key_points": [
+     "Kinesis Data Streams vs Firehose",
+     "MSK",
+     "DMS",
+     "Transfer Family",
+     "S3 Event Notifications"
+    ],
+    "followups": [
+     "Batch or streaming — why?",
+     "How do you handle late or duplicate data?"
+    ]
+   },
+   {
+    "id": "data-lakes-warehouses",
+    "name": "Data Lakes & Warehouses",
+    "key_points": [
+     "S3 data lake",
+     "Glue Data Catalog",
+     "Parquet",
+     "Redshift Spectrum",
+     "Lake Formation"
+    ],
+    "followups": [
+     "Lake, warehouse, or both — why?",
+     "How do users find the data?"
+    ]
+   },
+   {
+    "id": "processing-frameworks",
+    "name": "Processing Frameworks",
+    "key_points": [
+     "Glue vs EMR",
+     "Athena",
+     "stream processing",
+     "incremental processing"
+    ],
+    "followups": [
+     "How do you avoid reprocessing everything?",
+     "What meets the latency SLA?"
+    ]
+   },
+   {
+    "id": "data-governance",
+    "name": "Data Governance",
+    "key_points": [
+     "fine-grained permissions",
+     "data lineage",
+     "PII masking",
+     "data quality",
+     "data mesh"
+    ],
+    "followups": [
+     "Who can see this data?",
+     "How do you prove lineage?"
+    ]
+   },
+   {
+    "id": "orchestration",
+    "name": "Orchestration",
+    "key_points": [
+     "MWAA",
+     "Step Functions",
+     "event-driven triggers",
+     "retry/backoff",
+     "SLA monitoring"
+    ],
+    "followups": [
+     "What happens when a task fails?",
+     "How do you protect the SLA?"
+    ]
+   },
+   {
+    "id": "analytics",
+    "name": "Analytics",
+    "key_points": [
+     "QuickSight",
+     "open table formats",
+     "materialized views",
+     "row-level security",
+     "cost attribution"
+    ],
+    "followups": [
+     "How do you cut repeated scan costs?",
+     "How do you secure the dashboards?"
+    ]
+   }
+  ]
+ },
+ "slug": "aws-data",
+ "title": "AWS Data Engineer",
+ "tagline": "DEA-C01: pipelines, lakes, and analytics on AWS",
+ "vendor": {
+  "certs": "DEA-C01",
+  "docs": "https://aws.amazon.com/certification",
+  "name": "Amazon Web Services"
+ },
+ "labs": [
+  {
+   "id": "aws-data-lab-1",
+   "title": "Kinesis Data Streams — AWS CLI drill",
+   "objective": "Run a short sequence of AWS CLI commands that demonstrates kinesis Data Streams, then verify each result against the expected output.",
+   "steps": [
+    "This lab reworks the Data Ingestion practice scenario \"Fifty thousand events a second\" into commands you run yourself — same concept, hands-on instead of multiple choice.",
+    "Open the Terminal tab for this bootcamp — every command below runs there.",
+    "Type exactly: aws s3 ls — the listing names your lab buckets",
+    "Type exactly: aws sts get-caller-identity — the identity document includes your Account id",
+    "Type exactly: aws iam list-users — the user list carries the UserName field",
+    "In your own words, say what each command's output taught you about kinesis Data Streams."
+   ],
+   "checks": [
+    {
+     "command_pattern": "aws s3 ls",
+     "expect_contains": "bucket",
+     "hint": "In the Terminal tab, run `aws s3 ls`. If the check fails, confirm you typed it exactly and that the output contains \"bucket\"."
+    },
+    {
+     "command_pattern": "aws sts get-caller-identity",
+     "expect_contains": "Account",
+     "hint": "In the Terminal tab, run `aws sts get-caller-identity`. If the check fails, confirm you typed it exactly and that the output contains \"Account\"."
+    },
+    {
+     "command_pattern": "aws iam list-users",
+     "expect_contains": "UserName",
+     "hint": "In the Terminal tab, run `aws iam list-users`. If the check fails, confirm you typed it exactly and that the output contains \"UserName\"."
+    }
+   ],
+   "success_message": "Lab complete — kinesis Data Streams practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."
+  },
+  {
+   "id": "aws-data-lab-2",
+   "title": "Data lakes — AWS CLI drill",
+   "objective": "Use the AWS CLI to explore data lakes hands-on: type each command, read what comes back, and connect the output to the concept.",
+   "steps": [
+    "Inspired by the Data Lakes & Warehouses scenario \"The lake, not the warehouse (yet)\": take its core idea and prove it live in the terminal instead of answering on paper.",
+    "Open the Terminal tab for this bootcamp — every command below runs there.",
+    "Type exactly: aws iam list-users — the user list carries the UserName field",
+    "Type exactly: aws ec2 describe-instances — the reservation output includes the Instances block",
+    "Type exactly: aws s3 ls — the listing names your lab buckets",
+    "In your own words, say what each command's output taught you about data lakes."
+   ],
+   "checks": [
+    {
+     "command_pattern": "aws iam list-users",
+     "expect_contains": "UserName",
+     "hint": "In the Terminal tab, run `aws iam list-users`. If the check fails, confirm you typed it exactly and that the output contains \"UserName\"."
+    },
+    {
+     "command_pattern": "aws ec2 describe-instances",
+     "expect_contains": "Instances",
+     "hint": "In the Terminal tab, run `aws ec2 describe-instances`. If the check fails, confirm you typed it exactly and that the output contains \"Instances\"."
+    },
+    {
+     "command_pattern": "aws s3 ls",
+     "expect_contains": "bucket",
+     "hint": "In the Terminal tab, run `aws s3 ls`. If the check fails, confirm you typed it exactly and that the output contains \"bucket\"."
+    }
+   ],
+   "success_message": "Lab complete — data lakes practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."
+  },
+  {
+   "id": "aws-data-lab-3",
+   "title": "Glue — AWS CLI drill",
+   "objective": "Prove you can apply glue in the AWS CLI — follow the steps, watch the output, and confirm every check passes.",
+   "steps": [
+    "The Processing Frameworks scenario \"Spark without the cluster\" tests this concept as a question. This lab makes you demonstrate it with real commands.",
+    "Open the Terminal tab for this bootcamp — every command below runs there.",
+    "Type exactly: aws s3 ls — the listing names your lab buckets",
+    "Type exactly: aws sts get-caller-identity — the identity document includes your Account id",
+    "Type exactly: aws iam list-users — the user list carries the UserName field",
+    "In your own words, say what each command's output taught you about glue."
+   ],
+   "checks": [
+    {
+     "command_pattern": "aws s3 ls",
+     "expect_contains": "bucket",
+     "hint": "In the Terminal tab, run `aws s3 ls`. If the check fails, confirm you typed it exactly and that the output contains \"bucket\"."
+    },
+    {
+     "command_pattern": "aws sts get-caller-identity",
+     "expect_contains": "Account",
+     "hint": "In the Terminal tab, run `aws sts get-caller-identity`. If the check fails, confirm you typed it exactly and that the output contains \"Account\"."
+    },
+    {
+     "command_pattern": "aws iam list-users",
+     "expect_contains": "UserName",
+     "hint": "In the Terminal tab, run `aws iam list-users`. If the check fails, confirm you typed it exactly and that the output contains \"UserName\"."
+    }
+   ],
+   "success_message": "Lab complete — glue practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."
+  },
+  {
+   "id": "aws-data-lab-4",
+   "title": "Lake Formation — AWS CLI drill",
+   "objective": "Run a short sequence of AWS CLI commands that demonstrates lake Formation, then verify each result against the expected output.",
+   "steps": [
+    "This lab reworks the Data Governance practice scenario \"Who sees which column?\" into commands you run yourself — same concept, hands-on instead of multiple choice.",
+    "Open the Terminal tab for this bootcamp — every command below runs there.",
+    "Type exactly: aws iam list-users — the user list carries the UserName field",
+    "Type exactly: aws ec2 describe-instances — the reservation output includes the Instances block",
+    "Type exactly: aws s3 ls — the listing names your lab buckets",
+    "In your own words, say what each command's output taught you about lake Formation."
+   ],
+   "checks": [
+    {
+     "command_pattern": "aws iam list-users",
+     "expect_contains": "UserName",
+     "hint": "In the Terminal tab, run `aws iam list-users`. If the check fails, confirm you typed it exactly and that the output contains \"UserName\"."
+    },
+    {
+     "command_pattern": "aws ec2 describe-instances",
+     "expect_contains": "Instances",
+     "hint": "In the Terminal tab, run `aws ec2 describe-instances`. If the check fails, confirm you typed it exactly and that the output contains \"Instances\"."
+    },
+    {
+     "command_pattern": "aws s3 ls",
+     "expect_contains": "bucket",
+     "hint": "In the Terminal tab, run `aws s3 ls`. If the check fails, confirm you typed it exactly and that the output contains \"bucket\"."
+    }
+   ],
+   "success_message": "Lab complete — lake Formation practiced hands-on. That's the Interstitium Labs way: run it, see it, own it."
+  },
+  {
+   "id": "aws-data-lab-lake-zones",
+   "title": "Lake zones — inventory the buckets",
+   "objective": "Data lakes organize into zones (raw, curated). Inventory the account's buckets and the objects in the artifact zone.",
+   "difficulty": 1,
+   "steps": [
+    "Open the Terminal tab for this bootcamp.",
+    "Type exactly: aws s3 ls — the buckets that act as lake zones",
+    "Type exactly: aws s3 ls s3://ilb-artifacts — objects staged in the artifact zone",
+    "In your own words, say what belongs in a raw zone versus a curated zone."
+   ],
+   "checks": [
+    {
+     "command_pattern": "^aws s3 ls$",
+     "expect_contains": "ilb-artifacts",
+     "hint": "In the Terminal tab, run `aws s3 ls`. If the check fails, confirm you typed it exactly and that the output contains \"ilb-artifacts\"."
+    },
+    {
+     "command_pattern": "^aws s3 ls s3://ilb-artifacts$",
+     "expect_contains": "reports/q3.pdf",
+     "hint": "In the Terminal tab, run `aws s3 ls s3://ilb-artifacts`. If the check fails, confirm you typed it exactly and that the output contains \"reports/q3.pdf\"."
+    }
+   ],
+   "success_message": "Lab complete — you inventoried the lake zones."
+  },
+  {
+   "id": "aws-data-lab-ingest",
+   "title": "Ingest — land a file in the raw zone",
+   "objective": "Ingestion is the lake's front door. Create a raw-zone bucket and upload a local file into it.",
+   "difficulty": 1,
+   "steps": [
+    "Open the Terminal tab for this bootcamp.",
+    "Type exactly: aws s3 mb s3://ilb-data-raw — create the raw zone bucket",
+    "Type exactly: aws s3 cp ./notes.txt s3://ilb-data-raw/notes.txt — ingest the file",
+    "Type exactly: aws s3 ls s3://ilb-data-raw — confirm it landed",
+    "In your own words, say why raw zones keep data immutable."
+   ],
+   "checks": [
+    {
+     "command_pattern": "^aws s3 mb s3://ilb-data-raw$",
+     "expect_contains": "make_bucket: ilb-data-raw",
+     "hint": "In the Terminal tab, run `aws s3 mb s3://ilb-data-raw`. If the check fails, confirm you typed it exactly and that the output contains \"make_bucket: ilb-data-raw\"."
+    },
+    {
+     "command_pattern": "^aws s3 cp \\./notes.txt s3://ilb-data-raw/notes.txt$",
+     "expect_contains": "upload:",
+     "hint": "In the Terminal tab, run `aws s3 cp ./notes.txt s3://ilb-data-raw/notes.txt`. If the check fails, confirm you typed it exactly and that the output contains \"upload:\"."
+    }
+   ],
+   "success_message": "Lab complete — you ingested data into the raw zone."
+  },
+  {
+   "id": "aws-data-lab-promote",
+   "title": "Promote — raw to curated without re-ingest",
+   "objective": "Curated zones hold cleaned, validated data. Promote the ingested file server-side into the artifact bucket's curated prefix.",
+   "difficulty": 2,
+   "steps": [
+    "Open the Terminal tab for this bootcamp.",
+    "Type exactly: aws s3 cp s3://ilb-data-raw/notes.txt s3://ilb-artifacts/curated/notes.txt — promote the object",
+    "Type exactly: aws s3 ls s3://ilb-artifacts/curated — verify the curated copy",
+    "In your own words, say what validation should happen between raw and curated in a real pipeline."
+   ],
+   "checks": [
+    {
+     "command_pattern": "^aws s3 cp s3://ilb-data-raw/notes.txt s3://ilb-artifacts/curated/notes.txt$",
+     "expect_contains": "copy:",
+     "hint": "In the Terminal tab, run `aws s3 cp s3://ilb-data-raw/notes.txt s3://ilb-artifacts/curated/notes.txt`. If the check fails, confirm you typed it exactly and that the output contains \"copy:\"."
+    },
+    {
+     "command_pattern": "^aws s3 ls s3://ilb-artifacts/curated$",
+     "expect_contains": "notes.txt",
+     "hint": "In the Terminal tab, run `aws s3 ls s3://ilb-artifacts/curated`. If the check fails, confirm you typed it exactly and that the output contains \"notes.txt\"."
+    }
+   ],
+   "success_message": "Lab complete — you promoted data through the zones."
+  },
+  {
+   "id": "aws-data-lab-archive",
+   "title": "Archive — cold storage bucket",
+   "objective": "Not all data stays hot. Create an archive bucket and copy a build artifact into it for long-term retention.",
+   "difficulty": 3,
+   "steps": [
+    "Open the Terminal tab for this bootcamp.",
+    "Type exactly: aws s3 mb s3://ilb-data-archive — create the archive bucket",
+    "Type exactly: aws s3 cp s3://ilb-artifacts/builds/bootcamp-v3.zip s3://ilb-data-archive/bootcamp-v3.zip — archive the build",
+    "Type exactly: aws s3 ls s3://ilb-data-archive — confirm archival",
+    "In your own words, say when data moves from curated to archive in a lifecycle policy."
+   ],
+   "checks": [
+    {
+     "command_pattern": "^aws s3 mb s3://ilb-data-archive$",
+     "expect_contains": "make_bucket: ilb-data-archive",
+     "hint": "In the Terminal tab, run `aws s3 mb s3://ilb-data-archive`. If the check fails, confirm you typed it exactly and that the output contains \"make_bucket: ilb-data-archive\"."
+    },
+    {
+     "command_pattern": "^aws s3 cp s3://ilb-artifacts/builds/bootcamp-v3.zip s3://ilb-data-archive/bootcamp-v3.zip$",
+     "expect_contains": "copy:",
+     "hint": "In the Terminal tab, run `aws s3 cp s3://ilb-artifacts/builds/bootcamp-v3.zip s3://ilb-data-archive/bootcamp-v3.zip`. If the check fails, confirm you typed it exactly and that the output contains \"copy:\"."
+    }
+   ],
+   "success_message": "Lab complete — you archived data the way lifecycle policies do."
+  },
+  {
+   "id": "aws-data-lab1",
+   "domain_id": "data-ingestion",
+   "title": "Query the Lake Serverlessly",
+   "objective": "Run an Athena query against partitioned S3 data and observe how partitioning limits scanned bytes.",
+   "steps": [
+    "Pick a database and table in the Athena console or via `aws athena list-databases`.",
+    "Run a query with `aws athena start-query-execution` filtering on partition columns.",
+    "Fetch results with `get-query-execution` and `get-query-results`; note DataScannedInBytes.",
+    "Rewrite without the partition filter, compare scanned bytes, and note the cost difference."
+   ],
+   "checks": [
+    {
+     "command_pattern": "^aws\\s",
+     "expect_contains": "DataScannedInBytes",
+     "hint": "get-query-execution statistics include DataScannedInBytes — compare filtered vs unfiltered."
+    }
+   ],
+   "domain_id_remapped_from": "aws-data",
+   "merged_from": "cbt-individual/aws-data"
+  },
+  {
+   "id": "aws-data-lab2",
+   "domain_id": "data-ingestion",
+   "title": "Catalog Raw Data with a Crawler",
+   "objective": "Create a Glue crawler over an S3 prefix and inspect the inferred table in the Data Catalog.",
+   "steps": [
+    "Create the crawler with `aws glue create-crawler --name logs-crawler --role <glue-role> --database weblogs --targets 'S3Targets=[{Path=s3://logs-bucket/raw/}]'`.",
+    "Start it with `aws glue start-crawler --name logs-crawler` and wait for READY state.",
+    "Inspect the created table with `aws glue get-table --database-name weblogs --name raw`.",
+    "Run a `SELECT * LIMIT 10` in Athena against the cataloged table to confirm queryability."
+   ],
+   "checks": [
+    {
+     "command_pattern": "^aws\\s",
+     "expect_contains": "Crawler",
+     "hint": "create-crawler returns the crawler definition — confirm the S3 target path is correct."
+    }
+   ],
+   "domain_id_remapped_from": "aws-data",
+   "merged_from": "cbt-individual/aws-data"
+  }
+ ],
+ "foundations": [
+  {
+   "track": "python",
+   "why_needed": "Data engineering on AWS is Python plus SQL: Glue jobs, Lambda transforms, and notebooks all assume scripting."
+  },
+  {
+   "track": "sql",
+   "why_needed": "Lakes and warehouses are queried with SQL. Learn SELECT, filtering, and sorting before the analytics topics."
+  },
+  {
+   "track": "cloud-concepts",
+   "why_needed": "S3, storage classes, and regions underpin every data architecture. Get the cloud model first."
+  }
+ ],
+ "math": [
+  "stats",
+  "probability"
+ ],
+ "simulations": [
+  {
+   "id": "aws-data-sim-etl-order",
+   "title": "Wire the nightly ETL",
+   "kind": "ordering",
+   "domain_id": "orchestration",
+   "difficulty": 1,
+   "brief": "The warehouse refresh runs nightly. Order the pipeline stages so each step reads complete upstream output.",
+   "steps": {
+    "context": "Nightly ETL: extract from sources, transform, load the warehouse, then validate.",
+    "items": [
+     "Transform and clean the extracted records",
+     "Validate row counts and publish the data-quality report",
+     "Extract changed records from the source systems",
+     "Load the transformed data into the warehouse"
+    ],
+    "correct_order": [
+     2,
+     0,
+     3,
+     1
+    ]
+   },
+   "debrief": "You ordered the ETL correctly: extract, transform, load, then validate. Validation last means the report covers the whole run.",
+   "points": 10
+  },
+  {
+   "id": "aws-data-sim-pipeline-fail",
+   "title": "The warehouse is stale",
+   "kind": "troubleshoot",
+   "domain_id": "processing-frameworks",
+   "difficulty": 2,
+   "brief": "The 06:00 warehouse refresh never landed and the dashboard shows yesterday's numbers. The orchestrator log is your evidence.",
+   "steps": [
+    {
+     "symptom": "Warehouse tables are 24h stale; the orchestrator shows the extract stage green, transform red.",
+     "evidence": [
+      [
+       "orchestrator.log",
+       "extract: 1.2M rows staged to s3://ilb-data-raw ... OK\ntransform: ERROR schema mismatch on column 'amount' (expected INTEGER, got TEXT)\nload: skipped (upstream failed)"
+      ]
+     ],
+     "options": [
+      "Re-run the whole pipeline — transient errors clear on retry",
+      "Inspect the raw staged data: the source changed the 'amount' column type",
+      "Drop the warehouse table and reload from scratch",
+      "Disable the transform stage so the load can proceed"
+     ],
+     "correct": 1,
+     "explain": "The log names it: a schema mismatch on 'amount'. The source changed the column type — re-running or skipping transform just repeats or hides the failure. Fix the schema handling first."
+    },
+    {
+     "symptom": "The source now sends 'amount' as TEXT ('2400' instead of 2400).",
+     "evidence": [
+      [
+       "aws s3 ls s3://ilb-data-raw",
+       "notes.txt"
+      ]
+     ],
+     "options": [
+      "Cast TEXT to INTEGER in the transform with validation for bad values",
+      "Change the warehouse column to TEXT to match the source",
+      "Ask the source team to revert — pipelines should never adapt",
+      "Load the TEXT values and fix them in the dashboard queries"
+     ],
+     "correct": 0,
+     "explain": "Adapt in the transform with explicit casting and bad-value handling — that is what the transform stage is for. Changing the warehouse type corrupts downstream analytics; dashboard-side fixes hide the problem."
+    }
+   ],
+   "debrief": "You diagnosed a schema-drift failure at the right layer: the transform adapts and validates, the warehouse stays clean, and the evidence led every step.",
+   "points": 15
+  },
+  {
+   "id": "aws-data-sim-schema-choice",
+   "title": "Schema-on-write or schema-on-read?",
+   "kind": "branching",
+   "domain_id": "data-governance",
+   "difficulty": 3,
+   "brief": "The team argues about where to enforce schema: at ingest (strict) or at read (flexible). The workload decides — walk the tree.",
+   "steps": [
+    {
+     "id": "s1",
+     "text": "The new clickstream feed arrives as messy JSON, fields change weekly, and analysts explore it ad hoc. Enforce schema at ingest?",
+     "choices": [
+      {
+       "label": "Yes — strict schema at ingest keeps everything clean",
+       "next": "s2a",
+       "points": 0,
+       "feedback": "Strict ingest schema on a weekly-changing feed means the pipeline breaks weekly. Flexibility matters here."
+      },
+      {
+       "label": "No — land it raw, enforce schema at read time",
+       "next": "s2",
+       "points": 2,
+       "feedback": "Correct — schema-on-read (data lake pattern) absorbs volatile feeds without breaking ingest."
+      }
+     ]
+    },
+    {
+     "id": "s2a",
+     "text": "The pipeline broke twice this month on new fields. Reconsider:",
+     "choices": [
+      {
+       "label": "Land raw, enforce at read",
+       "next": "s2",
+       "points": 1,
+       "feedback": "Right — let the lake be flexible and push structure to query time."
+      }
+     ]
+    },
+    {
+     "id": "s2",
+     "text": "Now the finance ledger: regulated, audited, downstream reports must reconcile to the cent. Same choice?",
+     "choices": [
+      {
+       "label": "Schema-on-read again — consistency",
+       "next": "END",
+       "points": 0,
+       "outcome": "bad",
+       "feedback": "Wrong: regulated financial data needs schema-on-write with validation at ingest. Flexibility here is a compliance violation."
+      },
+      {
+       "label": "Schema-on-write with validation — it is regulated data",
+       "next": "END",
+       "points": 2,
+       "outcome": "good",
+       "feedback": "Correct — the workload decides. Volatile exploration data gets schema-on-read; regulated data gets strict schema-on-write."
+      }
+     ]
+    }
+   ],
+   "debrief": "You learned the real rule: there is no single right answer — volatile exploration data wants schema-on-read, regulated data demands schema-on-write.",
+   "points": 15
+  },
+  {
+   "id": "aws-data-sim-glue-config",
+   "title": "The crawler that misfires",
+   "kind": "config-check",
+   "domain_id": "processing-frameworks",
+   "difficulty": 2,
+   "brief": "The Glue crawler keeps creating a new table per file instead of one table per dataset. Review the crawler config and click the offending lines.",
+   "steps": {
+    "config": "Crawler: nightly-raw-crawl\n1. S3 path: s3://ilb-data-raw/\n2. Table prefix: raw_\n3. Schema change policy: update table\n4. Partition detection: disabled\n5. Schedule: cron(0 2 * * ? *)",
+    "find": 2,
+    "issues": [
+     {
+      "line": 1,
+      "description": "Crawling the whole bucket root mixes datasets with different schemas into conflicting table definitions.",
+      "fix": "Point the crawler at one dataset prefix per crawler (e.g. s3://ilb-data-raw/clickstream/)."
+     },
+     {
+      "line": 4,
+      "description": "Partition detection disabled means date-partitioned data crawls as separate tables.",
+      "fix": "Enable partition detection so partitions map to one table."
+     }
+    ]
+   },
+   "debrief": "You found the crawler misconfiguration: scope the path per dataset and let partition detection do its job. One dataset, one table.",
+   "points": 10
+  }
+ ],
+ "consoleSims": [
+  {
+   "id": "aws-data-console-catalog-1",
+   "title": "Register the curated table",
+   "console": "db-admin",
+   "domain_id": "analytics",
+   "difficulty": 2,
+   "brief": "Analysts need the curated dataset queryable. Register it in the data catalog with the right schema.",
+   "tasks": [
+    {
+     "id": "t1",
+     "instruction": "Create table curated_sales in the analytics database with columns (id INT, amount DECIMAL, region STRING).",
+     "validate": {
+      "action": "create",
+      "params": {
+       "type": "table",
+       "database": "analytics",
+       "name": "curated_sales",
+       "columns": [
+        "id INT",
+        "amount DECIMAL",
+        "region STRING"
+       ]
+      }
+     },
+     "hint": "Create the table in the analytics database with the exact column definitions."
+    },
+    {
+     "id": "t2",
+     "instruction": "Set the table location to s3://ilb-artifacts/curated/.",
+     "validate": {
+      "action": "set-field",
+      "params": {
+       "field": "table.curated_sales.location",
+       "value": "s3://ilb-artifacts/curated/"
+      }
+     },
+     "hint": "Point the table at the curated prefix so queries read the promoted data."
+    }
+   ],
+   "debrief": "You registered the curated table: schema declared once, data read from the curated zone. That is the lakehouse contract."
+  },
+  {
+   "id": "aws-data-console-iam-1",
+   "title": "Read-only for the analysts",
+   "console": "aws-iam",
+   "domain_id": "data-governance",
+   "difficulty": 2,
+   "brief": "The analytics team needs to query the lake but must never modify raw data. Grant scoped read access.",
+   "tasks": [
+    {
+     "id": "t1",
+     "instruction": "Create a group named analysts with no permissions yet.",
+     "validate": {
+      "action": "create",
+      "params": {
+       "type": "group",
+       "name": "analysts"
+      }
+     },
+     "hint": "Create the group first — permissions attach to groups, not individuals."
+    },
+    {
+     "id": "t2",
+     "instruction": "Grant the group read-only (GetObject, ListBucket) on the curated prefix only.",
+     "validate": {
+      "action": "set-field",
+      "params": {
+       "field": "group.analysts.policy",
+       "value": "s3:GetObject,s3:ListBucket/curated"
+      }
+     },
+     "hint": "Scope the policy to the curated prefix — raw stays untouched."
+    }
+   ],
+   "debrief": "You implemented data governance at the identity layer: analysts read curated data, raw remains immutable."
+  }
+ ],
+ "terminalMissions": [
+  {
+   "id": "aws-data-mission-zones",
+   "title": "List the lake zones",
+   "domain_id": "data-lakes-warehouses",
+   "difficulty": 1,
+   "brief": "Inventory the buckets that serve as lake zones.",
+   "objectives": [
+    "List all S3 buckets"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^aws s3 ls$",
+     "expect_contains": "ilb-artifacts",
+     "hint": "In the Terminal tab, run `aws s3 ls`. If the check fails, confirm you typed it exactly and that the output contains \"ilb-artifacts\"."
+    }
+   ],
+   "success_message": "Zones inventoried."
+  },
+  {
+   "id": "aws-data-mission-builds",
+   "title": "List the build artifacts",
+   "domain_id": "data-ingestion",
+   "difficulty": 1,
+   "brief": "List the objects under the builds prefix — these are the versioned inputs.",
+   "objectives": [
+    "List s3://ilb-artifacts/builds"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^aws s3 ls s3://ilb-artifacts/builds$",
+     "expect_contains": "bootcamp-v4.zip",
+     "hint": "In the Terminal tab, run `aws s3 ls s3://ilb-artifacts/builds`. If the check fails, confirm you typed it exactly and that the output contains \"bootcamp-v4.zip\"."
+    }
+   ],
+   "success_message": "Versioned inputs listed."
+  },
+  {
+   "id": "aws-data-mission-stage",
+   "title": "Create the staging bucket",
+   "domain_id": "data-ingestion",
+   "difficulty": 2,
+   "brief": "Create a staging bucket for the next ingest batch.",
+   "objectives": [
+    "Create s3://ilb-data-mission"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^aws s3 mb s3://ilb-data-mission$",
+     "expect_contains": "make_bucket: ilb-data-mission",
+     "hint": "In the Terminal tab, run `aws s3 mb s3://ilb-data-mission`. If the check fails, confirm you typed it exactly and that the output contains \"make_bucket: ilb-data-mission\"."
+    }
+   ],
+   "success_message": "Staging bucket ready."
+  },
+  {
+   "id": "aws-data-mission-capacity",
+   "title": "Check the processing hosts",
+   "domain_id": "processing-frameworks",
+   "difficulty": 2,
+   "brief": "The transform fleet needs memory-optimized hosts. Confirm the instance types in the fleet.",
+   "objectives": [
+    "Describe all EC2 instances",
+    "Identify the memory-optimized type"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^aws ec2 describe-instances$",
+     "expect_contains": "r6g.large",
+     "hint": "In the Terminal tab, run `aws ec2 describe-instances`. If the check fails, confirm you typed it exactly and that the output contains \"r6g.large\"."
+    }
+   ],
+   "success_message": "Fleet checked — r6g.large is available for heavy transforms."
+  },
+  {
+   "id": "aws-data-mission-roles",
+   "title": "List the data roles",
+   "domain_id": "data-governance",
+   "difficulty": 2,
+   "brief": "Inventory the IAM roles the data pipelines can assume.",
+   "objectives": [
+    "List all IAM roles"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^aws iam list-roles$",
+     "expect_contains": "RoleName",
+     "hint": "In the Terminal tab, run `aws iam list-roles`. If the check fails, confirm you typed it exactly and that the output contains \"RoleName\"."
+    }
+   ],
+   "success_message": "Data roles inventoried."
+  },
+  {
+   "id": "aws-data-mission-identity",
+   "title": "Confirm the pipeline identity",
+   "domain_id": "orchestration",
+   "difficulty": 3,
+   "brief": "The orchestrator logs every run under an identity. Confirm yours.",
+   "objectives": [
+    "Retrieve the STS caller identity"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^aws sts get-caller-identity$",
+     "expect_contains": "arn:aws:iam::123456789012:user/candidate",
+     "hint": "In the Terminal tab, run `aws sts get-caller-identity`. If the check fails, confirm you typed it exactly and that the output contains \"arn:aws:iam::123456789012:user/candidate\"."
+    }
+   ],
+   "success_message": "Pipeline identity confirmed."
+  }
+ ],
+ "media": [
+  {
+   "id": "aws-data-data-ingestion-diag",
+   "kind": "diagram",
+   "title": "Data Ingestion on AWS",
+   "svg": "assets/diagrams/aws-data-data-ingestion.svg",
+   "lesson_ref": "c-data-ingestion",
+   "caption": "Getting data into AWS reliably, batch or streaming.",
+   "alt": "Data Ingestion on AWS. Shows: Sources, Kinesis / MSK, DMS / DataSync, S3 (raw zone), Glue catalog."
+  },
+  {
+   "id": "aws-data-data-lakes-warehouses-diag",
+   "kind": "diagram",
+   "title": "Lake → Warehouse on AWS",
+   "svg": "assets/diagrams/aws-data-data-lakes-warehouses.svg",
+   "lesson_ref": "c-data-lakes-warehouses",
+   "caption": "Raw data lands cheap in S3; curated marts serve analytics.",
+   "alt": "Lake → Warehouse on AWS. Tiers: Lake (S3), Catalog + ETL, Serve."
+  },
+  {
+   "id": "aws-data-processing-frameworks-diag",
+   "kind": "diagram",
+   "title": "Batch & Stream Processing",
+   "svg": "assets/diagrams/aws-data-processing-frameworks.svg",
+   "lesson_ref": "c-processing-frameworks",
+   "caption": "Transform raw data into queryable form.",
+   "alt": "Batch & Stream Processing. Shows: EMR / Spark, Glue ETL, Lambda, Athena views."
+  },
+  {
+   "id": "aws-data-data-governance-diag",
+   "kind": "diagram",
+   "title": "Data Governance on AWS",
+   "svg": "assets/diagrams/aws-data-data-governance.svg",
+   "lesson_ref": "c-data-governance",
+   "caption": "Know what you have, who touches it, and whether it complies.",
+   "alt": "Data Governance on AWS. Shows: Glue Data Catalog, Lake Formation, Macie, CloudTrail, Tagging."
+  },
+  {
+   "id": "aws-data-orchestration-diag",
+   "kind": "diagram",
+   "title": "Pipeline Orchestration",
+   "svg": "assets/diagrams/aws-data-orchestration.svg",
+   "lesson_ref": "c-orchestration",
+   "caption": "Schedule and coordinate data workflows.",
+   "alt": "Pipeline Orchestration. Shows: EventBridge, Step Functions, Glue / Lambda, SNS."
+  },
+  {
+   "id": "aws-data-analytics-diag",
+   "kind": "diagram",
+   "title": "Analytics on AWS",
+   "svg": "assets/diagrams/aws-data-analytics.svg",
+   "lesson_ref": "c-analytics",
+   "caption": "Query and visualize without moving data twice.",
+   "alt": "Analytics on AWS. Shows: Athena, Redshift, QuickSight, OpenSearch."
+  }
+ ],
+ "resources": {
+  "cheatsheet": {
+   "title": "AWS Data Engineer — Cheat Sheet",
+   "sections": [
+    {
+     "heading": "Data Ingestion",
+     "items": [
+      "Kinesis Data Streams — provides ordered, replayable, high-throughput streaming with multiple consumers per shard. Kinesis Data Firehose is the managed delivery service: it buffers, converts (e.g., to Parquet), and loads streaming data into S3 and other destinations with no consum…",
+      "Streaming ingestion — SQS is queue-based (not replayable multi-consumer streaming); S3 batch uploads aren't sub-second; RDS isn't an ingestion service. Data Streams and MSK require consumers; DynamoDB direct PUT isn't a streaming pipeline.",
+      "Firehose — Firehose/Data Streams aren't Kafka-compatible; SQS FIFO lacks Kafka's log semantics and retention model.",
+      "Managed delivery — amazon MSK provides managed Apache Kafka with Kafka API compatibility, configurable long retention, and exactly-once semantics support. AWS Transfer Family provides managed SFTP/FTPS/FTP endpoints backed by S3 — partners keep their workflow, files land in S3.",
+      "Common trap — kinesis Data Streams with custom consumers.",
+      "Skipping the key question — which service is built for high-throughput ordered event streams with multiple consumers.",
+      "Skipping the key question — which service loads streaming data to destinations with no consumer code.",
+      "Kinesis Data Streams — provides ordered, replayable, high-throughput streaming with multiple consumers per shard. SQS is queue-based (not replayable multi-consumer streaming); S3 batch uploads aren't sub-second; RDS isn't an ingestion service."
+     ]
+    },
+    {
+     "heading": "Data Lakes & Warehouses",
+     "items": [
+      "Data lakes — an S3-based data lake with the Glue Data Catalog stores all data types in open formats with evolving schemas, serving diverse consumers. The Glue Data Catalog provides a central, queryable metadata store (databases, tables, schemas, partitions) integrated w…",
+      "S3 — S3: redshift Spectrum extends Redshift SQL queries to S3 data in place — no loading, paying per query.",
+      "Redshift Serverless — Redshift Serverless automatically provisions and scales warehouse capacity for the workload, paying for usage — ideal for spiky analytics.",
+      "Glue Data Catalog — parquet's columnar format lets engines read only the needed columns (plus compression and predicate pushdown), slashing scanned data and cost.",
+      "Common trap — S3 with bronze/silver/gold zones + Lake Formation permissions.",
+      "Skipping the key question — which architecture handles all data types with evolving schema.",
+      "Skipping the key question — which warehouse option scales to zero operationally for spiky use.",
+      "An S3-based — An S3-based data lake with the Glue Data Catalog stores all data types in open formats with evolving schemas, serving diverse consumers. A warehouse alone forces schema-on-write; RDS isn't analytics storage; EBS isn't a lake."
+     ]
+    },
+    {
+     "heading": "Processing Frameworks",
+     "items": [
+      "Glue — is Spark-centric serverless; Lambda isn't for clusters; Athena is serverless SQL, not a framework platform. Incremental processing (e.g., Glue job bookmarks tracking processed offsets) handles only new data each run, keeping runtime flat.",
+      "Serverless Spark — AWS Glue provides serverless Spark ETL with auto-scaling workers — no clusters to manage. EMR provides managed clusters with the full big-data ecosystem (Spark, Flink, Presto/Trino) and notebook support.",
+      "EMR — always-on EC2 idles at zero; EMR is for cluster analytics, not 200ms functions; bare metal is the opposite of elastic. EMR/Glue clusters idle between queries; Redshift is a provisioned warehouse.",
+      "Big data clusters — stream processing (MSK + Flink, or Kinesis Data Analytics with Flink) processes events continuously with sub-minute latency. Full daily rewrites scale with total data; weekly reloads still reprocess; no dedup compounds the waste.",
+      "Athena — provides serverless SQL directly on S3, paying per byte scanned — perfect for low-volume ad-hoc analysis.",
+      "Common trap — amazon Managed Streaming for Kafka + Flink (or Kinesis Data Analytics).",
+      "Skipping the key question — which service runs serverless Spark with auto-scaling.",
+      "Skipping the key question — which service gives you a managed big-data cluster with many frameworks.",
+      "Lambda — Lambda scales from zero to 10k concurrent executions for short event-driven transforms with per-millisecond billing. Always-on EC2 idles at zero; EMR is for cluster analytics, not 200ms functions; bare metal is the opposite of elastic."
+     ]
+    },
+    {
+     "heading": "Data Governance",
+     "items": [
+      "Lake Formation — provides centralized fine-grained permissions at table, column, and row level on the data lake.",
+      "Fine-grained access — full access or one shared role can't differentiate; public buckets are a breach.",
+      "Data lineage — the Glue Data Catalog with lineage tracking records how data flows and transforms from source to report — the auditable answer. Data mesh distributes ownership to domain teams who publish data products with contracts/SLAs, scaling ownership with the organiz…",
+      "PII handling — de-identification and masking (finding PII with Macie, masking in views/exports) preserves analytical realism without real PII.",
+      "Data — Data quality rules (e.g., Glue Data Quality / Deequ checks) in the pipeline validate schema, completeness, and ranges, quarantining failures before they corrupt downstream.",
+      "Common trap — data mesh principles: domain ownership + data products with contracts.",
+      "Common trap — lake Formation fine-grained permissions (table/column/row level).",
+      "Common trap — S3 Lifecycle policies aligned to retention requirements.",
+      "Common trap — everyone gets full access.",
+      "S3 Lifecycle — S3 Lifecycle policies enforce per-dataset retention and archival automatically at 3 TB/day scale. Keeping everything forever wastes money and may violate minimization; manual reviews don't scale; no policy is non-compliance."
+     ]
+    },
+    {
+     "heading": "Orchestration",
+     "items": [
+      "MWAA provides managed Apache Airflow — DAGs with dependencies, retries, and SLA monitoring without managing the orchestrator.",
+      "Workflow orchestration — single-EC2 cron is a single point of failure; manual runs don't scale; Lambda alone lacks DAG orchestration semantics.",
+      "Step Functions — Step Functions orchestrates serverless workflows with visual execution graphs, per-state retries/catches, and integrations to Lambda, Glue, and more. Pipeline-native monitoring (Airflow SLAs, Step Functions/CloudWatch alarms on task duration) watches every…",
+      "Event-driven — Event-driven triggers (S3 Event Notifications, EventBridge) start pipelines on arrival with low latency, and idempotent tasks make duplicate events safe.",
+      "Failure handling — manual Lambda chaining reinvents error handling; one giant Lambda couples everything; bash on EC2 is fragile. Blind infinite retries are the current failure; ignoring/deleting loses data.",
+      "Common trap — event-driven triggers (S3 events, EventBridge) + idempotent tasks.",
+      "Common trap — separate dev/staging/prod with promotion of tested artifacts.",
+      "Common trap — lambda alone for 50-step DAGs.",
+      "Common trap — one pipeline for dev and prod.",
+      "MWAA provides managed Apache Airflow — DAGs with dependencies, retries, and SLA monitoring without managing the orchestrator. Single-EC2 cron is a single point of failure; manual runs don't scale; Lambda alone lacks DAG orchestration semantics."
+     ]
+    },
+    {
+     "heading": "Analytics",
+     "items": [
+      "QuickSight — row-level (and column-level) security in QuickSight and Lake Formation filters data by viewer identity — enforced, not advisory. QuickSight provides managed BI with SPICE in-memory engine, integrating natively with AWS data sources and scaling to hundreds o…",
+      "BI — BI: one-off queries repeat the waste; bigger warehouses just scan faster at higher cost; BI-only caching is fragile. Custom builds reintroduce ops; email chains and screenshots aren't BI.",
+      "ML for analysts — redshift ML and SageMaker Canvas let analysts build and use models with SQL or no-code interfaces against warehouse data in place.",
+      "Open table formats (Apache Hudi, Iceberg — supported by Athena, EMR, Glue) bring upserts, deletes, and time travel to S3 data lakes.",
+      "Materialized — Materialized views or scheduled aggregation tables precompute the repeated aggregations once, so dashboards read megabytes instead of terabytes.",
+      "Common trap — materialized views / scheduled aggregations.",
+      "Common trap — cost allocation tags + query-level cost attribution (e.g., Athena workgroups, Redshift concurrency scaling) + lifecycle policies.",
+      "Common trap — keeping every version as separate files.",
+      "Common trap — building custom dashboards from scratch.",
+      "Row-level — Row-level (and column-level) security in QuickSight and Lake Formation filters data by viewer identity — enforced, not advisory. Full access violates the requirement; one shared dashboard can't differentiate; trust isn't enforcement."
+     ]
+    }
+   ]
+  },
+  "glossary": [
+   {
+    "term": "SQL",
+    "def": "S3: redshift Spectrum extends Redshift SQL queries to S3 data in place — no loading, paying per query."
+   },
+   {
+    "term": "EMR",
+    "def": "EMR: always-on EC2 idles at zero; EMR is for cluster analytics, not 200ms functions; bare metal is the opposite of elastic. EMR/Glue clusters idle between queries; Redshift is a provisioned warehouse."
+   },
+   {
+    "term": "MSK",
+    "def": "Managed delivery: amazon MSK provides managed Apache Kafka with Kafka API compatibility, configurable long retention, and exactly-once semantics support. AWS Transfer Family provides managed SFTP/FTPS/FTP endpoints backed by S3 — partner…"
+   },
+   {
+    "term": "AWS",
+    "def": "Serverless Spark: AWS Glue provides serverless Spark ETL with auto-scaling workers — no clusters to manage. EMR provides managed clusters with the full big-data ecosystem (Spark, Flink, Presto/Trino) and notebook support."
+   },
+   {
+    "term": "Athena",
+    "def": "Athena provides serverless SQL directly on S3, paying per byte scanned — perfect for low-volume ad-hoc analysis."
+   },
+   {
+    "term": "RDS",
+    "def": "Streaming ingestion: SQS is queue-based (not replayable multi-consumer streaming); S3 batch uploads aren't sub-second; RDS isn't an ingestion service. Data Streams and MSK require consumers; DynamoDB direct PUT isn't a streaming pipeline."
+   },
+   {
+    "term": "Lambda",
+    "def": "Glue is Spark-centric serverless; Lambda isn't for clusters; Athena is serverless SQL, not a framework platform. Incremental processing (e.g., Glue job bookmarks tracking processed offsets) handles only new data each run, keeping runtime…"
+   },
+   {
+    "term": "SQS",
+    "def": "Streaming ingestion: SQS is queue-based (not replayable multi-consumer streaming); S3 batch uploads aren't sub-second; RDS isn't an ingestion service. Data Streams and MSK require consumers; DynamoDB direct PUT isn't a streaming pipeline."
+   },
+   {
+    "term": "Glue",
+    "def": "Glue is Spark-centric serverless; Lambda isn't for clusters; Athena is serverless SQL, not a framework platform. Incremental processing (e.g., Glue job bookmarks tracking processed offsets) handles only new data each run, keeping runtime…"
+   },
+   {
+    "term": "Skipping",
+    "def": "Skipping the key question: which service is built for high-throughput ordered event streams with multiple consumers."
+   },
+   {
+    "term": "Lake Formation",
+    "def": "Lake Formation provides centralized fine-grained permissions at table, column, and row level on the data lake."
+   },
+   {
+    "term": "BI",
+    "def": "BI: one-off queries repeat the waste; bigger warehouses just scan faster at higher cost; BI-only caching is fragile. Custom builds reintroduce ops; email chains and screenshots aren't BI."
+   },
+   {
+    "term": "Spark",
+    "def": "Serverless Spark: AWS Glue provides serverless Spark ETL with auto-scaling workers — no clusters to manage. EMR provides managed clusters with the full big-data ecosystem (Spark, Flink, Presto/Trino) and notebook support."
+   },
+   {
+    "term": "Data",
+    "def": "Data lakes: an S3-based data lake with the Glue Data Catalog stores all data types in open formats with evolving schemas, serving diverse consumers. The Glue Data Catalog provides a central, queryable metadata store (databases, tables, s…"
+   },
+   {
+    "term": "Full",
+    "def": "Open table formats (Apache Hudi, Iceberg — supported by Athena, EMR, Glue) bring upserts, deletes, and time travel to S3 data lakes. Full overwrites at 10B rows are infeasible; version-file sprawl is unmanageable; a relational DB can't h…"
+   },
+   {
+    "term": "Flink",
+    "def": "Serverless Spark: AWS Glue provides serverless Spark ETL with auto-scaling workers — no clusters to manage. EMR provides managed clusters with the full big-data ecosystem (Spark, Flink, Presto/Trino) and notebook support."
+   },
+   {
+    "term": "Redshift",
+    "def": "EMR: always-on EC2 idles at zero; EMR is for cluster analytics, not 200ms functions; bare metal is the opposite of elastic. EMR/Glue clusters idle between queries; Redshift is a provisioned warehouse."
+   },
+   {
+    "term": "EC2",
+    "def": "EMR: always-on EC2 idles at zero; EMR is for cluster analytics, not 200ms functions; bare metal is the opposite of elastic. EMR/Glue clusters idle between queries; Redshift is a provisioned warehouse."
+   },
+   {
+    "term": "PII",
+    "def": "De-identification and masking (finding PII with Macie, masking in views/exports) preserves analytical realism without real PII. Copying production as-is violates the requirement; trust isn't a control; deletion removes the utility."
+   },
+   {
+    "term": "MWAA",
+    "def": "MWAA provides managed Apache Airflow — DAGs with dependencies, retries, and SLA monitoring without managing the orchestrator."
+   },
+   {
+    "term": "Glue Data Catalog",
+    "def": "Glue Data Catalog: parquet's columnar format lets engines read only the needed columns (plus compression and predicate pushdown), slashing scanned data and cost."
+   },
+   {
+    "term": "SFTP",
+    "def": "AWS Transfer Family provides managed SFTP/FTPS/FTP endpoints backed by S3 — partners keep their workflow, files land in S3. The streaming services don't speak SFTP; they're for event streams, not file transfers."
+   },
+   {
+    "term": "QuickSight",
+    "def": "QuickSight: row-level (and column-level) security in QuickSight and Lake Formation filters data by viewer identity — enforced, not advisory. QuickSight provides managed BI with SPICE in-memory engine, integrating natively with AWS data s…"
+   },
+   {
+    "term": "Catalog",
+    "def": "The Glue Data Catalog provides a central, queryable metadata store (databases, tables, schemas, partitions) integrated with Athena, Redshift Spectrum, and EMR. Spreadsheets, hardcoded schemas, and wikis don't integrate or stay current."
+   },
+   {
+    "term": "FTP",
+    "def": "S3 Event Notifications push events on object creation to Lambda, SQS, or SNS within seconds — event-driven and serverless. Polling adds latency and cost; FTP/EC2 and email are manual anti-patterns."
+   }
+  ],
+  "links": [
+   {
+    "label": "Amazon Web Services — official site",
+    "url": "https://aws.amazon.com/certification",
+    "note": "Official vendor documentation and certification information"
+   },
+   {
+    "label": "AWS documentation",
+    "url": "https://docs.aws.amazon.com/",
+    "note": "Official service documentation"
+   },
+   {
+    "label": "AWS Well-Architected Framework",
+    "url": "https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html",
+    "note": "Official architecture best practices"
+   },
+   {
+    "label": "AWS Architecture Center",
+    "url": "https://aws.amazon.com/architecture/",
+    "note": "Official AWS architecture guidance"
+   },
+   {
+    "label": "AWS whitepapers",
+    "url": "https://aws.amazon.com/whitepapers/",
+    "note": "Official AWS whitepapers"
+   },
+   {
+    "label": "PostgreSQL documentation",
+    "url": "https://www.postgresql.org/docs/",
+    "note": "Official PostgreSQL docs"
+   },
+   {
+    "label": "PostgreSQL tutorial",
+    "url": "https://www.postgresql.org/docs/current/tutorial.html",
+    "note": "Official PostgreSQL tutorial"
+   },
+   {
+    "label": "Microsoft Learn — SQL",
+    "url": "https://learn.microsoft.com/en-us/sql/",
+    "note": "Official SQL Server docs"
+   }
+  ],
+  "checklist": [
+   "Get 7–8 hours of sleep the night before — fatigue destroys recall faster than any topic gap.",
+   "Bring valid government-issued photo ID and arrive at the test center 30 minutes early.",
+   "Eat a real meal beforehand; bring water and a light snack if the center allows them.",
+   "Read every question twice before scanning the answer choices.",
+   "Flag uncertain questions and move on — return with fresh eyes at the end.",
+   "Eliminate the obviously wrong answers first, then compare the survivors.",
+   "Budget your time: answer steadily and keep a 10–15 minute review buffer.",
+   "Re-run your weakest-domain drill until mastery is at least 80%.",
+   "For Data Ingestion: restate the 'why' behind each scenario answer in your own words — if you can't explain it, you don't own it.",
+   "Redo one Data Lakes & Warehouses lab from scratch without looking at the steps.",
+   "Recite the key Processing Frameworks terms from the glossary aloud from memory."
+  ]
+ }
+}
