@@ -1,7 +1,7 @@
 # Enterprise CBT Upgrade — Spec & Schema (Phase 1)
 
 Date: 2026-10-04. Coordinator spec for the "full enterprise-level computer-based
-adaptive training" upgrade across all 68 bootcamps in `~/workspace/cert-bootcamps`.
+adaptive training" upgrade across all 75 bootcamps in `~/workspace/cert-bootcamps`.
 
 Source of truth for content: `content/<slug>.json` (generator copies to
 `site/bootcamps/<slug>/content.json` via `generator/build.py`).
