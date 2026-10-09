@@ -1,1043 +1,1760 @@
 {
-  "slug": "platform-engineering",
-  "title": "Platform Engineering",
-  "tagline": "Building internal developer platforms: IDP concepts, service catalogs, platform APIs, and paved-road golden paths that make shipping easy. Independent training content; this course confers no certific",
-  "vendor": {
-    "name": "Independent interview prep (not affiliated with ThreatLocker)",
-    "certs": "",
-    "docs": "https://www.threatlocker.com"
+ "slug": "platform-engineering",
+ "title": "Platform Engineering",
+ "tagline": "Building internal developer platforms: IDP concepts, service catalogs, platform APIs, and paved-road golden paths that make shipping easy. Independent training content; this course confers no certific",
+ "vendor": {
+  "name": "Independent interview prep (not affiliated with ThreatLocker)",
+  "certs": "",
+  "docs": "https://www.threatlocker.com"
+ },
+ "disclaimer": "Independent interview-prep material by Interstitium Labs. Not affiliated with, endorsed by, or sponsored by ThreatLocker or any vendor mentioned. Confers no certificate. All scenarios are original practice content; no exam or vendor-training content is reproduced.",
+ "accent": "#e5484d",
+ "domains": [
+  {
+   "id": "platform-engineering",
+   "name": "Platform Engineering",
+   "summary": "Building internal developer platforms: IDP concepts, service catalogs, platform APIs, and paved-road golden paths that make shipping easy. Independent training content; this course confers no certificate.",
+   "scenarios": [
+    {
+     "id": "platform-engineering-sc1",
+     "title": "What Is an IDP?",
+     "situation": "Leadership asks what an Internal Developer Platform actually is, versus 'we have Kubernetes and CI'.",
+     "prompt": "What is the accurate definition?",
+     "evidence": [],
+     "choices": [
+      "An IDP is the curated set of tools, APIs, and workflows a platform team provides so developers can self-serve infrastructure (environments, deploys, databases) without deep infra expertise — Kubernetes and CI are building blocks, the IDP is the productized layer on top",
+      "An IDP is a second Kubernetes cluster reserved for the platform team",
+      "An IDP is just a rebranded CI/CD pipeline with a dashboard",
+      "An IDP replaces developers; it auto-writes application code"
+     ],
+     "answer": 0,
+     "why": "The distinction is product thinking: raw Kubernetes + CI is a toolkit requiring expertise; an IDP packages them into self-service golden paths with sensible defaults. The platform team treats developers as customers, reducing cognitive load. A cluster alone or a pipeline alone is not a platform.",
+     "hint": "What's the difference between handing someone lumber and handing them a furnished room?",
+     "objectives": [
+      "IDP concepts",
+      "platform as product"
+     ],
+     "mins": 5,
+     "difficulty": 1
+    },
+    {
+     "id": "platform-engineering-sc2",
+     "title": "Catalog Before Automation",
+     "situation": "The platform team wants to build a Backstage-style software catalog but can't agree on what goes in it. Half the services have no owner listed anywhere.",
+     "prompt": "What is the minimum viable catalog entry?",
+     "evidence": [],
+     "choices": [
+      "For every component: a name, an owner (team or individual), its lifecycle stage, and links to repo/runbook — ownership and findability come before rich metadata; you can enrich later",
+      "Full dependency graphs, API specs, and cost data for every service on day one",
+      "Only production services; dev and staging services don't need cataloging",
+      "The catalog should list infrastructure (clusters, VPCs) instead of software components"
+     ],
+     "answer": 0,
+     "why": "A catalog's core job is answering 'what is this, who owns it, where is it in its lifecycle, where do I find it.' Ownership is the highest-value field — during incidents, 'who owns this' matters more than anything. Starting with the minimal schema gets adoption; demanding complete metadata up front stalls the project.",
+     "hint": "During a 2 AM incident on an unknown service, which single field would you want most?",
+     "objectives": [
+      "software catalogs",
+      "ownership",
+      "backstage"
+     ],
+     "mins": 5,
+     "difficulty": 1
+    },
+    {
+     "id": "platform-engineering-sc3",
+     "title": "Golden Path vs Wild West",
+     "situation": "Teams each built their own deploy pipeline: 14 variants of 'build, test, push, deploy'. The platform team proposes one blessed 'golden path' pipeline. Teams fear losing flexibility.",
+     "prompt": "How should the platform team position the golden path?",
+     "evidence": [],
+     "choices": [
+      "Offer the golden path as the default paved road (supported, secure, maintained) while allowing escape hatches for justified exceptions — adoption comes from making the right way the easy way, not from mandates",
+      "Mandate the golden path for all teams immediately; uniformity beats autonomy",
+      "Abandon the golden path; 14 pipelines is healthy diversity",
+      "Make the golden path maximally configurable so it can replicate all 14 variants"
+     ],
+     "answer": 0,
+     "why": "Golden paths work through attraction, not coercion: teams adopt the paved road because it's faster and maintained, and the platform team learns from the escape-hatch cases. Mandates breed shadow IT; infinite configurability recreates the 14 variants inside one template. The paved-road-with-exits model balances standardization and autonomy.",
+     "hint": "Do people use highways because they're forced to, or because they're the fastest maintained route — with exits available?",
+     "objectives": [
+      "golden paths",
+      "platform adoption",
+      "standardization"
+     ],
+     "mins": 6,
+     "difficulty": 2
+    },
+    {
+     "id": "platform-engineering-sc4",
+     "title": "Template Sprawl",
+     "situation": "The platform's software templates (scaffolding) have grown to 40 near-identical 'new service' templates. Maintenance is crushing the platform team.",
+     "prompt": "What is the right consolidation move?",
+     "evidence": [
+      [
+       "template list",
+       "node-service-v1..v6, node-service-legacy, node-api, node-worker, ... (40 total)"
+      ]
+     ],
+     "choices": [
+      "Consolidate to a few parameterized templates (language × workload type) with clear versioning and deprecation of the rest — templates are products with a maintenance cost, and 40 variants means 40 things to patch on every CVE",
+      "Keep all 40; choice is good for developers",
+      "Delete all templates and let teams copy-paste from existing repos",
+      "Auto-generate a template per existing service so coverage is complete"
+     ],
+     "answer": 0,
+     "why": "Every template is a maintenance liability: dependency bumps, security patches, and best-practice updates multiply across variants. A small set of parameterized templates (with inputs for the real variations) gives coverage without the combinatorial burden. Deprecation with migration guides moves teams off the long tail.",
+     "hint": "When the next critical CVE hits a base image, how many places will you have to patch?",
+     "objectives": [
+      "software templates",
+      "scaffolding",
+      "maintenance burden"
+     ],
+     "mins": 7,
+     "difficulty": 2
+    },
+    {
+     "id": "platform-engineering-sc5",
+     "title": "Platform API Design",
+     "situation": "The platform team exposes a 'provision database' API. Team A's request returns in 2 seconds; team B's identical request hangs for 20 minutes then fails with no useful error.",
+     "prompt": "What API design principle was violated?",
+     "evidence": [
+      [
+       "api response (failure)",
+       "{\"status\": \"error\", \"message\": \"something went wrong\"}"
+      ]
+     ],
+     "choices": [
+      "Long-running operations must be asynchronous with status polling (202 + operation ID + status endpoint) and structured, actionable errors — synchronous 20-minute requests hit timeouts everywhere and opaque errors leave callers helpless",
+      "Database provisioning should be synchronous; the bug is just a slow backend",
+      "The API needs GraphQL; REST cannot express provisioning operations",
+      "Errors should return HTTP 200 with an error body so clients don't retry"
+     ],
+     "answer": 0,
+     "why": "Platform APIs wrap operations that take minutes: the correct pattern is accept-and-track (202 Accepted, operation resource, pollable status, webhooks/events on completion). Synchronous designs collapse under proxies, client timeouts, and retries. And errors must be machine-actionable (codes, remediation hints), because the caller is usually automation, not a human reading logs.",
+     "hint": "What happens to an HTTP request that takes 20 minutes, hop by hop? What should the API have returned in second 1?",
+     "objectives": [
+      "platform APIs",
+      "async operations",
+      "error design"
+     ],
+     "mins": 8,
+     "difficulty": 3
+    },
+    {
+     "id": "platform-engineering-sc6",
+     "title": "Measuring Platform Success",
+     "situation": "The platform team ships features constantly, but engineering leadership asks: 'Is the platform actually helping?' DORA metrics for product teams are flat.",
+     "prompt": "What should the platform team measure?",
+     "evidence": [],
+     "choices": [
+      "Developer productivity outcomes: time-to-first-deploy for new services, self-service adoption rate, reduction in infra-related support tickets, and product-team DORA trends for onboarded teams — platform success is measured in developer outcomes, not platform-team output",
+      "Number of platform features shipped per quarter; output proves value",
+      "Platform team sprint velocity and story points completed",
+      "Total lines of Terraform the platform team maintains"
+     ],
+     "answer": 0,
+     "why": "Platforms are force multipliers: their value shows up in the productivity of their users, not their own activity metrics. Time-to-first-commit-to-prod, ticket deflection, and adoption of golden paths directly measure whether the platform reduces friction. Feature counts and velocity measure busyness, and can even be inversely correlated with good platform design (less surface, more leverage).",
+     "hint": "Who is the customer of the platform — and whose numbers should improve if the platform is working?",
+     "objectives": [
+      "platform metrics",
+      "DORA",
+      "developer productivity"
+     ],
+     "mins": 8,
+     "difficulty": 3
+    }
+   ]
+  }
+ ],
+ "lessons": [
+  {
+   "domain_id": "platform-sre",
+   "title": "Platform Engineering — Core concepts",
+   "concepts": [
+    "An Internal Developer Platform is a product: curated tools, APIs, and workflows that let developers self-serve infrastructure. Kubernetes and CI are building blocks; the IDP is the productized layer with developers as customers.",
+    "The software catalog is the platform's front door. Minimum viable entry: name, owner, lifecycle stage, repo and runbook links — ownership first, rich metadata later.",
+    "Golden paths are paved roads, not mandates: the blessed way to build, test, and ship, maintained and secure by default, with escape hatches for justified exceptions. Adoption comes from being the easiest path.",
+    "Software templates scaffold new services consistently, but each template is a maintenance liability — consolidate to a few parameterized templates with versioning and deprecation.",
+    "Platform APIs wrap slow operations asynchronously: 202 Accepted with an operation ID, pollable status, and structured actionable errors — because the caller is usually automation."
+   ],
+   "example": {
+    "lang": "shell",
+    "code": "curl -s https://platform.example.com/api/v1/templates | jq '.[].name'\ncurl -s -X POST https://platform.example.com/api/v1/environments \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"service\": \"checkout\", \"type\": \"preview\"}' | jq .operation_id",
+    "walkthrough": "Discover available templates, then request an ephemeral preview environment asynchronously — the API returns an operation ID immediately and you poll for completion instead of holding a 20-minute HTTP connection."
+   },
+   "pitfalls": [
+    "Common trap: measuring platform success by features shipped — measure developer outcomes (time-to-deploy, ticket deflection, adoption).",
+    "Common trap: mandating the golden path — mandates breed shadow IT; make it the easiest path instead.",
+    "Common trap: 40 near-identical templates — every template multiplies CVE patch work.",
+    "Common trap: synchronous platform APIs for minute-long operations — proxies and clients will time out."
+   ],
+   "try_it": "Work through this in the Labs tab."
+  }
+ ],
+ "labs": [
+  {
+   "id": "platform-engineering-lab1",
+   "domain_id": "platform-sre",
+   "title": "Catalog Your First Service",
+   "objective": "Register a service in a Backstage-style software catalog with ownership and lifecycle metadata.",
+   "steps": [
+    "Write a `catalog-info.yaml` (Component kind) with name, description, lifecycle (`production`), and owner.",
+    "Define the owner as a `Group` entity (team name, members) referenced by the component.",
+    "Add annotations: repo URL, runbook link, and techdocs ref.",
+    "Validate the YAML structure (required fields: apiVersion, kind, metadata, spec).",
+    "Register it in the catalog UI/API and search for it by owner — confirm ownership is queryable."
+   ],
+   "checks": [
+    {
+     "command_pattern": "^cat\\s+catalog-info.yaml",
+     "expect_contains": "kind: Component",
+     "hint": "The file should declare a Component entity."
+    },
+    {
+     "command_pattern": "^cat\\s+catalog-info.yaml",
+     "expect_contains": "owner:",
+     "hint": "Ownership must be present in the metadata or spec."
+    }
+   ]
   },
-  "disclaimer": "Independent interview-prep material by Interstitium Labs. Not affiliated with, endorsed by, or sponsored by ThreatLocker or any vendor mentioned. Confers no certificate. All scenarios are original practice content; no exam or vendor-training content is reproduced.",
-  "accent": "#e5484d",
-  "domains": [
+  {
+   "id": "platform-engineering-lab2",
+   "domain_id": "platform-sre",
+   "title": "Ship a Golden-Path Template",
+   "objective": "Build one parameterized software template that scaffolds a production-ready service skeleton.",
+   "steps": [
+    "Define template parameters: service name, language (node/python), and workload type (api/worker).",
+    "Write the skeleton: Dockerfile (multi-stage, non-root), k8s manifests with probes and resource requests, CI pipeline stub.",
+    "Add template metadata: title, description, owner, and tags for catalog discoverability.",
+    "Scaffold two different services from the same template and diff the outputs — only parameters should differ.",
+    "Write a deprecation note for one legacy template this new one replaces."
+   ],
+   "checks": [
     {
-      "id": "platform-engineering",
-      "name": "Platform Engineering",
-      "summary": "Building internal developer platforms: IDP concepts, service catalogs, platform APIs, and paved-road golden paths that make shipping easy. Independent training content; this course confers no certificate.",
-      "scenarios": [
-        {
-          "id": "platform-engineering-sc1",
-          "title": "What Is an IDP?",
-          "situation": "Leadership asks what an Internal Developer Platform actually is, versus 'we have Kubernetes and CI'.",
-          "prompt": "What is the accurate definition?",
-          "evidence": [],
-          "choices": [
-            "An IDP is the curated set of tools, APIs, and workflows a platform team provides so developers can self-serve infrastructure (environments, deploys, databases) without deep infra expertise — Kubernetes and CI are building blocks, the IDP is the productized layer on top",
-            "An IDP is a second Kubernetes cluster reserved for the platform team",
-            "An IDP is just a rebranded CI/CD pipeline with a dashboard",
-            "An IDP replaces developers; it auto-writes application code"
-          ],
-          "answer": 0,
-          "why": "The distinction is product thinking: raw Kubernetes + CI is a toolkit requiring expertise; an IDP packages them into self-service golden paths with sensible defaults. The platform team treats developers as customers, reducing cognitive load. A cluster alone or a pipeline alone is not a platform.",
-          "hint": "What's the difference between handing someone lumber and handing them a furnished room?",
-          "objectives": [
-            "IDP concepts",
-            "platform as product"
-          ],
-          "mins": 5,
-          "difficulty": 1
-        },
-        {
-          "id": "platform-engineering-sc2",
-          "title": "Catalog Before Automation",
-          "situation": "The platform team wants to build a Backstage-style software catalog but can't agree on what goes in it. Half the services have no owner listed anywhere.",
-          "prompt": "What is the minimum viable catalog entry?",
-          "evidence": [],
-          "choices": [
-            "For every component: a name, an owner (team or individual), its lifecycle stage, and links to repo/runbook — ownership and findability come before rich metadata; you can enrich later",
-            "Full dependency graphs, API specs, and cost data for every service on day one",
-            "Only production services; dev and staging services don't need cataloging",
-            "The catalog should list infrastructure (clusters, VPCs) instead of software components"
-          ],
-          "answer": 0,
-          "why": "A catalog's core job is answering 'what is this, who owns it, where is it in its lifecycle, where do I find it.' Ownership is the highest-value field — during incidents, 'who owns this' matters more than anything. Starting with the minimal schema gets adoption; demanding complete metadata up front stalls the project.",
-          "hint": "During a 2 AM incident on an unknown service, which single field would you want most?",
-          "objectives": [
-            "software catalogs",
-            "ownership",
-            "backstage"
-          ],
-          "mins": 5,
-          "difficulty": 1
-        },
-        {
-          "id": "platform-engineering-sc3",
-          "title": "Golden Path vs Wild West",
-          "situation": "Teams each built their own deploy pipeline: 14 variants of 'build, test, push, deploy'. The platform team proposes one blessed 'golden path' pipeline. Teams fear losing flexibility.",
-          "prompt": "How should the platform team position the golden path?",
-          "evidence": [],
-          "choices": [
-            "Offer the golden path as the default paved road (supported, secure, maintained) while allowing escape hatches for justified exceptions — adoption comes from making the right way the easy way, not from mandates",
-            "Mandate the golden path for all teams immediately; uniformity beats autonomy",
-            "Abandon the golden path; 14 pipelines is healthy diversity",
-            "Make the golden path maximally configurable so it can replicate all 14 variants"
-          ],
-          "answer": 0,
-          "why": "Golden paths work through attraction, not coercion: teams adopt the paved road because it's faster and maintained, and the platform team learns from the escape-hatch cases. Mandates breed shadow IT; infinite configurability recreates the 14 variants inside one template. The paved-road-with-exits model balances standardization and autonomy.",
-          "hint": "Do people use highways because they're forced to, or because they're the fastest maintained route — with exits available?",
-          "objectives": [
-            "golden paths",
-            "platform adoption",
-            "standardization"
-          ],
-          "mins": 6,
-          "difficulty": 2
-        },
-        {
-          "id": "platform-engineering-sc4",
-          "title": "Template Sprawl",
-          "situation": "The platform's software templates (scaffolding) have grown to 40 near-identical 'new service' templates. Maintenance is crushing the platform team.",
-          "prompt": "What is the right consolidation move?",
-          "evidence": [
-            [
-              "template list",
-              "node-service-v1..v6, node-service-legacy, node-api, node-worker, ... (40 total)"
-            ]
-          ],
-          "choices": [
-            "Consolidate to a few parameterized templates (language × workload type) with clear versioning and deprecation of the rest — templates are products with a maintenance cost, and 40 variants means 40 things to patch on every CVE",
-            "Keep all 40; choice is good for developers",
-            "Delete all templates and let teams copy-paste from existing repos",
-            "Auto-generate a template per existing service so coverage is complete"
-          ],
-          "answer": 0,
-          "why": "Every template is a maintenance liability: dependency bumps, security patches, and best-practice updates multiply across variants. A small set of parameterized templates (with inputs for the real variations) gives coverage without the combinatorial burden. Deprecation with migration guides moves teams off the long tail.",
-          "hint": "When the next critical CVE hits a base image, how many places will you have to patch?",
-          "objectives": [
-            "software templates",
-            "scaffolding",
-            "maintenance burden"
-          ],
-          "mins": 7,
-          "difficulty": 2
-        },
-        {
-          "id": "platform-engineering-sc5",
-          "title": "Platform API Design",
-          "situation": "The platform team exposes a 'provision database' API. Team A's request returns in 2 seconds; team B's identical request hangs for 20 minutes then fails with no useful error.",
-          "prompt": "What API design principle was violated?",
-          "evidence": [
-            [
-              "api response (failure)",
-              "{\"status\": \"error\", \"message\": \"something went wrong\"}"
-            ]
-          ],
-          "choices": [
-            "Long-running operations must be asynchronous with status polling (202 + operation ID + status endpoint) and structured, actionable errors — synchronous 20-minute requests hit timeouts everywhere and opaque errors leave callers helpless",
-            "Database provisioning should be synchronous; the bug is just a slow backend",
-            "The API needs GraphQL; REST cannot express provisioning operations",
-            "Errors should return HTTP 200 with an error body so clients don't retry"
-          ],
-          "answer": 0,
-          "why": "Platform APIs wrap operations that take minutes: the correct pattern is accept-and-track (202 Accepted, operation resource, pollable status, webhooks/events on completion). Synchronous designs collapse under proxies, client timeouts, and retries. And errors must be machine-actionable (codes, remediation hints), because the caller is usually automation, not a human reading logs.",
-          "hint": "What happens to an HTTP request that takes 20 minutes, hop by hop? What should the API have returned in second 1?",
-          "objectives": [
-            "platform APIs",
-            "async operations",
-            "error design"
-          ],
-          "mins": 8,
-          "difficulty": 3
-        },
-        {
-          "id": "platform-engineering-sc6",
-          "title": "Measuring Platform Success",
-          "situation": "The platform team ships features constantly, but engineering leadership asks: 'Is the platform actually helping?' DORA metrics for product teams are flat.",
-          "prompt": "What should the platform team measure?",
-          "evidence": [],
-          "choices": [
-            "Developer productivity outcomes: time-to-first-deploy for new services, self-service adoption rate, reduction in infra-related support tickets, and product-team DORA trends for onboarded teams — platform success is measured in developer outcomes, not platform-team output",
-            "Number of platform features shipped per quarter; output proves value",
-            "Platform team sprint velocity and story points completed",
-            "Total lines of Terraform the platform team maintains"
-          ],
-          "answer": 0,
-          "why": "Platforms are force multipliers: their value shows up in the productivity of their users, not their own activity metrics. Time-to-first-commit-to-prod, ticket deflection, and adoption of golden paths directly measure whether the platform reduces friction. Feature counts and velocity measure busyness, and can even be inversely correlated with good platform design (less surface, more leverage).",
-          "hint": "Who is the customer of the platform — and whose numbers should improve if the platform is working?",
-          "objectives": [
-            "platform metrics",
-            "DORA",
-            "developer productivity"
-          ],
-          "mins": 8,
-          "difficulty": 3
-        }
-      ]
+     "command_pattern": "^ls",
+     "expect_contains": "Dockerfile",
+     "hint": "The scaffolded output should include a Dockerfile."
+    },
+    {
+     "command_pattern": "^cat\\s+.*template",
+     "expect_contains": "parameters",
+     "hint": "The template definition should declare its parameters."
     }
-  ],
-  "lessons": [
+   ]
+  }
+ ],
+ "simulations": [
+  {
+   "id": "plateng-sim-1",
+   "title": "The platform nobody uses",
+   "kind": "troubleshoot",
+   "domain_id": "platform-sre",
+   "difficulty": 2,
+   "points": 15,
+   "brief": "The platform team shipped a beautiful IDP with 40 services. Adoption: 3 teams out of 25. The other 22 ship the old way — or with shadow tooling. Diagnose the adoption failure.",
+   "steps": [
     {
-      "domain_id": "platform-sre",
-      "title": "Platform Engineering — Core concepts",
-      "concepts": [
-        "An Internal Developer Platform is a product: curated tools, APIs, and workflows that let developers self-serve infrastructure. Kubernetes and CI are building blocks; the IDP is the productized layer with developers as customers.",
-        "The software catalog is the platform's front door. Minimum viable entry: name, owner, lifecycle stage, repo and runbook links — ownership first, rich metadata later.",
-        "Golden paths are paved roads, not mandates: the blessed way to build, test, and ship, maintained and secure by default, with escape hatches for justified exceptions. Adoption comes from being the easiest path.",
-        "Software templates scaffold new services consistently, but each template is a maintenance liability — consolidate to a few parameterized templates with versioning and deprecation.",
-        "Platform APIs wrap slow operations asynchronously: 202 Accepted with an operation ID, pollable status, and structured actionable errors — because the caller is usually automation."
+     "symptom": "IDP launched 8 months ago. Adoption: 3 of 25 teams. Shadow pipelines: 11 and counting.",
+     "evidence": [
+      [
+       "adoption.txt",
+       "Teams on platform: 3. Teams on legacy Jenkins: 11. Shadow tooling: 11."
       ],
-      "example": {
-        "lang": "shell",
-        "code": "curl -s https://platform.example.com/api/v1/templates | jq '.[].name'\ncurl -s -X POST https://platform.example.com/api/v1/environments \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"service\": \"checkout\", \"type\": \"preview\"}' | jq .operation_id",
-        "walkthrough": "Discover available templates, then request an ephemeral preview environment asynchronously — the API returns an operation ID immediately and you poll for completion instead of holding a 20-minute HTTP connection."
-      },
-      "pitfalls": [
-        "Common trap: measuring platform success by features shipped — measure developer outcomes (time-to-deploy, ticket deflection, adoption).",
-        "Common trap: mandating the golden path — mandates breed shadow IT; make it the easiest path instead.",
-        "Common trap: 40 near-identical templates — every template multiplies CVE patch work.",
-        "Common trap: synchronous platform APIs for minute-long operations — proxies and clients will time out."
+      [
+       "survey.txt",
+       "'The golden path takes longer than our current way.' (19 teams)"
+      ]
+     ],
+     "options": [
+      "The golden path isn't the easiest path — adoption comes from being easier than the alternative, not from mandates",
+      "Mandate the platform for all 25 teams immediately",
+      "The 22 teams are resistant to change — escalate to their managers",
+      "Build more platform features to attract users"
+     ],
+     "correct": 0,
+     "explain": "An Internal Developer Platform is a product with developers as customers: golden paths are paved roads, not mandates. If the blessed way is slower than the old way, teams route around it — adoption comes from being the easiest path, period."
+    },
+    {
+     "symptom": "The platform requires 14 form fields and 3 approvals to scaffold a service. The old way: one Jenkinsfile.",
+     "evidence": [
+      [
+       "scaffold.txt",
+       "New service: 14 fields, 3 approvals, 2-5 day wait. Old way: copy Jenkinsfile, 10 minutes."
       ],
-      "try_it": "Work through this in the Labs tab."
+      [
+       "dropoff.txt",
+       "Scaffold started: 31. Scaffold completed: 4."
+      ]
+     ],
+     "options": [
+      "Reduce the scaffolding friction to beat the 10-minute alternative — every field and approval is a tax on adoption",
+      "The fields are necessary for governance — teams must adapt",
+      "Add a tutorial explaining why the fields matter",
+      "Hide the old Jenkins — remove the alternative"
+     ],
+     "correct": 0,
+     "explain": "The platform competes with the status quo on every interaction: 14 fields and 3 approvals versus a 10-minute copy is a competition the platform loses. Each required field must justify itself against the adoption it costs."
+    },
+    {
+     "symptom": "The 3 adopted teams love the platform — but they're the platform team's friends from a previous project.",
+     "evidence": [
+      [
+       "teams.txt",
+       "Adopted: teams A, B, C — all previously worked with platform engineers."
+      ],
+      [
+       "feedback.txt",
+       "Team D: 'We asked for help twice, got docs links. We stopped asking.'"
+      ]
+     ],
+     "options": [
+      "Treat developer support as the product: office hours, pairing, and migration help — the platform team sells outcomes, not docs",
+      "The 3 teams prove the platform works — the rest will come",
+      "Docs links are sufficient support for senior engineers",
+      "Team D is a special case — ignore the outlier"
+     ],
+     "correct": 0,
+     "explain": "Platform as product means developer support is the product: the teams that adopted had relationships, the ones that didn't got docs links. Office hours, pairing on migrations, and treating friction reports as bugs — that's the adoption engine."
     }
-  ],
-  "labs": [
+   ],
+   "debrief": "Platform adoption is earned: the golden path must be the easiest path, scaffolding friction must beat the alternative, and developer support is the product. Mandates and features don't adopt platforms — outcomes do."
+  },
+  {
+   "id": "plateng-sim-2",
+   "title": "Template sprawl",
+   "kind": "troubleshoot",
+   "domain_id": "platform-sre",
+   "difficulty": 1,
+   "points": 10,
+   "brief": "The software catalog lists 47 service templates. Half are unmaintained, 6 do the same thing, and new teams pick at random. Consolidate.",
+   "steps": [
     {
-      "id": "platform-engineering-lab1",
-      "domain_id": "platform-sre",
-      "title": "Catalog Your First Service",
-      "objective": "Register a service in a Backstage-style software catalog with ownership and lifecycle metadata.",
-      "steps": [
-        "Write a `catalog-info.yaml` (Component kind) with name, description, lifecycle (`production`), and owner.",
-        "Define the owner as a `Group` entity (team name, members) referenced by the component.",
-        "Add annotations: repo URL, runbook link, and techdocs ref.",
-        "Validate the YAML structure (required fields: apiVersion, kind, metadata, spec).",
-        "Register it in the catalog UI/API and search for it by owner — confirm ownership is queryable."
+     "symptom": "47 templates in the catalog. Maintained: 23. Duplicates: 6 web-service variants. Usage: scattered.",
+     "evidence": [
+      [
+       "catalog.txt",
+       "Templates: 47. Last updated >1yr: 24. 'web-service' variants: 6."
       ],
-      "checks": [
-        {
-          "command_pattern": "^cat\\s+catalog-info.yaml",
-          "expect_contains": "kind: Component",
-          "hint": "The file should declare a Component entity."
-        },
-        {
-          "command_pattern": "^cat\\s+catalog-info.yaml",
-          "expect_contains": "owner:",
-          "hint": "Ownership must be present in the metadata or spec."
-        }
+      [
+       "choice.txt",
+       "New team survey: 'We picked one at random. They all looked the same.'"
       ]
+     ],
+     "options": [
+      "Consolidate to a few parameterized templates with versioning and deprecation — each template is a maintenance liability",
+      "More templates means more choice — add the missing variants",
+      "Let teams maintain their own templates — decentralize",
+      "Delete templates at random until the number looks reasonable"
+     ],
+     "correct": 0,
+     "explain": "Each template is a maintenance liability: 47 templates means 47 things to patch, secure, and update. Consolidate to a few parameterized templates with versioning and a deprecation path — choice without curation is just confusion."
     },
     {
-      "id": "platform-engineering-lab2",
-      "domain_id": "platform-sre",
-      "title": "Ship a Golden-Path Template",
-      "objective": "Build one parameterized software template that scaffolds a production-ready service skeleton.",
-      "steps": [
-        "Define template parameters: service name, language (node/python), and workload type (api/worker).",
-        "Write the skeleton: Dockerfile (multi-stage, non-root), k8s manifests with probes and resource requests, CI pipeline stub.",
-        "Add template metadata: title, description, owner, and tags for catalog discoverability.",
-        "Scaffold two different services from the same template and diff the outputs — only parameters should differ.",
-        "Write a deprecation note for one legacy template this new one replaces."
+     "symptom": "Consolidation proposed: 4 templates. Three teams protest — their variant has 'essential' differences.",
+     "evidence": [
+      [
+       "diff.txt",
+       "Variant differences: port numbers, env var names, label conventions. No architectural differences."
       ],
-      "checks": [
-        {
-          "command_pattern": "^ls",
-          "expect_contains": "Dockerfile",
-          "hint": "The scaffolded output should include a Dockerfile."
-        },
-        {
-          "command_pattern": "^cat\\s+.*template",
-          "expect_contains": "parameters",
-          "hint": "The template definition should declare its parameters."
-        }
+      [
+       "ask.txt",
+       "'Our variant is essential because our deploy scripts expect port 8081.'"
       ]
+     ],
+     "options": [
+      "Parameterize the real differences (ports, names) and standardize the rest — essential means architectural, not habitual",
+      "Keep all variants — the teams know their needs",
+      "Force the 4 templates with no parameters — standardization above all",
+      "Let the protesting teams fork the platform"
+     ],
+     "correct": 0,
+     "explain": "Parameterized templates absorb legitimate variation (ports, names, labels) while standardizing the architecture. 'Essential' differences that are just habits become parameters; the rest converges. Forking recreates the sprawl."
+    },
+    {
+     "symptom": "4 templates shipped with versioning. Now teams pin to v1 forever and never take updates.",
+     "evidence": [
+      [
+       "pins.txt",
+       "Teams on template v1: 18. Current: v3. Security fixes in v2, v3: unapplied by 18 teams."
+      ],
+      [
+       "policy.txt",
+       "No deprecation policy. v1 supported 'indefinitely'."
+      ]
+     ],
+     "options": [
+      "Publish a deprecation policy with timelines: old versions get security fixes for N months, then retire",
+      "Force-upgrade everyone to v3 overnight",
+      "Support v1 forever — stability is a feature",
+      "Security fixes aren't critical for templates"
+     ],
+     "correct": 0,
+     "explain": "Templates need versioning and deprecation: without a sunset policy, every version lives forever and security fixes never land. A published timeline (security fixes for N months, then retire) makes upgrades a planned event, not a surprise."
     }
-  ],
-  "simulations": [],
-  "consoleSims": [],
-  "terminalMissions": [],
-  "sections": [
+   ],
+   "debrief": "Templates are products with lifecycles: consolidate to a few parameterized ones, version them, and deprecate on a published timeline. Unmaintained choice is worse than constrained choice."
+  },
+  {
+   "id": "plateng-sim-3",
+   "title": "The synchronous platform API",
+   "kind": "troubleshoot",
+   "domain_id": "platform-sre",
+   "difficulty": 2,
+   "points": 15,
+   "brief": "The platform's provisioning API takes 90 seconds to create an environment — and times out half the calls. CI jobs hang, retries double-provision, and teams are building workarounds. Redesign the API contract.",
+   "steps": [
     {
-      "id": "sec-full-spectrum",
-      "title": "Full Spectrum Dominance — core path",
-      "kind": "core",
-      "lectures": [],
-      "lab_ids": [
-        "fsd-tl-lab-1",
-        "fsd-tl-lab-2",
-        "fsd-tl-lab-3",
-        "fsd-sg-lab-1",
-        "fsd-sg-lab-2",
-        "fsd-sg-lab-3",
-        "fsd-ai-lab-1",
-        "fsd-ai-lab-2",
-        "fsd-ai-lab-3"
+     "symptom": "POST /environments takes 90s, times out at 60s in most clients. Retries create duplicate environments.",
+     "evidence": [
+      [
+       "api.txt",
+       "p50: 88s, p99: 140s. Client timeout: 60s. Duplicates from retries: 23 this month."
       ],
-      "drill_domain_ids": [
-        "tl-interview",
-        "tl-endpoint-ops",
-        "sec-graphs",
-        "graph-defense",
-        "ml-defense",
-        "ai-agent-sec"
+      [
+       "code.txt",
+       "Handler: synchronous — provisions everything before responding. No idempotency key."
       ]
+     ],
+     "options": [
+      "Make provisioning asynchronous: 202 Accepted with an operation ID, pollable status, idempotent retries",
+      "Increase all client timeouts to 180s",
+      "Make provisioning faster — 90s is the real problem",
+      "Tell teams not to retry"
+     ],
+     "correct": 0,
+     "explain": "Platform APIs wrap slow operations asynchronously: 202 Accepted with an operation ID and pollable status, because the caller is usually automation. Idempotency keys make retries safe — the duplicate environments came from retrying a non-idempotent synchronous call."
+    },
+    {
+     "symptom": "Async API shipped. Now failures surface as 'operation failed' with no detail — automation can't tell retryable from fatal.",
+     "evidence": [
+      [
+       "errors.txt",
+       "Operation status: 'failed'. Reason: null. Retry policy: blind retry 3x."
+      ],
+      [
+       "waste.txt",
+       "Blind retries of fatal errors: 140 this month. Each provisions partial infra."
+      ]
+     ],
+     "options": [
+      "Return structured, actionable errors: machine-readable codes distinguishing retryable, fatal, and needs-input states",
+      "'Failed' is enough — humans can check the logs",
+      "Retry everything 10 times to be sure",
+      "Never fail operations — always return success"
+     ],
+     "correct": 0,
+     "explain": "The caller is usually automation, so errors must be machine-actionable: structured codes for retryable vs fatal vs needs-input. 'Failed' with no reason forces blind retries — which is how partial infrastructure accumulates."
+    },
+    {
+     "symptom": "The API is solid now, but every team wraps it differently — 9 client libraries, 4 of them broken.",
+     "evidence": [
+      [
+       "clients.txt",
+       "Client wrappers: 9 (3 official-ish, 6 team-built). Broken: 4."
+      ],
+      [
+       "ask.txt",
+       "'Which client should we use?' — no canonical answer."
+      ]
+     ],
+     "options": [
+      "Ship and support one official client per ecosystem — the API contract includes its clients",
+      "Clients are the teams' problem — the API is documented",
+      "Ban custom clients",
+      "Deprecate the API — clients are too hard"
+     ],
+     "correct": 0,
+     "explain": "A platform API's contract includes its clients: one official, supported client per ecosystem beats nine divergent wrappers. The API is the product — and products ship SDKs, not just docs."
     }
-  ],
-  "behavioral": [
+   ],
+   "debrief": "Platform APIs are built for automation: async with operation IDs, idempotent, structured actionable errors, and official clients. The API is a product — design it like one."
+  },
+  {
+   "id": "plateng-sim-4",
+   "title": "Catalog with no owners",
+   "kind": "troubleshoot",
+   "domain_id": "platform-sre",
+   "difficulty": 1,
+   "points": 10,
+   "brief": "The software catalog has 300 entries. 90 have no owner, 40 point at archived repos, and the 'runbook' links 404. The catalog is where services go to be forgotten. Fix it.",
+   "steps": [
     {
-      "prompt": "Tell me about the most technically difficult problem you have run into — a homelab, a broken environment, anything — and how you solved it.",
-      "framework": "STAR",
-      "points": [
-        "Pick ONE problem with a real evidence trail: the symptom, what you measured, the hypothesis you tested",
-        "Show the loop: scope, observe, hypothesize, smallest safe change, validate — interviewers score the method, not just the fix",
-        "Name the tools (VM build, networking, logs) and the lesson it taught you",
-        "Close with the result in concrete terms: what works now that did not before"
+     "symptom": "300 catalog entries. Owner missing: 90. Repo archived: 40. Runbook links dead: 61.",
+     "evidence": [
+      [
+       "catalog.txt",
+       "Entries: 300. owner: null on 90. repo archived: 40. runbook 404: 61."
       ],
-      "pitfalls": [
-        "Choosing a story with no real obstacle (“I Googled it” is not a story)",
-        "Skipping validation — saying it worked without proving it",
-        "Rambling past two minutes without reaching the result"
+      [
+       "usage.txt",
+       "Catalog lookups during incidents: 12% of incidents. 'We use Slack instead.'"
       ]
+     ],
+     "options": [
+      "Make ownership the minimum viable entry: no owner, no catalog entry — then enforce freshness with automation",
+      "More metadata fields will fix the catalog",
+      "Delete the catalog — Slack works fine",
+      "Hire someone to manually curate all 300 entries"
+     ],
+     "correct": 0,
+     "explain": "The software catalog is the platform's front door, and ownership is the minimum viable entry: name, owner, lifecycle stage, repo and runbook links. A catalog that accepts ownerless entries becomes a write-only archive — enforce the minimum at write time."
     },
     {
-      "prompt": "Tell me about a time you dealt with a frustrated customer or user while something was broken.",
-      "framework": "STAR",
-      "points": [
-        "Lead with empathy and ownership: acknowledge the impact before the technical detail",
-        "Show translation: what you told them, in their language, plus the timeline you committed to",
-        "Show judgment: the narrow fix you chose and what you refused to do (e.g., disabling the control to clear the symptom)",
-        "Close with the relationship outcome, not just the technical one"
+     "symptom": "Ownership enforced for new entries. The 90 ownerless legacy entries remain — nobody claims them.",
+     "evidence": [
+      [
+       "legacy.txt",
+       "90 ownerless entries. Claim campaign: 12 claimed, 78 silent."
       ],
-      "pitfalls": [
-        "Badmouthing the customer to sound decisive",
-        "Promising a timeline you could not keep",
-        "Framing the user as the problem rather than the situation"
+      [
+       "risk.txt",
+       "3 of the 78 run in production. Nobody knows who deploys them."
       ]
+     ],
+     "options": [
+      "Escalate the unclaimed production services: they get owners by deadline or they get sunset plans — unknown production ownership is a risk",
+      "Leave the 78 — they work fine without owners",
+      "Assign them all to the platform team",
+      "Delete all 78 immediately"
+     ],
+     "correct": 0,
+     "explain": "Unowned production services are an operational risk with no accountable party. The campaign needs teeth: claim by deadline or the service gets a sunset plan. Assigning them all to the platform team just moves the fiction."
     },
     {
-      "prompt": "Why ThreatLocker, and why cybersecurity?",
-      "framework": "STAR",
-      "points": [
-        "Connect prevention to something concrete: a moment you saw detection arrive too late, or a system you hardened",
-        "Tie their model to your instincts: deny-by-default matches how you already think about trust",
-        "Show service orientation: the Cyber Hero culture rewards the 2 a.m. helper — give an example of being one",
-        "Name one forward-looking reason: Zero Trust, the MSP mission, or the bootcamp community investment"
+     "symptom": "Catalog is clean. Now entries rot again within months — repos move, owners leave, links die.",
+     "evidence": [
+      [
+       "rot.txt",
+       "6 months after cleanup: 34 entries stale again. Owner departures: 11."
       ],
-      "pitfalls": [
-        "Generic flattery with no specifics about the company",
-        "Leading with compensation, title, or location convenience",
-        "Claiming expertise in products you have only read about — frame it as studied, not mastered"
+      [
+       "manual.txt",
+       "Freshness process: quarterly manual review (never happened twice)."
       ]
-    },
-    {
-      "framework": "STAR",
-      "pitfalls": [
-        "Staying vague ('I analyzed the data') instead of naming what you connected.",
-        "Skipping your own role: what did YOU see that others missed?",
-        "No outcome: what changed because you joined the dots?"
-      ],
-      "points": [
-        "The scattered signals and why nobody had connected them yet",
-        "The specific links you drew between them (shared host, time, infrastructure)",
-        "What the bigger picture turned out to be and what action it drove",
-        "What the experience taught you about investigating"
-      ],
-      "prompt": "Tell me about a time you connected scattered clues into a bigger picture that others had missed."
-    },
-    {
-      "framework": "STAR",
-      "pitfalls": [
-        "Claiming you fixed everything: credibility comes from trade-offs, not heroics.",
-        "Hiding the constraint: the limitation is what makes the prioritization story real.",
-        "No metric: 'better' needs a before-and-after."
-      ],
-      "points": [
-        "The constraint (time, budget, staff) and the size of the backlog",
-        "How you decided what mattered most (what was reachable, what was critical)",
-        "What you did first and what you deliberately deferred",
-        "The measurable result of the prioritization"
-      ],
-      "prompt": "Describe a time you had to prioritize risks or fixes with limited time or resources. How did you decide what came first?"
-    },
-    {
-      "framework": "STAR",
-      "pitfalls": [
-        "Reciting jargon to a non-technical audience and calling it communication.",
-        "Skipping the audience's reaction: did they actually understand and act?",
-        "Making yourself the hero instead of the translator."
-      ],
-      "points": [
-        "The technical finding and why it mattered",
-        "Who the audience was and what they cared about",
-        "How you reframed it (a picture, an analogy, a story)",
-        "What decision or action the audience took because they understood"
-      ],
-      "prompt": "Tell me about a time you explained a complex technical finding to a non-technical audience and it changed a decision."
-    },
-    {
-      "prompt": "Tell me about a time you used automation or AI to solve a security problem.",
-      "framework": "STAR",
-      "points": [
-        "The repetitive security task and what it cost in analyst time",
-        "The automation or AI approach you built and how you validated it",
-        "Measured outcome: time saved, detection gained, false positives changed"
-      ],
-      "pitfalls": [
-        "Describing the tool but never the validation",
-        "No measurable outcome"
-      ]
-    },
-    {
-      "prompt": "Describe a time you had to decide whether to trust an automated security decision.",
-      "framework": "STAR",
-      "points": [
-        "The stakes of the automated action and its blast radius",
-        "How you verified before acting (or the gate you built)",
-        "What happened and what you would automate differently next time"
-      ],
-      "pitfalls": [
-        "Saying you always trust the tool",
-        "No mention of blast radius or reversibility"
-      ]
+     ],
+     "options": [
+      "Automate freshness: sync from the repo, flag stale entries, and nudge owners — curation must be continuous, not quarterly",
+      "Do the manual review properly this time",
+      "Accept rot — catalogs are snapshots",
+      "Lock entries so they can't go stale"
+     ],
+     "correct": 0,
+     "explain": "Catalogs rot because the world moves: owners leave, repos migrate. Manual quarterly reviews don't happen; automation does — sync ownership from the org chart, validate links continuously, and nudge owners when entries decay. Ownership first, rich metadata later, freshness always."
     }
-  ],
-  "resources": {
-    "cheatsheet": {
-      "title": "Full Spectrum Dominance — field reference",
-      "sections": [
-        {
-          "heading": "Company facts (verified)",
-          "items": [
-            "Founded 2017 in Orlando, FL — Danny Jenkins (CEO), Sami Jenkins (COO), John Carolan (QA)",
-            "Philosophy: deny-by-default / default-deny — approve known-good, deny the rest",
-            "Customers: 70,000+ organizations, sold heavily through the MSP channel",
-            "Funding: $190M Series F, July 2026 (Elephant-led); ~730 employees",
-            "Interview address: 1901 Summit Tower Blvd, Orlando, FL 32810",
-            "Culture: in-office 5 days/week; free lunch; post-offer background + drug screening"
-          ]
-        },
-        {
-          "heading": "Product stack",
-          "items": [
-            "Allowlisting — default-deny execution control for apps, DLLs, scripts, installers",
-            "Ringfencing — constrains allowed apps: app-to-app, file, registry, network",
-            "Storage Control — USB/device policy by serial, user, file type, encryption",
-            "Elevation Control — just-in-time per-app admin, no standing rights",
-            "Network Control — host firewall; port/IP/dynamic-ACL rules; ZTNA foundation",
-            "Web Control — agent-based DNS/URL category filtering, works off-network",
-            "Cyber Hero MDR — 24/7/365 US-based response, ~60-second average",
-            "Testing Environment — one-button VDI sandbox; checks AV flags, canary files, registry changes"
-          ]
-        },
-        {
-          "heading": "Rule strength (strongest to weakest)",
-          "items": [
-            "Certificate/publisher rules — survive version updates",
-            "Hash rules — precise but break on every new version",
-            "Path rules — weakest; never in user-writable locations",
-            "Learning Mode catalogs before enforcement; Installation Mode pauses blocking — scope and time-box both"
-          ]
-        },
-        {
-          "heading": "Terminal evidence commands",
-          "items": [
-            "nmap <host> — which ports answer (22/80/443 open)",
-            "dig <name> — ANSWER SECTION with the A record",
-            "ss — listening sockets",
-            "systemctl status <svc> — unit state",
-            "journalctl -u <svc> — service logs",
-            "sha256sum <file> — real SHA-256 identity",
-            "grep <pattern> <file> — search the record",
-            "ps — what is actually running"
-          ]
-        },
-        {
-          "heading": "Graph vocabulary",
-          "items": [
-            "node — any entity tracked in the model (user, host, IP, domain, file hash, vulnerability)",
-            "edge — a labeled relationship between two nodes (logged into, resolved to, downloaded)",
-            "degree — number of edges on a node; high-degree nodes are attacker highways",
-            "centrality — how much traffic or how many paths flow through a node",
-            "directed edge — a relationship with a direction (A downloaded FROM B)",
-            "security graph — the living model of your whole environment as nodes and edges",
-            "attack graph — the subgraph of exploitable paths to your targets",
-            "knowledge graph — threat-intel indicators linked to campaigns and actors"
-          ]
-        },
-        {
-          "heading": "Attack-graph playbook",
-          "items": [
-            "inventory first — you cannot graph what you have not discovered",
-            "model flaws AND misconfigs as exploit edges",
-            "compute shortest paths to the crown jewels",
-            "find the choke point (highest betweenness on those paths)",
-            "break the path: patch, segment, or remove the edge",
-            "re-scan and re-run the graph to prove the path is gone",
-            "never trust yesterday's graph — redeployments redraw the map"
-          ]
-        },
-        {
-          "heading": "Zero Trust + graphs",
-          "items": [
-            "never trust, always verify — re-evaluate every access decision",
-            "assume breach — treat unexpected edges as hostile until proven otherwise",
-            "microsegmentation — allow-list approved edges, alert on new ones",
-            "ReBAC — policies are path queries on the identity graph",
-            "continuous verification — device/location/behavior edges change, trust follows",
-            "anomalous edge — a first-seen connection between strangers is the classic signal"
-          ]
-        },
-        {
-          "heading": "ML detection vocabulary",
-          "items": [
-            "Supervised learning — learns from labeled examples; strong on known threats, blind to novel ones",
-            "Unsupervised learning — finds structure without labels; clustering and dimensionality reduction",
-            "Anomaly detection — models 'normal' and flags deviations; the workhorse for novel threats",
-            "UEBA — user and entity behavior analytics: per-user baselines plus peer-group comparison",
-            "Feature engineering — encoding raw logs into model inputs (login velocity, rare processes, domain entropy)",
-            "Concept drift — model decay as attacker behavior and legitimate traffic shift over time"
-          ]
-        },
-        {
-          "heading": "Detection metrics",
-          "items": [
-            "Precision — of all flagged alerts, how many were real",
-            "Recall — of all real attacks, how many were flagged",
-            "Threshold tuning — sliding the decision cutoff trades precision against recall",
-            "Alert fatigue — when false positives train analysts to ignore the queue",
-            "DGA — domain generation algorithm; detected via character entropy of domain names"
-          ]
-        },
-        {
-          "heading": "Agent and LLM security",
-          "items": [
-            "Direct prompt injection — attacker input overrides app instructions (OWASP LLM01:2025, the #1 LLM risk)",
-            "Indirect prompt injection — hidden instructions inside retrieved data (email, web, docs)",
-            "Jailbreak — defeating the model's own safety policy; distinct from hijacking app behavior",
-            "Tool poisoning — malicious tool descriptions or metadata steer an agent to misuse its tools (MCP ecosystem risk)",
-            "Insecure output handling — executing or trusting model output without validation",
-            "Least-privilege tools — grant each tool only the scope its task requires"
-          ]
-        },
-        {
-          "heading": "Adversarial ML and governance",
-          "items": [
-            "Evasion — perturbing inputs at inference time to dodge a classifier",
-            "Poisoning — corrupting training data to corrupt the model",
-            "Extraction — querying a model to steal its behavior or parameters",
-            "MITRE ATLAS — knowledge base of adversarial ML tactics and techniques",
-            "Red-teaming and evals — adversarial testing of AI systems before deployment",
-            "Human-in-the-loop — required approval for high-impact or irreversible agent actions",
-            "SOAR — security orchestration, automation and response; automate enrichment, gate containment"
-          ]
-        }
+   ],
+   "debrief": "A catalog is a living system: ownership as the price of entry, teeth behind the cleanup, and automated freshness forever. The front door only works if someone maintains the building."
+  },
+  {
+   "id": "plateng-sim-5",
+   "title": "The escape hatch that became the road",
+   "kind": "troubleshoot",
+   "domain_id": "platform-sre",
+   "difficulty": 2,
+   "points": 15,
+   "brief": "The golden path has an escape hatch for 'justified exceptions.' 60% of new services now use the hatch. The paved road is empty. Reclaim the golden path.",
+   "steps": [
+    {
+     "symptom": "Escape-hatch usage: 60% of new services. Golden path: 40%. The hatch was meant for rare exceptions.",
+     "evidence": [
+      [
+       "usage.txt",
+       "New services: 60% escape hatch, 40% golden path. Hatch justifications: mostly blank."
+      ],
+      [
+       "reasons.txt",
+       "'The golden path didn't support our database.' 'The hatch was faster.'"
       ]
+     ],
+     "options": [
+      "Treat hatch usage as product feedback: find out what the golden path lacks, fix it, and require real justification for the hatch",
+      "Remove the escape hatch — everyone on the golden path",
+      "The hatch is popular — make it the new golden path",
+      "Ignore it — 40% adoption is fine"
+     ],
+     "correct": 0,
+     "explain": "Golden paths are paved roads, not mandates — but a 60% escape rate is the users voting with their feet. Each hatch use is feedback about what the paved road lacks; fix the road, and require genuine justification (reviewed, expiring) for the exceptions that remain."
     },
-    "glossary": [
-      {
-        "term": "Allowlisting",
-        "def": "Default-deny execution control: only explicitly approved applications, scripts, and installers may run."
-      },
-      {
-        "term": "Blocklisting",
-        "def": "Default-allow model: everything runs except recognized-bad items — the window zero-days live in."
-      },
-      {
-        "term": "Default-deny",
-        "def": "Deny-by-default posture: unknown code, devices, or connections are refused unless explicitly approved."
-      },
-      {
-        "term": "Ringfencing",
-        "def": "Containment applied on top of allowlisting; restricts what a permitted app may do across app-to-app, file, registry, and network dimensions."
-      },
-      {
-        "term": "Learning Mode",
-        "def": "Agent mode that catalogs applications and dependencies and auto-builds policies before enforcement; temporarily disables file blocking."
-      },
-      {
-        "term": "Installation Mode",
-        "def": "Temporary mode that pauses file blocking for installs — must be tightly scoped and time-boxed."
-      },
-      {
-        "term": "Elevation Control",
-        "def": "Grants specific approved applications admin rights for standard users — just-in-time, per-app, time-boxed — without standing admin rights."
-      },
-      {
-        "term": "Application hopping",
-        "def": "An elevated or trusted process spawning another tool (e.g., PowerShell) to inherit its privileges — countered by ringfencing the elevated process."
-      },
-      {
-        "term": "Storage Control",
-        "def": "Device and path policy: USB approved by serial, user, file type, time, and encryption; unapproved devices do not connect."
-      },
-      {
-        "term": "Network Control",
-        "def": "Centrally managed host firewall; rules by port, source IP, and dynamic ACLs; egress allowlisting pins apps to approved destinations."
-      },
-      {
-        "term": "ZTNA",
-        "def": "Zero Trust Network Access: per-session, per-application brokered connections (commonly over port 443) with no open inbound ports — deny-by-default for network access."
-      },
-      {
-        "term": "Approval Center",
-        "def": "Portal queue where end-user software requests arrive for admin review and decision."
-      },
-      {
-        "term": "Unified Audit",
-        "def": "Real-time audit showing what was allowed or denied across endpoints — and why; the evidence layer for triage."
-      },
-      {
-        "term": "Testing Environment",
-        "def": "One-button cloud VDI sandbox launched from an approval request; logs AV flags, canary-file access, and registry/system changes."
-      },
-      {
-        "term": "Cyber Hero MDR",
-        "def": "24/7/365 US-based managed detection and response team; validates alerts, isolates hosts, acts on customer runbooks; ~60-second average response."
-      },
-      {
-        "term": "Assume breach",
-        "def": "Design and operate as if the attacker already has a foothold — least privilege, containment, and monitoring everywhere."
-      },
-      {
-        "term": "Living off the land",
-        "def": "Attacks that hijack trusted built-in tools (Word, PowerShell) instead of dropping malware — defeated by behavior containment, not signatures."
-      },
-      {
-        "term": "Change control",
-        "def": "Scoped, ticketed, tested changes with validation and rollback — emergency speed never cancels the process."
-      },
-      {
-        "def": "A node in an attack graph representing a system or weakness, connected by edges that represent steps an attacker could take between them.",
-        "term": "attack graph"
-      },
-      {
-        "def": "How central a node is to paths through the graph (for example, betweenness: how many shortest paths cross it).",
-        "term": "centrality"
-      },
-      {
-        "def": "The most valuable assets in the environment (customer data, finance systems, source code): what attack paths are measured against.",
-        "term": "crown jewels"
-      },
-      {
-        "def": "A labeled connection between two nodes, representing a relationship such as 'logged into' or 'resolved to'.",
-        "term": "edge"
-      },
-      {
-        "def": "A graph of threat indicators (IPs, domains, hashes) linked to campaigns, actors, and each other through shared infrastructure.",
-        "term": "knowledge graph"
-      },
-      {
-        "def": "The practice of mapping relationships in data to reveal hidden associations; rooted in Euler's 1736 graph theory, 1970s paper link charts, and post-2001 intelligence work.",
-        "term": "link analysis"
-      },
-      {
-        "def": "A segment of the network so small that its allowed communications can be enumerated as a graph of approved edges.",
-        "term": "microsegmentation"
-      },
-      {
-        "def": "An entity in the graph: a user, host, IP address, domain, file, or vulnerability.",
-        "term": "node"
-      },
-      {
-        "def": "Access control where policy is evaluated by traversing relationships on a graph (for example: user reports_to manager who owns the resource's project).",
-        "term": "ReBAC"
-      },
-      {
-        "def": "A machine-learning model that operates directly on graph structure to classify nodes or subgraphs, for example labeling attack vs normal behavior.",
-        "term": "graph neural network (GNN)"
-      },
-      {
-        "def": "Monitoring user and entity behavior by modeling their normal relationship patterns and flagging structural anomalies.",
-        "term": "UEBA"
-      },
-      {
-        "term": "Supervised learning",
-        "def": "ML trained on labeled examples; classifies new inputs into known categories."
-      },
-      {
-        "term": "Anomaly detection",
-        "def": "ML approach that models normal behavior and flags statistically rare deviations."
-      },
-      {
-        "term": "Feature engineering",
-        "def": "Turning raw telemetry into numeric model inputs, e.g. login velocity or domain entropy."
-      },
-      {
-        "term": "Precision",
-        "def": "Share of flagged alerts that were real; the false-positive economics of the queue."
-      },
-      {
-        "term": "Recall",
-        "def": "Share of real attacks the detector flagged; the miss rate's complement."
-      },
-      {
-        "term": "Concept drift",
-        "def": "Decay of model performance as the data distribution shifts over time."
-      },
-      {
-        "term": "Prompt injection",
-        "def": "Attacker-crafted instructions that override an LLM application's intended behavior; direct (user input) or indirect (retrieved data)."
-      },
-      {
-        "term": "Jailbreak",
-        "def": "Crafted input that defeats an LLM's own safety policy or refusal behavior."
-      },
-      {
-        "term": "Tool poisoning",
-        "def": "Malicious tool descriptions or metadata that manipulate an AI agent into misusing its tools."
-      },
-      {
-        "term": "Insecure output handling",
-        "def": "Failing to validate LLM output before acting on it, e.g. executing generated commands."
-      },
-      {
-        "term": "Evasion attack",
-        "def": "Adversarial ML technique: perturbing inputs to cross a classifier's decision boundary."
-      },
-      {
-        "term": "MITRE ATLAS",
-        "def": "Adversarial Threat Landscape for AI Systems; MITRE's knowledge base of AI attack tactics."
-      },
-      {
-        "term": "SOAR",
-        "def": "Security orchestration, automation and response; playbooks that enrich automatically and gate containment on humans."
-      },
-      {
-        "term": "Human-in-the-loop",
-        "def": "Required human approval before high-impact or irreversible automated actions."
+    {
+     "symptom": "The top hatch reason: the golden path doesn't support the team's database. It never will — it's exotic.",
+     "evidence": [
+      [
+       "db.txt",
+       "Database: legacy proprietary, 2 services, no managed offering. Golden path: Postgres or MySQL."
+      ],
+      [
+       "cost.txt",
+       "Adding it to the golden path: 3 months of platform work for 2 services."
+      ]
+     ],
+     "options": [
+      "Keep it as a governed exception: documented, reviewed, expiring — not every snowflake belongs on the paved road",
+      "Add it to the golden path regardless of cost",
+      "Force the 2 services onto Postgres",
+      "Remove the database from the platform entirely"
+     ],
+     "correct": 0,
+     "explain": "Escape hatches exist for justified exceptions — a legacy proprietary database for 2 services is exactly that. The answer is governed exception (documented, reviewed, expiring), not paving the road to every snowflake or forcing a migration that destroys value."
+    },
+    {
+     "symptom": "Hatch usage is down to 8% with real justifications. Now platform leadership wants to report '100% golden path' by closing the hatch.",
+     "evidence": [
+      [
+       "metric.txt",
+       "Hatch: 8%, all justified and expiring. Golden path: 92%."
+      ],
+      [
+       "ask.txt",
+       "'Can we get to 100% for the board slide?'"
+      ]
+     ],
+     "options": [
+      "Keep the governed hatch: 100% is a vanity metric, and closing the hatch recreates shadow tooling",
+      "Close the hatch — 100% looks better",
+      "Report 100% and keep the hatch quietly",
+      "The 8% are failures — fix them"
+     ],
+     "correct": 0,
+     "explain": "A governed 8% exception rate is the healthy steady state — it means the road serves 92% and the exceptions are visible and expiring. Chasing 100% for a slide recreates the shadow tooling the platform was built to replace. Report the honest number."
+    }
+   ],
+   "debrief": "Golden paths need governed escape hatches: the hatch rate is product feedback, genuine exceptions get documented expiry, and 92% with honesty beats 100% with shadow tooling."
+  }
+ ],
+ "consoleSims": [
+  {
+   "id": "plateng-console-1",
+   "title": "Provision the catalog database",
+   "console": "db-admin",
+   "domain_id": "platform-sre",
+   "difficulty": 2,
+   "brief": "The software catalog needs its backing store: create the database, its service identity, least-privilege grants, and the first backup.",
+   "tasks": [
+    {
+     "id": "t1",
+     "instruction": "Create a database named service-catalog.",
+     "validate": {
+      "action": "create-database",
+      "params": {
+       "name": "service-catalog"
       }
-    ],
-    "links": [
-      {
-        "label": "ThreatLocker Zero Trust platform explainer (official)",
-        "url": "https://www.threatlocker.com/blog/edr-xdr-vs-zero-trust-prevention",
-        "note": "EDR/XDR vs Zero Trust prevention — the deny-by-default argument in their own words."
-      },
-      {
-        "label": "ThreatLocker Bootcamp page (official)",
-        "url": "https://www.threatlocker.com/bootcamp",
-        "note": "Free six-week program: phases, format, and what completion leads to."
-      },
-      {
-        "label": "ThreatLocker Careers (official)",
-        "url": "https://www.threatlocker.com/company/careers",
-        "note": "Open roles and the hiring-event listing; roles are in-office in Orlando."
-      },
-      {
-        "label": "Elevation Control (official)",
-        "url": "https://www.threatlocker.com/secure-privileges-without-sacrificing-agility",
-        "note": "Just-in-time privilege without standing admin."
-      },
-      {
-        "label": "Storage Control (official)",
-        "url": "https://www.threatlocker.com/capabilities/external-storage-device-control",
-        "note": "USB/device policy by serial, user, file type, encryption."
-      },
-      {
-        "label": "Web Control (official)",
-        "url": "https://www.threatlocker.com/capabilities/web-content-control",
-        "note": "Agent-based DNS/URL filtering, including off-network."
-      },
-      {
-        "label": "Cyber Hero MDR (official)",
-        "url": "https://www.threatlocker.com/get-threat-response-in-minutes",
-        "note": "24/7/365 managed response positioning."
-      },
-      {
-        "label": "MDR capabilities (official)",
-        "url": "https://www.threatlocker.com/capabilities/managed-detection-and-response",
-        "note": "Detection and response capability detail."
-      },
-      {
-        "label": "NIST SP 800-207 — Zero Trust Architecture",
-        "url": "https://csrc.nist.gov/pubs/sp/800/207/final",
-        "note": "The canonical Zero Trust reference: tenets, deployment models, policy engine trust algorithm."
-      },
-      {
-        "label": "CISA Zero Trust Maturity Model",
-        "url": "https://www.cisa.gov/zero-trust-maturity-model",
-        "note": "Federal maturity steps across identity, devices, networks, applications, and data."
-      },
-      {
-        "label": "MITRE ATT&CK",
-        "note": "The adversary-tactics framework; codify its tactic chains as subgraphs to hunt for in your security graph.",
-        "url": "https://attack.mitre.org/"
-      },
-      {
-        "label": "CISA — Cybersecurity and Infrastructure Security Agency",
-        "note": "US government advisories, alerts, and guidance frequently referenced in threat-intel work.",
-        "url": "https://www.cisa.gov/"
-      },
-      {
-        "label": "Neo4j getting started",
-        "note": "A widely used graph database; the book's call to action suggests piloting graph queries on exported security data with tools like this.",
-        "url": "https://neo4j.com/docs/getting-started/"
-      },
-      {
-        "label": "OWASP GenAI Security Project",
-        "url": "https://genai.owasp.org/",
-        "note": "Home of the LLM Top 10 and GenAI security guidance"
-      },
-      {
-        "label": "OWASP Top 10 for LLM Applications",
-        "url": "https://genai.owasp.org/llm-top-10/",
-        "note": "The ranked LLM risk list — prompt injection is #1"
-      },
-      {
-        "label": "NIST AI Risk Management Framework",
-        "url": "https://www.nist.gov/itl/ai-risk-management-framework",
-        "note": "The standard governance framework for managing AI risk"
-      },
-      {
-        "label": "MITRE ATLAS",
-        "url": "https://atlas.mitre.org/",
-        "note": "Adversarial Threat Landscape for AI Systems — tactics and techniques"
-      },
-      {
-        "label": "CISA AI guidance",
-        "url": "https://www.cisa.gov/ai",
-        "note": "CISA's AI security resources and guidance"
+     },
+     "hint": "Databases section: create database service-catalog."
+    },
+    {
+     "id": "t2",
+     "instruction": "Create a database user named catalog-svc.",
+     "validate": {
+      "action": "create-user",
+      "params": {
+       "name": "catalog-svc"
       }
-    ],
-    "checklist": [
-      "Sixty-second company brief rehearsed out loud: year, city, philosophy, three products, one milestone",
-      "Two STAR stories ready: hardest technical problem; a frustrated customer or user",
-      "“Why ThreatLocker / why cybersecurity” answer tied to prevention and service, not slogans",
-      "Ringfencing explained in one plain-English sentence (the Word-on-a-leash version)",
-      "Elevation Control answer ready: just-in-time, per-app, time-boxed, ringfenced, logged",
-      "Triage loop memorized: scope → observe → hypothesize → smallest safe change → validate → explain",
-      "Three questions to ask them: team on-call shape, approval SLA expectations, what “most helpful” looks like on the team",
-      "Logistics: 1901 Summit Tower Blvd, Orlando FL; in-office role; ID and references ready",
-      "Define your crown jewels before you model anything.",
-      "Build the asset-and-access graph from live sources (scans, configs, identity), not from the CMDB alone.",
-      "Model vulnerabilities AND misconfigurations as exploit edges.",
-      "Compute shortest attack paths to each crown jewel; name the choke points.",
-      "Prioritize remediation by path risk, not by raw severity score.",
-      "Express at least one access policy as a relationship path (ReBAC pilot).",
-      "Baseline approved communication edges per segment; alert on first-seen edges.",
-      "Brief the next incident or risk review with the graph, not a spreadsheet.",
-      "Can you explain supervised vs unsupervised vs anomaly detection with a security example for each?",
-      "Can you name three log features you would engineer for a C2 detector and why?",
-      "Can you walk through a UEBA alert (baseline, deviation, verification) end to end?",
-      "Can you explain the precision/recall tradeoff and how you would set a threshold for a fatigued SOC?",
-      "Can you define concept drift and describe a retraining process?",
-      "Can you distinguish direct vs indirect prompt injection and jailbreaking?",
-      "Can you explain tool poisoning in the MCP ecosystem and three controls against it?",
-      "Can you describe insecure output handling and how you would validate agent output?",
-      "Can you name the three adversarial ML attack classes and one defense for evasion?",
-      "Can you design a SOAR playbook gate: what automates freely, what needs human approval?"
-    ]
-  },
-  "chat": {
-    "persona": "You are a rigorous but encouraging interviewer preparing a candidate for a Zero Trust endpoint security role. Probe with 'why' and 'how would you explain that' follow-ups. Stay on topic: ThreatLocker-style endpoint defense, security graphs, and AI-powered security. All practice is original; never reproduce vendor material.",
-    "topics": [
-      {
-        "id": "tl-interview",
-        "name": "ThreatLocker Interview Prep",
-        "key_points": [
-          "allowlisting",
-          "ringfencing",
-          "default-deny",
-          "cyber hero",
-          "zero trust tenets",
-          "STAR stories"
-        ],
-        "followups": [
-          "Can you give an example?",
-          "How would you explain that to a CFO?"
-        ]
-      },
-      {
-        "id": "tl-endpoint-ops",
-        "name": "Zero Trust Endpoint Operations",
-        "key_points": [
-          "default-deny",
-          "ringfencing dimensions",
-          "elevation control",
-          "storage control",
-          "network control",
-          "change control"
-        ],
-        "followups": [
-          "Walk me through the triage order.",
-          "When would you deny outright?"
-        ]
-      },
-      {
-        "followups": [
-          "Can you walk through an example?",
-          "How does this change patch prioritization?",
-          "What is the difference between a security graph and an attack graph?"
-        ],
-        "id": "sec-graphs",
-        "key_points": [
-          "nodes",
-          "edges",
-          "attack graphs",
-          "kill chain",
-          "link analysis",
-          "threat intel graphs"
-        ],
-        "name": "Security Graphs: Think Like an Attacker"
-      },
-      {
-        "followups": [
-          "How do graphs change patch prioritization?",
-          "What is ReBAC and how is it different from RBAC?",
-          "How would a small team start with graphs?"
-        ],
-        "id": "graph-defense",
-        "key_points": [
-          "attack-path analysis",
-          "insider threat",
-          "vulnerability graphs",
-          "Zero Trust",
-          "microsegmentation",
-          "blast radius"
-        ],
-        "name": "Graph-Powered Defense Operations"
-      },
-      {
-        "id": "ml-defense",
-        "name": "ML-Powered Threat Defense",
-        "key_points": [
-          "anomaly detection",
-          "UEBA",
-          "alert fatigue",
-          "concept drift",
-          "threat hunting",
-          "precision recall"
-        ],
-        "followups": [
-          "Walk me through an example.",
-          "How do you handle false positives?"
-        ]
-      },
-      {
-        "id": "ai-agent-sec",
-        "name": "Securing AI Systems & Agents",
-        "key_points": [
-          "prompt injection",
-          "tool poisoning",
-          "MCP risks",
-          "insecure output handling",
-          "SOAR gates",
-          "adversarial ML"
-        ],
-        "followups": [
-          "Walk me through an example.",
-          "How do you secure an AI agent end to end?"
-        ]
+     },
+     "hint": "Users & grants section: create user catalog-svc."
+    },
+    {
+     "id": "t3",
+     "instruction": "Grant SELECT on service-catalog to catalog-svc.",
+     "validate": {
+      "action": "grant-priv",
+      "params": {
+       "db": "service-catalog",
+       "user": "catalog-svc",
+       "priv": "SELECT"
       }
-    ]
-  },
-  "simulation": {
-    "items": 12,
-    "minutes": 180,
-    "evidence_cost_mins": 2
-  },
-  "media": [
-    {
-      "id": "tl-allowlist-vs-blocklist",
-      "kind": "diagram",
-      "title": "Allowlisting vs blocklisting: default-deny vs default-allow",
-      "svg": "assets/diagrams/tl-allowlist-vs-blocklist.svg",
-      "lesson_ref": "c-tl-endpoint-ops",
-      "caption": "Default-deny stops unknown code without a signature; default-allow runs it until one exists.",
-      "alt": "Side-by-side comparison: on the left, a default-deny gate runs known-good payroll software and denies unknown ransomware with no signature needed; on the right, a default-allow gate runs both until the ransomware is recognized as bad."
+     },
+     "hint": "Users & grants section: db service-catalog, user catalog-svc, privilege SELECT."
     },
     {
-      "id": "tl-ringfencing",
-      "kind": "diagram",
-      "title": "Ringfencing: four leashes on an allowed application",
-      "svg": "assets/diagrams/tl-ringfencing.svg",
-      "lesson_ref": "c-tl-endpoint-ops",
-      "caption": "Word stays approved, but it cannot spawn PowerShell, read the credential store, or reach the internet — while opening its document is allowed.",
-      "alt": "An approved Word application inside a dashed containment ring: arrows show PowerShell launch denied, credential-store registry access denied, external network denied, and document file access allowed."
-    },
-    {
-      "id": "tl-zero-trust-stack",
-      "kind": "diagram",
-      "title": "The Zero Trust endpoint stack",
-      "svg": "assets/diagrams/tl-zero-trust-stack.svg",
-      "lesson_ref": "c-tl-interview",
-      "caption": "Five deny-by-default layers — Allowlisting, Ringfencing, Elevation, Storage, Network — watched by Web Control, the Testing Environment, Unified Audit, and the Cyber Hero MDR team.",
-      "alt": "A vertical stack of five layers from Allowlisting at the foundation up through Ringfencing, Elevation Control, Storage Control, and Network Control, with side boxes for Web Control, Testing Environment, Unified Audit, and Cyber Hero MDR."
-    },
-    {
-      "id": "tl-triage-flow",
-      "kind": "diagram",
-      "title": "Application-request triage flow",
-      "svg": "assets/diagrams/tl-triage-flow.svg",
-      "lesson_ref": "c-tl-endpoint-ops",
-      "caption": "Gather evidence first, then branch: trusted gets a scoped rule, unknown goes to the sandbox, malicious gets a documented deny.",
-      "alt": "Flowchart from request arrival through evidence gathering to a decision diamond branching into three outcomes: approve with a scoped rule, detonate in the Testing Environment then ringfence, or deny with documented evidence."
-    },
-    {
-      "alt": "Diagram of four labeled nodes (user, host, file, domain, IP) joined by labeled directed edges such as logged into, downloaded, and resolved to, illustrating graph vocabulary.",
-      "caption": "Nodes are the things; edges are the relationships. Attackers move along the edges.",
-      "id": "sg-graph-vocabulary",
-      "kind": "diagram",
-      "lesson_ref": "c-sec-graphs",
-      "svg": "assets/diagrams/sg-graph-vocabulary.svg",
-      "title": "Graph vocabulary: nodes and edges"
-    },
-    {
-      "alt": "Attack graph with four nodes in a chain: external attacker to VPN gateway to file server to customer database, with a dead-end branch to a printer, showing the shortest path to the crown jewel.",
-      "caption": "The shortest path to the crown jewel is length 3. Break the choke point and the campaign dies.",
-      "id": "sg-attack-path",
-      "kind": "diagram",
-      "lesson_ref": "c-sec-graphs",
-      "svg": "assets/diagrams/sg-attack-path.svg",
-      "title": "Attack graph: shortest path to the crown jewels"
-    },
-    {
-      "alt": "Seven kill-chain stages as connected graph nodes: reconnaissance, weaponization, delivery, exploitation, installation, command and control, actions. Three alerts are annotated at delivery, installation, and command and control.",
-      "caption": "Three 'unrelated' alerts, one kill-chain subgraph. Correlate by shared entities, not by severity.",
-      "id": "sg-kill-chain",
-      "kind": "diagram",
-      "lesson_ref": "c-sec-graphs",
-      "svg": "assets/diagrams/sg-kill-chain.svg",
-      "title": "Kill chain as a graph"
-    },
-    {
-      "alt": "A policy engine at the center of a small graph evaluates an access request from a finance user on an untrusted laptop to an R and D code server. The request is denied because there is no prior relationship edge and the device is untrusted.",
-      "caption": "Valid credentials are not enough. The graph checks device trust, history, and relationships on every request.",
-      "id": "sg-zero-trust",
-      "kind": "diagram",
-      "lesson_ref": "c-graph-defense",
-      "svg": "assets/diagrams/sg-zero-trust.svg",
-      "title": "Zero Trust runs on relationships"
-    },
-    {
-      "id": "ai-ml-pipeline",
-      "kind": "diagram",
-      "title": "ML detection pipeline: telemetry to triage",
-      "svg": "assets/diagrams/ai-ml-pipeline.svg",
-      "lesson_ref": "c-ml-defense",
-      "caption": "How raw telemetry becomes scored alerts: features feed the model, the model scores, analysts triage top-down — and analyst verdicts feed retraining.",
-      "alt": "Flow diagram: telemetry sources feed feature extraction, which feeds an ML model, which outputs scored alerts into an analyst triage queue, with a feedback arrow for retraining."
-    },
-    {
-      "id": "ai-ueba-baseline-diagram",
-      "kind": "diagram",
-      "title": "UEBA: baseline vs deviation",
-      "svg": "assets/diagrams/ai-ueba-baseline.svg",
-      "lesson_ref": "c-ml-defense",
-      "caption": "UEBA learns each user's normal hours, locations, and volumes, then scores deviations from that baseline.",
-      "alt": "24-hour timeline showing a shaded normal login window from 8 AM to 6 PM with normal logins inside it, and a red anomaly marker at 2:47 AM for a foreign login scoring 97 out of 100."
-    },
-    {
-      "id": "ai-injection-flow",
-      "kind": "diagram",
-      "title": "Indirect prompt injection attack flow",
-      "svg": "assets/diagrams/ai-injection-flow.svg",
-      "lesson_ref": "c-ai-agent-sec",
-      "caption": "An attacker hides instructions in data the agent retrieves; the agent mistakes data for instructions and misuses its tools.",
-      "alt": "Attack flow diagram: hidden instruction in an email is read by an AI agent, which mistakes it for a command and calls a privileged tool, causing fraud; three defense boxes below: sanitize content, least-privilege tools, human approval."
+     "id": "t4",
+     "instruction": "Back up the service-catalog database.",
+     "validate": {
+      "action": "backup",
+      "params": {
+       "db": "service-catalog"
+      }
+     },
+     "hint": "Databases section: click Back up on service-catalog."
     }
-  ],
-  "foundations": [
+   ],
+   "debrief": "Platform data stores get the same discipline as the platform: dedicated database, service identity with least privilege, and a backup before the first real write."
+  },
+  {
+   "id": "plateng-console-2",
+   "title": "Ship the platform API",
+   "console": "k8s-dashboard",
+   "domain_id": "platform-sre",
+   "difficulty": 2,
+   "brief": "Deploy the platform API itself: its own namespace, pinned image, and a stable service for all the automation clients.",
+   "tasks": [
     {
-      "track": "linux-cli",
-      "why_needed": "Terminal labs and missions run in a simulated Linux shell; command-line fluency is required to complete them."
+     "id": "t1",
+     "instruction": "Create a namespace named platform.",
+     "validate": {
+      "action": "create-namespace",
+      "params": {
+       "name": "platform"
+      }
+     },
+     "hint": "Namespaces section: create namespace platform."
     },
     {
-      "track": "security-basics",
-      "why_needed": "Security-graph and ML-detection lessons assume baseline vocabulary (CIA triad, malware types, incident response phases)."
+     "id": "t2",
+     "instruction": "Deploy platform-api (image registry.internal/platform-api:1.2.0, 3 replicas) into platform.",
+     "validate": {
+      "action": "deploy",
+      "params": {
+       "name": "platform-api",
+       "namespace": "platform",
+       "image": "registry.internal/platform-api:1.2.0",
+       "replicas": 3
+      }
+     },
+     "hint": "Deployments section: name platform-api, namespace platform, image registry.internal/platform-api:1.2.0, 3 replicas."
+    },
+    {
+     "id": "t3",
+     "instruction": "Expose platform-api on port 80 as a ClusterIP service.",
+     "validate": {
+      "action": "expose-service",
+      "params": {
+       "deployment": "platform-api",
+       "port": 80,
+       "type": "ClusterIP"
+      }
+     },
+     "hint": "Services section: deployment platform-api, port 80, type ClusterIP."
     }
+   ],
+   "debrief": "The platform is a workload too: isolated namespace, pinned image, declared service. Dogfooding the golden path is how the platform team finds its own friction."
+  },
+  {
+   "id": "plateng-console-3",
+   "title": "Publish the golden path",
+   "console": "cicd-pipeline",
+   "domain_id": "platform-sre",
+   "difficulty": 2,
+   "brief": "Publish the new golden-path release: configure the path version, rebuild the pipeline, and approve the promotion.",
+   "tasks": [
+    {
+     "id": "t1",
+     "instruction": "Set the pipeline variable GOLDEN_PATH to web-service-v2.",
+     "validate": {
+      "action": "set-variable",
+      "params": {
+       "key": "GOLDEN_PATH",
+       "value": "web-service-v2"
+      }
+     },
+     "hint": "Variables section: key GOLDEN_PATH, value web-service-v2."
+    },
+    {
+     "id": "t2",
+     "instruction": "Trigger a new build of the golden path.",
+     "validate": {
+      "action": "trigger-build",
+      "params": {}
+     },
+     "hint": "Pipeline section: click Trigger new build."
+    },
+    {
+     "id": "t3",
+     "instruction": "Approve the gated deploy stage to publish.",
+     "validate": {
+      "action": "approve-stage",
+      "params": {
+       "stage": "deploy"
+      }
+     },
+     "hint": "Pipeline section: click Approve on the deploy stage."
+    }
+   ],
+   "debrief": "Golden paths ship like products: versioned, built by pipeline, promoted through a gate. The paved road is maintained — that's what makes it paved."
+  },
+  {
+   "id": "plateng-console-4",
+   "title": "Review the template consolidation PR",
+   "console": "git-host",
+   "domain_id": "platform-sre",
+   "difficulty": 1,
+   "brief": "The template consolidation is proposed as a PR. Work the collaboration loop: branch, propose, merge.",
+   "tasks": [
+    {
+     "id": "t1",
+     "instruction": "Create a branch named templates/web-v2.",
+     "validate": {
+      "action": "create-branch",
+      "params": {
+       "name": "templates/web-v2"
+      }
+     },
+     "hint": "Branches section: create branch templates/web-v2."
+    },
+    {
+     "id": "t2",
+     "instruction": "Open a PR titled 'Consolidate web service templates' from templates/web-v2 into main.",
+     "validate": {
+      "action": "open-pr",
+      "params": {
+       "title": "Consolidate web service templates",
+       "base": "main",
+       "head": "templates/web-v2"
+      }
+     },
+     "hint": "Pull requests section: title, base main, head templates/web-v2."
+    },
+    {
+     "id": "t3",
+     "instruction": "Merge PR #2.",
+     "validate": {
+      "action": "merge-pr",
+      "params": {
+       "pr": 2
+      }
+     },
+     "hint": "Pull requests section: click Merge on PR #2 (your new PR)."
+    }
+   ],
+   "debrief": "Platform changes are proposed, not imposed: the consolidation PR lets teams see the parameterized template before it becomes their default. Review is how paved roads get built."
+  }
+ ],
+ "terminalMissions": [
+  {
+   "id": "plateng-m1",
+   "title": "Survey the platform workspace",
+   "domain_id": "platform-sre",
+   "difficulty": 1,
+   "brief": "Platform work starts with orientation: list the workspace to see what the platform team works with.",
+   "objectives": [
+    "List the directory contents"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^ls\\s*$",
+     "expect_contains": "README.md",
+     "hint": "Type: ls"
+    }
+   ],
+   "success_message": "Platform workspace surveyed. Know the terrain."
+  },
+  {
+   "id": "plateng-m2",
+   "title": "Confirm the platform identity",
+   "domain_id": "platform-sre",
+   "difficulty": 1,
+   "brief": "Platform automation runs as service identities; you're the human. Confirm which user this session is.",
+   "objectives": [
+    "Print the current username"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^whoami\\s*$",
+     "expect_contains": "candidate",
+     "hint": "Type: whoami"
+    }
+   ],
+   "success_message": "Platform identity confirmed: candidate."
+  },
+  {
+   "id": "plateng-m3",
+   "title": "Anchor the catalog path",
+   "domain_id": "platform-sre",
+   "difficulty": 1,
+   "brief": "Catalog tooling uses relative paths. Print the working directory to anchor them.",
+   "objectives": [
+    "Print the working directory"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^pwd\\s*$",
+     "expect_contains": "/home/candidate",
+     "hint": "Type: pwd"
+    }
+   ],
+   "success_message": "Catalog path anchored: /home/candidate."
+  },
+  {
+   "id": "plateng-m4",
+   "title": "Record the platform node",
+   "domain_id": "platform-sre",
+   "difficulty": 2,
+   "brief": "The IDP runs on nodes; record this node's kernel string for the platform baseline.",
+   "objectives": [
+    "Print full kernel and machine information"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^uname\\s+-a",
+     "expect_contains": "6.8.0-ilb",
+     "hint": "Type: uname -a"
+    }
+   ],
+   "success_message": "Platform node recorded: Linux 6.8.0-ilb x86_64."
+  },
+  {
+   "id": "plateng-m5",
+   "title": "Name the platform host",
+   "domain_id": "platform-sre",
+   "difficulty": 1,
+   "brief": "Every host in the platform fleet has a name. Print this one's.",
+   "objectives": [
+    "Print the hostname"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^hostname\\s*$",
+     "expect_contains": "interstitium",
+     "hint": "Type: hostname"
+    }
+   ],
+   "success_message": "Platform host named: interstitium."
+  },
+  {
+   "id": "plateng-m6",
+   "title": "Verify the builder context",
+   "domain_id": "platform-sre",
+   "difficulty": 2,
+   "brief": "Golden-path templates execute with your identity. Check your user and group context.",
+   "objectives": [
+    "Print user and group identity details"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^id\\s*$",
+     "expect_contains": "uid=1000",
+     "hint": "Type: id"
+    }
+   ],
+   "success_message": "Builder context verified: uid=1000(candidate)."
+  },
+  {
+   "id": "plateng-m7",
+   "title": "Announce the golden path",
+   "domain_id": "platform-sre",
+   "difficulty": 1,
+   "brief": "Ship the announcement: echo the golden-path release where the record shows it.",
+   "objectives": [
+    "Echo the golden-path phrase"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^echo\\s+golden-path\\s+ready",
+     "expect_contains": "golden-path ready",
+     "hint": "Type: echo golden-path ready"
+    }
+   ],
+   "success_message": "Golden path announced: ready. Paved roads get users."
+  }
+ ],
+ "sections": [
+  {
+   "id": "sec-full-spectrum",
+   "title": "Full Spectrum Dominance — core path",
+   "kind": "core",
+   "lectures": [],
+   "lab_ids": [
+    "fsd-tl-lab-1",
+    "fsd-tl-lab-2",
+    "fsd-tl-lab-3",
+    "fsd-sg-lab-1",
+    "fsd-sg-lab-2",
+    "fsd-sg-lab-3",
+    "fsd-ai-lab-1",
+    "fsd-ai-lab-2",
+    "fsd-ai-lab-3"
+   ],
+   "drill_domain_ids": [
+    "tl-interview",
+    "tl-endpoint-ops",
+    "sec-graphs",
+    "graph-defense",
+    "ml-defense",
+    "ai-agent-sec"
+   ]
+  }
+ ],
+ "behavioral": [
+  {
+   "prompt": "Tell me about the most technically difficult problem you have run into — a homelab, a broken environment, anything — and how you solved it.",
+   "framework": "STAR",
+   "points": [
+    "Pick ONE problem with a real evidence trail: the symptom, what you measured, the hypothesis you tested",
+    "Show the loop: scope, observe, hypothesize, smallest safe change, validate — interviewers score the method, not just the fix",
+    "Name the tools (VM build, networking, logs) and the lesson it taught you",
+    "Close with the result in concrete terms: what works now that did not before"
+   ],
+   "pitfalls": [
+    "Choosing a story with no real obstacle (“I Googled it” is not a story)",
+    "Skipping validation — saying it worked without proving it",
+    "Rambling past two minutes without reaching the result"
+   ]
+  },
+  {
+   "prompt": "Tell me about a time you dealt with a frustrated customer or user while something was broken.",
+   "framework": "STAR",
+   "points": [
+    "Lead with empathy and ownership: acknowledge the impact before the technical detail",
+    "Show translation: what you told them, in their language, plus the timeline you committed to",
+    "Show judgment: the narrow fix you chose and what you refused to do (e.g., disabling the control to clear the symptom)",
+    "Close with the relationship outcome, not just the technical one"
+   ],
+   "pitfalls": [
+    "Badmouthing the customer to sound decisive",
+    "Promising a timeline you could not keep",
+    "Framing the user as the problem rather than the situation"
+   ]
+  },
+  {
+   "prompt": "Why ThreatLocker, and why cybersecurity?",
+   "framework": "STAR",
+   "points": [
+    "Connect prevention to something concrete: a moment you saw detection arrive too late, or a system you hardened",
+    "Tie their model to your instincts: deny-by-default matches how you already think about trust",
+    "Show service orientation: the Cyber Hero culture rewards the 2 a.m. helper — give an example of being one",
+    "Name one forward-looking reason: Zero Trust, the MSP mission, or the bootcamp community investment"
+   ],
+   "pitfalls": [
+    "Generic flattery with no specifics about the company",
+    "Leading with compensation, title, or location convenience",
+    "Claiming expertise in products you have only read about — frame it as studied, not mastered"
+   ]
+  },
+  {
+   "framework": "STAR",
+   "pitfalls": [
+    "Staying vague ('I analyzed the data') instead of naming what you connected.",
+    "Skipping your own role: what did YOU see that others missed?",
+    "No outcome: what changed because you joined the dots?"
+   ],
+   "points": [
+    "The scattered signals and why nobody had connected them yet",
+    "The specific links you drew between them (shared host, time, infrastructure)",
+    "What the bigger picture turned out to be and what action it drove",
+    "What the experience taught you about investigating"
+   ],
+   "prompt": "Tell me about a time you connected scattered clues into a bigger picture that others had missed."
+  },
+  {
+   "framework": "STAR",
+   "pitfalls": [
+    "Claiming you fixed everything: credibility comes from trade-offs, not heroics.",
+    "Hiding the constraint: the limitation is what makes the prioritization story real.",
+    "No metric: 'better' needs a before-and-after."
+   ],
+   "points": [
+    "The constraint (time, budget, staff) and the size of the backlog",
+    "How you decided what mattered most (what was reachable, what was critical)",
+    "What you did first and what you deliberately deferred",
+    "The measurable result of the prioritization"
+   ],
+   "prompt": "Describe a time you had to prioritize risks or fixes with limited time or resources. How did you decide what came first?"
+  },
+  {
+   "framework": "STAR",
+   "pitfalls": [
+    "Reciting jargon to a non-technical audience and calling it communication.",
+    "Skipping the audience's reaction: did they actually understand and act?",
+    "Making yourself the hero instead of the translator."
+   ],
+   "points": [
+    "The technical finding and why it mattered",
+    "Who the audience was and what they cared about",
+    "How you reframed it (a picture, an analogy, a story)",
+    "What decision or action the audience took because they understood"
+   ],
+   "prompt": "Tell me about a time you explained a complex technical finding to a non-technical audience and it changed a decision."
+  },
+  {
+   "prompt": "Tell me about a time you used automation or AI to solve a security problem.",
+   "framework": "STAR",
+   "points": [
+    "The repetitive security task and what it cost in analyst time",
+    "The automation or AI approach you built and how you validated it",
+    "Measured outcome: time saved, detection gained, false positives changed"
+   ],
+   "pitfalls": [
+    "Describing the tool but never the validation",
+    "No measurable outcome"
+   ]
+  },
+  {
+   "prompt": "Describe a time you had to decide whether to trust an automated security decision.",
+   "framework": "STAR",
+   "points": [
+    "The stakes of the automated action and its blast radius",
+    "How you verified before acting (or the gate you built)",
+    "What happened and what you would automate differently next time"
+   ],
+   "pitfalls": [
+    "Saying you always trust the tool",
+    "No mention of blast radius or reversibility"
+   ]
+  }
+ ],
+ "resources": {
+  "cheatsheet": {
+   "title": "Full Spectrum Dominance — field reference",
+   "sections": [
+    {
+     "heading": "Company facts (verified)",
+     "items": [
+      "Founded 2017 in Orlando, FL — Danny Jenkins (CEO), Sami Jenkins (COO), John Carolan (QA)",
+      "Philosophy: deny-by-default / default-deny — approve known-good, deny the rest",
+      "Customers: 70,000+ organizations, sold heavily through the MSP channel",
+      "Funding: $190M Series F, July 2026 (Elephant-led); ~730 employees",
+      "Interview address: 1901 Summit Tower Blvd, Orlando, FL 32810",
+      "Culture: in-office 5 days/week; free lunch; post-offer background + drug screening"
+     ]
+    },
+    {
+     "heading": "Product stack",
+     "items": [
+      "Allowlisting — default-deny execution control for apps, DLLs, scripts, installers",
+      "Ringfencing — constrains allowed apps: app-to-app, file, registry, network",
+      "Storage Control — USB/device policy by serial, user, file type, encryption",
+      "Elevation Control — just-in-time per-app admin, no standing rights",
+      "Network Control — host firewall; port/IP/dynamic-ACL rules; ZTNA foundation",
+      "Web Control — agent-based DNS/URL category filtering, works off-network",
+      "Cyber Hero MDR — 24/7/365 US-based response, ~60-second average",
+      "Testing Environment — one-button VDI sandbox; checks AV flags, canary files, registry changes"
+     ]
+    },
+    {
+     "heading": "Rule strength (strongest to weakest)",
+     "items": [
+      "Certificate/publisher rules — survive version updates",
+      "Hash rules — precise but break on every new version",
+      "Path rules — weakest; never in user-writable locations",
+      "Learning Mode catalogs before enforcement; Installation Mode pauses blocking — scope and time-box both"
+     ]
+    },
+    {
+     "heading": "Terminal evidence commands",
+     "items": [
+      "nmap <host> — which ports answer (22/80/443 open)",
+      "dig <name> — ANSWER SECTION with the A record",
+      "ss — listening sockets",
+      "systemctl status <svc> — unit state",
+      "journalctl -u <svc> — service logs",
+      "sha256sum <file> — real SHA-256 identity",
+      "grep <pattern> <file> — search the record",
+      "ps — what is actually running"
+     ]
+    },
+    {
+     "heading": "Graph vocabulary",
+     "items": [
+      "node — any entity tracked in the model (user, host, IP, domain, file hash, vulnerability)",
+      "edge — a labeled relationship between two nodes (logged into, resolved to, downloaded)",
+      "degree — number of edges on a node; high-degree nodes are attacker highways",
+      "centrality — how much traffic or how many paths flow through a node",
+      "directed edge — a relationship with a direction (A downloaded FROM B)",
+      "security graph — the living model of your whole environment as nodes and edges",
+      "attack graph — the subgraph of exploitable paths to your targets",
+      "knowledge graph — threat-intel indicators linked to campaigns and actors"
+     ]
+    },
+    {
+     "heading": "Attack-graph playbook",
+     "items": [
+      "inventory first — you cannot graph what you have not discovered",
+      "model flaws AND misconfigs as exploit edges",
+      "compute shortest paths to the crown jewels",
+      "find the choke point (highest betweenness on those paths)",
+      "break the path: patch, segment, or remove the edge",
+      "re-scan and re-run the graph to prove the path is gone",
+      "never trust yesterday's graph — redeployments redraw the map"
+     ]
+    },
+    {
+     "heading": "Zero Trust + graphs",
+     "items": [
+      "never trust, always verify — re-evaluate every access decision",
+      "assume breach — treat unexpected edges as hostile until proven otherwise",
+      "microsegmentation — allow-list approved edges, alert on new ones",
+      "ReBAC — policies are path queries on the identity graph",
+      "continuous verification — device/location/behavior edges change, trust follows",
+      "anomalous edge — a first-seen connection between strangers is the classic signal"
+     ]
+    },
+    {
+     "heading": "ML detection vocabulary",
+     "items": [
+      "Supervised learning — learns from labeled examples; strong on known threats, blind to novel ones",
+      "Unsupervised learning — finds structure without labels; clustering and dimensionality reduction",
+      "Anomaly detection — models 'normal' and flags deviations; the workhorse for novel threats",
+      "UEBA — user and entity behavior analytics: per-user baselines plus peer-group comparison",
+      "Feature engineering — encoding raw logs into model inputs (login velocity, rare processes, domain entropy)",
+      "Concept drift — model decay as attacker behavior and legitimate traffic shift over time"
+     ]
+    },
+    {
+     "heading": "Detection metrics",
+     "items": [
+      "Precision — of all flagged alerts, how many were real",
+      "Recall — of all real attacks, how many were flagged",
+      "Threshold tuning — sliding the decision cutoff trades precision against recall",
+      "Alert fatigue — when false positives train analysts to ignore the queue",
+      "DGA — domain generation algorithm; detected via character entropy of domain names"
+     ]
+    },
+    {
+     "heading": "Agent and LLM security",
+     "items": [
+      "Direct prompt injection — attacker input overrides app instructions (OWASP LLM01:2025, the #1 LLM risk)",
+      "Indirect prompt injection — hidden instructions inside retrieved data (email, web, docs)",
+      "Jailbreak — defeating the model's own safety policy; distinct from hijacking app behavior",
+      "Tool poisoning — malicious tool descriptions or metadata steer an agent to misuse its tools (MCP ecosystem risk)",
+      "Insecure output handling — executing or trusting model output without validation",
+      "Least-privilege tools — grant each tool only the scope its task requires"
+     ]
+    },
+    {
+     "heading": "Adversarial ML and governance",
+     "items": [
+      "Evasion — perturbing inputs at inference time to dodge a classifier",
+      "Poisoning — corrupting training data to corrupt the model",
+      "Extraction — querying a model to steal its behavior or parameters",
+      "MITRE ATLAS — knowledge base of adversarial ML tactics and techniques",
+      "Red-teaming and evals — adversarial testing of AI systems before deployment",
+      "Human-in-the-loop — required approval for high-impact or irreversible agent actions",
+      "SOAR — security orchestration, automation and response; automate enrichment, gate containment"
+     ]
+    }
+   ]
+  },
+  "glossary": [
+   {
+    "term": "Allowlisting",
+    "def": "Default-deny execution control: only explicitly approved applications, scripts, and installers may run."
+   },
+   {
+    "term": "Blocklisting",
+    "def": "Default-allow model: everything runs except recognized-bad items — the window zero-days live in."
+   },
+   {
+    "term": "Default-deny",
+    "def": "Deny-by-default posture: unknown code, devices, or connections are refused unless explicitly approved."
+   },
+   {
+    "term": "Ringfencing",
+    "def": "Containment applied on top of allowlisting; restricts what a permitted app may do across app-to-app, file, registry, and network dimensions."
+   },
+   {
+    "term": "Learning Mode",
+    "def": "Agent mode that catalogs applications and dependencies and auto-builds policies before enforcement; temporarily disables file blocking."
+   },
+   {
+    "term": "Installation Mode",
+    "def": "Temporary mode that pauses file blocking for installs — must be tightly scoped and time-boxed."
+   },
+   {
+    "term": "Elevation Control",
+    "def": "Grants specific approved applications admin rights for standard users — just-in-time, per-app, time-boxed — without standing admin rights."
+   },
+   {
+    "term": "Application hopping",
+    "def": "An elevated or trusted process spawning another tool (e.g., PowerShell) to inherit its privileges — countered by ringfencing the elevated process."
+   },
+   {
+    "term": "Storage Control",
+    "def": "Device and path policy: USB approved by serial, user, file type, time, and encryption; unapproved devices do not connect."
+   },
+   {
+    "term": "Network Control",
+    "def": "Centrally managed host firewall; rules by port, source IP, and dynamic ACLs; egress allowlisting pins apps to approved destinations."
+   },
+   {
+    "term": "ZTNA",
+    "def": "Zero Trust Network Access: per-session, per-application brokered connections (commonly over port 443) with no open inbound ports — deny-by-default for network access."
+   },
+   {
+    "term": "Approval Center",
+    "def": "Portal queue where end-user software requests arrive for admin review and decision."
+   },
+   {
+    "term": "Unified Audit",
+    "def": "Real-time audit showing what was allowed or denied across endpoints — and why; the evidence layer for triage."
+   },
+   {
+    "term": "Testing Environment",
+    "def": "One-button cloud VDI sandbox launched from an approval request; logs AV flags, canary-file access, and registry/system changes."
+   },
+   {
+    "term": "Cyber Hero MDR",
+    "def": "24/7/365 US-based managed detection and response team; validates alerts, isolates hosts, acts on customer runbooks; ~60-second average response."
+   },
+   {
+    "term": "Assume breach",
+    "def": "Design and operate as if the attacker already has a foothold — least privilege, containment, and monitoring everywhere."
+   },
+   {
+    "term": "Living off the land",
+    "def": "Attacks that hijack trusted built-in tools (Word, PowerShell) instead of dropping malware — defeated by behavior containment, not signatures."
+   },
+   {
+    "term": "Change control",
+    "def": "Scoped, ticketed, tested changes with validation and rollback — emergency speed never cancels the process."
+   },
+   {
+    "def": "A node in an attack graph representing a system or weakness, connected by edges that represent steps an attacker could take between them.",
+    "term": "attack graph"
+   },
+   {
+    "def": "How central a node is to paths through the graph (for example, betweenness: how many shortest paths cross it).",
+    "term": "centrality"
+   },
+   {
+    "def": "The most valuable assets in the environment (customer data, finance systems, source code): what attack paths are measured against.",
+    "term": "crown jewels"
+   },
+   {
+    "def": "A labeled connection between two nodes, representing a relationship such as 'logged into' or 'resolved to'.",
+    "term": "edge"
+   },
+   {
+    "def": "A graph of threat indicators (IPs, domains, hashes) linked to campaigns, actors, and each other through shared infrastructure.",
+    "term": "knowledge graph"
+   },
+   {
+    "def": "The practice of mapping relationships in data to reveal hidden associations; rooted in Euler's 1736 graph theory, 1970s paper link charts, and post-2001 intelligence work.",
+    "term": "link analysis"
+   },
+   {
+    "def": "A segment of the network so small that its allowed communications can be enumerated as a graph of approved edges.",
+    "term": "microsegmentation"
+   },
+   {
+    "def": "An entity in the graph: a user, host, IP address, domain, file, or vulnerability.",
+    "term": "node"
+   },
+   {
+    "def": "Access control where policy is evaluated by traversing relationships on a graph (for example: user reports_to manager who owns the resource's project).",
+    "term": "ReBAC"
+   },
+   {
+    "def": "A machine-learning model that operates directly on graph structure to classify nodes or subgraphs, for example labeling attack vs normal behavior.",
+    "term": "graph neural network (GNN)"
+   },
+   {
+    "def": "Monitoring user and entity behavior by modeling their normal relationship patterns and flagging structural anomalies.",
+    "term": "UEBA"
+   },
+   {
+    "term": "Supervised learning",
+    "def": "ML trained on labeled examples; classifies new inputs into known categories."
+   },
+   {
+    "term": "Anomaly detection",
+    "def": "ML approach that models normal behavior and flags statistically rare deviations."
+   },
+   {
+    "term": "Feature engineering",
+    "def": "Turning raw telemetry into numeric model inputs, e.g. login velocity or domain entropy."
+   },
+   {
+    "term": "Precision",
+    "def": "Share of flagged alerts that were real; the false-positive economics of the queue."
+   },
+   {
+    "term": "Recall",
+    "def": "Share of real attacks the detector flagged; the miss rate's complement."
+   },
+   {
+    "term": "Concept drift",
+    "def": "Decay of model performance as the data distribution shifts over time."
+   },
+   {
+    "term": "Prompt injection",
+    "def": "Attacker-crafted instructions that override an LLM application's intended behavior; direct (user input) or indirect (retrieved data)."
+   },
+   {
+    "term": "Jailbreak",
+    "def": "Crafted input that defeats an LLM's own safety policy or refusal behavior."
+   },
+   {
+    "term": "Tool poisoning",
+    "def": "Malicious tool descriptions or metadata that manipulate an AI agent into misusing its tools."
+   },
+   {
+    "term": "Insecure output handling",
+    "def": "Failing to validate LLM output before acting on it, e.g. executing generated commands."
+   },
+   {
+    "term": "Evasion attack",
+    "def": "Adversarial ML technique: perturbing inputs to cross a classifier's decision boundary."
+   },
+   {
+    "term": "MITRE ATLAS",
+    "def": "Adversarial Threat Landscape for AI Systems; MITRE's knowledge base of AI attack tactics."
+   },
+   {
+    "term": "SOAR",
+    "def": "Security orchestration, automation and response; playbooks that enrich automatically and gate containment on humans."
+   },
+   {
+    "term": "Human-in-the-loop",
+    "def": "Required human approval before high-impact or irreversible automated actions."
+   }
   ],
-  "math": [
-    "stats",
-    "probability"
+  "links": [
+   {
+    "label": "ThreatLocker Zero Trust platform explainer (official)",
+    "url": "https://www.threatlocker.com/blog/edr-xdr-vs-zero-trust-prevention",
+    "note": "EDR/XDR vs Zero Trust prevention — the deny-by-default argument in their own words."
+   },
+   {
+    "label": "ThreatLocker Bootcamp page (official)",
+    "url": "https://www.threatlocker.com/bootcamp",
+    "note": "Free six-week program: phases, format, and what completion leads to."
+   },
+   {
+    "label": "ThreatLocker Careers (official)",
+    "url": "https://www.threatlocker.com/company/careers",
+    "note": "Open roles and the hiring-event listing; roles are in-office in Orlando."
+   },
+   {
+    "label": "Elevation Control (official)",
+    "url": "https://www.threatlocker.com/secure-privileges-without-sacrificing-agility",
+    "note": "Just-in-time privilege without standing admin."
+   },
+   {
+    "label": "Storage Control (official)",
+    "url": "https://www.threatlocker.com/capabilities/external-storage-device-control",
+    "note": "USB/device policy by serial, user, file type, encryption."
+   },
+   {
+    "label": "Web Control (official)",
+    "url": "https://www.threatlocker.com/capabilities/web-content-control",
+    "note": "Agent-based DNS/URL filtering, including off-network."
+   },
+   {
+    "label": "Cyber Hero MDR (official)",
+    "url": "https://www.threatlocker.com/get-threat-response-in-minutes",
+    "note": "24/7/365 managed response positioning."
+   },
+   {
+    "label": "MDR capabilities (official)",
+    "url": "https://www.threatlocker.com/capabilities/managed-detection-and-response",
+    "note": "Detection and response capability detail."
+   },
+   {
+    "label": "NIST SP 800-207 — Zero Trust Architecture",
+    "url": "https://csrc.nist.gov/pubs/sp/800/207/final",
+    "note": "The canonical Zero Trust reference: tenets, deployment models, policy engine trust algorithm."
+   },
+   {
+    "label": "CISA Zero Trust Maturity Model",
+    "url": "https://www.cisa.gov/zero-trust-maturity-model",
+    "note": "Federal maturity steps across identity, devices, networks, applications, and data."
+   },
+   {
+    "label": "MITRE ATT&CK",
+    "note": "The adversary-tactics framework; codify its tactic chains as subgraphs to hunt for in your security graph.",
+    "url": "https://attack.mitre.org/"
+   },
+   {
+    "label": "CISA — Cybersecurity and Infrastructure Security Agency",
+    "note": "US government advisories, alerts, and guidance frequently referenced in threat-intel work.",
+    "url": "https://www.cisa.gov/"
+   },
+   {
+    "label": "Neo4j getting started",
+    "note": "A widely used graph database; the book's call to action suggests piloting graph queries on exported security data with tools like this.",
+    "url": "https://neo4j.com/docs/getting-started/"
+   },
+   {
+    "label": "OWASP GenAI Security Project",
+    "url": "https://genai.owasp.org/",
+    "note": "Home of the LLM Top 10 and GenAI security guidance"
+   },
+   {
+    "label": "OWASP Top 10 for LLM Applications",
+    "url": "https://genai.owasp.org/llm-top-10/",
+    "note": "The ranked LLM risk list — prompt injection is #1"
+   },
+   {
+    "label": "NIST AI Risk Management Framework",
+    "url": "https://www.nist.gov/itl/ai-risk-management-framework",
+    "note": "The standard governance framework for managing AI risk"
+   },
+   {
+    "label": "MITRE ATLAS",
+    "url": "https://atlas.mitre.org/",
+    "note": "Adversarial Threat Landscape for AI Systems — tactics and techniques"
+   },
+   {
+    "label": "CISA AI guidance",
+    "url": "https://www.cisa.gov/ai",
+    "note": "CISA's AI security resources and guidance"
+   }
+  ],
+  "checklist": [
+   "Sixty-second company brief rehearsed out loud: year, city, philosophy, three products, one milestone",
+   "Two STAR stories ready: hardest technical problem; a frustrated customer or user",
+   "“Why ThreatLocker / why cybersecurity” answer tied to prevention and service, not slogans",
+   "Ringfencing explained in one plain-English sentence (the Word-on-a-leash version)",
+   "Elevation Control answer ready: just-in-time, per-app, time-boxed, ringfenced, logged",
+   "Triage loop memorized: scope → observe → hypothesize → smallest safe change → validate → explain",
+   "Three questions to ask them: team on-call shape, approval SLA expectations, what “most helpful” looks like on the team",
+   "Logistics: 1901 Summit Tower Blvd, Orlando FL; in-office role; ID and references ready",
+   "Define your crown jewels before you model anything.",
+   "Build the asset-and-access graph from live sources (scans, configs, identity), not from the CMDB alone.",
+   "Model vulnerabilities AND misconfigurations as exploit edges.",
+   "Compute shortest attack paths to each crown jewel; name the choke points.",
+   "Prioritize remediation by path risk, not by raw severity score.",
+   "Express at least one access policy as a relationship path (ReBAC pilot).",
+   "Baseline approved communication edges per segment; alert on first-seen edges.",
+   "Brief the next incident or risk review with the graph, not a spreadsheet.",
+   "Can you explain supervised vs unsupervised vs anomaly detection with a security example for each?",
+   "Can you name three log features you would engineer for a C2 detector and why?",
+   "Can you walk through a UEBA alert (baseline, deviation, verification) end to end?",
+   "Can you explain the precision/recall tradeoff and how you would set a threshold for a fatigued SOC?",
+   "Can you define concept drift and describe a retraining process?",
+   "Can you distinguish direct vs indirect prompt injection and jailbreaking?",
+   "Can you explain tool poisoning in the MCP ecosystem and three controls against it?",
+   "Can you describe insecure output handling and how you would validate agent output?",
+   "Can you name the three adversarial ML attack classes and one defense for evasion?",
+   "Can you design a SOAR playbook gate: what automates freely, what needs human approval?"
   ]
+ },
+ "chat": {
+  "persona": "You are a rigorous but encouraging interviewer preparing a candidate for a Zero Trust endpoint security role. Probe with 'why' and 'how would you explain that' follow-ups. Stay on topic: ThreatLocker-style endpoint defense, security graphs, and AI-powered security. All practice is original; never reproduce vendor material.",
+  "topics": [
+   {
+    "id": "tl-interview",
+    "name": "ThreatLocker Interview Prep",
+    "key_points": [
+     "allowlisting",
+     "ringfencing",
+     "default-deny",
+     "cyber hero",
+     "zero trust tenets",
+     "STAR stories"
+    ],
+    "followups": [
+     "Can you give an example?",
+     "How would you explain that to a CFO?"
+    ]
+   },
+   {
+    "id": "tl-endpoint-ops",
+    "name": "Zero Trust Endpoint Operations",
+    "key_points": [
+     "default-deny",
+     "ringfencing dimensions",
+     "elevation control",
+     "storage control",
+     "network control",
+     "change control"
+    ],
+    "followups": [
+     "Walk me through the triage order.",
+     "When would you deny outright?"
+    ]
+   },
+   {
+    "followups": [
+     "Can you walk through an example?",
+     "How does this change patch prioritization?",
+     "What is the difference between a security graph and an attack graph?"
+    ],
+    "id": "sec-graphs",
+    "key_points": [
+     "nodes",
+     "edges",
+     "attack graphs",
+     "kill chain",
+     "link analysis",
+     "threat intel graphs"
+    ],
+    "name": "Security Graphs: Think Like an Attacker"
+   },
+   {
+    "followups": [
+     "How do graphs change patch prioritization?",
+     "What is ReBAC and how is it different from RBAC?",
+     "How would a small team start with graphs?"
+    ],
+    "id": "graph-defense",
+    "key_points": [
+     "attack-path analysis",
+     "insider threat",
+     "vulnerability graphs",
+     "Zero Trust",
+     "microsegmentation",
+     "blast radius"
+    ],
+    "name": "Graph-Powered Defense Operations"
+   },
+   {
+    "id": "ml-defense",
+    "name": "ML-Powered Threat Defense",
+    "key_points": [
+     "anomaly detection",
+     "UEBA",
+     "alert fatigue",
+     "concept drift",
+     "threat hunting",
+     "precision recall"
+    ],
+    "followups": [
+     "Walk me through an example.",
+     "How do you handle false positives?"
+    ]
+   },
+   {
+    "id": "ai-agent-sec",
+    "name": "Securing AI Systems & Agents",
+    "key_points": [
+     "prompt injection",
+     "tool poisoning",
+     "MCP risks",
+     "insecure output handling",
+     "SOAR gates",
+     "adversarial ML"
+    ],
+    "followups": [
+     "Walk me through an example.",
+     "How do you secure an AI agent end to end?"
+    ]
+   }
+  ]
+ },
+ "simulation": {
+  "items": 12,
+  "minutes": 180,
+  "evidence_cost_mins": 2
+ },
+ "media": [
+  {
+   "id": "tl-allowlist-vs-blocklist",
+   "kind": "diagram",
+   "title": "Allowlisting vs blocklisting: default-deny vs default-allow",
+   "svg": "assets/diagrams/tl-allowlist-vs-blocklist.svg",
+   "lesson_ref": "c-tl-endpoint-ops",
+   "caption": "Default-deny stops unknown code without a signature; default-allow runs it until one exists.",
+   "alt": "Side-by-side comparison: on the left, a default-deny gate runs known-good payroll software and denies unknown ransomware with no signature needed; on the right, a default-allow gate runs both until the ransomware is recognized as bad."
+  },
+  {
+   "id": "tl-ringfencing",
+   "kind": "diagram",
+   "title": "Ringfencing: four leashes on an allowed application",
+   "svg": "assets/diagrams/tl-ringfencing.svg",
+   "lesson_ref": "c-tl-endpoint-ops",
+   "caption": "Word stays approved, but it cannot spawn PowerShell, read the credential store, or reach the internet — while opening its document is allowed.",
+   "alt": "An approved Word application inside a dashed containment ring: arrows show PowerShell launch denied, credential-store registry access denied, external network denied, and document file access allowed."
+  },
+  {
+   "id": "tl-zero-trust-stack",
+   "kind": "diagram",
+   "title": "The Zero Trust endpoint stack",
+   "svg": "assets/diagrams/tl-zero-trust-stack.svg",
+   "lesson_ref": "c-tl-interview",
+   "caption": "Five deny-by-default layers — Allowlisting, Ringfencing, Elevation, Storage, Network — watched by Web Control, the Testing Environment, Unified Audit, and the Cyber Hero MDR team.",
+   "alt": "A vertical stack of five layers from Allowlisting at the foundation up through Ringfencing, Elevation Control, Storage Control, and Network Control, with side boxes for Web Control, Testing Environment, Unified Audit, and Cyber Hero MDR."
+  },
+  {
+   "id": "tl-triage-flow",
+   "kind": "diagram",
+   "title": "Application-request triage flow",
+   "svg": "assets/diagrams/tl-triage-flow.svg",
+   "lesson_ref": "c-tl-endpoint-ops",
+   "caption": "Gather evidence first, then branch: trusted gets a scoped rule, unknown goes to the sandbox, malicious gets a documented deny.",
+   "alt": "Flowchart from request arrival through evidence gathering to a decision diamond branching into three outcomes: approve with a scoped rule, detonate in the Testing Environment then ringfence, or deny with documented evidence."
+  },
+  {
+   "alt": "Diagram of four labeled nodes (user, host, file, domain, IP) joined by labeled directed edges such as logged into, downloaded, and resolved to, illustrating graph vocabulary.",
+   "caption": "Nodes are the things; edges are the relationships. Attackers move along the edges.",
+   "id": "sg-graph-vocabulary",
+   "kind": "diagram",
+   "lesson_ref": "c-sec-graphs",
+   "svg": "assets/diagrams/sg-graph-vocabulary.svg",
+   "title": "Graph vocabulary: nodes and edges"
+  },
+  {
+   "alt": "Attack graph with four nodes in a chain: external attacker to VPN gateway to file server to customer database, with a dead-end branch to a printer, showing the shortest path to the crown jewel.",
+   "caption": "The shortest path to the crown jewel is length 3. Break the choke point and the campaign dies.",
+   "id": "sg-attack-path",
+   "kind": "diagram",
+   "lesson_ref": "c-sec-graphs",
+   "svg": "assets/diagrams/sg-attack-path.svg",
+   "title": "Attack graph: shortest path to the crown jewels"
+  },
+  {
+   "alt": "Seven kill-chain stages as connected graph nodes: reconnaissance, weaponization, delivery, exploitation, installation, command and control, actions. Three alerts are annotated at delivery, installation, and command and control.",
+   "caption": "Three 'unrelated' alerts, one kill-chain subgraph. Correlate by shared entities, not by severity.",
+   "id": "sg-kill-chain",
+   "kind": "diagram",
+   "lesson_ref": "c-sec-graphs",
+   "svg": "assets/diagrams/sg-kill-chain.svg",
+   "title": "Kill chain as a graph"
+  },
+  {
+   "alt": "A policy engine at the center of a small graph evaluates an access request from a finance user on an untrusted laptop to an R and D code server. The request is denied because there is no prior relationship edge and the device is untrusted.",
+   "caption": "Valid credentials are not enough. The graph checks device trust, history, and relationships on every request.",
+   "id": "sg-zero-trust",
+   "kind": "diagram",
+   "lesson_ref": "c-graph-defense",
+   "svg": "assets/diagrams/sg-zero-trust.svg",
+   "title": "Zero Trust runs on relationships"
+  },
+  {
+   "id": "ai-ml-pipeline",
+   "kind": "diagram",
+   "title": "ML detection pipeline: telemetry to triage",
+   "svg": "assets/diagrams/ai-ml-pipeline.svg",
+   "lesson_ref": "c-ml-defense",
+   "caption": "How raw telemetry becomes scored alerts: features feed the model, the model scores, analysts triage top-down — and analyst verdicts feed retraining.",
+   "alt": "Flow diagram: telemetry sources feed feature extraction, which feeds an ML model, which outputs scored alerts into an analyst triage queue, with a feedback arrow for retraining."
+  },
+  {
+   "id": "ai-ueba-baseline-diagram",
+   "kind": "diagram",
+   "title": "UEBA: baseline vs deviation",
+   "svg": "assets/diagrams/ai-ueba-baseline.svg",
+   "lesson_ref": "c-ml-defense",
+   "caption": "UEBA learns each user's normal hours, locations, and volumes, then scores deviations from that baseline.",
+   "alt": "24-hour timeline showing a shaded normal login window from 8 AM to 6 PM with normal logins inside it, and a red anomaly marker at 2:47 AM for a foreign login scoring 97 out of 100."
+  },
+  {
+   "id": "ai-injection-flow",
+   "kind": "diagram",
+   "title": "Indirect prompt injection attack flow",
+   "svg": "assets/diagrams/ai-injection-flow.svg",
+   "lesson_ref": "c-ai-agent-sec",
+   "caption": "An attacker hides instructions in data the agent retrieves; the agent mistakes data for instructions and misuses its tools.",
+   "alt": "Attack flow diagram: hidden instruction in an email is read by an AI agent, which mistakes it for a command and calls a privileged tool, causing fraud; three defense boxes below: sanitize content, least-privilege tools, human approval."
+  }
+ ],
+ "foundations": [
+  {
+   "track": "linux-cli",
+   "why_needed": "Terminal labs and missions run in a simulated Linux shell; command-line fluency is required to complete them."
+  },
+  {
+   "track": "security-basics",
+   "why_needed": "Security-graph and ML-detection lessons assume baseline vocabulary (CIA triad, malware types, incident response phases)."
+  }
+ ],
+ "math": [
+  "stats",
+  "probability"
+ ],
+ "pdfGuides": [
+  {
+   "title": "Cloud Architecture Patterns — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-cloud-patterns.pdf",
+   "source": "Interstitium Labs",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:27:58Z"
+  },
+  {
+   "title": "TLS Handshake — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-tls-handshake.pdf",
+   "source": "Interstitium Labs",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:27:58Z"
+  }
+ ]
 }

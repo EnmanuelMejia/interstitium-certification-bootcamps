@@ -477,9 +477,700 @@
    ]
   }
  ],
- "simulations": [],
- "consoleSims": [],
- "terminalMissions": [],
+ "simulations": [
+  {
+   "id": "ksre-sim-1",
+   "title": "HPA not scaling",
+   "kind": "troubleshoot",
+   "domain_id": "kubernetes-sre",
+   "difficulty": 2,
+   "points": 15,
+   "brief": "Black Friday traffic is climbing and the checkout HPA sits at 2 replicas — min and max. The metrics look fine on the dashboard. Diagnose why autoscaling is blind.",
+   "steps": [
+    {
+     "symptom": "HPA exists with min 2, max 20, target 60% CPU. Replicas: stuck at 2 while CPU climbs past 90%.",
+     "evidence": [
+      [
+       "hpa.txt",
+       "Name: checkout-hpa. Reference: Deployment/checkout. Current: 2 replicas, CPU 94%."
+      ],
+      [
+       "events.txt",
+       "Warning: 'failed to get cpu utilization: missing request for cpu'."
+      ]
+     ],
+     "options": [
+      "The deployment has no CPU requests set — the HPA computes utilization as usage/request, and without requests there is nothing to divide by",
+      "The HPA needs more replicas configured — raise max to 50",
+      "CPU 94% is fine — the HPA is right not to scale",
+      "Delete and recreate the HPA — it's stuck"
+     ],
+     "correct": 0,
+     "explain": "HPA scales on utilization relative to requests: no CPU request means no utilization percentage, and the HPA can't compute a scaling decision. Set requests (and limits) on the containers first — autoscaling is built on declared resources."
+    },
+    {
+     "symptom": "Requests are set. Now the HPA scales — but flaps wildly between 4 and 16 replicas every few minutes.",
+     "evidence": [
+      [
+       "hpa2.txt",
+       "Replicas oscillating: 4 -> 16 -> 5 -> 15, every ~3 minutes."
+      ],
+      [
+       "metric.txt",
+       "Signal: CPU, spiky batch-adjacent workload. behavior: not configured."
+      ]
+     ],
+     "options": [
+      "Configure behavior stabilization windows to damp the flapping, and consider scaling on a smoother signal like RPS or queue depth",
+      "Flapping is normal — HPAs always oscillate",
+      "Set min=max to stop the oscillation",
+      "Scale on node CPU instead of pod CPU"
+     ],
+     "correct": 0,
+     "explain": "behavior stabilization windows exist precisely for this: they hold scale-down (and scale-up) decisions long enough to confirm the trend. And spiky CPU is a poor signal — smooth load signals like requests-per-second or queue depth scale on demand, not noise."
+    },
+    {
+     "symptom": "Scaling is smooth now, but during the traffic spike new pods take 3 minutes to become ready — the HPA was right, the pods were late.",
+     "evidence": [
+      [
+       "pods.txt",
+       "New pods: 3min to Ready. Image pull: 2min (large image, no cache). App warmup: 1min."
+      ],
+      [
+       "hpa3.txt",
+       "HPA reacted in 30s. Capacity arrived 3min later. Errors during the gap."
+      ]
+     ],
+     "options": [
+      "Fix the readiness latency: smaller images or image pre-pull, plus proper readiness probes — the HPA can only scale what becomes ready",
+      "The HPA is too slow — make it react in 5 seconds",
+      "Over-provision 10x permanently so spikes never matter",
+      "Readiness probes delay traffic — remove them"
+     ],
+     "correct": 0,
+     "explain": "Autoscaling has two halves: the decision (HPA) and the capacity actually serving (ready pods). A 2-minute image pull plus 1-minute warmup means the HPA's correct decision arrives 3 minutes late — fix the pod startup path and the scaling works end to end."
+    }
+   ],
+   "debrief": "HPA needs the full chain: resource requests to compute utilization, the metrics API actually serving, stabilization behavior against flapping, smooth signals over spiky ones, and pods that become ready fast."
+  },
+  {
+   "id": "ksre-sim-2",
+   "title": "The upgrade that took everything down",
+   "kind": "troubleshoot",
+   "domain_id": "kubernetes-sre",
+   "difficulty": 3,
+   "points": 18,
+   "brief": "A routine node upgrade drained all 6 checkout pods at once. Checkout was down for 11 minutes. The upgrade 'followed the runbook' — the runbook had no disruption budget. Fix the upgrade safety.",
+   "steps": [
+    {
+     "symptom": "Node drain evicted all 6 checkout pods simultaneously. 11 minutes of downtime during a routine upgrade.",
+     "evidence": [
+      [
+       "drain.txt",
+       "kubectl drain node-3: evicted 6/6 checkout pods. No PDB in the namespace."
+      ],
+      [
+       "runbook.txt",
+       "'Drain nodes one at a time.' No mention of PodDisruptionBudgets."
+      ]
+     ],
+     "options": [
+      "Define a PodDisruptionBudget for checkout (minAvailable/maxUnavailable) so drains and upgrades can only take down what the budget allows",
+      "Drain faster — the downtime was caused by slowness",
+      "Never upgrade nodes — immutable infrastructure means replacing, not upgrading",
+      "Run 100 replicas so any drain leaves survivors"
+     ],
+     "correct": 0,
+     "explain": "PodDisruptionBudgets cap voluntary disruption: minAvailable/maxUnavailable tell drains and upgrades how many pods may go down at once. Without a PDB, a drain is allowed to evict everything — and it did."
+    },
+    {
+     "symptom": "PDB added with minAvailable 4. Next upgrade: still an outage — all 6 pods were on the same node.",
+     "evidence": [
+      [
+       "topology.txt",
+       "All 6 checkout pods scheduled on node-3 (bin-packing). PDB: minAvailable 4."
+      ],
+      [
+       "drain2.txt",
+       "Drain of node-3 blocked by PDB this time — but the previous outage was fate-sharing, not just disruption."
+      ]
+     ],
+     "options": [
+      "Add pod anti-affinity or topology spread constraints so replicas don't share fate on one node",
+      "The PDB was wrong — set minAvailable to 6",
+      "Bin-packing is efficient — keep all pods on one node",
+      "PDBs don't work — remove it"
+     ],
+     "correct": 0,
+     "explain": "A PDB limits voluntary disruption but can't fix fate-sharing: 6 pods on 1 node is one failure domain. Pair the budget with anti-affinity or topology spread constraints so replicas land across nodes and zones."
+    },
+    {
+     "symptom": "Upgrades are safe now. But the deploy itself rolls all pods at once — maxUnavailable defaults strike again.",
+     "evidence": [
+      [
+       "deploy.txt",
+       "RollingUpdate strategy: all defaults. maxUnavailable: unset (defaults to 25%, but with 2 pods that's effectively 1 — still a capacity dip)."
+      ],
+      [
+       "slo.txt",
+       "Checkout SLO: 99.9%. Deploy-time error budget burn: visible every release."
+      ]
+     ],
+     "options": [
+      "Tune the rolling update strategy explicitly (maxUnavailable, maxSurge) and verify against the SLO — safe rollout is part of reliability",
+      "Deploys are supposed to cause brief errors — that's normal",
+      "Deploy at 3 AM so nobody notices",
+      "Switch to Recreate strategy — simpler"
+     ],
+     "correct": 0,
+     "explain": "The rollout strategy is reliability configuration: explicit maxUnavailable/maxSurge keep capacity during deploys instead of relying on defaults. Every release burning error budget is a deployment strategy problem, not an SLO problem."
+    }
+   ],
+   "debrief": "Safe change in Kubernetes is layered: PDBs cap voluntary disruption, spread constraints remove fate-sharing, and explicit rollout strategies protect deploys. The runbook must name all three."
+  },
+  {
+   "id": "ksre-sim-3",
+   "title": "The 3 AM page for CPU",
+   "kind": "troubleshoot",
+   "domain_id": "kubernetes-sre",
+   "difficulty": 2,
+   "points": 15,
+   "brief": "The on-call was paged at 3 AM: 'CPU above 95% on batch-worker.' The batch job was healthy, the page was noise, and the on-call is now exhausted. Fix the alerting philosophy.",
+   "steps": [
+    {
+     "symptom": "Page at 3 AM for CPU 95% on a batch worker. The job completed successfully. No user impact.",
+     "evidence": [
+      [
+       "alert.txt",
+       "ALERT: cpu_usage > 95% for 5m on batch-worker-7. Severity: page."
+      ],
+      [
+       "job.txt",
+       "Batch job: completed OK at 03:20. Output correct. No SLA attached."
+      ]
+     ],
+     "options": [
+      "Alert on symptoms, not resources: a 3 AM page should mean users are hurt — CPU on a healthy batch job belongs on a dashboard",
+      "Lower the threshold to 90% to catch it earlier",
+      "The page worked — the on-call confirmed the job was fine",
+      "Add more CPU so the alert never fires"
+     ],
+     "correct": 0,
+     "explain": "Alert on symptoms, not resources. CPU at 95% on a healthy batch job is not a user-facing emergency — it's a dashboard metric. Every noise page trains the on-call to ignore pages, including the real ones."
+    },
+    {
+     "symptom": "The team replaces the CPU alert with one on checkout error rate — but it pages on every deploy.",
+     "evidence": [
+      [
+       "alert2.txt",
+       "ALERT: checkout errors > 1% for 2m. Fires during every rollout (new pods warming)."
+      ],
+      [
+       "deploys.txt",
+       "Deploys: 8/day. Pages per deploy: 1. On-call: 'It's worse than the CPU alert.'"
+      ]
+     ],
+     "options": [
+      "Make the alert burn-rate aware: multi-window alerting that tolerates brief deploy blips but pages on sustained budget burn",
+      "Go back to the CPU alert — at least it was simple",
+      "Stop deploying so often",
+      "Mute the alert during deploys with a calendar"
+     ],
+     "correct": 0,
+     "explain": "Symptom alerting still needs burn-rate discipline: multi-window alerts distinguish a 2-minute deploy blip from sustained error-budget burn. The alert should page when the budget is actually bleeding, not when a rollout breathes."
+    },
+    {
+     "symptom": "Alerting is fixed. Now the team wants to measure on-call health itself.",
+     "evidence": [
+      [
+       "pages.txt",
+       "Pages per shift: was 9, now 1.2. Acknowledgement time: was 22min, now 4min."
+      ],
+      [
+       "ask.txt",
+       "'How do we know the on-call is sustainable?'"
+      ]
+     ],
+     "options": [
+      "Track pages per on-call shift and treat sustained overload as a bug — alert quality is a reliability metric",
+      "On-call health can't be measured — it's subjective",
+      "One page per shift is still too many — target zero",
+      "Rotate on-call faster to spread the pain"
+     ],
+     "correct": 0,
+     "explain": "Track pages per shift; sustained overload means the alerting system has a bug, not the on-call. Alert quality is a reliability input — exhausted responders make worse decisions, and that's a system property you can measure and fix."
+    }
+   ],
+   "debrief": "Page on symptoms with burn-rate discipline: users hurt, budget burning — that's a 3 AM page. Resource metrics belong on dashboards, and on-call load itself is a metric worth tracking."
+  },
+  {
+   "id": "ksre-sim-4",
+   "title": "The dashboard that lied",
+   "kind": "troubleshoot",
+   "domain_id": "kubernetes-sre",
+   "difficulty": 2,
+   "points": 15,
+   "brief": "The checkout latency dashboard shows p99 at 200ms — healthy. Support tickets say checkout 'hangs for seconds.' The dashboard aggregates wrong. Debug the observability.",
+   "steps": [
+    {
+     "symptom": "Dashboard: p99 latency 200ms, all green. Tickets: 'checkout hangs for seconds' — dozens per day.",
+     "evidence": [
+      [
+       "query.txt",
+       "avg(rate(http_request_duration_seconds_sum[5m])) / avg(rate(http_request_duration_seconds_count[5m]))"
+      ],
+      [
+       "tickets.txt",
+       "34 tickets: 'spinning for 5+ seconds at payment step'."
+      ]
+     ],
+     "options": [
+      "The query averages away the tail: use histogram_quantile on the latency histogram for true p99 instead of averaging",
+      "The dashboard is right — the tickets are user error",
+      "Increase the scrape interval to smooth the data",
+      "The tickets are about a different service"
+     ],
+     "correct": 0,
+     "explain": "Averaging a latency histogram destroys the tail — the exact thing users feel. histogram_quantile over the histogram buckets gives the true p99; the average said 200ms while real users waited seconds. The query was the bug."
+    },
+    {
+     "symptom": "True p99 is now visible: 4.2s at the payment step. But which downstream is slow?",
+     "evidence": [
+      [
+       "p99.txt",
+       "checkout p99: 4.2s. Payment step dominates. Downstreams: fraud-check, ledger, notifier."
+      ],
+      [
+       "aggregate.txt",
+       "Each downstream's average latency looks fine."
+      ]
+     ],
+     "options": [
+      "Decompose with sum by (downstream): per-label breakdown is the first debugging move when an aggregate looks wrong",
+      "The aggregate is fine — pick a downstream at random to optimize",
+      "Add more dashboards",
+      "The p99 must be wrong again"
+     ],
+     "correct": 0,
+     "explain": "sum by (label) decomposition is the first debugging move when an aggregate looks wrong: break the 4.2s p99 down by downstream and the culprit separates from the innocent. Aggregates hide; labels reveal."
+    },
+    {
+     "symptom": "fraud-check p99 is 3.8s — but only for 2% of requests. The vendor SLA promises 200ms p99.",
+     "evidence": [
+      [
+       "fraud.txt",
+       "fraud-check p99 3.8s, p50 120ms. Slow requests: all from one AZ."
+      ],
+      [
+       "vendor.txt",
+       "Vendor status: 'All systems operational.'"
+      ]
+     ],
+     "options": [
+      "The AZ-correlated slowness points at the path, not the vendor's aggregate SLA — investigate the AZ-specific route with your own data",
+      "The vendor SLA says 200ms — open a ticket quoting it",
+      "2% of requests doesn't matter — ignore the tail",
+      "Cache all fraud checks to avoid the vendor"
+     ],
+     "correct": 0,
+     "explain": "Your decomposed data beats their aggregate status page: slowness correlated to one AZ is a routing/topology issue, not a vendor-wide outage. Bring the per-AZ breakdown to the vendor — that's the evidence that gets it fixed."
+    }
+   ],
+   "debrief": "Observability that lies is worse than none: use histogram_quantile for real percentiles, decompose aggregates with sum by, and trust your labeled data over aggregate status pages."
+  },
+  {
+   "id": "ksre-sim-5",
+   "title": "Chaos without a hypothesis",
+   "kind": "troubleshoot",
+   "domain_id": "kubernetes-sre",
+   "difficulty": 1,
+   "points": 10,
+   "brief": "An engineer ran a chaos experiment in production: killed the primary database 'to see what happens.' What happened was a 40-minute outage. Introduce chaos engineering properly.",
+   "steps": [
+    {
+     "symptom": "Unplanned chaos experiment: primary database killed in production, no hypothesis, no abort plan. 40-minute outage.",
+     "evidence": [
+      [
+       "incident.txt",
+       "Experiment: 'kill primary DB'. Hypothesis: none recorded. Blast radius: all of production. Abort: manual, 40min."
+      ],
+      [
+       "postmortem.txt",
+       "Finding: replicas existed but promotion was manual and untested."
+      ]
+     ],
+     "options": [
+      "Chaos engineering is hypothesis-driven: predict steady state, inject a bounded fault, measure, abort cleanly — starting small in staging",
+      "Chaos engineering is too dangerous — ban it",
+      "The experiment worked — it found the manual-promotion gap",
+      "Bigger faults find bigger gaps — next time kill two databases"
+     ],
+     "correct": 0,
+     "explain": "Chaos engineering is hypothesis-driven: state the expected steady state, inject a bounded fault, measure the deviation, abort cleanly. 'Kill the primary to see what happens' is not an experiment — it's an outage with a lab coat on."
+    },
+    {
+     "symptom": "The team agrees to do chaos properly. First experiment proposal: kill a random production pod.",
+     "evidence": [
+      [
+       "proposal.txt",
+       "Experiment 1: kill a random prod pod. Hypothesis: 'the system handles it.'"
+      ],
+      [
+       "maturity.txt",
+       "Team has never run a game day. Staging chaos: never attempted."
+      ]
+     ],
+     "options": [
+      "Start boring and small: kill one stateless pod in staging with a precise hypothesis, then graduate",
+      "Random prod pod is fine — Kubernetes self-heals",
+      "Skip staging — prod is where the real learning is",
+      "The hypothesis is good enough"
+     ],
+     "correct": 0,
+     "explain": "Start boring and small (kill one stateless pod in staging), not with the production database. Chaos maturity is a ladder: precise hypotheses on stateless staging faults first, then stateful, then production — each rung earns the next."
+    },
+    {
+     "symptom": "Staging experiments are running well. Leadership asks for the ROI of the chaos program.",
+     "evidence": [
+      [
+       "results.txt",
+       "6 experiments: 4 confirmed resilience, 2 found real gaps (now fixed)."
+      ],
+      [
+       "ask.txt",
+       "'What did chaos engineering buy us?'"
+      ]
+     ],
+     "options": [
+      "Report the found-and-fixed gaps with their incident equivalents: each is an outage that now won't happen at 3 AM",
+      "ROI can't be measured — ask for trust",
+      "Count experiments run — volume is the metric",
+      "Promise chaos prevents all outages"
+     ],
+     "correct": 0,
+     "explain": "Chaos ROI is stated in prevented incidents: the two gaps found in staging are outages that would have paged someone at 3 AM. Frame each finding as the incident it preempted — that's the program's value in the organization's own currency."
+    }
+   ],
+   "debrief": "Chaos engineering is hypothesis-driven and boring-first: steady-state prediction, bounded fault, clean abort — staging before production, stateless before stateful. The cowboy experiment is the anti-pattern the discipline exists to replace."
+  }
+ ],
+ "consoleSims": [
+  {
+   "id": "ksre-console-1",
+   "title": "Right-size the deployment",
+   "console": "k8s-dashboard",
+   "domain_id": "kubernetes-sre",
+   "difficulty": 2,
+   "brief": "The checkout service needs reliable capacity: deploy the pinned image, give it a stable service identity, and scale it for the traffic.",
+   "tasks": [
+    {
+     "id": "t1",
+     "instruction": "Deploy checkout (image registry.internal/checkout:3.1.0, 2 replicas) into the default namespace.",
+     "validate": {
+      "action": "deploy",
+      "params": {
+       "name": "checkout",
+       "namespace": "default",
+       "image": "registry.internal/checkout:3.1.0",
+       "replicas": 2
+      }
+     },
+     "hint": "Deployments section: name checkout, namespace default, image registry.internal/checkout:3.1.0, 2 replicas."
+    },
+    {
+     "id": "t2",
+     "instruction": "Expose the checkout deployment on port 80 as a ClusterIP service.",
+     "validate": {
+      "action": "expose-service",
+      "params": {
+       "deployment": "checkout",
+       "port": 80,
+       "type": "ClusterIP"
+      }
+     },
+     "hint": "Services section: deployment checkout, port 80, type ClusterIP."
+    },
+    {
+     "id": "t3",
+     "instruction": "Scale the checkout deployment to 5 replicas.",
+     "validate": {
+      "action": "scale",
+      "params": {
+       "deployment": "checkout",
+       "replicas": 5
+      }
+     },
+     "hint": "Deployments section Scale form: deployment checkout, replicas 5."
+    }
+   ],
+   "debrief": "Capacity is a declared property: the deployment states the desired replicas, the service gives them a stable identity, and scaling moves the number without touching the identity."
+  },
+  {
+   "id": "ksre-console-2",
+   "title": "Prepare the canary namespace",
+   "console": "k8s-dashboard",
+   "domain_id": "kubernetes-sre",
+   "difficulty": 2,
+   "brief": "Stage the canary release: isolated namespace, feature flags as config, and a single canary replica of the release candidate.",
+   "tasks": [
+    {
+     "id": "t1",
+     "instruction": "Create a namespace named canary.",
+     "validate": {
+      "action": "create-namespace",
+      "params": {
+       "name": "canary"
+      }
+     },
+     "hint": "Namespaces section: create namespace canary."
+    },
+    {
+     "id": "t2",
+     "instruction": "Create a ConfigMap named canary-flags in the canary namespace.",
+     "validate": {
+      "action": "create-configmap",
+      "params": {
+       "name": "canary-flags",
+       "namespace": "canary"
+      }
+     },
+     "hint": "ConfigMaps section: name canary-flags, namespace canary."
+    },
+    {
+     "id": "t3",
+     "instruction": "Deploy checkout-canary (image registry.internal/checkout:3.2.0-rc1, 1 replica) into canary.",
+     "validate": {
+      "action": "deploy",
+      "params": {
+       "name": "checkout-canary",
+       "namespace": "canary",
+       "image": "registry.internal/checkout:3.2.0-rc1",
+       "replicas": 1
+      }
+     },
+     "hint": "Deployments section: name checkout-canary, namespace canary, image registry.internal/checkout:3.2.0-rc1, 1 replica."
+    }
+   ],
+   "debrief": "Canaries are small by design: one replica, isolated namespace, flagged config. The release candidate proves itself on a sliver of reality before it earns the fleet."
+  },
+  {
+   "id": "ksre-console-3",
+   "title": "Run the incident",
+   "console": "ticketing",
+   "domain_id": "kubernetes-sre",
+   "difficulty": 2,
+   "brief": "The checkout error budget is in fast burn. Declare the incident properly: ticket it P1, own it, and narrate the response.",
+   "tasks": [
+    {
+     "id": "t1",
+     "instruction": "Create a P1 ticket titled 'Checkout error budget fast-burn'.",
+     "validate": {
+      "action": "create-ticket",
+      "params": {
+       "title": "Checkout error budget fast-burn",
+       "priority": "P1"
+      }
+     },
+     "hint": "New ticket section: exact title, priority P1."
+    },
+    {
+     "id": "t2",
+     "instruction": "Move INC-9001 to in-progress.",
+     "validate": {
+      "action": "update-status",
+      "params": {
+       "id": "INC-9001",
+       "status": "in-progress"
+      }
+     },
+     "hint": "Queue section Update status form: id INC-9001, status in-progress."
+    },
+    {
+     "id": "t3",
+     "instruction": "Add a note to INC-9001 with the current burn rate and your next action.",
+     "validate": {
+      "action": "add-note",
+      "params": {
+       "id": "INC-9001"
+      }
+     },
+     "hint": "Queue section Add note form: id INC-9001, note the burn rate and next step."
+    }
+   ],
+   "debrief": "Incident response is coordination first: the ticket declares it, the status tracks it, the notes narrate it. Fast burn gets a P1 and a commander — not a hero."
+  },
+  {
+   "id": "ksre-console-4",
+   "title": "Roll forward the fix",
+   "console": "cicd-pipeline",
+   "domain_id": "kubernetes-sre",
+   "difficulty": 2,
+   "brief": "The fix is merged. Roll it forward safely: target production, rebuild, and approve the gated promotion.",
+   "tasks": [
+    {
+     "id": "t1",
+     "instruction": "Set the pipeline variable DEPLOY_ENV to production.",
+     "validate": {
+      "action": "set-variable",
+      "params": {
+       "key": "DEPLOY_ENV",
+       "value": "production"
+      }
+     },
+     "hint": "Variables section: key DEPLOY_ENV, value production."
+    },
+    {
+     "id": "t2",
+     "instruction": "Trigger a new build for the fix.",
+     "validate": {
+      "action": "trigger-build",
+      "params": {}
+     },
+     "hint": "Pipeline section: click Trigger new build."
+    },
+    {
+     "id": "t3",
+     "instruction": "Approve the gated deploy stage.",
+     "validate": {
+      "action": "approve-stage",
+      "params": {
+       "stage": "deploy"
+      }
+     },
+     "hint": "Pipeline section: click Approve on the deploy stage."
+    }
+   ],
+   "debrief": "Rolling forward is still a gated operation: configure, build, approve. The fix earns production the same way every change does — through the gate, not around it."
+  }
+ ],
+ "terminalMissions": [
+  {
+   "id": "ksre-m1",
+   "title": "Survey the SRE workstation",
+   "domain_id": "kubernetes-sre",
+   "difficulty": 1,
+   "brief": "Incident response starts with orientation: list the workstation contents before you touch the cluster.",
+   "objectives": [
+    "List the directory contents"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^ls\\s*$",
+     "expect_contains": "logs/",
+     "hint": "Type: ls"
+    }
+   ],
+   "success_message": "Workstation surveyed — logs/ is present. Orientation complete."
+  },
+  {
+   "id": "ksre-m2",
+   "title": "Confirm the responder identity",
+   "domain_id": "kubernetes-sre",
+   "difficulty": 1,
+   "brief": "Incident roles are assigned to people. Confirm which user this session is running as.",
+   "objectives": [
+    "Print the current username"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^whoami\\s*$",
+     "expect_contains": "candidate",
+     "hint": "Type: whoami"
+    }
+   ],
+   "success_message": "Responder identity confirmed: candidate. Roles need names."
+  },
+  {
+   "id": "ksre-m3",
+   "title": "Anchor the runbook path",
+   "domain_id": "kubernetes-sre",
+   "difficulty": 1,
+   "brief": "Runbooks reference relative paths. Print the working directory to anchor every path that follows.",
+   "objectives": [
+    "Print the working directory"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^pwd\\s*$",
+     "expect_contains": "/home/candidate",
+     "hint": "Type: pwd"
+    }
+   ],
+   "success_message": "Runbook path anchored: /home/candidate."
+  },
+  {
+   "id": "ksre-m4",
+   "title": "Record the node kernel",
+   "domain_id": "kubernetes-sre",
+   "difficulty": 2,
+   "brief": "Node problems start with node facts. Record the full kernel string for the incident record.",
+   "objectives": [
+    "Print full kernel and machine information"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^uname\\s+-a",
+     "expect_contains": "6.8.0-ilb",
+     "hint": "Type: uname -a"
+    }
+   ],
+   "success_message": "Node kernel recorded: Linux 6.8.0-ilb x86_64. Facts first."
+  },
+  {
+   "id": "ksre-m5",
+   "title": "Name the affected node",
+   "domain_id": "kubernetes-sre",
+   "difficulty": 1,
+   "brief": "Which node is this? In a fleet, the hostname is the difference between the right machine and the wrong one.",
+   "objectives": [
+    "Print the hostname"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^hostname\\s*$",
+     "expect_contains": "interstitium",
+     "hint": "Type: hostname"
+    }
+   ],
+   "success_message": "Affected node named: interstitium."
+  },
+  {
+   "id": "ksre-m6",
+   "title": "Check the responder's context",
+   "domain_id": "kubernetes-sre",
+   "difficulty": 2,
+   "brief": "Before you escalate, know your own access context — what you can see bounds what you can diagnose.",
+   "objectives": [
+    "Print user and group identity details"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^id\\s*$",
+     "expect_contains": "uid=1000",
+     "hint": "Type: id"
+    }
+   ],
+   "success_message": "Responder context confirmed: uid=1000(candidate)."
+  },
+  {
+   "id": "ksre-m7",
+   "title": "Declare the SLO",
+   "domain_id": "kubernetes-sre",
+   "difficulty": 1,
+   "brief": "Every SRE action references the objective. Echo the checkout SLO for the record.",
+   "objectives": [
+    "Echo the SLO phrase"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^echo\\s+slo\\s+99\\.9\\s+ok",
+     "expect_contains": "slo 99.9 ok",
+     "hint": "Type: echo slo 99.9 ok"
+    }
+   ],
+   "success_message": "SLO declared: 99.9. The objective is on the record."
+  }
+ ],
  "sections": [
   {
    "id": "sec-full-spectrum",
@@ -1274,5 +1965,80 @@
  "math": [
   "stats",
   "probability"
+ ],
+ "videos": [
+  {
+   "title": "Spend the Error Budget",
+   "url": "/assets/videos/bc-bbg-k8ssre-error-budget.mp4",
+   "source": "Interstitium Labs",
+   "blurb": "The error budget as currency: 99.9% allows 43 minutes of downtime a month — at 92% consumed, features freeze and reliability work ships. (Preview — narration coming; voiceover pending TTS restore.)",
+   "durationMin": 1,
+   "order": 1,
+   "preview": true,
+   "captionsUrl": "/assets/videos/bc-bbg-k8ssre-error-budget.vtt",
+   "narrationUrl": "/assets/videos/bc-bbg-k8ssre-error-budget.narration.md",
+   "verifiedUtc": "2026-10-09T04:44:39Z",
+   "httpStatus": 200
+  },
+  {
+   "title": "Break It on Purpose",
+   "url": "/assets/videos/bc-primer-k8ssre-chaos.mp4",
+   "source": "Interstitium Labs",
+   "blurb": "A chaos experiment: kill a whole zone at noon on purpose — traffic reroutes, latency ticks up 40ms, zero errors. Hypothesis confirmed. (Preview — narration coming; voiceover pending TTS restore.)",
+   "durationMin": 1,
+   "order": 2,
+   "preview": true,
+   "captionsUrl": "/assets/videos/bc-primer-k8ssre-chaos.vtt",
+   "narrationUrl": "/assets/videos/bc-primer-k8ssre-chaos.narration.md",
+   "verifiedUtc": "2026-10-09T04:44:39Z",
+   "httpStatus": 200
+  },
+  {
+   "title": "The 3 AM Page",
+   "url": "/assets/videos/bc-story-k8ssre-3am-page.mp4",
+   "source": "Interstitium Labs",
+   "blurb": "3 AM: the pager screams, error rate 40% — mitigate first, roll back the deploy, then the blameless postmortem at 3:41. (Preview — narration coming; voiceover pending TTS restore.)",
+   "durationMin": 1,
+   "order": 3,
+   "preview": true,
+   "captionsUrl": "/assets/videos/bc-story-k8ssre-3am-page.vtt",
+   "narrationUrl": "/assets/videos/bc-story-k8ssre-3am-page.narration.md",
+   "verifiedUtc": "2026-10-09T04:44:39Z",
+   "httpStatus": 200
+  }
+ ],
+ "pdfGuides": [
+  {
+   "title": "Kubernetes Architecture — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-kubernetes.pdf",
+   "source": "Interstitium Labs",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:27:58Z"
+  },
+  {
+   "title": "Microservices Architecture — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-microservices.pdf",
+   "source": "Interstitium Labs",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:27:58Z"
+  },
+  {
+   "title": "CI/CD Pipelines — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-cicd-pipeline.pdf",
+   "source": "Interstitium Labs",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:27:58Z"
+  },
+  {
+   "title": "Cloud Architecture Patterns — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-cloud-patterns.pdf",
+   "source": "Interstitium Labs",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:27:58Z"
+  }
  ]
 }

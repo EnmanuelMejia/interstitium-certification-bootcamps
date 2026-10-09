@@ -1020,9 +1020,742 @@
    ]
   }
  ],
- "simulations": [],
- "consoleSims": [],
- "terminalMissions": [],
+ "simulations": [
+  {
+   "id": "ios-sim-1",
+   "title": "The retain cycle",
+   "kind": "troubleshoot",
+   "domain_id": "ios-swift-core",
+   "difficulty": 2,
+   "points": 100,
+   "brief": "ProfileViewController never deallocates after dismissal. The Memory Graph shows a purple cycle — explain it and break it.",
+   "steps": [
+    {
+     "symptom": "ProfileViewController never deallocates after dismissal; the Memory Graph shows a retain cycle.",
+     "evidence": [
+      [
+       "graph",
+       "ProfileVC → networkTask closure → ProfileVC"
+      ],
+      [
+       "code",
+       "task = { self.updateUI() }"
+      ]
+     ],
+     "options": [
+      "Capture self weakly: { [weak self] in ... } and guard-let a strong reference inside",
+      "Set the closure to nil in viewDidLoad",
+      "Call removeFromParent() manually",
+      "Ignore it — ARC handles cycles"
+     ],
+     "correct": 0,
+     "explain": "A closure capturing self strongly while self owns the closure is a textbook cycle. [weak self] breaks it; the guard-let re-strengthens safely for the call."
+    },
+    {
+     "symptom": "Cycle fixed. Now a repeating Timer keeps the settings screen alive.",
+     "evidence": [
+      [
+       "code",
+       "timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in self.tick() }"
+      ]
+     ],
+     "options": [
+      "Invalidate the timer on the view's teardown path — repeating timers retain their target",
+      "Make the timer non-repeating",
+      "Move the timer to the AppDelegate",
+      "Use a longer interval"
+     ],
+     "correct": 0,
+     "explain": "A scheduled repeating timer retains its target (via the closure) until invalidated. Ownership of the timer's lifetime belongs to the screen."
+    },
+    {
+     "symptom": "Both fixed. Prove it in the interview.",
+     "evidence": [
+      [
+       "tool",
+       "Xcode Memory Graph Debugger"
+      ]
+     ],
+     "options": [
+      "Dismiss the screen and show the Memory Graph with no purple exclamation — deinit prints confirm",
+      "Check the app still launches",
+      "Profile CPU usage",
+      "Read the code once more"
+     ],
+     "correct": 0,
+     "explain": "The proof is visual and mechanical: dismiss, and the graph shows no cycle. A deinit print is the cheapest regression signal."
+    }
+   ],
+   "debrief": "Retain cycles are ownership diagrams: find who holds whom, break one link with weak, and prove it in the Memory Graph."
+  },
+  {
+   "id": "ios-sim-2",
+   "title": "The frozen UI",
+   "kind": "troubleshoot",
+   "domain_id": "ios-ui-frameworks",
+   "difficulty": 2,
+   "points": 100,
+   "brief": "Tapping Sync freezes the UI for 4 seconds while photos upload. The interviewer is watching the main thread.",
+   "steps": [
+    {
+     "symptom": "Tapping Sync freezes the UI for 4 seconds while photos upload.",
+     "evidence": [
+      [
+       "trace",
+       "Main thread blocked in uploadAll() — synchronous URLSession"
+      ]
+     ],
+     "options": [
+      "Move the upload off the main thread (URLSession data task / async-await) and update UI on completion",
+      "Show a spinner on the main thread during the upload",
+      "Split the upload into smaller synchronous chunks",
+      "Disable the Sync button while uploading"
+     ],
+     "correct": 0,
+     "explain": "UIKit demands a responsive main thread. Async work with a completion that hops back to Main is the entire pattern."
+    },
+    {
+     "symptom": "Upload is async now, but the progress bar updates from the background closure and sometimes never redraws.",
+     "evidence": [
+      [
+       "code",
+       "progressView.progress = p // called from URLSession delegate queue"
+      ]
+     ],
+     "options": [
+      "Dispatch UI updates to the main queue: DispatchQueue.main.async { ... }",
+      "Update progress less often",
+      "Remove the progress bar",
+      "Use a UILabel instead"
+     ],
+     "correct": 0,
+     "explain": "UIKit is not thread-safe: every UI mutation must happen on the main thread. The hop is one line and non-negotiable."
+    },
+    {
+     "symptom": "Smooth now. The interviewer asks about Swift concurrency instead of GCD.",
+     "evidence": [
+      [
+       "code",
+       "async func sync() — needs @MainActor?"
+      ]
+     ],
+     "options": [
+      "Mark UI-touching code @MainActor so the compiler enforces main-thread execution",
+      "Keep GCD everywhere",
+      "Mark everything @MainActor",
+      "Avoid async/await"
+     ],
+     "correct": 0,
+     "explain": "@MainActor moves the main-thread rule from convention to compiler enforcement — the modern answer to the same discipline."
+    }
+   ],
+   "debrief": "UI responsiveness is a threading contract: work off-main, UI on-main, and let @MainActor enforce it."
+  },
+  {
+   "id": "ios-sim-3",
+   "title": "The Core Data migration crash",
+   "kind": "troubleshoot",
+   "domain_id": "ios-persistence",
+   "difficulty": 2,
+   "points": 100,
+   "brief": "Adding an attribute crashes existing installs on launch. Walk the interviewer through the migration taxonomy.",
+   "steps": [
+    {
+     "symptom": "Adding a 'nickname' attribute crashes existing installs: 'Can't find mapping model for migration'.",
+     "evidence": [
+      [
+       "change",
+       "added optional attribute nickname to User entity"
+      ]
+     ],
+     "options": [
+      "Enable lightweight migration (NSMigratePersistentStoresAutomaticallyOption) — adding an optional attribute is inferable",
+      "Write a manual mapping model for every change",
+      "Delete the store and recreate",
+      "Ship a new app instead of an update"
+     ],
+     "correct": 0,
+     "explain": "Additive, inferable changes migrate automatically with the lightweight options. Manual mapping models are for renames and splits."
+    },
+    {
+     "symptom": "Lightweight migration on. Now splitting 'name' into 'firstName'+'lastName' still crashes.",
+     "evidence": [
+      [
+       "change",
+       "renamed/split attribute — not inferable"
+      ]
+     ],
+     "options": [
+      "Write a custom NSEntityMigrationPolicy mapping the old name into the two new attributes",
+      "Force lightweight migration anyway",
+      "Destructive recreate",
+      "Do the split in code after launch"
+     ],
+     "correct": 0,
+     "explain": "Non-inferable changes need an explicit mapping model plus policy. That is the line between lightweight and heavyweight."
+    },
+    {
+     "symptom": "Migration works. How do you test it in CI?",
+     "evidence": [
+      [
+       "stores",
+       "v1 store file checked into test fixtures"
+      ]
+     ],
+     "options": [
+      "Migrate the fixture v1 store in a test and assert user data survives",
+      "Test only fresh installs",
+      "Manually upgrade once on a device",
+      "Trust the mapping model XML"
+     ],
+     "correct": 0,
+     "explain": "Migration tests replay the real upgrade: old store in, migrated store out, data asserted. Fixtures make it repeatable."
+    }
+   ],
+   "debrief": "Core Data migrations split on inferability: lightweight for additive changes, mapping models for the rest, fixtures proving both."
+  },
+  {
+   "id": "ios-sim-4",
+   "title": "The flaky XCUITest",
+   "kind": "troubleshoot",
+   "domain_id": "ios-mock-circuit",
+   "difficulty": 2,
+   "points": 100,
+   "brief": "The login UI test fails on CI whenever the mock server is slow. Stabilize it live for the interviewer.",
+   "steps": [
+    {
+     "symptom": "Login UI test fails on CI when the mock server is slow: the test taps Sign in before the button enables.",
+     "evidence": [
+      [
+       "log",
+       "XCTAssertTrue(signInButton.isEnabled) failed — button enabled 800ms later"
+      ]
+     ],
+     "options": [
+      "Wait on the real condition with an XCTNSPredicateExpectation instead of a fixed sleep",
+      "Add sleep(2) before the tap",
+      "Retry the test on failure",
+      "Run UI tests only on simulators"
+     ],
+     "correct": 0,
+     "explain": "Expectations wait for the actual state; sleeps guess at timing. The flake disappears when the test observes instead of assumes."
+    },
+    {
+     "symptom": "Expectation added. Still flakes when animations run long on CI.",
+     "evidence": [
+      [
+       "env",
+       "CI simulators are slow; animations take 3x longer"
+      ]
+     ],
+     "options": [
+      "Disable animations in the test scheme (UIView.setAnimationsEnabled(false))",
+      "Increase all timeouts to 60s",
+      "Record a new test",
+      "Test on physical devices only"
+     ],
+     "correct": 0,
+     "explain": "Animations are the other timing variable. Disabling them in tests removes a whole class of flakes deterministically."
+    },
+    {
+     "symptom": "Green 30/30. Keep it green?",
+     "evidence": [
+      [
+       "CI",
+       "UI tests gate the release branch"
+      ]
+     ],
+     "options": [
+      "Gate on them and treat every new flake as a P1 bug",
+      "Move them to nightly",
+      "Allow one retry per test",
+      "Delete slow tests"
+     ],
+     "correct": 0,
+     "explain": "Flake tolerance compounds. Gating plus immediate flake triage is what keeps a UI suite trustworthy at scale."
+    }
+   ],
+   "debrief": "Flaky UI tests are timing assumptions: wait on predicates, kill animations, and gate."
+  },
+  {
+   "id": "ios-sim-5",
+   "title": "Whiteboard: offline-first sync",
+   "kind": "troubleshoot",
+   "domain_id": "ios-architecture",
+   "difficulty": 3,
+   "points": 100,
+   "brief": "System-design round: offline-first notes with two-device sync conflicts. 40 minutes — reason out loud.",
+   "steps": [
+    {
+     "symptom": "Design offline-first notes: instant render offline, sync when online, conflicts possible.",
+     "evidence": [
+      [
+       "constraints",
+       "two devices, same account, spotty network"
+      ]
+     ],
+     "options": [
+      "Local store (Core Data/SwiftData) as source of truth; a sync engine pushes/pulls deltas; the UI observes the store",
+      "The UI fetches from the server on every appear",
+      "iCloud-only with no local cache",
+      "One JSON file in Documents"
+     ],
+     "correct": 0,
+     "explain": "Source-of-truth locally means the UI never waits on network. Sync is a background reconciliation against that store."
+    },
+    {
+     "symptom": "Interviewer: both devices edit the same note offline. Resolve it.",
+     "evidence": [
+      [
+       "conflict",
+       "device A: 'buy milk'; device B: 'buy oat milk'"
+      ]
+     ],
+     "options": [
+      "Last-writer-wins with a deterministic tiebreak, surfaced in UI when data was merged — or CRDTs if ordering matters",
+      "First-writer-wins silently",
+      "Duplicate the note",
+      "Crash and ask the user to pick a device"
+     ],
+     "correct": 0,
+     "explain": "Conflicts need a deterministic rule plus user visibility. LWW with timestamps is the pragmatic default; CRDTs when merge semantics matter."
+    },
+    {
+     "symptom": "Last: the sync engine itself — how is it structured?",
+     "evidence": [
+      [
+       "app",
+       "MVVM + repository already in place"
+      ]
+     ],
+     "options": [
+      "A sync coordinator owned by the repository: push local changes, pull remote deltas, write both through the store in transactions",
+      "Sync code inside every view model",
+      "Sync on app launch only",
+      "Poll the server from the view"
+     ],
+     "correct": 0,
+     "explain": "Sync belongs behind the repository boundary: one coordinator, transactional writes, and the UI never knows the network exists."
+    }
+   ],
+   "debrief": "Offline-first is a layering decision: the store is truth, sync reconciles behind the repository, conflicts resolve deterministically."
+  }
+ ],
+ "consoleSims": [
+  {
+   "id": "ios-console-1",
+   "title": "Trace the sample",
+   "console": "code-editor",
+   "domain_id": "ios-swift-core",
+   "difficulty": 1,
+   "brief": "A sample routine needs tracing in the interviewer's debugger exercise. Open, break, run, inspect.",
+   "tasks": [
+    {
+     "id": "ios-c1-t1",
+     "instruction": "Open app.py in the Explorer.",
+     "validate": {
+      "action": "open-file",
+      "params": {
+       "name": "app.py"
+      }
+     },
+     "hint": "Explorer tab → Open app.py."
+    },
+    {
+     "id": "ios-c1-t2",
+     "instruction": "Set a breakpoint at app.py line 4.",
+     "validate": {
+      "action": "toggle-breakpoint",
+      "params": {
+       "file": "app.py",
+       "line": 4
+      }
+     },
+     "hint": "Click line 4 in the editor to toggle a breakpoint."
+    },
+    {
+     "id": "ios-c1-t3",
+     "instruction": "Run to the breakpoint.",
+     "validate": {
+      "action": "run-to-breakpoint",
+      "params": {}
+     },
+     "hint": "Press Run to breakpoint."
+    },
+    {
+     "id": "ios-c1-t4",
+     "instruction": "Inspect the variable s.",
+     "validate": {
+      "action": "inspect-variable",
+      "params": {
+       "name": "s"
+      }
+     },
+     "hint": "Use Inspect with variable name s."
+    }
+   ],
+   "debrief": "Debugger habits are language-agnostic: open, break, run, inspect — read state before guessing."
+  },
+  {
+   "id": "ios-console-2",
+   "title": "Review the login PR",
+   "console": "git-host",
+   "domain_id": "ios-guided-build",
+   "difficulty": 2,
+   "brief": "The biometric-login branch is ready for review. Drive it from branch to approval in the simulated git host.",
+   "tasks": [
+    {
+     "id": "ios-c2-t1",
+     "instruction": "Create the branch login/biometric in the Branches tab.",
+     "validate": {
+      "action": "create-branch",
+      "params": {
+       "name": "login/biometric"
+      }
+     },
+     "hint": "Branches tab → Create branch, name it login/biometric."
+    },
+    {
+     "id": "ios-c2-t2",
+     "instruction": "Open a pull request titled 'Add biometric login' from login/biometric into main.",
+     "validate": {
+      "action": "open-pr",
+      "params": {
+       "title": "Add biometric login",
+       "base": "main",
+       "head": "login/biometric"
+      }
+     },
+     "hint": "Pull requests tab → Open pull request; head is login/biometric, base is main."
+    },
+    {
+     "id": "ios-c2-t3",
+     "instruction": "Leave a review comment on PR #2 confirming Face ID and Touch ID paths were tested.",
+     "validate": {
+      "action": "add-comment",
+      "params": {
+       "pr": 2,
+       "text": "Face ID and Touch ID paths tested."
+      }
+     },
+     "hint": "Add a comment on PR 2 confirming both biometric paths tested."
+    },
+    {
+     "id": "ios-c2-t4",
+     "instruction": "Approve PR #2.",
+     "validate": {
+      "action": "approve-pr",
+      "params": {
+       "pr": 2
+      }
+     },
+     "hint": "Click Approve on PR #2."
+    }
+   ],
+   "debrief": "Every feature ships the same way: branch, PR, recorded review, approval."
+  },
+  {
+   "id": "ios-console-3",
+   "title": "Green the release train",
+   "console": "cicd-pipeline",
+   "domain_id": "ios-guided-build",
+   "difficulty": 2,
+   "brief": "The iOS release pipeline builds with the wrong Xcode. Retarget it and rerun tests in the simulated CI console.",
+   "tasks": [
+    {
+     "id": "ios-c3-t1",
+     "instruction": "Set the XCODE_VERSION pipeline variable to 16.2.",
+     "validate": {
+      "action": "set-variable",
+      "params": {
+       "key": "XCODE_VERSION",
+       "value": "16.2"
+      }
+     },
+     "hint": "Set variable XCODE_VERSION = 16.2."
+    },
+    {
+     "id": "ios-c3-t2",
+     "instruction": "Trigger a fresh build.",
+     "validate": {
+      "action": "trigger-build",
+      "params": {}
+     },
+     "hint": "Trigger the build."
+    },
+    {
+     "id": "ios-c3-t3",
+     "instruction": "Retry the failed test stage.",
+     "validate": {
+      "action": "retry-stage",
+      "params": {
+       "stage": "test"
+      }
+     },
+     "hint": "Retry the test stage."
+    }
+   ],
+   "debrief": "Release trains run on explicit configuration: pin the toolchain, rebuild clean, rerun what failed."
+  },
+  {
+   "id": "ios-console-4",
+   "title": "Query the Core Data export",
+   "console": "sql-studio",
+   "domain_id": "ios-persistence",
+   "difficulty": 2,
+   "brief": "The interviewer exports a Core Data store as SQLite. Recreate its notes table and query it in the SQL workbench.",
+   "tasks": [
+    {
+     "id": "ios-c4-t1",
+     "instruction": "Create table notes with columns id INTEGER, body TEXT.",
+     "validate": {
+      "action": "create-table",
+      "params": {
+       "name": "notes",
+       "columns": "id INTEGER, body TEXT"
+      }
+     },
+     "hint": "Create table notes (id INTEGER, body TEXT)."
+    },
+    {
+     "id": "ios-c4-t2",
+     "instruction": "Index the body column for search.",
+     "validate": {
+      "action": "create-index",
+      "params": {
+       "table": "notes",
+       "column": "body"
+      }
+     },
+     "hint": "Create an index on notes.body."
+    },
+    {
+     "id": "ios-c4-t3",
+     "instruction": "Run a query selecting bodies from notes.",
+     "validate": {
+      "action": "run-query",
+      "params": {
+       "match": "notes"
+      }
+     },
+     "hint": "Run any SELECT that mentions the notes table."
+    }
+   ],
+   "debrief": "Under the ORM it is still tables and indexes: model it, index the search path, query it."
+  }
+ ],
+ "terminalMissions": [
+  {
+   "id": "ios-mission-1",
+   "title": "Roll call",
+   "domain_id": "ios-swift-core",
+   "difficulty": 1,
+   "brief": "Prove the sandbox answers before the iOS loop starts.",
+   "objectives": [
+    "Print your username",
+    "Print the working directory",
+    "Print the hostname"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^whoami$",
+     "expect_contains": "candidate",
+     "hint": "Type exactly: whoami"
+    },
+    {
+     "command_pattern": "^pwd$",
+     "expect_contains": "/home/candidate",
+     "hint": "Type exactly: pwd"
+    },
+    {
+     "command_pattern": "^hostname$",
+     "expect_contains": "interstitium",
+     "hint": "Type exactly: hostname"
+    }
+   ],
+   "success_message": "Roll call complete — the sandbox is yours."
+  },
+  {
+   "id": "ios-mission-2",
+   "title": "Survey the workspace",
+   "domain_id": "ios-ui-frameworks",
+   "difficulty": 1,
+   "brief": "Recon the practice workspace like a new codebase on day one.",
+   "objectives": [
+    "List the workspace",
+    "Confirm the logs directory exists",
+    "Mark the workspace mapped"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^ls$",
+     "expect_contains": "logs/",
+     "hint": "Type exactly: ls"
+    },
+    {
+     "command_pattern": "^ls$",
+     "expect_contains": "README.md",
+     "hint": "Type exactly: ls"
+    },
+    {
+     "command_pattern": "^echo 'workspace mapped'$",
+     "expect_contains": "workspace mapped",
+     "hint": "Type exactly: echo 'workspace mapped'"
+    }
+   ],
+   "success_message": "Workspace surveyed — you know where everything lives."
+  },
+  {
+   "id": "ios-mission-3",
+   "title": "Know your identity",
+   "domain_id": "ios-ui-frameworks",
+   "difficulty": 1,
+   "brief": "Interviewers ask about environments; start by reading this one.",
+   "objectives": [
+    "Print your user identity",
+    "Print the kernel name",
+    "Print full system info"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^id$",
+     "expect_contains": "uid=1000",
+     "hint": "Type exactly: id"
+    },
+    {
+     "command_pattern": "^uname$",
+     "expect_contains": "Linux",
+     "hint": "Type exactly: uname"
+    },
+    {
+     "command_pattern": "^uname -a$",
+     "expect_contains": "x86_64",
+     "hint": "Type exactly: uname -a"
+    }
+   ],
+   "success_message": "Environment read — now read the interview room the same way."
+  },
+  {
+   "id": "ios-mission-4",
+   "title": "ARC mantra",
+   "domain_id": "ios-swift-core",
+   "difficulty": 2,
+   "brief": "Drill the ARC ownership rules every iOS interview probes.",
+   "objectives": [
+    "State the strong default",
+    "State the weak rule",
+    "State the unowned rule"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^echo 'strong is the default'$",
+     "expect_contains": "strong is the default",
+     "hint": "Type exactly: echo 'strong is the default'"
+    },
+    {
+     "command_pattern": "^echo 'weak breaks cycles, becomes nil'$",
+     "expect_contains": "weak breaks cycles, becomes nil",
+     "hint": "Type exactly: echo 'weak breaks cycles, becomes nil'"
+    },
+    {
+     "command_pattern": "^echo 'unowned never nil, use with care'$",
+     "expect_contains": "unowned never nil, use with care",
+     "hint": "Type exactly: echo 'unowned never nil, use with care'"
+    }
+   ],
+   "success_message": "ARC drilled — draw the ownership graph without thinking."
+  },
+  {
+   "id": "ios-mission-5",
+   "title": "Optionals drill",
+   "domain_id": "ios-swift-core",
+   "difficulty": 2,
+   "brief": "Drill Swift optionals — the other guaranteed interview topic.",
+   "objectives": [
+    "State the optional syntax",
+    "State the binding rule",
+    "State the force-unwrap rule"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^echo 'optionals end with \\?'$",
+     "expect_contains": "optionals end with ?",
+     "hint": "Type exactly: echo 'optionals end with ?'"
+    },
+    {
+     "command_pattern": "^echo 'guard let exits early'$",
+     "expect_contains": "guard let exits early",
+     "hint": "Type exactly: echo 'guard let exits early'"
+    },
+    {
+     "command_pattern": "^echo 'force unwrap crashes on nil'$",
+     "expect_contains": "force unwrap crashes on nil",
+     "hint": "Type exactly: echo 'force unwrap crashes on nil'"
+    }
+   ],
+   "success_message": "Optionals drilled — never force-unwrap in production."
+  },
+  {
+   "id": "ios-mission-6",
+   "title": "Interview-day check",
+   "domain_id": "ios-mock-circuit",
+   "difficulty": 1,
+   "brief": "Final systems check before the loop: date, host, readiness.",
+   "objectives": [
+    "Print the current date",
+    "Confirm the hostname",
+    "Declare yourself ready"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^date$",
+     "expect_contains": "GMT",
+     "hint": "Type exactly: date"
+    },
+    {
+     "command_pattern": "^hostname$",
+     "expect_contains": "interstitium",
+     "hint": "Type exactly: hostname"
+    },
+    {
+     "command_pattern": "^echo 'on-site ready'$",
+     "expect_contains": "on-site ready",
+     "hint": "Type exactly: echo 'on-site ready'"
+    }
+   ],
+   "success_message": "Systems check green — walk into the loop ready."
+  },
+  {
+   "id": "ios-mission-7",
+   "title": "Concurrency recap",
+   "domain_id": "ios-concurrency",
+   "difficulty": 2,
+   "brief": "Close with the concurrency one-liners senior interviewers expect.",
+   "objectives": [
+    "State the main-queue rule",
+    "State the MainActor rule",
+    "State the async/await shape"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^echo 'UI work on the main queue'$",
+     "expect_contains": "UI work on the main queue",
+     "hint": "Type exactly: echo 'UI work on the main queue'"
+    },
+    {
+     "command_pattern": "^echo 'MainActor enforces it at compile time'$",
+     "expect_contains": "MainActor enforces it at compile time",
+     "hint": "Type exactly: echo 'MainActor enforces it at compile time'"
+    },
+    {
+     "command_pattern": "^echo 'async functions suspend, never block'$",
+     "expect_contains": "async functions suspend, never block",
+     "hint": "Type exactly: echo 'async functions suspend, never block'"
+    }
+   ],
+   "success_message": "Concurrency recap complete — you sound like the senior in the room."
+  }
+ ],
  "sections": [
   {
    "id": "ios-interview-sec",
@@ -1254,5 +1987,23 @@
  },
  "media": [],
  "foundations": [],
- "math": []
+ "math": [],
+ "pdfGuides": [
+  {
+   "title": "Cloud Architecture Patterns — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-cloud-patterns.pdf",
+   "source": "Interstitium Labs",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:27:58Z"
+  },
+  {
+   "title": "TLS Handshake — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-tls-handshake.pdf",
+   "source": "Interstitium Labs",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:27:58Z"
+  }
+ ]
 }

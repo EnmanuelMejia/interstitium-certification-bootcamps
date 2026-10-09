@@ -1414,6 +1414,198 @@
    "title": "The feature update that never lands"
   }
  ],
+ "consoleSims": [
+  {
+   "id": "md102-csim-1",
+   "title": "Triage the stuck Autopilot device",
+   "console": "ticketing",
+   "domain_id": "m365-endpoint-admin",
+   "difficulty": 1,
+   "brief": "A new laptop has been stuck at 'Setting up your device' for 40 minutes. Open a P2 ticket, assign it to endpoint-admin, and set it in-progress.",
+   "tasks": [
+    {
+     "id": "t1",
+     "instruction": "Create a P2 ticket titled exactly: Autopilot device stuck at 'Setting up your device'",
+     "validate": {
+      "action": "create-ticket",
+      "params": {
+       "title": "Autopilot device stuck at 'Setting up your device'",
+       "priority": "P2"
+      }
+     },
+     "hint": "New ticket tab — copy the title exactly, quotes included. It becomes INC-9002."
+    },
+    {
+     "id": "t2",
+     "instruction": "Assign INC-9002 to endpoint-admin.",
+     "validate": {
+      "action": "assign-ticket",
+      "params": {
+       "id": "INC-9002",
+       "assignee": "endpoint-admin"
+      }
+     },
+     "hint": "Assign form: TICKET ID=INC-9002, ASSIGNEE=endpoint-admin"
+    },
+    {
+     "id": "t3",
+     "instruction": "Move INC-9002 to in-progress.",
+     "validate": {
+      "action": "update-status",
+      "params": {
+       "id": "INC-9002",
+       "status": "in-progress"
+      }
+     },
+     "hint": "Update status form: TICKET ID=INC-9002, STATUS=in-progress"
+    }
+   ],
+   "debrief": "MD-102 reality: Autopilot enrollment failures are among the most common endpoint-admin tickets. Fast triage — accurate title, right owner, visible status — is half the fix."
+  },
+  {
+   "id": "md102-csim-2",
+   "title": "Log the manually enrolled device",
+   "console": "generic-web",
+   "domain_id": "m365-endpoint-admin",
+   "difficulty": 1,
+   "brief": "LT-1042 wouldn't take Autopilot, so it was enrolled manually. Record it in the web console: asset tag, team contact email, and the device timezone — then submit.",
+   "tasks": [
+    {
+     "id": "t1",
+     "instruction": "Set the asset-tag field to MD102-LT-1042.",
+     "validate": {
+      "action": "set-field",
+      "params": {
+       "id": "site_name",
+       "value": "MD102-LT-1042"
+      }
+     },
+     "hint": "Settings tab → 'Set site name' form: FIELD=site_name, VALUE=MD102-LT-1042"
+    },
+    {
+     "id": "t2",
+     "instruction": "Set the contact email to endpoint-team@contoso.local.",
+     "validate": {
+      "action": "set-field",
+      "params": {
+       "id": "admin_email",
+       "value": "endpoint-team@contoso.local"
+      }
+     },
+     "hint": "'Set admin email' form: FIELD=admin_email, VALUE=endpoint-team@contoso.local"
+    },
+    {
+     "id": "t3",
+     "instruction": "Set the timezone to America/Chicago.",
+     "validate": {
+      "action": "set-field",
+      "params": {
+       "id": "timezone",
+       "value": "America/Chicago"
+      }
+     },
+     "hint": "'Set timezone' form: FIELD=timezone, VALUE=America/Chicago"
+    },
+    {
+     "id": "t4",
+     "instruction": "Submit the form.",
+     "validate": {
+      "action": "submit-form",
+      "params": {}
+     },
+     "hint": "Click 'Submit settings'."
+    }
+   ],
+   "debrief": "Every managed device needs an inventory record with a contact and a timezone — compliance reports and remote-wipe decisions both start from that record."
+  },
+  {
+   "id": "md102-csim-3",
+   "title": "Harden the golden image firewall",
+   "console": "firewall",
+   "domain_id": "m365-endpoint-admin",
+   "difficulty": 2,
+   "brief": "The Windows golden image ships to 400 laptops. Block legacy SMB (TCP 445) from leaving the device — ransomware loves it — while explicitly allowing HTTPS (TCP 443) so Intune and updates keep working.",
+   "tasks": [
+    {
+     "id": "t1",
+     "instruction": "DROP outbound TCP 445.",
+     "validate": {
+      "action": "add-rule",
+      "params": {
+       "chain": "OUTPUT",
+       "protocol": "tcp",
+       "port": "445",
+       "source": "0.0.0.0/0",
+       "action": "DROP"
+      }
+     },
+     "hint": "CHAIN=OUTPUT, PROTOCOL=tcp, PORT=445, SOURCE=0.0.0.0/0, ACTION=DROP"
+    },
+    {
+     "id": "t2",
+     "instruction": "ACCEPT outbound TCP 443.",
+     "validate": {
+      "action": "add-rule",
+      "params": {
+       "chain": "OUTPUT",
+       "protocol": "tcp",
+       "port": "443",
+       "source": "0.0.0.0/0",
+       "action": "ACCEPT"
+      }
+     },
+     "hint": "Same form with PORT=443, ACTION=ACCEPT — updates and Intune traffic stay healthy."
+    }
+   ],
+   "debrief": "Blocking SMB outbound at the host level is a standard ransomware-containment control on managed endpoints — and it's exactly the kind of baseline you bake into an image, not bolt on later."
+  },
+  {
+   "id": "md102-csim-4",
+   "title": "Close out the update-ring ticket",
+   "console": "ticketing",
+   "domain_id": "m365-endpoint-admin",
+   "difficulty": 2,
+   "brief": "The pilot ring finished the feature update with zero rollback events. Open the closeout ticket, add the verification note, and resolve it.",
+   "tasks": [
+    {
+     "id": "t1",
+     "instruction": "Create a P3 ticket titled exactly: Feature update landed on pilot ring — verify fleet",
+     "validate": {
+      "action": "create-ticket",
+      "params": {
+       "title": "Feature update landed on pilot ring — verify fleet",
+       "priority": "P3"
+      }
+     },
+     "hint": "New ticket tab — copy the title exactly, it becomes INC-9002."
+    },
+    {
+     "id": "t2",
+     "instruction": "Add the note: Pilot ring 100% updated; no rollback events.",
+     "validate": {
+      "action": "add-note",
+      "params": {
+       "id": "INC-9002",
+       "text": "Pilot ring 100% updated; no rollback events."
+      }
+     },
+     "hint": "Add note form with the exact text."
+    },
+    {
+     "id": "t3",
+     "instruction": "Resolve INC-9002.",
+     "validate": {
+      "action": "resolve-ticket",
+      "params": {
+       "id": "INC-9002"
+      }
+     },
+     "hint": "Click the Resolve button on the INC-9002 row."
+    }
+   ],
+   "debrief": "Ring-based rollouts (pilot → broad) are the MD-102 update doctrine. The closeout note is the evidence: what deployed, what the result was, and whether anything rolled back."
+  }
+ ],
  "slug": "m365-endpoint-admin",
  "tagline": "MD-102: deploy, manage, and protect modern endpoints with Intune",
  "terminalMissions": [
@@ -1504,5 +1696,64 @@
   "certs": "Endpoint Administrator Associate (MD-102)",
   "docs": "https://learn.microsoft.com/credentials/certifications/modern-desktop/",
   "name": "Microsoft"
- }
+ },
+ "videos": [
+  {
+   "title": "Compliant or Quarantined",
+   "url": "/assets/videos/bc-bbg-m365-compliance.mp4",
+   "source": "Interstitium Labs",
+   "blurb": "Intune compliance: patched, encrypted, clean, current — one jailbreak fails the device and conditional access blocks it. (Preview — narration coming; voiceover pending TTS restore.)",
+   "durationMin": 1,
+   "order": 1,
+   "preview": true,
+   "captionsUrl": "/assets/videos/bc-bbg-m365-compliance.vtt",
+   "narrationUrl": "/assets/videos/bc-bbg-m365-compliance.narration.md",
+   "verifiedUtc": "2026-10-09T04:44:39Z",
+   "httpStatus": 200
+  },
+  {
+   "title": "Autopilot in 100 Seconds",
+   "url": "/assets/videos/bc-fireship-m365-autopilot.mp4",
+   "source": "Interstitium Labs",
+   "blurb": "Windows Autopilot: the laptop ships to the user, Entra sign-in applies apps, policies, certs — productive in twenty minutes, zero imaging. (Preview — narration coming; voiceover pending TTS restore.)",
+   "durationMin": 1,
+   "order": 2,
+   "preview": true,
+   "captionsUrl": "/assets/videos/bc-fireship-m365-autopilot.vtt",
+   "narrationUrl": "/assets/videos/bc-fireship-m365-autopilot.narration.md",
+   "verifiedUtc": "2026-10-09T04:44:39Z",
+   "httpStatus": 200
+  },
+  {
+   "title": "The Lost Phone at the Airport",
+   "url": "/assets/videos/bc-story-m365-lost-phone.mp4",
+   "source": "Interstitium Labs",
+   "blurb": "A lost phone with the customer list: Intune selective wipe removes corporate data only — the family photos survive, the contracts evaporate. (Preview — narration coming; voiceover pending TTS restore.)",
+   "durationMin": 1,
+   "order": 3,
+   "preview": true,
+   "captionsUrl": "/assets/videos/bc-story-m365-lost-phone.vtt",
+   "narrationUrl": "/assets/videos/bc-story-m365-lost-phone.narration.md",
+   "verifiedUtc": "2026-10-09T04:44:39Z",
+   "httpStatus": 200
+  }
+ ],
+ "pdfGuides": [
+  {
+   "title": "Cloud Architecture Patterns — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-cloud-patterns.pdf",
+   "source": "Interstitium Labs",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:27:58Z"
+  },
+  {
+   "title": "TLS Handshake — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-tls-handshake.pdf",
+   "source": "Interstitium Labs",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:27:58Z"
+  }
+ ]
 }

@@ -478,9 +478,706 @@
    ]
   }
  ],
- "simulations": [],
- "consoleSims": [],
- "terminalMissions": [],
+ "simulations": [
+  {
+   "id": "k8sx-sim-1",
+   "title": "etcd before the upgrade",
+   "kind": "troubleshoot",
+   "domain_id": "k8s-cka-exceed",
+   "difficulty": 3,
+   "points": 18,
+   "brief": "The cluster is one minor behind and the upgrade window opens Saturday. The runbook's first step is the etcd backup — but the last backup is 4 months old and nobody has tested a restore. Work the pre-upgrade.",
+   "steps": [
+    {
+     "symptom": "Upgrade planned Saturday. Last etcd snapshot: 4 months ago. Restore tested: never.",
+     "evidence": [
+      [
+       "backups.txt",
+       "etcd snapshots: 2026-06-01 (4 months ago). Location: control-plane disk (same disk as etcd)."
+      ],
+      [
+       "runbook.txt",
+       "Step 1: 'Back up etcd.' Step 2: 'Upgrade.' No verification step."
+      ]
+     ],
+     "options": [
+      "Take a fresh snapshot with etcdctl snapshot save over TLS, verify it with snapshot status, and copy it off the control-plane disk",
+      "The 4-month-old snapshot is fine — etcd barely changes",
+      "Skip the backup — the upgrade is routine",
+      "Back up after the upgrade to capture the new state"
+     ],
+     "correct": 0,
+     "explain": "etcd is the cluster's state store: back it up with etcdctl snapshot save over TLS before any control-plane change, verify with snapshot status, and store it off the machine. A snapshot on the same disk as etcd protects against nothing."
+    },
+    {
+     "symptom": "The snapshot is taken. Now prove it's usable before Saturday.",
+     "evidence": [
+      [
+       "snapshot.txt",
+       "snapshot.db: 84MB, created today. snapshot status: OK."
+      ],
+      [
+       "restore-test.txt",
+       "Last restore rehearsal: never. Team: 'We've never needed one.'"
+      ]
+     ],
+     "options": [
+      "Rehearse the restore on an isolated host: it writes a new data dir and the static pod manifest must be repointed at it",
+      "The snapshot status said OK — that's proof enough",
+      "Rehearsals risk breaking the test host — skip it",
+      "Restore directly on the production control plane to be sure"
+     ],
+     "correct": 0,
+     "explain": "An untested backup is a hope, not a backup. Restore rehearsal teaches the real procedure: restore writes a new data directory, and the etcd static pod manifest must be repointed at it — a step you do not want to learn during an incident."
+    },
+    {
+     "symptom": "Saturday arrives. Mid-upgrade, kubeadm stalls at the etcd health check.",
+     "evidence": [
+      [
+       "upgrade.txt",
+       "kubeadm upgrade: 'waiting for etcd to become healthy' — 25 minutes."
+      ],
+      [
+       "instinct.txt",
+       "Proposal: 'Use --force to get past it.'"
+      ]
+     ],
+     "options": [
+      "Stop: read the etcd container logs, diagnose the health failure, and never force past a broken etcd",
+      "Force past it — the upgrade window is closing",
+      "Restart the whole control plane and try again",
+      "The health check is flaky — ignore it"
+     ],
+     "correct": 0,
+     "explain": "When kubeadm stalls, read the failing component's container logs — often cert paths in the regenerated manifest — and never force past a broken etcd. Forcing an upgrade over an unhealthy state store turns a stall into data loss."
+    }
+   ],
+   "debrief": "etcd discipline: snapshot over TLS before control-plane changes, verify the snapshot, rehearse the restore (new data dir, repoint the manifest), and never force an upgrade past an unhealthy etcd."
+  },
+  {
+   "id": "k8sx-sim-2",
+   "title": "The policy that did nothing",
+   "kind": "troubleshoot",
+   "domain_id": "k8s-cka-exceed",
+   "difficulty": 3,
+   "points": 18,
+   "brief": "The security team deployed NetworkPolicies to isolate the payments namespace. A penetration test walks straight through them. The YAML is valid and applied. Diagnose the dataplane.",
+   "steps": [
+    {
+     "symptom": "NetworkPolicy applied and valid, but traffic flows freely between namespaces. Pentest: full lateral movement.",
+     "evidence": [
+      [
+       "policy.yaml",
+       "apiVersion: networking.k8s.io/v1, kind: NetworkPolicy — valid, applied, endpoints selected."
+      ],
+      [
+       "cni.txt",
+       "CNI plugin: flannel. NetworkPolicy enforcement: not supported."
+      ]
+     ],
+     "options": [
+      "The CNI doesn't enforce NetworkPolicy — Flannel ignores them; the policy objects are inert without an enforcing dataplane",
+      "The YAML must have a typo — reapply it",
+      "NetworkPolicies take 24 hours to take effect — wait",
+      "Delete and recreate the policies with different names"
+     ],
+     "correct": 0,
+     "explain": "NetworkPolicy objects are inert unless the CNI enforces them — Flannel doesn't; Calico and Cilium do, with different eBPF/iptables trade-offs. The API accepted the objects because they're valid; the dataplane ignored them because it can't enforce them."
+    },
+    {
+     "symptom": "The fix is a CNI migration to an enforcing plugin. The team wants to do it Friday afternoon.",
+     "evidence": [
+      [
+       "plan.txt",
+       "CNI swap: Friday 16:00, all nodes, no rollback plan. 'It's just networking.'"
+      ],
+      [
+       "risk.txt",
+       "CNI swap restarts the pod network dataplane on every node."
+      ]
+     ],
+     "options": [
+      "Schedule the migration in a window with a node-by-node plan and a tested rollback — the dataplane restart affects every pod",
+      "Friday afternoon is fine — networking changes are low-risk",
+      "Do it without a rollback plan to keep it simple",
+      "Migrate the CNI on production first to prove it works"
+     ],
+     "correct": 0,
+     "explain": "The CNI owns the pod network dataplane: swapping it restarts networking on every node. That deserves a maintenance window, a node-by-node rollout, and a rollback plan — 'just networking' is how you learn what the dataplane actually does."
+    },
+    {
+     "symptom": "After migration, one legacy app breaks — it relied on unrestricted pod traffic.",
+     "evidence": [
+      [
+       "app.txt",
+       "Legacy monitor: scrapes metrics from every namespace. Assumed flat network."
+      ],
+      [
+       "default.txt",
+       "Default posture after migration: deny-all between namespaces (as designed)."
+      ]
+     ],
+     "options": [
+      "Write explicit allow policies for the monitor's legitimate traffic — the breakage is the policy working, and exceptions must be declared",
+      "Remove the deny-all — the legacy app is more important",
+      "Give the monitor host-network access instead",
+      "Exempt the legacy app from all policies permanently"
+     ],
+     "correct": 0,
+     "explain": "Deny-by-default working as designed will break things that depended on the flat network — that's the migration surfacing implicit trust. The fix is explicit allow policies for legitimate flows, not dismantling the posture for one app."
+    }
+   ],
+   "debrief": "Know your CNI: policy objects without dataplane enforcement are decoration. Migrate deliberately, expect implicit-trust breakage, and encode the legitimate exceptions as explicit policy."
+  },
+  {
+   "id": "k8sx-sim-3",
+   "title": "CRD version migration",
+   "kind": "troubleshoot",
+   "domain_id": "k8s-cka-exceed",
+   "difficulty": 3,
+   "points": 18,
+   "brief": "The platform's custom Database CRD needs to move its storage version from v1alpha1 to v1. There are 400 instances in production. One wrong step deletes them all. Sequence the migration.",
+   "steps": [
+    {
+     "symptom": "CRD serves v1alpha1 (storage). v1 is added to the schema. 400 instances exist. The team wants to 'just flip storage to v1'.",
+     "evidence": [
+      [
+       "crd.txt",
+       "versions: [v1alpha1 (storage: true), v1 (storage: false, served: true)]. instances: 400."
+      ],
+      [
+       "proposal.txt",
+       "'Flip storage to v1 and delete v1alpha1 — one change.'"
+      ]
+     ],
+     "options": [
+      "Follow the sequence: serve both, flip storage, rewrite every object (round-trip), verify, then drop the old version",
+      "Flip storage and delete v1alpha1 in one change — it's atomic",
+      "Delete the CRD and recreate it at v1 — clean slate",
+      "Storage version doesn't matter — it's metadata"
+     ],
+     "correct": 0,
+     "explain": "CRD storage migration is a sequence: serve both versions, flip the storage version, rewrite every object so it's actually stored at v1 (round-trip), verify, then remove v1alpha1. Skipping the rewrite leaves objects stored in a version you then delete."
+    },
+    {
+     "symptom": "Storage flipped to v1, but the rewrite job was skipped — 'the flip is what matters.'",
+     "evidence": [
+      [
+       "etcd-dump.txt",
+       "Sample of 50 objects: 47 still serialized as v1alpha1."
+      ],
+      [
+       "plan.txt",
+       "Next step: remove v1alpha1 from the CRD."
+      ]
+     ],
+     "options": [
+      "Stop: run the round-trip rewrite first — removing v1alpha1 while objects are still stored as v1alpha1 destroys them",
+      "Proceed — the storage flip converted everything automatically",
+      "The 47 are probably test objects",
+      "Rewrite is optional — the API converts on read"
+     ],
+     "correct": 0,
+     "explain": "Flipping the storage version changes where new writes go; existing objects stay serialized in the old version until rewritten. Deleting the CRD version — or the CRD itself — deletes all its instances. The rewrite is the step that makes the migration real."
+    },
+    {
+     "symptom": "Migration complete and verified. The old version lingers 'just in case'.",
+     "evidence": [
+      [
+       "crd2.txt",
+       "versions: [v1alpha1 (served: true), v1 (storage: true)]. All 400 objects verified at v1."
+      ],
+      [
+       "debt.txt",
+       "v1alpha1 served 'temporarily' — 8 months ago in a similar migration."
+      ]
+     ],
+     "options": [
+      "Drop v1alpha1 now that verification is complete — lingering versions are debt that the next migration trips over",
+      "Keep it forever — serving two versions is harmless",
+      "Keep it until someone complains",
+      "Drop it without verification to save time"
+     ],
+     "correct": 0,
+     "explain": "The sequence ends with dropping the old version after verification. 'Temporary' served versions become permanent API surface that every future migration must carry — finish the sequence."
+    }
+   ],
+   "debrief": "CRD version migration: serve both, flip storage, round-trip rewrite every object, verify, drop the old version. Deleting the CRD deletes all its instances — there are no shortcuts in this sequence."
+  },
+  {
+   "id": "k8sx-sim-4",
+   "title": "kubelet newer than apiserver",
+   "kind": "troubleshoot",
+   "domain_id": "k8s-cka-exceed",
+   "difficulty": 2,
+   "points": 15,
+   "brief": "A node was 'upgraded' to kubelet 1.31 while the apiserver runs 1.29. The node is NotReady and the engineer insists newer-is-better. Explain the skew policy.",
+   "steps": [
+    {
+     "symptom": "Node NotReady after its kubelet was upgraded past the apiserver version.",
+     "evidence": [
+      [
+       "versions.txt",
+       "apiserver: v1.29. kubelet: v1.31. Node status: NotReady."
+      ],
+      [
+       "engineer.txt",
+       "'Newer is better — the kubelet should be ahead.'"
+      ]
+     ],
+     "options": [
+      "The skew policy forbids it: kubelets may lag up to two minors behind the apiserver but must never be newer",
+      "Newer kubelets are fine — the NotReady is a coincidence",
+      "Upgrade the apiserver to 1.31 immediately to match",
+      "Restart the kubelet — version mismatches fix themselves"
+     ],
+     "correct": 0,
+     "explain": "Version skew policy: upgrade the control plane first, one minor at a time; kubelets may lag up to two minors behind the apiserver but must never be newer. A newer kubelet can send API calls the older apiserver doesn't understand."
+    },
+    {
+     "symptom": "The approved path: bring the cluster to 1.30, then 1.31, control plane first each time.",
+     "evidence": [
+      [
+       "plan.txt",
+       "Step 1: apiserver 1.29 -> 1.30. Step 2: kubelets -> 1.30. Step 3: repeat for 1.31."
+      ],
+      [
+       "shortcut.txt",
+       "Proposal: 'Jump the apiserver straight to 1.31 — one outage instead of two.'"
+      ]
+     ],
+     "options": [
+      "One minor at a time: the skew policy and upgrade tooling are validated for single-minor steps, not jumps",
+      "Jump to 1.31 — fewer maintenance windows is better",
+      "Skip 1.30 for the apiserver but do it for kubelets",
+      "Versions are just numbers — jump freely"
+     ],
+     "correct": 0,
+     "explain": "Upgrade the control plane first, one minor at a time. Multi-minor jumps skip the migration steps each minor performs — etcd schema, API conversions, component contracts — and land you in untested territory."
+    },
+    {
+     "symptom": "During the 1.30 upgrade, a teammate upgrades a kubelet to 1.31 'to get ahead'.",
+     "evidence": [
+      [
+       "node.txt",
+       "One kubelet at 1.31 against apiserver 1.30. Status: NotReady, again."
+      ],
+      [
+       "pattern.txt",
+       "Second occurrence of the same violation this month."
+      ]
+     ],
+     "options": [
+      "Drain, downgrade the kubelet to the supported skew, and put the skew rule in the upgrade runbook so it stops recurring",
+      "Leave it — one node at 1.31 is harmless",
+      "Upgrade everything to 1.31 right now to match the node",
+      "Cordon the node and forget it"
+     ],
+     "correct": 0,
+     "explain": "Fix the node (drain, downgrade into supported skew) and fix the process (the skew rule goes in the runbook). Recurring violations are a process failure wearing an incident costume."
+    }
+   ],
+   "debrief": "Skew policy is a hard rule, not guidance: control plane first, one minor at a time, kubelets never newer than the apiserver. Put it in the runbook and the violations stop."
+  },
+  {
+   "id": "k8sx-sim-5",
+   "title": "Upgrade stalled at etcd",
+   "kind": "troubleshoot",
+   "domain_id": "k8s-cka-exceed",
+   "difficulty": 2,
+   "points": 15,
+   "brief": "kubeadm upgrade has been 'waiting for the control plane' for 40 minutes. The window closes in 20. The loudest voice says force it. Work the stall.",
+   "steps": [
+    {
+     "symptom": "kubeadm upgrade preflight hangs: new apiserver static pod won't become healthy.",
+     "evidence": [
+      [
+       "upgrade.txt",
+       "'waiting for the kubelet to boot up the control plane as etcd... ' 40 minutes."
+      ],
+      [
+       "logs.txt",
+       "apiserver container: 'error loading cert: /etc/kubernetes/pki/apiserver-etcd-client.crt: no such file'."
+      ]
+     ],
+     "options": [
+      "The regenerated manifest points at a cert path that doesn't exist — fix the cert path issue, don't force the upgrade",
+      "Force the upgrade — the cert error is probably transient",
+      "Delete the static pod manifests and let them regenerate",
+      "Reboot the control-plane node"
+     ],
+     "correct": 0,
+     "explain": "When kubeadm upgrade stalls, read the failing component's container logs — here, cert paths in the regenerated manifest. The stall is the tool refusing to proceed on a broken component; forcing past it deploys the brokenness."
+    },
+    {
+     "symptom": "Cert path fixed, apiserver healthy. Now etcd reports a quorum warning on one member.",
+     "evidence": [
+      [
+       "etcd.txt",
+       "Member 3: 'took too long to apply' warnings, disk latency spikes."
+      ],
+      [
+       "force2.txt",
+       "'etcd will catch up — keep going.'"
+      ]
+     ],
+     "options": [
+      "Pause and resolve the etcd health issue first — never upgrade over an unhealthy state store",
+      "etcd always catches up — continue the upgrade",
+      "Remove the slow member and upgrade with two",
+      "The warnings are informational — proceed"
+     ],
+     "correct": 0,
+     "explain": "Never force past a broken etcd: the state store's health is the precondition for everything above it. A member with disk-latency warnings during an upgrade is how you get a quorum loss mid-migration."
+    },
+    {
+     "symptom": "Upgrade complete. The team wants to delete the pre-upgrade etcd snapshot 'to save disk'.",
+     "evidence": [
+      [
+       "snapshot.txt",
+       "Pre-upgrade snapshot: 84MB. Disk free: 60%."
+      ],
+      [
+       "policy.txt",
+       "Retention policy: keep pre-upgrade snapshots 30 days."
+      ]
+     ],
+     "options": [
+      "Keep the snapshot per the retention policy — the upgrade isn't proven until the cluster has baked, and 84MB is cheap insurance",
+      "Delete it — the upgrade succeeded",
+      "Delete it — disk space is precious",
+      "Move it to the same disk as etcd for safekeeping"
+     ],
+     "correct": 0,
+     "explain": "The pre-upgrade snapshot is rollback insurance with a 30-day retention for a reason: upgrade regressions surface over days, not minutes. Deleting the parachute because the jump looked fine is premature."
+    }
+   ],
+   "debrief": "Stalled upgrades are diagnosed, not forced: read the component logs, fix cert paths, demand a healthy etcd before proceeding — and keep the pre-upgrade snapshot until the new version has proven itself."
+  }
+ ],
+ "consoleSims": [
+  {
+   "id": "k8sx-console-1",
+   "title": "Isolate the workload",
+   "console": "k8s-dashboard",
+   "domain_id": "k8s-cka-exceed",
+   "difficulty": 2,
+   "brief": "Senior admin drill: give the payments API its own namespace and deploy the pinned image there — isolation before exposure.",
+   "tasks": [
+    {
+     "id": "t1",
+     "instruction": "Create a namespace named payments.",
+     "validate": {
+      "action": "create-namespace",
+      "params": {
+       "name": "payments"
+      }
+     },
+     "hint": "Namespaces section: create namespace payments."
+    },
+    {
+     "id": "t2",
+     "instruction": "Deploy payments-api (image registry.internal/payments-api:2.4.1, 3 replicas) into the payments namespace.",
+     "validate": {
+      "action": "deploy",
+      "params": {
+       "name": "payments-api",
+       "namespace": "payments",
+       "image": "registry.internal/payments-api:2.4.1",
+       "replicas": 3
+      }
+     },
+     "hint": "Deployments section: name, namespace payments, pinned image, 3 replicas."
+    },
+    {
+     "id": "t3",
+     "instruction": "Create a ConfigMap named payments-config in the payments namespace.",
+     "validate": {
+      "action": "create-configmap",
+      "params": {
+       "name": "payments-config",
+       "namespace": "payments"
+      }
+     },
+     "hint": "ConfigMaps section: name payments-config, namespace payments."
+    }
+   ],
+   "debrief": "Isolation is a namespace plus intent: the workload gets its own scope, its config lives beside it, and nothing is exposed until you decide it should be."
+  },
+  {
+   "id": "k8sx-console-2",
+   "title": "Expose and scale",
+   "console": "k8s-dashboard",
+   "domain_id": "k8s-cka-exceed",
+   "difficulty": 2,
+   "brief": "The web tier needs to handle the sale: deploy it, expose it internally, then scale it up.",
+   "tasks": [
+    {
+     "id": "t1",
+     "instruction": "Deploy web (image nginx:1.25, 2 replicas) into the default namespace.",
+     "validate": {
+      "action": "deploy",
+      "params": {
+       "name": "web",
+       "namespace": "default",
+       "image": "nginx:1.25",
+       "replicas": 2
+      }
+     },
+     "hint": "Deployments section: name web, namespace default, image nginx:1.25, 2 replicas."
+    },
+    {
+     "id": "t2",
+     "instruction": "Expose the web deployment on port 80 as a ClusterIP service.",
+     "validate": {
+      "action": "expose-service",
+      "params": {
+       "deployment": "web",
+       "port": 80,
+       "type": "ClusterIP"
+      }
+     },
+     "hint": "Services section: deployment web, port 80, type ClusterIP."
+    },
+    {
+     "id": "t3",
+     "instruction": "Scale the web deployment to 4 replicas.",
+     "validate": {
+      "action": "scale",
+      "params": {
+       "deployment": "web",
+       "replicas": 4
+      }
+     },
+     "hint": "Deployments section Scale form: deployment web, replicas 4."
+    }
+   ],
+   "debrief": "Deploy, expose, scale: the core administration loop. The service gives the deployment a stable identity; scaling changes capacity without touching that identity."
+  },
+  {
+   "id": "k8sx-console-3",
+   "title": "Stage the new API version",
+   "console": "k8s-dashboard",
+   "domain_id": "k8s-cka-exceed",
+   "difficulty": 2,
+   "brief": "Stand up the staging environment for the API: namespace, config, and the pinned release candidate.",
+   "tasks": [
+    {
+     "id": "t1",
+     "instruction": "Create a namespace named staging.",
+     "validate": {
+      "action": "create-namespace",
+      "params": {
+       "name": "staging"
+      }
+     },
+     "hint": "Namespaces section: create namespace staging."
+    },
+    {
+     "id": "t2",
+     "instruction": "Create a ConfigMap named app-config in the staging namespace.",
+     "validate": {
+      "action": "create-configmap",
+      "params": {
+       "name": "app-config",
+       "namespace": "staging"
+      }
+     },
+     "hint": "ConfigMaps section: name app-config, namespace staging."
+    },
+    {
+     "id": "t3",
+     "instruction": "Deploy api (image registry.internal/api:1.9.0, 2 replicas) into staging.",
+     "validate": {
+      "action": "deploy",
+      "params": {
+       "name": "api",
+       "namespace": "staging",
+       "image": "registry.internal/api:1.9.0",
+       "replicas": 2
+      }
+     },
+     "hint": "Deployments section: name api, namespace staging, image registry.internal/api:1.9.0, 2 replicas."
+    }
+   ],
+   "debrief": "Staging mirrors production's shape: same namespace-per-environment pattern, config beside the workload, pinned images. The upgrade rehearses here before it touches anything real."
+  },
+  {
+   "id": "k8sx-console-4",
+   "title": "Page the cluster on-call",
+   "console": "ticketing",
+   "domain_id": "k8s-cka-exceed",
+   "difficulty": 1,
+   "brief": "etcd is reporting disk pressure on control-plane-1. Run the incident intake: ticket it P1 and get it moving.",
+   "tasks": [
+    {
+     "id": "t1",
+     "instruction": "Create a P1 ticket titled 'etcd disk pressure on control-plane-1'.",
+     "validate": {
+      "action": "create-ticket",
+      "params": {
+       "title": "etcd disk pressure on control-plane-1",
+       "priority": "P1"
+      }
+     },
+     "hint": "New ticket section: exact title, priority P1."
+    },
+    {
+     "id": "t2",
+     "instruction": "Assign INC-9001 to cluster-oncall.",
+     "validate": {
+      "action": "assign-ticket",
+      "params": {
+       "id": "INC-9001",
+       "assignee": "cluster-oncall"
+      }
+     },
+     "hint": "Queue section Assign form: id INC-9001, assignee cluster-oncall."
+    },
+    {
+     "id": "t3",
+     "instruction": "Move INC-9001 to in-progress.",
+     "validate": {
+      "action": "update-status",
+      "params": {
+       "id": "INC-9001",
+       "status": "in-progress"
+      }
+     },
+     "hint": "Queue section Update status form: id INC-9001, status in-progress."
+    }
+   ],
+   "debrief": "etcd disk pressure is a P1 because the state store is the cluster's brain: ticket it, name the owner, track it. The incident queue is where the runbook starts."
+  }
+ ],
+ "terminalMissions": [
+  {
+   "id": "k8sx-m1",
+   "title": "Survey the admin workstation",
+   "domain_id": "k8s-cka-exceed",
+   "difficulty": 1,
+   "brief": "Before administering anything, confirm the workstation layout — know your tools' home.",
+   "objectives": [
+    "List the directory contents"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^ls\\s*$",
+     "expect_contains": "notes.txt",
+     "hint": "Type: ls"
+    }
+   ],
+   "success_message": "Workstation surveyed. Admin work starts with orientation."
+  },
+  {
+   "id": "k8sx-m2",
+   "title": "Confirm the admin identity",
+   "domain_id": "k8s-cka-exceed",
+   "difficulty": 1,
+   "brief": "Cluster operations are audited by user. Confirm which identity this session carries.",
+   "objectives": [
+    "Print the current username"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^whoami\\s*$",
+     "expect_contains": "candidate",
+     "hint": "Type: whoami"
+    }
+   ],
+   "success_message": "Admin identity confirmed: candidate. The audit log starts here."
+  },
+  {
+   "id": "k8sx-m3",
+   "title": "Anchor the working directory",
+   "domain_id": "k8s-cka-exceed",
+   "difficulty": 1,
+   "brief": "Manifests and kubeconfigs are path-sensitive. Print the working directory.",
+   "objectives": [
+    "Print the working directory"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^pwd\\s*$",
+     "expect_contains": "/home/candidate",
+     "hint": "Type: pwd"
+    }
+   ],
+   "success_message": "Working directory anchored: /home/candidate."
+  },
+  {
+   "id": "k8sx-m4",
+   "title": "Check the node OS",
+   "domain_id": "k8s-cka-exceed",
+   "difficulty": 1,
+   "brief": "Kubelet compatibility starts with the OS. Print the kernel name.",
+   "objectives": [
+    "Print the kernel name"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^uname\\s*$",
+     "expect_contains": "Linux",
+     "hint": "Type: uname"
+    }
+   ],
+   "success_message": "Node OS confirmed: Linux."
+  },
+  {
+   "id": "k8sx-m5",
+   "title": "Fingerprint the control-plane node",
+   "domain_id": "k8s-cka-exceed",
+   "difficulty": 2,
+   "brief": "Record the full kernel string for the pre-upgrade baseline — upgrades compare against this.",
+   "objectives": [
+    "Print full kernel and machine information"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^uname\\s+-a",
+     "expect_contains": "6.8.0-ilb",
+     "hint": "Type: uname -a"
+    }
+   ],
+   "success_message": "Control-plane node fingerprinted: Linux 6.8.0-ilb x86_64."
+  },
+  {
+   "id": "k8sx-m6",
+   "title": "Name the node",
+   "domain_id": "k8s-cka-exceed",
+   "difficulty": 1,
+   "brief": "In a multi-node cluster, names prevent operating on the wrong machine. Print the hostname.",
+   "objectives": [
+    "Print the hostname"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^hostname\\s*$",
+     "expect_contains": "interstitium",
+     "hint": "Type: hostname"
+    }
+   ],
+   "success_message": "Node named: interstitium. Right machine, confirmed."
+  },
+  {
+   "id": "k8sx-m7",
+   "title": "Log the snapshot",
+   "domain_id": "k8s-cka-exceed",
+   "difficulty": 1,
+   "brief": "Every etcd snapshot gets logged. Echo the snapshot record for the runbook.",
+   "objectives": [
+    "Echo the snapshot phrase"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^echo\\s+etcd-snapshot\\s+ok",
+     "expect_contains": "etcd-snapshot ok",
+     "hint": "Type: echo etcd-snapshot ok"
+    }
+   ],
+   "success_message": "Snapshot logged: etcd-snapshot ok. Backups you can prove beat backups you assume."
+  }
+ ],
  "sections": [
   {
    "id": "sec-full-spectrum",
@@ -1275,5 +1972,72 @@
  "math": [
   "stats",
   "probability"
+ ],
+ "videos": [
+  {
+   "title": "Where Does the Pod Land?",
+   "url": "/assets/videos/bc-bbg-k8scka-scheduler.mp4",
+   "source": "Interstitium Labs",
+   "blurb": "The kube-scheduler in action: a pod requests 2 CPU, full nodes are filtered out, the least-loaded node wins — filter, then score. (Preview — narration coming; voiceover pending TTS restore.)",
+   "durationMin": 1,
+   "order": 1,
+   "preview": true,
+   "captionsUrl": "/assets/videos/bc-bbg-k8scka-scheduler.vtt",
+   "narrationUrl": "/assets/videos/bc-bbg-k8scka-scheduler.narration.md",
+   "verifiedUtc": "2026-10-09T04:44:39Z",
+   "httpStatus": 200
+  },
+  {
+   "title": "Kubectl in 100 Seconds",
+   "url": "/assets/videos/bc-fireship-k8scka-kubectl.mp4",
+   "source": "Interstitium Labs",
+   "blurb": "The kubectl debugging trinity: get what's running, describe why it's broken, read the logs' last words — cattle, not pets. (Preview — narration coming; voiceover pending TTS restore.)",
+   "durationMin": 1,
+   "order": 2,
+   "preview": true,
+   "captionsUrl": "/assets/videos/bc-fireship-k8scka-kubectl.vtt",
+   "narrationUrl": "/assets/videos/bc-fireship-k8scka-kubectl.narration.md",
+   "verifiedUtc": "2026-10-09T04:44:39Z",
+   "httpStatus": 200
+  },
+  {
+   "title": "How Many Replicas Survive?",
+   "url": "/assets/videos/bc-3b1b-k8scka-quorum.mp4",
+   "source": "Interstitium Labs",
+   "blurb": "The math of quorum: a node dies — 3 and 5 replicas hold their majority, 1 and 2 gamble. Odd numbers win elections. (Preview — narration coming; voiceover pending TTS restore.)",
+   "durationMin": 1,
+   "order": 3,
+   "preview": true,
+   "captionsUrl": "/assets/videos/bc-3b1b-k8scka-quorum.vtt",
+   "narrationUrl": "/assets/videos/bc-3b1b-k8scka-quorum.narration.md",
+   "verifiedUtc": "2026-10-09T04:44:39Z",
+   "httpStatus": 200
+  }
+ ],
+ "pdfGuides": [
+  {
+   "title": "Kubernetes Architecture — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-kubernetes.pdf",
+   "source": "Interstitium Labs",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:27:58Z"
+  },
+  {
+   "title": "Microservices Architecture — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-microservices.pdf",
+   "source": "Interstitium Labs",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:27:58Z"
+  },
+  {
+   "title": "CI/CD Pipelines — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-cicd-pipeline.pdf",
+   "source": "Interstitium Labs",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:27:58Z"
+  }
  ]
 }

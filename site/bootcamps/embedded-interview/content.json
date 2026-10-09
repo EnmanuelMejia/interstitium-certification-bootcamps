@@ -1020,9 +1020,738 @@
    ]
   }
  ],
- "simulations": [],
- "consoleSims": [],
- "terminalMissions": [],
+ "simulations": [
+  {
+   "id": "emb-sim-1",
+   "title": "The stack that ate the ISR",
+   "kind": "troubleshoot",
+   "domain_id": "embedded-c-memory",
+   "difficulty": 2,
+   "points": 100,
+   "brief": "A HardFault fires on every UART burst. The interviewer hands you the fault log and asks what the ISR is doing wrong.",
+   "steps": [
+    {
+     "symptom": "HardFault on UART receive. The ISR declares char buf[512] on the stack; the task stack is 1 KB and the ISR nests on it.",
+     "evidence": [
+      [
+       "fault",
+       "HardFault, stacked PC in UART0_IRQHandler"
+      ],
+      [
+       "map",
+       "ISR stack = interrupted task stack (1024 B); buf[512] + call depth overflows it"
+      ]
+     ],
+     "options": [
+      "Move the buffer to static storage (or shrink it) — ISRs get minimal stack by design",
+      "Increase the task stack to 8 KB",
+      "Disable the UART interrupt",
+      "Add a bigger heap"
+     ],
+     "correct": 0,
+     "explain": "ISRs borrow the interrupted context's stack. Large locals in an ISR are the classic overflow; static or global buffers keep ISR stack tiny."
+    },
+    {
+     "symptom": "Fault gone. Now received bytes occasionally corrupt when the main loop reads the buffer mid-ISR.",
+     "evidence": [
+      [
+       "code",
+       "ISR writes rx_buf[head++]; main reads rx_buf[tail++] // no protection"
+      ]
+     ],
+     "options": [
+      "Guard the shared indices: brief critical sections around the main-loop access, or a lock-free ring with single-owner indices",
+      "Make the buffer bigger",
+      "Read twice and compare",
+      "Slow the baud rate"
+     ],
+     "correct": 0,
+     "explain": "A preemptible reader and an ISR writer race on the indices. Brief critical sections (or a proper SPSC ring) make the handoff atomic."
+    },
+    {
+     "symptom": "Stable on the bench. Prove it survives the worst case.",
+     "evidence": [
+      [
+       "test rig",
+       "UART at max baud, all interrupts firing"
+      ]
+     ],
+     "options": [
+      "Fill the stack with a canary pattern, run the worst-case interrupt storm, and verify the canary is intact",
+      "Ship after one clean hour",
+      "Test at half baud to be safe",
+      "Only test the happy path"
+     ],
+     "correct": 0,
+     "explain": "Stack margin is measured, not assumed: paint canaries, run the worst case, check what survived."
+    }
+   ],
+   "debrief": "ISR bugs are resource bugs: tiny ISR stacks, shared data that races, and margins you measure with canaries."
+  },
+  {
+   "id": "emb-sim-2",
+   "title": "The flag the optimizer deleted",
+   "kind": "troubleshoot",
+   "domain_id": "embedded-concurrency",
+   "difficulty": 2,
+   "points": 100,
+   "brief": "The main loop polls a flag set by the ADC ISR. It works at -O0 and never fires at -O2. Explain it to the interviewer.",
+   "steps": [
+    {
+     "symptom": "Main loop polls data_ready set by the ADC ISR, but the loop never sees it at -O2. Works at -O0.",
+     "evidence": [
+      [
+       "code",
+       "bool data_ready = false; // ISR sets true; while(!data_ready){}"
+      ],
+      [
+       "-O2 asm",
+       "loop compiled to while(true){} — the load was hoisted out"
+      ]
+     ],
+     "options": [
+      "Declare the flag volatile so every access hits memory",
+      "Add a delay in the loop",
+      "Mark the function noinline",
+      "Use -O0 for release builds"
+     ],
+     "correct": 0,
+     "explain": "The optimizer proved the flag 'never changes' inside the loop and deleted the load. volatile tells the compiler the value can change outside the visible flow."
+    },
+    {
+     "symptom": "volatile added; the flag works. Now a 32-bit counter shared with the ISR reads torn values on this 16-bit core.",
+     "evidence": [
+      [
+       "core",
+       "16-bit data bus: 32-bit reads take two instructions"
+      ]
+     ],
+     "options": [
+      "Protect the read with a brief critical section — volatile does not make multi-instruction access atomic",
+      "Add a second volatile flag",
+      "Read the counter twice and average",
+      "Accept occasional torn reads"
+     ],
+     "correct": 0,
+     "explain": "volatile guarantees visibility, not atomicity. On a 16-bit core a 32-bit read can straddle an ISR update; only a critical section closes that window."
+    },
+    {
+     "symptom": "Counter fixed. The interviewer asks when volatile is NOT enough.",
+     "evidence": [
+      [
+       "pattern",
+       "multi-field struct updated by ISR, read by main"
+      ]
+     ],
+     "options": [
+      "When the shared state spans multiple words — use a critical section or a lock-free protocol; volatile alone cannot order them",
+      "volatile is always enough",
+      "When the ISR is fast",
+      "When the struct is small"
+     ],
+     "correct": 0,
+     "explain": "volatile is per-access. Multi-word consistency needs atomicity across the whole update — critical sections, or sequence locks for readers."
+    }
+   ],
+   "debrief": "volatile means 'this can change behind your back' — visibility, not atomicity. Shared multi-word state needs critical sections."
+  },
+  {
+   "id": "emb-sim-3",
+   "title": "Priority inversion on the bus",
+   "kind": "troubleshoot",
+   "domain_id": "embedded-rtos",
+   "difficulty": 3,
+   "points": 100,
+   "brief": "The high-priority control task misses its 1 ms deadline whenever the low-priority logger runs. Name the phenomenon and fix it.",
+   "steps": [
+    {
+     "symptom": "High-priority control task intermittently misses its 1 ms deadline when the low-priority logging task runs.",
+     "evidence": [
+      [
+       "trace",
+       "control task blocks 40 ms on spi_mutex held by logging task"
+      ],
+      [
+       "priorities",
+       "control=high, comms=medium, logging=low"
+      ]
+     ],
+     "options": [
+      "Enable priority inheritance on the mutex so the holder temporarily runs at the blocker's priority",
+      "Raise the logging task to high priority",
+      "Remove the mutex",
+      "Make the control task poll instead of blocking"
+     ],
+     "correct": 0,
+     "explain": "Classic unbounded priority inversion: medium tasks preempt the low holder indefinitely. Inheritance bounds the wait to one critical section."
+    },
+    {
+     "symptom": "Inheritance enabled; deadlines hold. Now the interviewer asks about the alternative design.",
+     "evidence": [
+      [
+       "design",
+       "three tasks share the SPI bus"
+      ]
+     ],
+     "options": [
+      "A dedicated bus-manager task owning the SPI, with others sending requests via a queue — no shared mutex at all",
+      "One global mutex for everything",
+      "Disable preemption during SPI use",
+      "Merge all three tasks into one"
+     ],
+     "correct": 0,
+     "explain": "The server pattern eliminates the inversion class entirely: ownership serializes access through a queue, and priorities stay meaningful."
+    },
+    {
+     "symptom": "Design chosen. How do you size the control task's stack?",
+     "evidence": [
+      [
+       "worst case",
+       "deepest call chain + ISR nesting"
+      ]
+     ],
+     "options": [
+      "Measure worst-case depth with canaries under max interrupt load, then add margin",
+      "Guess 4 KB like the last project",
+      "Use the default 1 KB",
+      "Size by code size"
+     ],
+     "correct": 0,
+     "explain": "Stack sizing is empirical: worst-case call depth plus worst-case ISR nesting, measured with canaries, plus margin."
+    }
+   ],
+   "debrief": "Priority inversion is a sharing problem: inherit priority to bound it, or restructure so nothing is shared."
+  },
+  {
+   "id": "emb-sim-4",
+   "title": "The watchdog that kept biting",
+   "kind": "troubleshoot",
+   "domain_id": "embedded-debugging",
+   "difficulty": 2,
+   "points": 100,
+   "brief": "The board resets every 90 seconds during firmware update. The watchdog is doing its job — your code is not. Fix the discipline.",
+   "steps": [
+    {
+     "symptom": "Board resets every 90 seconds during firmware update; the watchdog timeout is 2 s and erasing one flash sector takes 3 s.",
+     "evidence": [
+      [
+       "log",
+       "reset cause: IWDG; always during sector erase"
+      ]
+     ],
+     "options": [
+      "Feed the watchdog inside the erase polling loop — long operations must service it",
+      "Disable the watchdog during updates",
+      "Increase the timeout to 60 s",
+      "Slow the erase"
+     ],
+     "correct": 0,
+     "explain": "The watchdog cannot distinguish 'busy' from 'hung'. Long operations feed it as they make progress; disabling it removes the safety net exactly when you need it."
+    },
+    {
+     "symptom": "Feeding added. Now a hung I2C bus wedges the driver in a poll loop that keeps feeding the watchdog — no reset ever comes.",
+     "evidence": [
+      [
+       "code",
+       "while(!done){ feed_wdg(); } // done never sets on bus hang"
+      ]
+     ],
+     "options": [
+      "Feed from progress, not from spinning: only feed after verified forward progress, with a bounded retry count",
+      "Feed faster",
+      "Remove the watchdog",
+      "Poll longer"
+     ],
+     "correct": 0,
+     "explain": "Feeding without progress is a liveness lie. The watchdog must observe real advancement — bounded retries, then let it bite."
+    },
+    {
+     "symptom": "Watchdog discipline fixed. The interviewer asks what the reset handler should do first.",
+     "evidence": [
+      [
+       "boot",
+       "reset-cause register available"
+      ]
+     ],
+     "options": [
+      "Log the reset cause to retained RAM/flash before anything else — it is your only witness",
+      "Clear the register immediately",
+      "Jump to the application",
+      "Re-init all peripherals first"
+     ],
+     "correct": 0,
+     "explain": "The reset cause is volatile evidence. Capture it first, then initialize; post-mortems live or die on that first log line."
+    }
+   ],
+   "debrief": "Watchdogs enforce liveness: feed on progress, bound your retries, and always log why you reset."
+  },
+  {
+   "id": "emb-sim-5",
+   "title": "Whiteboard: the ring buffer",
+   "kind": "troubleshoot",
+   "domain_id": "embedded-capstone",
+   "difficulty": 3,
+   "points": 100,
+   "brief": "Design a UART RX path: ISR produces bytes, task consumes. 40 minutes — talk tradeoffs out loud.",
+   "steps": [
+    {
+     "symptom": "Design a UART RX path: ISR produces bytes, task consumes. No heap, ISR budget under 2 us.",
+     "evidence": [
+      [
+       "constraints",
+       "115200 baud, no heap, ISR must stay under 2 us"
+      ]
+     ],
+     "options": [
+      "Single-producer/single-consumer ring: ISR writes head, task reads tail, power-of-two size with mask indexing",
+      "Malloc a linked list per byte",
+      "Task polls the UART data register directly",
+      "Double buffer with a mutex"
+     ],
+     "correct": 0,
+     "explain": "SPSC rings are the canonical answer: no locks, no heap, O(1) ISR work. Power-of-two size turns modulo into a mask."
+    },
+    {
+     "symptom": "Interviewer: how do head and tail stay consistent across the ISR boundary?",
+     "evidence": [
+      [
+       "access",
+       "head written only by ISR, tail only by task"
+      ]
+     ],
+     "options": [
+      "Single-owner indices plus volatile: each side writes its own index and reads the other's — no torn updates on aligned word reads",
+      "One shared counter with a mutex",
+      "Disable interrupts in the task for every byte",
+      "Duplicate the buffer"
+     ],
+     "correct": 0,
+     "explain": "Single ownership removes the race: the ISR never touches tail, the task never touches head. volatile gives visibility; ownership gives atomicity."
+    },
+    {
+     "symptom": "Last: the buffer fills up under load. Drop or block?",
+     "evidence": [
+      [
+       "policy",
+       "producer = ISR, cannot block"
+      ]
+     ],
+     "options": [
+      "Count overruns and drop per policy — an ISR can never block, so overflow is a counted, reported event",
+      "Block the ISR until space frees",
+      "Grow the buffer dynamically",
+      "Reset the UART"
+     ],
+     "correct": 0,
+     "explain": "ISRs cannot wait, so overflow policy is a design decision: count it, report it, choose drop-oldest or drop-newest deliberately."
+    }
+   ],
+   "debrief": "The ring-buffer answer is ownership: one writer, one reader, masked indices, and overflow as a counted event."
+  }
+ ],
+ "consoleSims": [
+  {
+   "id": "emb-console-1",
+   "title": "Trace the ISR port",
+   "console": "code-editor",
+   "domain_id": "embedded-debugging",
+   "difficulty": 1,
+   "brief": "A sample routine from the ISR port needs tracing. Walk it with breakpoints and inspection in the simulated editor.",
+   "tasks": [
+    {
+     "id": "emb-c1-t1",
+     "instruction": "Open app.py in the Explorer.",
+     "validate": {
+      "action": "open-file",
+      "params": {
+       "name": "app.py"
+      }
+     },
+     "hint": "Explorer tab → Open app.py."
+    },
+    {
+     "id": "emb-c1-t2",
+     "instruction": "Set a breakpoint at app.py line 4.",
+     "validate": {
+      "action": "toggle-breakpoint",
+      "params": {
+       "file": "app.py",
+       "line": 4
+      }
+     },
+     "hint": "Click line 4 in the editor to toggle a breakpoint."
+    },
+    {
+     "id": "emb-c1-t3",
+     "instruction": "Run to the breakpoint.",
+     "validate": {
+      "action": "run-to-breakpoint",
+      "params": {}
+     },
+     "hint": "Press Run to breakpoint."
+    },
+    {
+     "id": "emb-c1-t4",
+     "instruction": "Inspect the variable s.",
+     "validate": {
+      "action": "inspect-variable",
+      "params": {
+       "name": "s"
+      }
+     },
+     "hint": "Use Inspect with variable name s."
+    }
+   ],
+   "debrief": "Trace before you theorize: open, break, run, inspect — the same loop you will run on the target with a real debugger."
+  },
+  {
+   "id": "emb-console-2",
+   "title": "Stage the firmware image",
+   "console": "linux-desktop",
+   "domain_id": "embedded-drivers",
+   "difficulty": 2,
+   "brief": "Stage a firmware image with locked-down permissions before it goes to the flashing station.",
+   "tasks": [
+    {
+     "id": "emb-c2-t1",
+     "instruction": "Create the staging directory /home/user/firmware.",
+     "validate": {
+      "action": "create-dir",
+      "params": {
+       "path": "/home/user/firmware"
+      }
+     },
+     "hint": "Create directory /home/user/firmware."
+    },
+    {
+     "id": "emb-c2-t2",
+     "instruction": "Create the image file /home/user/firmware/build.bin.",
+     "validate": {
+      "action": "create-file",
+      "params": {
+       "path": "/home/user/firmware/build.bin"
+      }
+     },
+     "hint": "Create file /home/user/firmware/build.bin."
+    },
+    {
+     "id": "emb-c2-t3",
+     "instruction": "Lock the image to owner read/write only (mode 600).",
+     "validate": {
+      "action": "chmod",
+      "params": {
+       "path": "/home/user/firmware/build.bin",
+       "mode": "600"
+      }
+     },
+     "hint": "chmod 600 on /home/user/firmware/build.bin."
+    }
+   ],
+   "debrief": "Firmware images are release artifacts: staged in their own directory, readable only by their owner."
+  },
+  {
+   "id": "emb-console-3",
+   "title": "Triage the field reset",
+   "console": "ticketing",
+   "domain_id": "embedded-capstone",
+   "difficulty": 2,
+   "brief": "A watchdog reset hit a unit in the field. File it, route it, and record the reproduction in the simulated ticket queue.",
+   "tasks": [
+    {
+     "id": "emb-c3-t1",
+     "instruction": "Create a P1 ticket titled 'Watchdog reset on flash erase'.",
+     "validate": {
+      "action": "create-ticket",
+      "params": {
+       "title": "Watchdog reset on flash erase",
+       "priority": "P1"
+      }
+     },
+     "hint": "New ticket tab → title 'Watchdog reset on flash erase', priority P1."
+    },
+    {
+     "id": "emb-c3-t2",
+     "instruction": "Assign the new ticket INC-9002 to firmware-team.",
+     "validate": {
+      "action": "assign-ticket",
+      "params": {
+       "id": "INC-9002",
+       "assignee": "firmware-team"
+      }
+     },
+     "hint": "Assign INC-9002 to firmware-team."
+    },
+    {
+     "id": "emb-c3-t3",
+     "instruction": "Add a note to INC-9002: reproduced on bench unit 3.",
+     "validate": {
+      "action": "add-note",
+      "params": {
+       "id": "INC-9002",
+       "text": "Reproduced on bench unit 3."
+      }
+     },
+     "hint": "Add the reproduction note to INC-9002."
+    }
+   ],
+   "debrief": "Field failures get tickets with teeth: severity that matches the reset, an owner who owns the driver, and a reproduction note."
+  },
+  {
+   "id": "emb-console-4",
+   "title": "Build for the target MCU",
+   "console": "cicd-pipeline",
+   "domain_id": "embedded-capstone",
+   "difficulty": 2,
+   "brief": "The firmware CI builds for the wrong MCU. Retarget it and rerun the test stage in the simulated pipeline console.",
+   "tasks": [
+    {
+     "id": "emb-c4-t1",
+     "instruction": "Set the TARGET_MCU pipeline variable to stm32f4.",
+     "validate": {
+      "action": "set-variable",
+      "params": {
+       "key": "TARGET_MCU",
+       "value": "stm32f4"
+      }
+     },
+     "hint": "Set variable TARGET_MCU = stm32f4."
+    },
+    {
+     "id": "emb-c4-t2",
+     "instruction": "Trigger a fresh build.",
+     "validate": {
+      "action": "trigger-build",
+      "params": {}
+     },
+     "hint": "Trigger the build."
+    },
+    {
+     "id": "emb-c4-t3",
+     "instruction": "Retry the failed test stage.",
+     "validate": {
+      "action": "retry-stage",
+      "params": {
+       "stage": "test"
+      }
+     },
+     "hint": "Retry the test stage."
+    }
+   ],
+   "debrief": "Embedded CI is a build matrix: retarget the variable, rebuild clean, and rerun what failed."
+  }
+ ],
+ "terminalMissions": [
+  {
+   "id": "emb-mission-1",
+   "title": "Roll call",
+   "domain_id": "embedded-c-memory",
+   "difficulty": 1,
+   "brief": "Prove the sandbox answers before the hardware loop starts.",
+   "objectives": [
+    "Print your username",
+    "Print the working directory",
+    "Print the hostname"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^whoami$",
+     "expect_contains": "candidate",
+     "hint": "Type exactly: whoami"
+    },
+    {
+     "command_pattern": "^pwd$",
+     "expect_contains": "/home/candidate",
+     "hint": "Type exactly: pwd"
+    },
+    {
+     "command_pattern": "^hostname$",
+     "expect_contains": "interstitium",
+     "hint": "Type exactly: hostname"
+    }
+   ],
+   "success_message": "Roll call complete — the sandbox is yours."
+  },
+  {
+   "id": "emb-mission-2",
+   "title": "Survey the bench",
+   "domain_id": "embedded-drivers",
+   "difficulty": 1,
+   "brief": "Recon the practice workspace like a new lab bench.",
+   "objectives": [
+    "List the workspace",
+    "Confirm the logs directory exists",
+    "Mark the bench mapped"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^ls$",
+     "expect_contains": "logs/",
+     "hint": "Type exactly: ls"
+    },
+    {
+     "command_pattern": "^ls$",
+     "expect_contains": "README.md",
+     "hint": "Type exactly: ls"
+    },
+    {
+     "command_pattern": "^echo 'bench mapped'$",
+     "expect_contains": "bench mapped",
+     "hint": "Type exactly: echo 'bench mapped'"
+    }
+   ],
+   "success_message": "Bench surveyed — you know where every tool lives."
+  },
+  {
+   "id": "emb-mission-3",
+   "title": "Know your target",
+   "domain_id": "embedded-debugging",
+   "difficulty": 1,
+   "brief": "Read the execution environment the way you would read a datasheet.",
+   "objectives": [
+    "Print your user identity",
+    "Print the kernel name",
+    "Print full system info"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^id$",
+     "expect_contains": "uid=1000",
+     "hint": "Type exactly: id"
+    },
+    {
+     "command_pattern": "^uname$",
+     "expect_contains": "Linux",
+     "hint": "Type exactly: uname"
+    },
+    {
+     "command_pattern": "^uname -a$",
+     "expect_contains": "x86_64",
+     "hint": "Type exactly: uname -a"
+    }
+   ],
+   "success_message": "Environment read — datasheets next."
+  },
+  {
+   "id": "emb-mission-4",
+   "title": "ISR rules drill",
+   "domain_id": "embedded-concurrency",
+   "difficulty": 2,
+   "brief": "Drill the three ISR rules every embedded interview expects verbatim.",
+   "objectives": [
+    "State the ISR length rule",
+    "State the shared-flag rule",
+    "State the allocation rule"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^echo 'ISRs stay short: no blocking'$",
+     "expect_contains": "ISRs stay short: no blocking",
+     "hint": "Type exactly: echo 'ISRs stay short: no blocking'"
+    },
+    {
+     "command_pattern": "^echo 'shared flags must be volatile'$",
+     "expect_contains": "shared flags must be volatile",
+     "hint": "Type exactly: echo 'shared flags must be volatile'"
+    },
+    {
+     "command_pattern": "^echo 'never malloc in an ISR'$",
+     "expect_contains": "never malloc in an ISR",
+     "hint": "Type exactly: echo 'never malloc in an ISR'"
+    }
+   ],
+   "success_message": "ISR rules drilled — recite them in your sleep."
+  },
+  {
+   "id": "emb-mission-5",
+   "title": "Memory-map mantra",
+   "domain_id": "embedded-c-memory",
+   "difficulty": 2,
+   "brief": "Drill the memory-layout facts that underpin every C interview question.",
+   "objectives": [
+    "State the stack/heap growth rule",
+    "State where const data lives",
+    "State the stack-measurement method"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^echo 'stack grows down, heap grows up'$",
+     "expect_contains": "stack grows down, heap grows up",
+     "hint": "Type exactly: echo 'stack grows down, heap grows up'"
+    },
+    {
+     "command_pattern": "^echo 'const data lives in flash'$",
+     "expect_contains": "const data lives in flash",
+     "hint": "Type exactly: echo 'const data lives in flash'"
+    },
+    {
+     "command_pattern": "^echo 'measure stack with canaries'$",
+     "expect_contains": "measure stack with canaries",
+     "hint": "Type exactly: echo 'measure stack with canaries'"
+    }
+   ],
+   "success_message": "Memory map drilled — draw it on the whiteboard from memory."
+  },
+  {
+   "id": "emb-mission-6",
+   "title": "RTOS primitives drill",
+   "domain_id": "embedded-rtos",
+   "difficulty": 2,
+   "brief": "Name the RTOS primitives and their jobs — the concurrency half of the loop.",
+   "objectives": [
+    "State the mutex/semaphore split",
+    "State the queue's job",
+    "State the inversion bound"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^echo 'mutex for ownership, semaphore for signaling'$",
+     "expect_contains": "mutex for ownership, semaphore for signaling",
+     "hint": "Type exactly: echo 'mutex for ownership, semaphore for signaling'"
+    },
+    {
+     "command_pattern": "^echo 'queues move data between tasks'$",
+     "expect_contains": "queues move data between tasks",
+     "hint": "Type exactly: echo 'queues move data between tasks'"
+    },
+    {
+     "command_pattern": "^echo 'priority inheritance bounds inversion'$",
+     "expect_contains": "priority inheritance bounds inversion",
+     "hint": "Type exactly: echo 'priority inheritance bounds inversion'"
+    }
+   ],
+   "success_message": "RTOS primitives drilled — speak fluent scheduler."
+  },
+  {
+   "id": "emb-mission-7",
+   "title": "Bench checklist",
+   "domain_id": "embedded-mock-circuit",
+   "difficulty": 1,
+   "brief": "Final check before the mock circuit: date, host, readiness.",
+   "objectives": [
+    "Print the current date",
+    "Confirm the hostname",
+    "Declare the bench ready"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^date$",
+     "expect_contains": "GMT",
+     "hint": "Type exactly: date"
+    },
+    {
+     "command_pattern": "^hostname$",
+     "expect_contains": "interstitium",
+     "hint": "Type exactly: hostname"
+    },
+    {
+     "command_pattern": "^echo 'bench ready for the loop'$",
+     "expect_contains": "bench ready for the loop",
+     "hint": "Type exactly: echo 'bench ready for the loop'"
+    }
+   ],
+   "success_message": "Bench check green — walk into the mock circuit ready."
+  }
+ ],
  "sections": [
   {
    "id": "embedded-interview-sec",
@@ -1254,5 +1983,23 @@
  },
  "media": [],
  "foundations": [],
- "math": []
+ "math": [],
+ "pdfGuides": [
+  {
+   "title": "Cloud Architecture Patterns — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-cloud-patterns.pdf",
+   "source": "Interstitium Labs",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:27:58Z"
+  },
+  {
+   "title": "TLS Handshake — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-tls-handshake.pdf",
+   "source": "Interstitium Labs",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:27:58Z"
+  }
+ ]
 }

@@ -158,7 +158,7 @@
  "lessons": [
   {
    "domain_id": "acad-cyber",
-   "title": "Cyber \u2014 Core concepts",
+   "title": "Cyber — Core concepts",
    "concepts": [
     "The CIA triad frames every control: confidentiality (only the right eyes), integrity (data unaltered), availability (there when needed). Every incident damages at least one.",
     "Think in attack surface: every open port, exposed bucket, and third-party integration is a door. Inventory yours before an attacker does.",
@@ -233,13 +233,622 @@
    ]
   }
  ],
- "simulations": [],
- "consoleSims": [],
- "terminalMissions": [],
+ "simulations": [
+  {
+   "id": "acad-cyber-sim-1",
+   "title": "The 2 AM phishing report",
+   "kind": "troubleshoot",
+   "domain_id": "acad-cyber",
+   "difficulty": 2,
+   "brief": "2:14 AM. The on-call phone buzzes: a finance analyst clicked a link in an email that 'looked like IT'. Work the incident the way a real SOC would — verify first, contain second, learn third.",
+   "steps": [
+    {
+     "symptom": "Analyst: 'I clicked the link. It asked for my login and I typed it in. Is that bad?'",
+     "evidence": [
+      [
+       "Ticket #2214",
+       "PHISHING REPORT — user: finance-analyst-02\nClicked link in 'IT password expiry' email | entered credentials\nHost: FIN-1042"
+      ]
+     ],
+     "options": [
+      "Wipe FIN-1042 immediately — scorched earth, questions later",
+      "Verify the email is actually malicious (check the link destination and sender), and force a password reset plus session revocation right away",
+      "Tell the analyst it is probably fine and close the ticket",
+      "Forward the email to the whole company as a warning"
+     ],
+     "correct": 1,
+     "explain": "Verify before you escalate — checking the link destination and sender separates a drill from a breach. But entered credentials are live ammunition: the password dies NOW and the attacker's sessions get revoked with it. Wiping first destroys evidence; dismissing destroys trust."
+    },
+    {
+     "symptom": "The link went to a lookalike domain registered yesterday. The credentials are compromised.",
+     "evidence": [
+      [
+       "Verification",
+       "Link destination: it-helpdesk-secure[.]net (registered 2026-10-07)\nSender: spoofed internal display name, external envelope\nVerdict: credential-harvesting phish"
+      ]
+     ],
+     "options": [
+      "Reset the analyst's password and revoke all active sessions",
+      "Only reset the password — sessions expire on their own",
+      "Block the domain and call it done",
+      "Ask the analyst to change the password themselves next week"
+     ],
+     "correct": 0,
+     "explain": "A harvested password stays dangerous until the reset lands AND the attacker's sessions are killed. Session revocation is the step people forget — a reset alone leaves the attacker's already-logged-in session working."
+    },
+    {
+     "symptom": "Contained. Now: three other people received the same email.",
+     "evidence": [
+      [
+       "Blast radius",
+       "Same campaign delivered to 4 mailboxes\n1 clicked, 3 unopened"
+      ]
+     ],
+     "options": [
+      "Purge the campaign from all mailboxes and give the three recipients a 60-second briefing",
+      "Do nothing — they did not click",
+      "Name and shame the analyst in the team channel so others learn",
+      "Block all external email company-wide"
+     ],
+     "correct": 0,
+     "explain": "Unexpired threats get removed from every mailbox, and the three recipients get a short briefing while the lesson is fresh. Blame creates silence — the next person who clicks will hide it instead of reporting it."
+    }
+   ],
+   "debrief": "You verified before panicking, killed the compromised credentials and sessions, swept the campaign from every mailbox, and kept the reporter as an ally. That is the defensive loop: detect, verify, contain, learn.",
+   "points": 30
+  },
+  {
+   "id": "acad-cyber-sim-2",
+   "title": "Isolate or observe?",
+   "kind": "decide",
+   "domain_id": "acad-cyber",
+   "difficulty": 2,
+   "brief": "EDR flags a developer laptop: a new process is beaconing to an unknown IP every 60 seconds. The developer is mid-demo for a client. Isolate the host now, or watch and gather intelligence? There is no free choice — pick, and own it.",
+   "steps": [
+    {
+     "symptom": "Beaconing detected: 60-second intervals to an unknown external IP. The laptop's owner presents to a client in 20 minutes.",
+     "evidence": [
+      [
+       "EDR alert",
+       "ALERT-8812 | host: DEV-2207 | process: updater-svc.exe (unsigned)\nBeacon: 60s interval -> 185.220.101.4 | first seen 40 min ago\nUser: client demo at 10:00"
+      ]
+     ],
+     "options": [
+      "Isolate the host now — kill the demo if you have to",
+      "Let the demo finish, then isolate — 20 minutes will not matter",
+      "Watch silently and collect a full packet capture first",
+      "Remote-wipe the laptop immediately"
+     ],
+     "correct": 0,
+     "explain": "A 60-second beacon to an unknown IP from an unsigned binary is active compromise until proven otherwise. Twenty more minutes of beaconing is twenty minutes of exfiltration. You can explain a dead demo; you cannot un-exfiltrate source code."
+    },
+    {
+     "symptom": "Host isolated. Forensics: the 'updater' was a trojanized build tool downloaded from a forum. It exfiltrated 40 MB before isolation.",
+     "evidence": [
+      [
+       "Forensics",
+       "updater-svc.exe: trojanized toolchain, downloaded from a forum link\nExfiltrated ~40 MB before isolation | contained to DEV-2207"
+      ]
+     ],
+     "options": [
+      "Rotate the developer's credentials, scope what the 40 MB touched, and brief the team honestly",
+      "Reimage and move on — 40 MB is nothing",
+      "Escalate to fire the developer for downloading from a forum",
+      "Keep it quiet to avoid alarming the client"
+     ],
+     "correct": 0,
+     "explain": "Isolation stops the bleeding; it does not undo it. You scope what left the building, rotate everything the host touched, and tell the team the true story — quiet cover-ups are how the next incident starts."
+    },
+    {
+     "symptom": "The client asks why the demo died mid-call.",
+     "evidence": [
+      [
+       "Comms",
+       "Client: 'Your engineer just vanished from the call. Is everything alright?'"
+      ]
+     ],
+     "options": [
+      "'We detected a security event and contained it — the demo is rescheduled, and your data was not involved'",
+      "Say it was technical difficulties",
+      "Give the client the full forensic detail",
+      "Blame the developer by name"
+     ],
+     "correct": 0,
+     "explain": "Honest, bounded, professional: name the category (security event), the action (contained), the impact boundary (their data not involved), and the next step (reschedule). Clients respect containment; they punish discovered lies."
+    }
+   ],
+   "debrief": "You chose containment over comfort, scoped the real damage instead of hoping, and communicated honestly with the client. Incident response is a series of uncomfortable right calls — this was three of them.",
+   "points": 30
+  },
+  {
+   "id": "acad-cyber-sim-3",
+   "title": "The shared admin password",
+   "kind": "respond",
+   "domain_id": "acad-cyber",
+   "difficulty": 1,
+   "brief": "During a routine review you find it: one admin password, shared by six people, unchanged in two years, sitting in a chat channel. Nobody 'owns' it. Respond like the adult in the room.",
+   "steps": [
+    {
+     "symptom": "The shared credential is confirmed: six users, one password, posted in a chat channel two years ago.",
+     "evidence": [
+      [
+       "Finding",
+       "Account: svc-admin | shared by 6 engineers\nLast rotated: 2024 (never) | location: #ops-general chat history\nScope: production database + hypervisor console"
+      ]
+     ],
+     "options": [
+      "Rotate the password immediately, then tell everyone the new value in the same chat",
+      "Rotate the password immediately into a vault, issue individual accounts, and retire the shared one",
+      "Leave it — changing it might break someone's workflow",
+      "Email the password to all six people so everyone has the new one"
+     ],
+     "correct": 1,
+     "explain": "Rotate first, because every hour it lives is another hour of un-attributable access. But the new secret goes in a vault with individual accounts — replacing one shared password with another just resets the clock on the same problem."
+    },
+    {
+     "symptom": "The password is rotated and vaulted. Two engineers complain the new individual logins are 'slower'.",
+     "evidence": [
+      [
+       "Feedback",
+       "eng-03: 'It takes me 30 extra seconds to check out the credential.'\neng-05: 'Can we just get the old one back for emergencies?'"
+      ]
+     ],
+     "options": [
+      "Restore the shared password for emergencies",
+      "Hold the line, explain that attribution is the point, and streamline the vault checkout flow",
+      "Exempt senior engineers from the new process",
+      "Stop talking about it and hope the complaints fade"
+     ],
+     "correct": 1,
+     "explain": "Friction complaints are real — so you reduce the friction (faster vault checkout, SSO) instead of restoring the risk. The moment you carve out exceptions, the shared-password culture is back with extra steps."
+    },
+    {
+     "symptom": "Now you must make sure this does not happen again.",
+     "evidence": [
+      [
+       "Goal",
+       "Prevent the next shared credential from living two years in a chat channel"
+      ]
+     ],
+     "options": [
+      "Run a one-time scan for secrets in chat history and add a recurring secret-scan to the pipeline",
+      "Send a reminder email about password policy",
+      "Punish whoever posted it originally",
+      "Ban chat channels"
+     ],
+     "correct": 0,
+     "explain": "Culture follows tooling: an automated secret-scan that catches the next one on day one beats a policy email everyone forgets by Friday. Detect the pattern, not the person."
+    }
+   ],
+   "debrief": "You rotated without re-sharing, held the line on individual accountability while reducing friction, and built detection instead of blame. That is how a shared-password culture actually dies.",
+   "points": 30
+  },
+  {
+   "id": "acad-cyber-sim-4",
+   "title": "Patch Tuesday standoff",
+   "kind": "troubleshoot",
+   "domain_id": "acad-cyber",
+   "difficulty": 3,
+   "brief": "A critical remote-code-execution flaw drops at noon. One internet-facing server is vulnerable — and there is a change freeze for tomorrow's product launch. Patch now and risk the launch, or hold and risk the breach?",
+   "steps": [
+    {
+     "symptom": "CVE lands with a 9.8 score and a public exploit. The vulnerable service faces the internet. The launch freeze started yesterday.",
+     "evidence": [
+      [
+       "Advisory",
+       "CVE-2026-44112 | CVSS 9.8 | RCE | public exploit published\nAffected: public-facing API gateway (1 host)\nChange freeze: in effect until launch, tomorrow 09:00"
+      ]
+     ],
+     "options": [
+      "Patch immediately — freeze or no freeze",
+      "First verify actual exposure: is the vulnerable code path reachable, is there a compensating control?",
+      "Hold the patch until after the launch",
+      "Take the API gateway offline until the launch is over"
+     ],
+     "correct": 1,
+     "explain": "A 9.8 with a public exploit demands urgency, not panic. Verify exposure first: an unreachable code path or a WAF rule in front of it changes the math completely. You cannot make the patch-vs-launch call without knowing the real risk."
+    },
+    {
+     "symptom": "Exposure confirmed: the vulnerable endpoint is reachable, no WAF in front of it. Scans from the internet started 20 minutes ago.",
+     "evidence": [
+      [
+       "Telemetry",
+       "Vulnerable endpoint: reachable from internet\nInbound scanning for the exploit signature: started 20 min ago\nNo WAF or compensating control in path"
+      ]
+     ],
+     "options": [
+      "Declare an emergency change, patch now, accept the launch risk",
+      "Wait for the vendor's official patch next week",
+      "Block the exploit signature at the edge as a stopgap and patch in the emergency window tonight",
+      "Hope the scanners are just researchers"
+     ],
+     "correct": 2,
+     "explain": "Both risks are real, so you sequence them: a signature block at the edge buys hours (imperfect but immediate), and the real patch lands in tonight's emergency window. 'Patch now and break the launch' and 'hold and get breached' are both failure modes — the stopgap is the third option."
+    },
+    {
+     "symptom": "The launch team demands a plain-English answer: why are you touching production during the freeze?",
+     "evidence": [
+      [
+       "Ask",
+       "Launch lead: 'Explain to me like I am the CEO: why does this override the freeze?'"
+      ]
+     ],
+     "options": [
+      "Quote the CVSS score and the CVE number",
+      "'Attackers are scanning us right now for a flaw that lets them run code on our gateway. We put a shield up and we patch tonight — the launch is protected, not threatened.'",
+      "Refuse to explain — security decisions are not debatable",
+      "Promise the launch will be unaffected"
+     ],
+     "correct": 1,
+     "explain": "Risk translated into business language: who is attacking, what they get, what you did, what happens next. CVSS numbers do not move executives; 'they can run code on our front door and we are handling it tonight' does."
+    }
+   ],
+   "debrief": "You verified exposure before choosing, sequenced a stopgap ahead of the real fix, and translated the risk into language the business could act on. That is vulnerability management under pressure.",
+   "points": 30
+  },
+  {
+   "id": "acad-cyber-sim-5",
+   "title": "The vendor wants the keys",
+   "kind": "decide",
+   "domain_id": "acad-cyber",
+   "difficulty": 2,
+   "brief": "A new analytics vendor wants production database access with a shared service account and no expiry. The contract is signed; the business wants the dashboards live this week. Decide the access model.",
+   "steps": [
+    {
+     "symptom": "The vendor's onboarding doc asks for: a production DB login, shared service account, full read on all tables, no expiry.",
+     "evidence": [
+      [
+       "Vendor request",
+       "Access: production database, all tables, read\nAccount: single shared 'vendor_svc' login\nExpiry: none requested | MFA: not supported by their tooling"
+      ]
+     ],
+     "options": [
+      "Grant it as requested — the contract is signed and the business is waiting",
+      "Offer a read replica with a scoped, named, expiring service account and IP allowlisting",
+      "Deny all access and kill the project",
+      "Give them the credentials over a screen share so at least it is not in email"
+     ],
+     "correct": 1,
+     "explain": "Least privilege is a negotiation, not a veto: a read replica (never production), a named account (attribution), an expiry (no forever-keys), and IP allowlisting (their office, not the internet). The dashboards still go live this week — on your terms."
+    },
+    {
+     "symptom": "The vendor pushes back: 'Our tool needs production. The replica lags too much for real-time dashboards.'",
+     "evidence": [
+      [
+       "Pushback",
+       "Vendor: 'Replica lag is 30 seconds. Our SLA needs under 5.'"
+      ]
+     ],
+     "options": [
+      "Cave and grant production access",
+      "Measure the actual requirement: is any business decision made on sub-5-second data? Offer a scoped production read on the two needed tables, query-audited",
+      "Tell them to rebuild their tool",
+      "Ignore the pushback and hope they adapt"
+     ],
+     "correct": 1,
+     "explain": "Challenge the requirement with data: almost no dashboard decision needs 5-second freshness, but if it genuinely does, you narrow production access to the two tables that need it — with every query logged. Scope follows proven need, not asserted need."
+    },
+    {
+     "symptom": "Access is agreed. Now protect the relationship long-term.",
+     "evidence": [
+      [
+       "Ongoing",
+       "Vendor account will exist for the life of the contract"
+      ]
+     ],
+     "options": [
+      "Set a 90-day expiry with a renewal review, alert on anomalous query volume, and document the access in the vendor risk register",
+      "Set it and forget it",
+      "Rotate the password every day to be safe",
+      "Ask the vendor to self-attest annually"
+     ],
+     "correct": 0,
+     "explain": "Third-party access rots: people leave, contracts change, tools get breached. Expiry forces a review, anomaly alerts catch abuse, and the risk register means the next person inherits the context instead of discovering a mystery account."
+    }
+   ],
+   "debrief": "You negotiated least privilege instead of issuing a veto, tested the vendor's real requirements, and built expiry and monitoring into the relationship. Vendor risk management is access design, not access denial.",
+   "points": 30
+  }
+ ],
+ "consoleSims": [
+  {
+   "id": "acad-cyber-csim-fw-1",
+   "title": "Default-deny the lab workstation",
+   "console": "firewall",
+   "domain_id": "acad-cyber",
+   "difficulty": 1,
+   "brief": "A new lab workstation joins the fleet. Policy is deny-by-default: set the INPUT chain default to DROP, then open exactly one hole — HTTPS (TCP 443) from the corporate network 10.0.0.0/8.",
+   "tasks": [
+    {
+     "id": "t1",
+     "instruction": "Add an ACCEPT rule: chain INPUT, TCP port 443, source 10.0.0.0/8.",
+     "validate": {
+      "action": "add-rule",
+      "params": {
+       "chain": "INPUT",
+       "protocol": "tcp",
+       "port": "443",
+       "source": "10.0.0.0/8",
+       "action": "ACCEPT"
+      }
+     },
+     "hint": "Use the Add rule form: CHAIN=INPUT, PROTOCOL=tcp, PORT=443, SOURCE=10.0.0.0/8, ACTION=ACCEPT."
+    },
+    {
+     "id": "t2",
+     "instruction": "Set the INPUT chain default policy to DROP.",
+     "validate": {
+      "action": "set-default-policy",
+      "params": {
+       "chain": "INPUT",
+       "policy": "DROP"
+      }
+     },
+     "hint": "Open Default policies and set INPUT to DROP — everything not explicitly allowed must fall through to deny."
+    }
+   ],
+   "debrief": "One explicit allow, everything else denied. That is deny-by-default in its purest form: the policy says what may happen, and silence means no."
+  },
+  {
+   "id": "acad-cyber-csim-fw-2",
+   "title": "SSH only from the admin net",
+   "console": "firewall",
+   "domain_id": "acad-cyber",
+   "difficulty": 2,
+   "brief": "Audit found SSH open to the world on a jump host. Lock it down: allow TCP 22 only from the admin network 192.168.50.0/24, then set the INPUT default policy to DROP so the old wide-open posture cannot return.",
+   "tasks": [
+    {
+     "id": "t1",
+     "instruction": "Add an ACCEPT rule: chain INPUT, TCP port 22, source 192.168.50.0/24.",
+     "validate": {
+      "action": "add-rule",
+      "params": {
+       "chain": "INPUT",
+       "protocol": "tcp",
+       "port": "22",
+       "source": "192.168.50.0/24",
+       "action": "ACCEPT"
+      }
+     },
+     "hint": "Add rule form: CHAIN=INPUT, PROTOCOL=tcp, PORT=22, SOURCE=192.168.50.0/24, ACTION=ACCEPT."
+    },
+    {
+     "id": "t2",
+     "instruction": "Set the INPUT chain default policy to DROP.",
+     "validate": {
+      "action": "set-default-policy",
+      "params": {
+       "chain": "INPUT",
+       "policy": "DROP"
+      }
+     },
+     "hint": "Under Default policies, set INPUT to DROP. The old allow-from-anywhere posture dies with the default."
+    }
+   ],
+   "debrief": "Management-plane services get the smallest possible audience. SSH from one admin network, deny by default — the internet never needs your jump host."
+  },
+  {
+   "id": "acad-cyber-csim-siem-1",
+   "title": "Work the alert queue",
+   "console": "siem-dashboard",
+   "domain_id": "acad-cyber",
+   "difficulty": 2,
+   "brief": "Three alerts are sitting open, oldest first. Triage like an analyst: acknowledge the critical malware-hash alert ALT-102, assign it to analyst 'r.okafor', then escalate it to incident response.",
+   "tasks": [
+    {
+     "id": "t1",
+     "instruction": "Acknowledge alert ALT-102.",
+     "validate": {
+      "action": "acknowledge-alert",
+      "params": {
+       "id": "ALT-102"
+      }
+     },
+     "hint": "In the Alerts table, click Ack on the ALT-102 row (Malware hash match on download)."
+    },
+    {
+     "id": "t2",
+     "instruction": "Assign alert ALT-102 to analyst r.okafor.",
+     "validate": {
+      "action": "assign-alert",
+      "params": {
+       "id": "ALT-102",
+       "analyst": "r.okafor"
+      }
+     },
+     "hint": "Use the Assign alert form: ALERT ID=ALT-102, ANALYST=r.okafor."
+    },
+    {
+     "id": "t3",
+     "instruction": "Escalate alert ALT-102 to incident response.",
+     "validate": {
+      "action": "escalate",
+      "params": {
+       "id": "ALT-102"
+      }
+     },
+     "hint": "Click Escalate on the ALT-102 row — a critical malware match does not sit in the queue."
+    }
+   ],
+   "debrief": "Acknowledge, assign, escalate: the alert is owned, worked, and moved to the team that can contain it. Queues do not clear themselves."
+  },
+  {
+   "id": "acad-cyber-csim-siem-2",
+   "title": "Contain and detect",
+   "console": "siem-dashboard",
+   "domain_id": "acad-cyber",
+   "difficulty": 3,
+   "brief": "ALT-103 shows unusual outbound volume from srv-backup-02 — possible exfiltration. Isolate the host now, then write a detection rule so the next one fires faster.",
+   "tasks": [
+    {
+     "id": "t1",
+     "instruction": "Isolate host srv-backup-02.",
+     "validate": {
+      "action": "isolate-host",
+      "params": {
+       "host": "srv-backup-02"
+      }
+     },
+     "hint": "Click 'Isolate host' on the ALT-103 row — stop the bleeding before you analyze it."
+    },
+    {
+     "id": "t2",
+     "instruction": "Create a detection rule named 'outbound-volume-spike' with a query matching unusual outbound volume.",
+     "validate": {
+      "action": "create-rule",
+      "params": {
+       "name": "outbound-volume-spike"
+      }
+     },
+     "hint": "Open Detection rules and create a rule: NAME=outbound-volume-spike, QUERY describing unusual outbound bytes (any descriptive query text works)."
+    }
+   ],
+   "debrief": "Contain first, detect forever after. Every real incident should leave a detection rule behind — that is how a SOC gets smarter instead of just busier."
+  }
+ ],
+ "terminalMissions": [
+  {
+   "id": "acad-cyber-mission-1",
+   "title": "Identify yourself to the SOC",
+   "domain_id": "acad-cyber",
+   "difficulty": 1,
+   "brief": "Every incident starts with identity. Print your username — the SOC needs to know who is on the keyboard.",
+   "objectives": [
+    "Print your username"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^whoami$",
+     "expect_contains": "candidate",
+     "hint": "Run: whoami — who is operating this station?"
+    }
+   ],
+   "success_message": "Identity confirmed: candidate. Attribution starts with knowing who acted."
+  },
+  {
+   "id": "acad-cyber-mission-2",
+   "title": "Confirm your station",
+   "domain_id": "acad-cyber",
+   "difficulty": 1,
+   "brief": "Verify which machine you are on. Print the hostname — incident reports must name the host.",
+   "objectives": [
+    "Print the hostname"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^hostname$",
+     "expect_contains": "interstitium",
+     "hint": "Run: hostname — confirm your station."
+    },
+    {
+     "command_pattern": "^echo\\s+.*station.*$",
+     "expect_contains": "station",
+     "hint": "Run: echo with a confirmation naming your station (e.g. echo \"on station interstitium\")."
+    }
+   ],
+   "success_message": "Station confirmed. Reports name the host, always."
+  },
+  {
+   "id": "acad-cyber-mission-3",
+   "title": "Inventory the workstation",
+   "domain_id": "acad-cyber",
+   "difficulty": 1,
+   "brief": "Before you touch anything, know what is here. List the home directory.",
+   "objectives": [
+    "List the home directory"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^ls$",
+     "expect_contains": "notes.txt",
+     "hint": "Run: ls — inventory the workstation. What study material is here?"
+    }
+   ],
+   "success_message": "Workstation inventoried. Situational awareness before action — always."
+  },
+  {
+   "id": "acad-cyber-mission-4",
+   "title": "Declare the incident",
+   "domain_id": "acad-cyber",
+   "difficulty": 2,
+   "brief": "A phishing report just landed. Declare it on the channel with echo — declarations must be explicit and visible, never assumed.",
+   "objectives": [
+    "Declare the security incident"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^echo\\s+.*[Ii][Nn][Cc][Ii][Dd][Ee][Nn][Tt].*$",
+     "expect_contains": "INCIDENT",
+     "hint": "Run: echo with an incident declaration (e.g. echo \"SECURITY INCIDENT DECLARED\")."
+    }
+   ],
+   "success_message": "Incident declared. If nobody says it, nobody owns it."
+  },
+  {
+   "id": "acad-cyber-mission-5",
+   "title": "Verify your identity token",
+   "domain_id": "acad-cyber",
+   "difficulty": 2,
+   "brief": "Access reviews check the full identity string, not just the name. Print your identity record.",
+   "objectives": [
+    "Print your full identity record"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^id$",
+     "expect_contains": "uid=1000",
+     "hint": "Run: id — read the full identity string."
+    }
+   ],
+   "success_message": "Identity verified: uid=1000. Reviews check the whole record, not the username."
+  },
+  {
+   "id": "acad-cyber-mission-6",
+   "title": "Check the platform build",
+   "domain_id": "acad-cyber",
+   "difficulty": 2,
+   "brief": "Know your platform: print the full system information. Vulnerability management starts with knowing what you run.",
+   "objectives": [
+    "Print full system information"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^uname\\s+-a$",
+     "expect_contains": "6.8.0-ilb",
+     "hint": "Run: uname -a — read the platform build string."
+    }
+   ],
+   "success_message": "Platform identified. You cannot protect what you cannot name."
+  },
+  {
+   "id": "acad-cyber-mission-7",
+   "title": "Confirm your operating position",
+   "domain_id": "acad-cyber",
+   "difficulty": 3,
+   "brief": "Print your working directory, then attest with echo that your position is confirmed — two independent confirmations, like any good control.",
+   "objectives": [
+    "Print working directory",
+    "Attest your position"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^pwd$",
+     "expect_contains": "/home/candidate",
+     "hint": "Run: pwd — where are you operating from?"
+    },
+    {
+     "command_pattern": "^echo\\s+.*confirmed.*$",
+     "expect_contains": "confirmed",
+     "hint": "Run: echo with a confirmation (e.g. echo \"position confirmed\")."
+    }
+   ],
+   "success_message": "Position confirmed twice. Defense in depth applies to verification too."
+  }
+ ],
  "sections": [
   {
    "id": "sec-full-spectrum",
-   "title": "Full Spectrum Dominance \u2014 core path",
+   "title": "Full Spectrum Dominance — core path",
    "kind": "core",
    "lectures": [],
    "lab_ids": [
@@ -265,17 +874,17 @@
  ],
  "behavioral": [
   {
-   "prompt": "Tell me about the most technically difficult problem you have run into \u2014 a homelab, a broken environment, anything \u2014 and how you solved it.",
+   "prompt": "Tell me about the most technically difficult problem you have run into — a homelab, a broken environment, anything — and how you solved it.",
    "framework": "STAR",
    "points": [
     "Pick ONE problem with a real evidence trail: the symptom, what you measured, the hypothesis you tested",
-    "Show the loop: scope, observe, hypothesize, smallest safe change, validate \u2014 interviewers score the method, not just the fix",
+    "Show the loop: scope, observe, hypothesize, smallest safe change, validate — interviewers score the method, not just the fix",
     "Name the tools (VM build, networking, logs) and the lesson it taught you",
     "Close with the result in concrete terms: what works now that did not before"
    ],
    "pitfalls": [
-    "Choosing a story with no real obstacle (\u201cI Googled it\u201d is not a story)",
-    "Skipping validation \u2014 saying it worked without proving it",
+    "Choosing a story with no real obstacle (“I Googled it” is not a story)",
+    "Skipping validation — saying it worked without proving it",
     "Rambling past two minutes without reaching the result"
    ]
   },
@@ -300,13 +909,13 @@
    "points": [
     "Connect prevention to something concrete: a moment you saw detection arrive too late, or a system you hardened",
     "Tie their model to your instincts: deny-by-default matches how you already think about trust",
-    "Show service orientation: the Cyber Hero culture rewards the 2 a.m. helper \u2014 give an example of being one",
+    "Show service orientation: the Cyber Hero culture rewards the 2 a.m. helper — give an example of being one",
     "Name one forward-looking reason: Zero Trust, the MSP mission, or the bootcamp community investment"
    ],
    "pitfalls": [
     "Generic flattery with no specifics about the company",
     "Leading with compensation, title, or location convenience",
-    "Claiming expertise in products you have only read about \u2014 frame it as studied, not mastered"
+    "Claiming expertise in products you have only read about — frame it as studied, not mastered"
    ]
   },
   {
@@ -383,13 +992,13 @@
  ],
  "resources": {
   "cheatsheet": {
-   "title": "Full Spectrum Dominance \u2014 field reference",
+   "title": "Full Spectrum Dominance — field reference",
    "sections": [
     {
      "heading": "Company facts (verified)",
      "items": [
-      "Founded 2017 in Orlando, FL \u2014 Danny Jenkins (CEO), Sami Jenkins (COO), John Carolan (QA)",
-      "Philosophy: deny-by-default / default-deny \u2014 approve known-good, deny the rest",
+      "Founded 2017 in Orlando, FL — Danny Jenkins (CEO), Sami Jenkins (COO), John Carolan (QA)",
+      "Philosophy: deny-by-default / default-deny — approve known-good, deny the rest",
       "Customers: 70,000+ organizations, sold heavily through the MSP channel",
       "Funding: $190M Series F, July 2026 (Elephant-led); ~730 employees",
       "Interview address: 1901 Summit Tower Blvd, Orlando, FL 32810",
@@ -399,116 +1008,116 @@
     {
      "heading": "Product stack",
      "items": [
-      "Allowlisting \u2014 default-deny execution control for apps, DLLs, scripts, installers",
-      "Ringfencing \u2014 constrains allowed apps: app-to-app, file, registry, network",
-      "Storage Control \u2014 USB/device policy by serial, user, file type, encryption",
-      "Elevation Control \u2014 just-in-time per-app admin, no standing rights",
-      "Network Control \u2014 host firewall; port/IP/dynamic-ACL rules; ZTNA foundation",
-      "Web Control \u2014 agent-based DNS/URL category filtering, works off-network",
-      "Cyber Hero MDR \u2014 24/7/365 US-based response, ~60-second average",
-      "Testing Environment \u2014 one-button VDI sandbox; checks AV flags, canary files, registry changes"
+      "Allowlisting — default-deny execution control for apps, DLLs, scripts, installers",
+      "Ringfencing — constrains allowed apps: app-to-app, file, registry, network",
+      "Storage Control — USB/device policy by serial, user, file type, encryption",
+      "Elevation Control — just-in-time per-app admin, no standing rights",
+      "Network Control — host firewall; port/IP/dynamic-ACL rules; ZTNA foundation",
+      "Web Control — agent-based DNS/URL category filtering, works off-network",
+      "Cyber Hero MDR — 24/7/365 US-based response, ~60-second average",
+      "Testing Environment — one-button VDI sandbox; checks AV flags, canary files, registry changes"
      ]
     },
     {
      "heading": "Rule strength (strongest to weakest)",
      "items": [
-      "Certificate/publisher rules \u2014 survive version updates",
-      "Hash rules \u2014 precise but break on every new version",
-      "Path rules \u2014 weakest; never in user-writable locations",
-      "Learning Mode catalogs before enforcement; Installation Mode pauses blocking \u2014 scope and time-box both"
+      "Certificate/publisher rules — survive version updates",
+      "Hash rules — precise but break on every new version",
+      "Path rules — weakest; never in user-writable locations",
+      "Learning Mode catalogs before enforcement; Installation Mode pauses blocking — scope and time-box both"
      ]
     },
     {
      "heading": "Terminal evidence commands",
      "items": [
-      "nmap <host> \u2014 which ports answer (22/80/443 open)",
-      "dig <name> \u2014 ANSWER SECTION with the A record",
-      "ss \u2014 listening sockets",
-      "systemctl status <svc> \u2014 unit state",
-      "journalctl -u <svc> \u2014 service logs",
-      "sha256sum <file> \u2014 real SHA-256 identity",
-      "grep <pattern> <file> \u2014 search the record",
-      "ps \u2014 what is actually running"
+      "nmap <host> — which ports answer (22/80/443 open)",
+      "dig <name> — ANSWER SECTION with the A record",
+      "ss — listening sockets",
+      "systemctl status <svc> — unit state",
+      "journalctl -u <svc> — service logs",
+      "sha256sum <file> — real SHA-256 identity",
+      "grep <pattern> <file> — search the record",
+      "ps — what is actually running"
      ]
     },
     {
      "heading": "Graph vocabulary",
      "items": [
-      "node \u2014 any entity tracked in the model (user, host, IP, domain, file hash, vulnerability)",
-      "edge \u2014 a labeled relationship between two nodes (logged into, resolved to, downloaded)",
-      "degree \u2014 number of edges on a node; high-degree nodes are attacker highways",
-      "centrality \u2014 how much traffic or how many paths flow through a node",
-      "directed edge \u2014 a relationship with a direction (A downloaded FROM B)",
-      "security graph \u2014 the living model of your whole environment as nodes and edges",
-      "attack graph \u2014 the subgraph of exploitable paths to your targets",
-      "knowledge graph \u2014 threat-intel indicators linked to campaigns and actors"
+      "node — any entity tracked in the model (user, host, IP, domain, file hash, vulnerability)",
+      "edge — a labeled relationship between two nodes (logged into, resolved to, downloaded)",
+      "degree — number of edges on a node; high-degree nodes are attacker highways",
+      "centrality — how much traffic or how many paths flow through a node",
+      "directed edge — a relationship with a direction (A downloaded FROM B)",
+      "security graph — the living model of your whole environment as nodes and edges",
+      "attack graph — the subgraph of exploitable paths to your targets",
+      "knowledge graph — threat-intel indicators linked to campaigns and actors"
      ]
     },
     {
      "heading": "Attack-graph playbook",
      "items": [
-      "inventory first \u2014 you cannot graph what you have not discovered",
+      "inventory first — you cannot graph what you have not discovered",
       "model flaws AND misconfigs as exploit edges",
       "compute shortest paths to the crown jewels",
       "find the choke point (highest betweenness on those paths)",
       "break the path: patch, segment, or remove the edge",
       "re-scan and re-run the graph to prove the path is gone",
-      "never trust yesterday's graph \u2014 redeployments redraw the map"
+      "never trust yesterday's graph — redeployments redraw the map"
      ]
     },
     {
      "heading": "Zero Trust + graphs",
      "items": [
-      "never trust, always verify \u2014 re-evaluate every access decision",
-      "assume breach \u2014 treat unexpected edges as hostile until proven otherwise",
-      "microsegmentation \u2014 allow-list approved edges, alert on new ones",
-      "ReBAC \u2014 policies are path queries on the identity graph",
-      "continuous verification \u2014 device/location/behavior edges change, trust follows",
-      "anomalous edge \u2014 a first-seen connection between strangers is the classic signal"
+      "never trust, always verify — re-evaluate every access decision",
+      "assume breach — treat unexpected edges as hostile until proven otherwise",
+      "microsegmentation — allow-list approved edges, alert on new ones",
+      "ReBAC — policies are path queries on the identity graph",
+      "continuous verification — device/location/behavior edges change, trust follows",
+      "anomalous edge — a first-seen connection between strangers is the classic signal"
      ]
     },
     {
      "heading": "ML detection vocabulary",
      "items": [
-      "Supervised learning \u2014 learns from labeled examples; strong on known threats, blind to novel ones",
-      "Unsupervised learning \u2014 finds structure without labels; clustering and dimensionality reduction",
-      "Anomaly detection \u2014 models 'normal' and flags deviations; the workhorse for novel threats",
-      "UEBA \u2014 user and entity behavior analytics: per-user baselines plus peer-group comparison",
-      "Feature engineering \u2014 encoding raw logs into model inputs (login velocity, rare processes, domain entropy)",
-      "Concept drift \u2014 model decay as attacker behavior and legitimate traffic shift over time"
+      "Supervised learning — learns from labeled examples; strong on known threats, blind to novel ones",
+      "Unsupervised learning — finds structure without labels; clustering and dimensionality reduction",
+      "Anomaly detection — models 'normal' and flags deviations; the workhorse for novel threats",
+      "UEBA — user and entity behavior analytics: per-user baselines plus peer-group comparison",
+      "Feature engineering — encoding raw logs into model inputs (login velocity, rare processes, domain entropy)",
+      "Concept drift — model decay as attacker behavior and legitimate traffic shift over time"
      ]
     },
     {
      "heading": "Detection metrics",
      "items": [
-      "Precision \u2014 of all flagged alerts, how many were real",
-      "Recall \u2014 of all real attacks, how many were flagged",
-      "Threshold tuning \u2014 sliding the decision cutoff trades precision against recall",
-      "Alert fatigue \u2014 when false positives train analysts to ignore the queue",
-      "DGA \u2014 domain generation algorithm; detected via character entropy of domain names"
+      "Precision — of all flagged alerts, how many were real",
+      "Recall — of all real attacks, how many were flagged",
+      "Threshold tuning — sliding the decision cutoff trades precision against recall",
+      "Alert fatigue — when false positives train analysts to ignore the queue",
+      "DGA — domain generation algorithm; detected via character entropy of domain names"
      ]
     },
     {
      "heading": "Agent and LLM security",
      "items": [
-      "Direct prompt injection \u2014 attacker input overrides app instructions (OWASP LLM01:2025, the #1 LLM risk)",
-      "Indirect prompt injection \u2014 hidden instructions inside retrieved data (email, web, docs)",
-      "Jailbreak \u2014 defeating the model's own safety policy; distinct from hijacking app behavior",
-      "Tool poisoning \u2014 malicious tool descriptions or metadata steer an agent to misuse its tools (MCP ecosystem risk)",
-      "Insecure output handling \u2014 executing or trusting model output without validation",
-      "Least-privilege tools \u2014 grant each tool only the scope its task requires"
+      "Direct prompt injection — attacker input overrides app instructions (OWASP LLM01:2025, the #1 LLM risk)",
+      "Indirect prompt injection — hidden instructions inside retrieved data (email, web, docs)",
+      "Jailbreak — defeating the model's own safety policy; distinct from hijacking app behavior",
+      "Tool poisoning — malicious tool descriptions or metadata steer an agent to misuse its tools (MCP ecosystem risk)",
+      "Insecure output handling — executing or trusting model output without validation",
+      "Least-privilege tools — grant each tool only the scope its task requires"
      ]
     },
     {
      "heading": "Adversarial ML and governance",
      "items": [
-      "Evasion \u2014 perturbing inputs at inference time to dodge a classifier",
-      "Poisoning \u2014 corrupting training data to corrupt the model",
-      "Extraction \u2014 querying a model to steal its behavior or parameters",
-      "MITRE ATLAS \u2014 knowledge base of adversarial ML tactics and techniques",
-      "Red-teaming and evals \u2014 adversarial testing of AI systems before deployment",
-      "Human-in-the-loop \u2014 required approval for high-impact or irreversible agent actions",
-      "SOAR \u2014 security orchestration, automation and response; automate enrichment, gate containment"
+      "Evasion — perturbing inputs at inference time to dodge a classifier",
+      "Poisoning — corrupting training data to corrupt the model",
+      "Extraction — querying a model to steal its behavior or parameters",
+      "MITRE ATLAS — knowledge base of adversarial ML tactics and techniques",
+      "Red-teaming and evals — adversarial testing of AI systems before deployment",
+      "Human-in-the-loop — required approval for high-impact or irreversible agent actions",
+      "SOAR — security orchestration, automation and response; automate enrichment, gate containment"
      ]
     }
    ]
@@ -520,7 +1129,7 @@
    },
    {
     "term": "Blocklisting",
-    "def": "Default-allow model: everything runs except recognized-bad items \u2014 the window zero-days live in."
+    "def": "Default-allow model: everything runs except recognized-bad items — the window zero-days live in."
    },
    {
     "term": "Default-deny",
@@ -536,15 +1145,15 @@
    },
    {
     "term": "Installation Mode",
-    "def": "Temporary mode that pauses file blocking for installs \u2014 must be tightly scoped and time-boxed."
+    "def": "Temporary mode that pauses file blocking for installs — must be tightly scoped and time-boxed."
    },
    {
     "term": "Elevation Control",
-    "def": "Grants specific approved applications admin rights for standard users \u2014 just-in-time, per-app, time-boxed \u2014 without standing admin rights."
+    "def": "Grants specific approved applications admin rights for standard users — just-in-time, per-app, time-boxed — without standing admin rights."
    },
    {
     "term": "Application hopping",
-    "def": "An elevated or trusted process spawning another tool (e.g., PowerShell) to inherit its privileges \u2014 countered by ringfencing the elevated process."
+    "def": "An elevated or trusted process spawning another tool (e.g., PowerShell) to inherit its privileges — countered by ringfencing the elevated process."
    },
    {
     "term": "Storage Control",
@@ -556,7 +1165,7 @@
    },
    {
     "term": "ZTNA",
-    "def": "Zero Trust Network Access: per-session, per-application brokered connections (commonly over port 443) with no open inbound ports \u2014 deny-by-default for network access."
+    "def": "Zero Trust Network Access: per-session, per-application brokered connections (commonly over port 443) with no open inbound ports — deny-by-default for network access."
    },
    {
     "term": "Approval Center",
@@ -564,7 +1173,7 @@
    },
    {
     "term": "Unified Audit",
-    "def": "Real-time audit showing what was allowed or denied across endpoints \u2014 and why; the evidence layer for triage."
+    "def": "Real-time audit showing what was allowed or denied across endpoints — and why; the evidence layer for triage."
    },
    {
     "term": "Testing Environment",
@@ -576,15 +1185,15 @@
    },
    {
     "term": "Assume breach",
-    "def": "Design and operate as if the attacker already has a foothold \u2014 least privilege, containment, and monitoring everywhere."
+    "def": "Design and operate as if the attacker already has a foothold — least privilege, containment, and monitoring everywhere."
    },
    {
     "term": "Living off the land",
-    "def": "Attacks that hijack trusted built-in tools (Word, PowerShell) instead of dropping malware \u2014 defeated by behavior containment, not signatures."
+    "def": "Attacks that hijack trusted built-in tools (Word, PowerShell) instead of dropping malware — defeated by behavior containment, not signatures."
    },
    {
     "term": "Change control",
-    "def": "Scoped, ticketed, tested changes with validation and rollback \u2014 emergency speed never cancels the process."
+    "def": "Scoped, ticketed, tested changes with validation and rollback — emergency speed never cancels the process."
    },
    {
     "def": "A node in an attack graph representing a system or weakness, connected by edges that represent steps an attacker could take between them.",
@@ -691,7 +1300,7 @@
    {
     "label": "ThreatLocker Zero Trust platform explainer (official)",
     "url": "https://www.threatlocker.com/blog/edr-xdr-vs-zero-trust-prevention",
-    "note": "EDR/XDR vs Zero Trust prevention \u2014 the deny-by-default argument in their own words."
+    "note": "EDR/XDR vs Zero Trust prevention — the deny-by-default argument in their own words."
    },
    {
     "label": "ThreatLocker Bootcamp page (official)",
@@ -729,7 +1338,7 @@
     "note": "Detection and response capability detail."
    },
    {
-    "label": "NIST SP 800-207 \u2014 Zero Trust Architecture",
+    "label": "NIST SP 800-207 — Zero Trust Architecture",
     "url": "https://csrc.nist.gov/pubs/sp/800/207/final",
     "note": "The canonical Zero Trust reference: tenets, deployment models, policy engine trust algorithm."
    },
@@ -744,7 +1353,7 @@
     "url": "https://attack.mitre.org/"
    },
    {
-    "label": "CISA \u2014 Cybersecurity and Infrastructure Security Agency",
+    "label": "CISA — Cybersecurity and Infrastructure Security Agency",
     "note": "US government advisories, alerts, and guidance frequently referenced in threat-intel work.",
     "url": "https://www.cisa.gov/"
    },
@@ -761,7 +1370,7 @@
    {
     "label": "OWASP Top 10 for LLM Applications",
     "url": "https://genai.owasp.org/llm-top-10/",
-    "note": "The ranked LLM risk list \u2014 prompt injection is #1"
+    "note": "The ranked LLM risk list — prompt injection is #1"
    },
    {
     "label": "NIST AI Risk Management Framework",
@@ -771,7 +1380,7 @@
    {
     "label": "MITRE ATLAS",
     "url": "https://atlas.mitre.org/",
-    "note": "Adversarial Threat Landscape for AI Systems \u2014 tactics and techniques"
+    "note": "Adversarial Threat Landscape for AI Systems — tactics and techniques"
    },
    {
     "label": "CISA AI guidance",
@@ -782,11 +1391,11 @@
   "checklist": [
    "Sixty-second company brief rehearsed out loud: year, city, philosophy, three products, one milestone",
    "Two STAR stories ready: hardest technical problem; a frustrated customer or user",
-   "\u201cWhy ThreatLocker / why cybersecurity\u201d answer tied to prevention and service, not slogans",
+   "“Why ThreatLocker / why cybersecurity” answer tied to prevention and service, not slogans",
    "Ringfencing explained in one plain-English sentence (the Word-on-a-leash version)",
    "Elevation Control answer ready: just-in-time, per-app, time-boxed, ringfenced, logged",
-   "Triage loop memorized: scope \u2192 observe \u2192 hypothesize \u2192 smallest safe change \u2192 validate \u2192 explain",
-   "Three questions to ask them: team on-call shape, approval SLA expectations, what \u201cmost helpful\u201d looks like on the team",
+   "Triage loop memorized: scope → observe → hypothesize → smallest safe change → validate → explain",
+   "Three questions to ask them: team on-call shape, approval SLA expectations, what “most helpful” looks like on the team",
    "Logistics: 1901 Summit Tower Blvd, Orlando FL; in-office role; ID and references ready",
    "Define your crown jewels before you model anything.",
    "Build the asset-and-access graph from live sources (scans, configs, identity), not from the CMDB alone.",
@@ -932,7 +1541,7 @@
    "title": "Ringfencing: four leashes on an allowed application",
    "svg": "assets/diagrams/tl-ringfencing.svg",
    "lesson_ref": "c-tl-endpoint-ops",
-   "caption": "Word stays approved, but it cannot spawn PowerShell, read the credential store, or reach the internet \u2014 while opening its document is allowed.",
+   "caption": "Word stays approved, but it cannot spawn PowerShell, read the credential store, or reach the internet — while opening its document is allowed.",
    "alt": "An approved Word application inside a dashed containment ring: arrows show PowerShell launch denied, credential-store registry access denied, external network denied, and document file access allowed."
   },
   {
@@ -941,7 +1550,7 @@
    "title": "The Zero Trust endpoint stack",
    "svg": "assets/diagrams/tl-zero-trust-stack.svg",
    "lesson_ref": "c-tl-interview",
-   "caption": "Five deny-by-default layers \u2014 Allowlisting, Ringfencing, Elevation, Storage, Network \u2014 watched by Web Control, the Testing Environment, Unified Audit, and the Cyber Hero MDR team.",
+   "caption": "Five deny-by-default layers — Allowlisting, Ringfencing, Elevation, Storage, Network — watched by Web Control, the Testing Environment, Unified Audit, and the Cyber Hero MDR team.",
    "alt": "A vertical stack of five layers from Allowlisting at the foundation up through Ringfencing, Elevation Control, Storage Control, and Network Control, with side boxes for Web Control, Testing Environment, Unified Audit, and Cyber Hero MDR."
   },
   {
@@ -995,7 +1604,7 @@
    "title": "ML detection pipeline: telemetry to triage",
    "svg": "assets/diagrams/ai-ml-pipeline.svg",
    "lesson_ref": "c-ml-defense",
-   "caption": "How raw telemetry becomes scored alerts: features feed the model, the model scores, analysts triage top-down \u2014 and analyst verdicts feed retraining.",
+   "caption": "How raw telemetry becomes scored alerts: features feed the model, the model scores, analysts triage top-down — and analyst verdicts feed retraining.",
    "alt": "Flow diagram: telemetry sources feed feature extraction, which feeds an ML model, which outputs scored alerts into an analyst triage queue, with a feedback arrow for retraining."
   },
   {
@@ -1030,5 +1639,72 @@
  "math": [
   "stats",
   "probability"
+ ],
+ "videos": [
+  {
+   "title": "The 2 AM Phishing Report",
+   "url": "/assets/videos/bc-bbg-cyber-phishing-triage.mp4",
+   "source": "Interstitium Labs",
+   "blurb": "A SOC pipeline diagram for the 2 AM phishing report: report, triage, isolate, hunt — every report is a gift. (Preview — narration coming; voiceover pending TTS restore.)",
+   "durationMin": 1,
+   "order": 1,
+   "preview": true,
+   "captionsUrl": "/assets/videos/bc-bbg-cyber-phishing-triage.vtt",
+   "narrationUrl": "/assets/videos/bc-bbg-cyber-phishing-triage.narration.md",
+   "verifiedUtc": "2026-10-09T04:08:23Z",
+   "httpStatus": 200
+  },
+  {
+   "title": "Patch Tuesday Standoff",
+   "url": "/assets/videos/bc-bbg-cyber-patch-tuesday.mp4",
+   "source": "Interstitium Labs",
+   "blurb": "A risk-matrix approach to Patch Tuesday: plot exploitability against exposure, patch the top-right quadrant first. (Preview — narration coming; voiceover pending TTS restore.)",
+   "durationMin": 1,
+   "order": 2,
+   "preview": true,
+   "captionsUrl": "/assets/videos/bc-bbg-cyber-patch-tuesday.vtt",
+   "narrationUrl": "/assets/videos/bc-bbg-cyber-patch-tuesday.narration.md",
+   "verifiedUtc": "2026-10-09T04:08:23Z",
+   "httpStatus": 200
+  },
+  {
+   "title": "Kill the Shared Admin Password",
+   "url": "/assets/videos/bc-fireship-cyber-credential-hygiene.mp4",
+   "source": "Interstitium Labs",
+   "blurb": "A rapid explainer on credential hygiene: shared admin passwords are invisible backdoors — one human, one identity, MFA everywhere. (Preview — narration coming; voiceover pending TTS restore.)",
+   "durationMin": 1,
+   "order": 3,
+   "preview": true,
+   "captionsUrl": "/assets/videos/bc-fireship-cyber-credential-hygiene.vtt",
+   "narrationUrl": "/assets/videos/bc-fireship-cyber-credential-hygiene.narration.md",
+   "verifiedUtc": "2026-10-09T04:08:23Z",
+   "httpStatus": 200
+  }
+ ],
+ "pdfGuides": [
+  {
+   "title": "Zero Trust Architecture — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-zero-trust.pdf",
+   "source": "Interstitium Labs",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:27:58Z"
+  },
+  {
+   "title": "PKI & Encryption — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-pki-encryption.pdf",
+   "source": "Interstitium Labs",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:27:58Z"
+  },
+  {
+   "title": "TLS Handshake — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-tls-handshake.pdf",
+   "source": "Interstitium Labs",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:27:58Z"
+  }
  ]
 }

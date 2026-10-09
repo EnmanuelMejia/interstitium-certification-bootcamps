@@ -451,9 +451,695 @@
    ]
   }
  ],
- "simulations": [],
- "consoleSims": [],
- "terminalMissions": [],
+ "simulations": [
+  {
+   "id": "itg-sim-1",
+   "title": "Drift nobody committed",
+   "kind": "troubleshoot",
+   "domain_id": "iac-terraform-gitops",
+   "difficulty": 2,
+   "points": 15,
+   "brief": "The GitOps agent reports the payments namespace as 'OutOfSync' — but git is clean and nobody merged today. Someone changed the cluster by hand. Work the drift.",
+   "steps": [
+    {
+     "symptom": "ArgoCD-style status: payments app OutOfSync. Git log: no merges in 48 hours.",
+     "evidence": [
+      [
+       "sync-status.txt",
+       "App: payments. Sync: OutOfSync. Diff: Deployment/payments-api replicas 3 (git) vs 5 (live)."
+      ],
+      [
+       "audit.txt",
+       "kubectl scale deployment/payments-api --replicas=5 by on-call, 14:12, 'to handle the sale'."
+      ]
+     ],
+     "options": [
+      "The drift is a manual scale — reconcile by updating the git manifest to the intended replica count, not by clicking sync blindly",
+      "Click 'Sync' immediately to force the cluster back to 3",
+      "Delete the app and let GitOps recreate it",
+      "The drift will resolve itself on the next sync cycle"
+     ],
+     "correct": 0,
+     "explain": "Reconciliation is observe-diff-sync: the diff tells you a human scaled for a real reason (the sale). Update git to declare the intended state — syncing blindly would undo a deliberate, load-driven change and re-create the incident."
+    },
+    {
+     "symptom": "The sale ends tonight. The replica count should return to 3 tomorrow.",
+     "evidence": [
+      [
+       "runbook.txt",
+       "Post-sale: scale back to 3. Owner: on-call. Method: currently 'remember to do it'."
+      ],
+      [
+       "git.txt",
+       "payments-api replicas in git: still 3 (never updated for the sale)."
+      ]
+     ],
+     "options": [
+      "Make the temporary change explicit in git (or a scheduled override) with a revert plan — 'remember to do it' is how drift becomes permanent",
+      "Leave it at 5 — extra capacity is harmless",
+      "Scale it back by hand tomorrow and tell no one",
+      "Delete the deployment and recreate it at 3"
+     ],
+     "correct": 0,
+     "explain": "Git is the single source of truth, including for temporary changes: declare the override in git with its expiry, or schedule the revert. Manual changes with memory-based follow-through are exactly how OutOfSync becomes the permanent state."
+    },
+    {
+     "symptom": "Leadership asks how to stop hand-edits to the cluster entirely.",
+     "evidence": [
+      [
+       "rbac.txt",
+       "47 engineers hold cluster-admin. 'Everyone needs it for emergencies.'"
+      ],
+      [
+       "policy.txt",
+       "No policy blocks manual mutation of GitOps-managed namespaces."
+      ]
+     ],
+     "options": [
+      "Remove standing cluster-admin, scope emergency access with expiry, and let the GitOps agent own managed namespaces",
+      "Keep cluster-admin for everyone — emergencies need speed",
+      "Add a wiki page asking people not to hand-edit",
+      "Move the GitOps agent to a different cluster"
+     ],
+     "correct": 0,
+     "explain": "Pull-based GitOps plus scoped RBAC is the structural fix: the in-cluster agent reconciles, humans propose changes via git, and emergency access is temporary and audited. Forty-seven permanent cluster-admins is not an emergency plan — it's the drift factory."
+    }
+   ],
+   "debrief": "Drift is detected automatically by the reconcile loop — but resolved deliberately: understand why the live state diverged, declare the intended state in git, and remove the standing access that lets drift happen."
+  },
+  {
+   "id": "itg-sim-2",
+   "title": "The mutable latest tag",
+   "kind": "troubleshoot",
+   "domain_id": "iac-terraform-gitops",
+   "difficulty": 2,
+   "points": 15,
+   "brief": "Two clusters run 'the same' manifest from git, but behave differently. Both deploy image api:latest. The tag moved between their sync times. Fix the reference.",
+   "steps": [
+    {
+     "symptom": "Staging and prod both sync api:latest from the same commit — but run different code.",
+     "evidence": [
+      [
+       "staging.txt",
+       "api:latest resolved at sync: sha256:aaa1 (built Monday)."
+      ],
+      [
+       "prod.txt",
+       "api:latest resolved at sync: sha256:bbb2 (built Wednesday). Same git commit."
+      ]
+     ],
+     "options": [
+      "Pin immutable references — digests or version tags — so the manifest describes exactly what each cluster runs",
+      "Sync both clusters at the same time so latest resolves identically",
+      "This is fine — latest is always the newest code",
+      "Stop using staging — it causes confusion"
+     ],
+     "correct": 0,
+     "explain": "With mutable tags like 'latest', the repo stops describing what's actually running — two syncs of the same commit resolve to different artifacts. Immutable references make the manifest a true statement about the cluster."
+    },
+    {
+     "symptom": "The team pins versions but CI still pushes api:2.4.1 twice — the second build overwrote the first.",
+     "evidence": [
+      [
+       "registry.txt",
+       "api:2.4.1 pushed Monday (sha256:aaa1), pushed again Wednesday (sha256:bbb2). Tag reassigned."
+      ],
+      [
+       "deploy.txt",
+       "Rollback to '2.4.1' restored Wednesday's code, not Monday's."
+      ]
+     ],
+     "options": [
+      "Make tags immutable in the registry (or deploy by digest) — a version tag must name one artifact forever",
+      "Version tags are just labels — overwriting is normal",
+      "Never roll back — always roll forward",
+      "Use timestamps in tags so they never collide"
+     ],
+     "correct": 0,
+     "explain": "A version tag that gets reassigned is a mutable tag wearing a version costume — rollback to '2.4.1' must mean Monday's artifact, deterministically. Immutable tags or digest references make the version a promise, not a suggestion."
+    },
+    {
+     "symptom": "GitOps is configured with auto-sync, and a bad image just auto-deployed to production.",
+     "evidence": [
+      [
+       "sync-policy.txt",
+       "Automated sync: enabled, prune: true. No health gates."
+      ],
+      [
+       "incident.txt",
+       "Bad image (crash loop) synced to prod at 03:12. Auto-sync faithfully deployed the declared state."
+      ]
+     ],
+     "options": [
+      "The declared state was wrong, not the sync: gate what gets declared (CI promotion, image verification) — auto-sync only deploys what's in git",
+      "Disable auto-sync — manual sync is safer",
+      "Auto-sync is broken — replace the GitOps tool",
+      "The bad image is CI's fault, not GitOps' — no action needed"
+     ],
+     "correct": 0,
+     "explain": "Auto-sync deploys the declared state faithfully — that's its job. The control point is what gets declared: CI promotion gates, image verification, and progressive delivery decide which artifact git may reference. Blaming the sync loop misses the actual gate."
+    }
+   ],
+   "debrief": "Immutable image references keep git honest: digests or pinned version tags, registry immutability, and promotion gates controlling what git may declare. The manifest must be a true statement about the cluster."
+  },
+  {
+   "id": "itg-sim-3",
+   "title": "Secret committed to git",
+   "kind": "troubleshoot",
+   "domain_id": "iac-terraform-gitops",
+   "difficulty": 3,
+   "points": 18,
+   "brief": "The GitOps repo contains a base64'd database password in a manifest. 'It's encoded, not encrypted,' the audit notes. The whole repo is cloned to every engineer's laptop. Fix the secret handling.",
+   "steps": [
+    {
+     "symptom": "Secret manifest in git: password stored base64-encoded. 40+ clones of the repo exist.",
+     "evidence": [
+      [
+       "secret.yaml",
+       "data:\n  password: c3VwZXJzZWNyZXQ=  # 'encoded for safety'"
+      ],
+      [
+       "clones.txt",
+       "Repo clones: 43 (engineers, CI runners, backups)."
+      ]
+     ],
+     "options": [
+      "Rotate the password immediately, then replace the manifest with a reference resolved at runtime from a secrets manager",
+      "It's base64 — that's basically encrypted. Leave it.",
+      "Delete the manifest from git history — the clones don't matter",
+      "Restrict who can clone the repo"
+     ],
+     "correct": 0,
+     "explain": "Base64 is encoding, not encryption — every clone holder can decode it in one command. Secrets don't belong in git in any form: rotate now, then store references (ExternalSecrets, Vault Agent) and let the cluster resolve real values at runtime."
+    },
+    {
+     "symptom": "The team proposes SealedSecrets-style encryption: encrypted values committed, decrypted in-cluster.",
+     "evidence": [
+      [
+       "proposal.txt",
+       "'We encrypt with the cluster key and commit the ciphertext. Git stays the source of truth.'"
+      ],
+      [
+       "concern.txt",
+       "Key rotation story: unclear. Multi-cluster story: unclear. Audit of who decrypted what: none."
+      ]
+     ],
+     "options": [
+      "Encrypted-in-git is acceptable only with a real key-management and rotation story; otherwise prefer manager references resolved at runtime",
+      "Encrypted in git is always wrong — never do it",
+      "Encrypted in git is always fine — encryption solves everything",
+      "Just use base64 — simpler"
+     ],
+     "correct": 0,
+     "explain": "Encrypted secrets in git can work, but the security moves to key management: rotation, scope, audit, multi-cluster. Without answers there, it's obfuscation with extra steps. Manager references keep the secret out of git entirely — the simpler invariant to defend."
+    },
+    {
+     "symptom": "CI needs cloud credentials to run Terraform — currently a long-lived key in CI variables.",
+     "evidence": [
+      [
+       "ci-vars.txt",
+       "AWS_ACCESS_KEY_ID: AKIA... (created 2023, never rotated). Scope: admin."
+      ],
+      [
+       "gitops.txt",
+       "The GitOps agent runs in-cluster with its own scoped service account."
+      ]
+     ],
+     "options": [
+      "Move to pull-based delivery and short-lived workload identity — CI never holds cluster or cloud credentials",
+      "Rotate the CI key yearly — that's sufficient",
+      "Scope the key down but keep it long-lived",
+      "Put the key in the GitOps repo so it's versioned"
+     ],
+     "correct": 0,
+     "explain": "Pull-based delivery beats push-based precisely here: the in-cluster agent pulls changes, so CI never needs cluster credentials — a major reduction in secret sprawl. Pair with short-lived workload identity and the 2023 admin key retires permanently."
+    }
+   ],
+   "debrief": "Secrets don't belong in git — encoded, encrypted, or otherwise. Store references, resolve at runtime from a manager, and let pull-based delivery eliminate the credentials CI used to need."
+  },
+  {
+   "id": "itg-sim-4",
+   "title": "CI holds the cluster keys",
+   "kind": "troubleshoot",
+   "domain_id": "iac-terraform-gitops",
+   "difficulty": 2,
+   "points": 15,
+   "brief": "The deploy pipeline pushes to the cluster with a kubeconfig stored in CI variables. The kubeconfig is cluster-admin, 2 years old, and shared across 5 pipelines. Redesign the delivery.",
+   "steps": [
+    {
+     "symptom": "CI pushes manifests with a 2-year-old cluster-admin kubeconfig shared by 5 pipelines.",
+     "evidence": [
+      [
+       "kubeconfig.txt",
+       "Age: 2 years. Scope: cluster-admin. Shared across: 5 pipelines, 3 teams."
+      ],
+      [
+       "blast.txt",
+       "Any of the 5 pipelines can delete any namespace. No audit per pipeline."
+      ]
+     ],
+     "options": [
+      "Switch to pull-based GitOps: the in-cluster agent syncs from git; CI only commits manifests and never touches the cluster",
+      "Rotate the kubeconfig — a fresh cluster-admin key fixes it",
+      "Give each pipeline its own cluster-admin kubeconfig",
+      "Shorten the key's name so it's harder to guess"
+     ],
+     "correct": 0,
+     "explain": "Pull-based delivery removes the entire credential class: CI writes to git, the agent inside the cluster pulls. No kubeconfig in CI means no 2-year-old cluster-admin key to rotate, scope, or leak — the secret sprawl disappears structurally."
+    },
+    {
+     "symptom": "One pipeline still needs to run database migrations — it genuinely must reach the cluster.",
+     "evidence": [
+      [
+       "migration.txt",
+       "Job: run migrations pre-deploy. Needs: db access, not cluster-admin."
+      ],
+      [
+       "current.txt",
+       "Today it uses the shared cluster-admin kubeconfig 'because it's there'."
+      ]
+     ],
+     "options": [
+      "Give the migration job its own scoped, short-lived credential limited to what migrations need",
+      "Keep using the shared kubeconfig — migrations are trusted",
+      "Run migrations by hand from a laptop instead",
+      "Skip migrations — the app handles schema drift"
+     ],
+     "correct": 0,
+     "explain": "The exception proves the pattern: the one job that must reach the cluster gets its own scoped, short-lived credential — not the shared skeleton key. Least privilege applies to automation exactly as it does to humans."
+    },
+    {
+     "symptom": "After the migration to pull-based, deploys feel slower — 'push was instant.'",
+     "evidence": [
+      [
+       "timing.txt",
+       "Push deploy: 40s. GitOps sync interval: 3min poll. 'It feels broken.'"
+      ],
+      [
+       "webhook.txt",
+       "Webhook from git host to the agent: not configured."
+      ]
+     ],
+     "options": [
+      "Configure the git webhook so pushes trigger near-instant syncs — pull-based with webhooks is as fast as push",
+      "Go back to push — speed matters more than security",
+      "Reduce the poll interval to 5 seconds",
+      "Deploys don't need to be fast"
+     ],
+     "correct": 0,
+     "explain": "Pull-based doesn't mean slow: a webhook from the git host notifies the agent on push, giving push-like speed with pull-based security. The 3-minute poll is the default, not the design — wire the webhook."
+    }
+   ],
+   "debrief": "Pull-based delivery: the agent inside the cluster pulls from git, CI never holds cluster credentials, and webhooks keep it fast. Exceptions get scoped, short-lived credentials — never the shared skeleton key."
+  },
+  {
+   "id": "itg-sim-5",
+   "title": "One giant app-of-apps",
+   "kind": "troubleshoot",
+   "domain_id": "iac-terraform-gitops",
+   "difficulty": 1,
+   "points": 10,
+   "brief": "The platform team manages all 60 services with a single GitOps application. Every sync touches everything, one team's bad commit blocks all deploys, and nobody can tell who owns what. Decompose it.",
+   "steps": [
+    {
+     "symptom": "Single GitOps app, 60 services, one sync scope. A bad commit in team A's manifests blocks team B's urgent deploy.",
+     "evidence": [
+      [
+       "app.txt",
+       "Applications: 1 ('everything'). Sources: 1 repo, 60 service dirs. Sync failures: block all 60."
+      ],
+      [
+       "incident.txt",
+       "Team B's hotfix waited 6 hours for team A's broken manifest to be reverted."
+      ]
+     ],
+     "options": [
+      "Decompose into app-of-apps: a parent app per team/scope, each with its own sync policy and blast radius",
+      "Keep one app — the coupling encourages careful commits",
+      "Split into 60 separate GitOps installations",
+      "Let team B edit team A's manifests to unblock themselves"
+     ],
+     "correct": 0,
+     "explain": "The app-of-apps pattern composes Applications hierarchically: each team gets its own sync scope, policies, and blast radius under a parent. One giant sync couples 60 teams' fates; hierarchy decouples them while keeping one pane of glass."
+    },
+    {
+     "symptom": "After decomposition, team C's app syncs fine but its service can't reach team D's database.",
+     "evidence": [
+      [
+       "netpol.txt",
+       "NetworkPolicies: none. 'The old monolith app handled networking implicitly.'"
+      ],
+      [
+       "request.txt",
+       "Team C: 'It worked when everything was one app!'"
+      ]
+     ],
+     "options": [
+      "The decomposition surfaced implicit coupling — define the cross-team contract explicitly (service endpoints, network policy, ownership)",
+      "Merge C and D back into one app",
+      "Give every app cluster-wide network access",
+      "It worked before, so the decomposition is wrong"
+     ],
+     "correct": 0,
+     "explain": "Decomposition surfaces hidden coupling — that's a feature. The old giant app masked cross-team dependencies; now they become explicit contracts: endpoints, policies, owners. Implicit coupling that 'just worked' is tech debt with a good disguise."
+    },
+    {
+     "symptom": "Each team now wants its own repo, its own sync schedule, its own tool version.",
+     "evidence": [
+      [
+       "requests.txt",
+       "Team A: own repo. Team B: hourly sync. Team C: different GitOps version."
+      ],
+      [
+       "platform.txt",
+       "Platform team: 4 people supporting 60 services."
+      ]
+     ],
+     "options": [
+      "Standardize the platform contract (repo layout, sync policy, versions) and let teams vary inside it — paved road, not 60 snowflakes",
+      "Let every team do exactly what it wants — autonomy above all",
+      "Force everything identical — no variation allowed",
+      "One repo for everyone, no exceptions"
+     ],
+     "correct": 0,
+     "explain": "App-of-apps gives each team its own scope — inside a platform contract. Total freedom recreates 60 snowflakes a 4-person platform team can't support; total rigidity recreates the monolith. The paved road standardizes the how and frees the what."
+    }
+   ],
+   "debrief": "App-of-apps decomposes the giant sync into hierarchical scopes: each team owns its sync policy and blast radius, hidden coupling becomes explicit contracts, and the platform contract keeps 60 services supportable."
+  }
+ ],
+ "consoleSims": [
+  {
+   "id": "itg-console-1",
+   "title": "Infra change by pull request",
+   "console": "git-host",
+   "domain_id": "iac-terraform-gitops",
+   "difficulty": 2,
+   "brief": "GitOps starts with git: propose the Redis cache addition on a branch and open the pull request that the pipeline will plan.",
+   "tasks": [
+    {
+     "id": "t1",
+     "instruction": "Create a branch named infra/add-cache.",
+     "validate": {
+      "action": "create-branch",
+      "params": {
+       "name": "infra/add-cache"
+      }
+     },
+     "hint": "Branches section: create branch infra/add-cache."
+    },
+    {
+     "id": "t2",
+     "instruction": "Open a PR titled 'Add Redis cache to staging' from infra/add-cache into main.",
+     "validate": {
+      "action": "open-pr",
+      "params": {
+       "title": "Add Redis cache to staging",
+       "base": "main",
+       "head": "infra/add-cache"
+      }
+     },
+     "hint": "Pull requests section: title, base main, head infra/add-cache."
+    },
+    {
+     "id": "t3",
+     "instruction": "Approve PR #2 so the plan stage can run.",
+     "validate": {
+      "action": "approve-pr",
+      "params": {
+       "pr": 2
+      }
+     },
+     "hint": "Pull requests section: click Approve on PR #2 (your new PR)."
+    }
+   ],
+   "debrief": "Every infrastructure change is a pull request: the branch holds the proposal, the PR is the review gate, and approval is what lets automation plan it. Git is the source of truth because git is where changes are debated."
+  },
+  {
+   "id": "itg-console-2",
+   "title": "Plan on PR, apply on main",
+   "console": "cicd-pipeline",
+   "domain_id": "iac-terraform-gitops",
+   "difficulty": 2,
+   "brief": "Wire the safe Terraform flow: select the staging workspace, rebuild, and approve the gated apply.",
+   "tasks": [
+    {
+     "id": "t1",
+     "instruction": "Set the pipeline variable TF_WORKSPACE to staging.",
+     "validate": {
+      "action": "set-variable",
+      "params": {
+       "key": "TF_WORKSPACE",
+       "value": "staging"
+      }
+     },
+     "hint": "Variables section: key TF_WORKSPACE, value staging."
+    },
+    {
+     "id": "t2",
+     "instruction": "Trigger a new build to run the plan.",
+     "validate": {
+      "action": "trigger-build",
+      "params": {}
+     },
+     "hint": "Pipeline section: click Trigger new build."
+    },
+    {
+     "id": "t3",
+     "instruction": "Approve the gated deploy stage to apply.",
+     "validate": {
+      "action": "approve-stage",
+      "params": {
+       "stage": "deploy"
+      }
+     },
+     "hint": "Pipeline section: click Approve on the deploy stage."
+    }
+   ],
+   "debrief": "Safe GitOps for infrastructure: the workspace is explicit, every build plans, and apply only happens on the gated promotion. The plan output is the change's documentation."
+  },
+  {
+   "id": "itg-console-3",
+   "title": "Register the GitOps-managed app",
+   "console": "k8s-dashboard",
+   "domain_id": "iac-terraform-gitops",
+   "difficulty": 2,
+   "brief": "Onboard the payments API to the cluster the GitOps way: isolated namespace, pinned immutable image, exposed service.",
+   "tasks": [
+    {
+     "id": "t1",
+     "instruction": "Create a namespace named payments.",
+     "validate": {
+      "action": "create-namespace",
+      "params": {
+       "name": "payments"
+      }
+     },
+     "hint": "Namespaces section: create namespace payments."
+    },
+    {
+     "id": "t2",
+     "instruction": "Deploy payments-api (image registry.internal/payments-api:2.4.1, 3 replicas) into payments.",
+     "validate": {
+      "action": "deploy",
+      "params": {
+       "name": "payments-api",
+       "namespace": "payments",
+       "image": "registry.internal/payments-api:2.4.1",
+       "replicas": 3
+      }
+     },
+     "hint": "Deployments section: name, namespace payments, pinned image, 3 replicas."
+    },
+    {
+     "id": "t3",
+     "instruction": "Expose payments-api on port 80 as a ClusterIP service.",
+     "validate": {
+      "action": "expose-service",
+      "params": {
+       "deployment": "payments-api",
+       "port": 80,
+       "type": "ClusterIP"
+      }
+     },
+     "hint": "Services section: deployment payments-api, port 80, type ClusterIP."
+    }
+   ],
+   "debrief": "GitOps-managed workloads are explicit: their own namespace, immutable image references, declared services. The cluster state reads like the git repo because it is the git repo, reconciled."
+  },
+  {
+   "id": "itg-console-4",
+   "title": "Review the drift-fix PR",
+   "console": "git-host",
+   "domain_id": "iac-terraform-gitops",
+   "difficulty": 1,
+   "brief": "Someone opened PR #1 to fix the replica drift. Review it properly: comment, approve, merge.",
+   "tasks": [
+    {
+     "id": "t1",
+     "instruction": "Add a review comment to PR #1 noting the drift cause.",
+     "validate": {
+      "action": "add-comment",
+      "params": {
+       "pr": 1
+      }
+     },
+     "hint": "Pull requests section: Add comment on PR #1, describe the manual-scale drift."
+    },
+    {
+     "id": "t2",
+     "instruction": "Approve PR #1.",
+     "validate": {
+      "action": "approve-pr",
+      "params": {
+       "pr": 1
+      }
+     },
+     "hint": "Pull requests section: click Approve on PR #1."
+    },
+    {
+     "id": "t3",
+     "instruction": "Merge PR #1.",
+     "validate": {
+      "action": "merge-pr",
+      "params": {
+       "pr": 1
+      }
+     },
+     "hint": "Pull requests section: click Merge on PR #1."
+    }
+   ],
+   "debrief": "Drift fixes go through the same gate as features: reviewed, approved, merged. The reconcile loop then converges the cluster — git stays the single source of truth."
+  }
+ ],
+ "terminalMissions": [
+  {
+   "id": "itg-m1",
+   "title": "List the repo workspace",
+   "domain_id": "iac-terraform-gitops",
+   "difficulty": 1,
+   "brief": "GitOps starts with the repo. List the workspace to confirm the manifests are where you expect.",
+   "objectives": [
+    "List the directory contents"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^ls\\s*$",
+     "expect_contains": "app.py",
+     "hint": "Type: ls"
+    }
+   ],
+   "success_message": "Repo workspace listed. The source of truth is present."
+  },
+  {
+   "id": "itg-m2",
+   "title": "Confirm the operator identity",
+   "domain_id": "iac-terraform-gitops",
+   "difficulty": 1,
+   "brief": "Every git commit has an author; every shell session has a user. Confirm yours.",
+   "objectives": [
+    "Print the current username"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^whoami\\s*$",
+     "expect_contains": "candidate",
+     "hint": "Type: whoami"
+    }
+   ],
+   "success_message": "Operator identity confirmed: candidate."
+  },
+  {
+   "id": "itg-m3",
+   "title": "Anchor the repo path",
+   "domain_id": "iac-terraform-gitops",
+   "difficulty": 1,
+   "brief": "Manifest paths are relative to the repo root. Print the working directory to anchor yourself.",
+   "objectives": [
+    "Print the working directory"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^pwd\\s*$",
+     "expect_contains": "/home/candidate",
+     "hint": "Type: pwd"
+    }
+   ],
+   "success_message": "Repo path anchored: /home/candidate."
+  },
+  {
+   "id": "itg-m4",
+   "title": "Record the agent node kernel",
+   "domain_id": "iac-terraform-gitops",
+   "difficulty": 2,
+   "brief": "The GitOps agent runs on a node; record the node's kernel as part of the environment baseline.",
+   "objectives": [
+    "Print full kernel and machine information"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^uname\\s+-a",
+     "expect_contains": "6.8.0-ilb",
+     "hint": "Type: uname -a"
+    }
+   ],
+   "success_message": "Agent node recorded: Linux 6.8.0-ilb x86_64."
+  },
+  {
+   "id": "itg-m5",
+   "title": "Name the sync target",
+   "domain_id": "iac-terraform-gitops",
+   "difficulty": 1,
+   "brief": "The agent reconciles a specific cluster. Print the hostname to confirm which one you're looking at.",
+   "objectives": [
+    "Print the hostname"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^hostname\\s*$",
+     "expect_contains": "interstitium",
+     "hint": "Type: hostname"
+    }
+   ],
+   "success_message": "Sync target named: interstitium."
+  },
+  {
+   "id": "itg-m6",
+   "title": "Verify the sync identity context",
+   "domain_id": "iac-terraform-gitops",
+   "difficulty": 2,
+   "brief": "Pull-based agents run with scoped identities. Check your own identity context as the model.",
+   "objectives": [
+    "Print user and group identity details"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^id\\s*$",
+     "expect_contains": "uid=1000",
+     "hint": "Type: id"
+    }
+   ],
+   "success_message": "Identity context verified: uid=1000(candidate). Scoped identities, everywhere."
+  },
+  {
+   "id": "itg-m7",
+   "title": "Declare the desired state",
+   "domain_id": "iac-terraform-gitops",
+   "difficulty": 1,
+   "brief": "GitOps in one command: declare what should be, and let the loop converge. Echo the desired state.",
+   "objectives": [
+    "Echo the desired-state phrase"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^echo\\s+desired-state\\s+v2\\.4\\.1",
+     "expect_contains": "desired-state v2.4.1",
+     "hint": "Type: echo desired-state v2.4.1"
+    }
+   ],
+   "success_message": "Desired state declared: v2.4.1. The loop will converge."
+  }
+ ],
  "sections": [
   {
    "id": "sec-full-spectrum",
@@ -1248,5 +1934,72 @@
  "math": [
   "stats",
   "probability"
+ ],
+ "videos": [
+  {
+   "title": "The State File Is the Truth",
+   "url": "/assets/videos/bc-bbg-iac-state-truth.mp4",
+   "source": "Interstitium Labs",
+   "blurb": "Terraform's state file is the source of truth: someone launches a server by hand and 'terraform plan' tattles — click-ops is drift. (Preview — narration coming; voiceover pending TTS restore.)",
+   "durationMin": 1,
+   "order": 1,
+   "preview": true,
+   "captionsUrl": "/assets/videos/bc-bbg-iac-state-truth.vtt",
+   "narrationUrl": "/assets/videos/bc-bbg-iac-state-truth.narration.md",
+   "verifiedUtc": "2026-10-09T04:44:39Z",
+   "httpStatus": 200
+  },
+  {
+   "title": "Terraform Apply in 100 Seconds",
+   "url": "/assets/videos/bc-fireship-iac-apply.mp4",
+   "source": "Interstitium Labs",
+   "blurb": "Declare an EC2 in HCL, run plan to preview, apply to create — declare the end state and let Terraform compute the diff. (Preview — narration coming; voiceover pending TTS restore.)",
+   "durationMin": 1,
+   "order": 2,
+   "preview": true,
+   "captionsUrl": "/assets/videos/bc-fireship-iac-apply.vtt",
+   "narrationUrl": "/assets/videos/bc-fireship-iac-apply.narration.md",
+   "verifiedUtc": "2026-10-09T04:44:39Z",
+   "httpStatus": 200
+  },
+  {
+   "title": "Drift: The Config That Wandered",
+   "url": "/assets/videos/bc-primer-iac-drift-sim.mp4",
+   "source": "Interstitium Labs",
+   "blurb": "A living drift simulation: services wander out of sync with git — ArgoCD syncs and the repo becomes truth again. (Preview — narration coming; voiceover pending TTS restore.)",
+   "durationMin": 1,
+   "order": 3,
+   "preview": true,
+   "captionsUrl": "/assets/videos/bc-primer-iac-drift-sim.vtt",
+   "narrationUrl": "/assets/videos/bc-primer-iac-drift-sim.narration.md",
+   "verifiedUtc": "2026-10-09T04:44:39Z",
+   "httpStatus": 200
+  }
+ ],
+ "pdfGuides": [
+  {
+   "title": "CI/CD Pipelines — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-cicd-pipeline.pdf",
+   "source": "Interstitium Labs",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:27:58Z"
+  },
+  {
+   "title": "Kubernetes Architecture — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-kubernetes.pdf",
+   "source": "Interstitium Labs",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:27:58Z"
+  },
+  {
+   "title": "Cloud Architecture Patterns — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-cloud-patterns.pdf",
+   "source": "Interstitium Labs",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:27:58Z"
+  }
  ]
 }

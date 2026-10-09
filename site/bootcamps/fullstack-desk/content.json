@@ -22,7 +22,7 @@
      "prompt": "What is the best first triage step?",
      "evidence": [],
      "choices": [
-      "Check whether the reports share a network path or location \u2014 same-office reports with a green status page point to a local network/DNS/VPN issue, not the app.",
+      "Check whether the reports share a network path or location — same-office reports with a green status page point to a local network/DNS/VPN issue, not the app.",
       "Restart the application servers immediately; a green status page can lag behind a real outage.",
       "Reply to each ticket asking the user to clear their browser cache and retry.",
       "Escalate to the network team as a confirmed outage since three users are affected."
@@ -45,18 +45,18 @@
      "evidence": [
       [
        "Runbook excerpt",
-       "Step 3: roll back ONLY if the spike correlates with a deploy (\u00b130 min). Otherwise proceed to step 4: inspect downstream dependencies."
+       "Step 3: roll back ONLY if the spike correlates with a deploy (±30 min). Otherwise proceed to step 4: inspect downstream dependencies."
       ]
      ],
      "choices": [
-      "Follow the runbook to step 4 and inspect downstream dependencies (database, third-party APIs) \u2014 the spike does not correlate with the deploy, so rollback is not indicated.",
+      "Follow the runbook to step 4 and inspect downstream dependencies (database, third-party APIs) — the spike does not correlate with the deploy, so rollback is not indicated.",
       "Roll back the 6-hour-old deploy anyway; it is the most recent change and the safest action.",
       "Skip to restarting the API pods; a fresh start clears transient errors regardless of cause.",
       "Close the alert as a false positive since no deploy correlates with the spike."
      ],
      "answer": 0,
      "why": "Runbooks encode conditional logic for a reason: rollback fixes deploy-caused regressions, not dependency failures. Skipping the correlation check turns a routine step into a risky, ineffective action.",
-     "hint": "Ask: what condition does the runbook put on the rollback step \u2014 and is it met?",
+     "hint": "Ask: what condition does the runbook put on the rollback step — and is it met?",
      "objectives": [
       "runbooks",
       "correlation vs causation"
@@ -71,14 +71,14 @@
      "prompt": "How do you determine where the 502s originate?",
      "evidence": [],
      "choices": [
-      "Correlate timestamps across all three layers \u2014 LB, app, and database: if the app never logged the requests the LB timed out on, the requests are dying between LB and app (or the app hung before logging).",
+      "Correlate timestamps across all three layers — LB, app, and database: if the app never logged the requests the LB timed out on, the requests are dying between LB and app (or the app hung before logging).",
       "Trust the app logs; if the application recorded no errors, the load balancer must be misconfigured.",
       "Increase the LB timeout so the 502s become slow 200s and users stop complaining.",
       "Restart the load balancer; 502s with clean app logs are almost always a proxy bug."
      ],
      "answer": 0,
-     "why": "A 502 means the proxy got no valid response \u2014 clean app logs do not exonerate the app, they narrow the window: requests that time out before the app logs them point at connection queuing, a hung worker pool, or network between LB and app.",
-     "hint": "Ask: for a timed-out request, which layers SHOULD have a record of it \u2014 and which ones do?",
+     "why": "A 502 means the proxy got no valid response — clean app logs do not exonerate the app, they narrow the window: requests that time out before the app logs them point at connection queuing, a hung worker pool, or network between LB and app.",
+     "hint": "Ask: for a timed-out request, which layers SHOULD have a record of it — and which ones do?",
      "objectives": [
       "log correlation",
       "502 troubleshooting"
@@ -93,14 +93,14 @@
      "prompt": "What is the correct on-call response?",
      "evidence": [],
      "choices": [
-      "Declare SEV-1 now: checkout exceeds the 5% threshold and is climbing \u2014 waiting burns the error budget and delays the responders the runbook would already have paged.",
+      "Declare SEV-1 now: checkout exceeds the 5% threshold and is climbing — waiting burns the error budget and delays the responders the runbook would already have paged.",
       "Wait 30 minutes to confirm it is not transient; paging the team at 2 AM for a self-healing blip destroys trust in the alert.",
       "Downgrade to SEV-3 and handle it solo in the morning since only 8% of checkouts are affected.",
       "Silence the alert for one hour and re-check; the runbook thresholds are guidelines, not rules."
      ],
      "answer": 0,
-     "why": "Severity thresholds exist to remove 2 AM judgment calls. A climbing 8% on the revenue path meets the written SEV-1 bar \u2014 declaring early mobilizes help while the problem is still small.",
-     "hint": "Ask: what does the runbook say the threshold is for \u2014 deciding, or second-guessing?",
+     "why": "Severity thresholds exist to remove 2 AM judgment calls. A climbing 8% on the revenue path meets the written SEV-1 bar — declaring early mobilizes help while the problem is still small.",
+     "hint": "Ask: what does the runbook say the threshold is for — deciding, or second-guessing?",
      "objectives": [
       "incident severity",
       "on-call discipline"
@@ -120,17 +120,17 @@
       ],
       [
        "Manual check",
-       "curl /healthz \u2192 200 OK (from your laptop, seconds later)"
+       "curl /healthz → 200 OK (from your laptop, seconds later)"
       ]
      ],
      "choices": [
-      "The liveness probe is coupled to a downstream dependency: during DB failover /healthz fails, kubelet kills a healthy app \u2014 split readiness (can serve traffic) from liveness (process is alive), and make liveness dependency-free.",
+      "The liveness probe is coupled to a downstream dependency: during DB failover /healthz fails, kubelet kills a healthy app — split readiness (can serve traffic) from liveness (process is alive), and make liveness dependency-free.",
       "The kubelet is misconfigured; increase the liveness timeout so slow DB queries do not trip it.",
       "The database is too slow; add indexes until /healthz always answers within the probe timeout.",
       "Disable the liveness probe; it is redundant with the readiness probe."
      ],
      "answer": 0,
-     "why": "Liveness = 'is the process deadlocked, kill it'; readiness = 'should it get traffic'. Tying liveness to the database turns every DB blip into a cascading pod restart storm \u2014 exactly when you need the pods alive.",
+     "why": "Liveness = 'is the process deadlocked, kill it'; readiness = 'should it get traffic'. Tying liveness to the database turns every DB blip into a cascading pod restart storm — exactly when you need the pods alive.",
      "hint": "Ask: when the DB hiccups, do you want the pod killed, or just taken out of rotation?",
      "objectives": [
       "k8s probes",
@@ -146,13 +146,13 @@
      "prompt": "What makes this postmortem effective instead of merely punitive?",
      "evidence": [],
      "choices": [
-      "Rewrite it around systemic fixes: why the flag had no guardrails (no canary, no auto-rollback, no flag naming review) \u2014 and assign owners and dates to each remediation, with the engineer as a contributor, not a culprit.",
+      "Rewrite it around systemic fixes: why the flag had no guardrails (no canary, no auto-rollback, no flag naming review) — and assign owners and dates to each remediation, with the engineer as a contributor, not a culprit.",
       "Publish as-is; naming the person creates accountability and 'be more careful' is actionable advice.",
       "Delay publication until the engineer writes a personal apology to include in the document.",
       "Keep the draft private to leadership; public postmortems embarrass the team and discourage honesty."
      ],
      "answer": 0,
-     "why": "Blameless postmortems work because they ask 'how did the system allow this' instead of 'who did this'. A careful engineer plus an unguarded flag still equals an outage \u2014 only systemic guardrails (canaries, kill switches, flag lifecycle) prevent recurrence.",
+     "why": "Blameless postmortems work because they ask 'how did the system allow this' instead of 'who did this'. A careful engineer plus an unguarded flag still equals an outage — only systemic guardrails (canaries, kill switches, flag lifecycle) prevent recurrence.",
      "hint": "Ask: if a different engineer had flipped the same flag, would the outage still have happened?",
      "objectives": [
       "blameless postmortems",
@@ -167,25 +167,25 @@
  "lessons": [
   {
    "domain_id": "fullstack-desk",
-   "title": "Full-Stack Service Desk \u2014 Core concepts",
+   "title": "Full-Stack Service Desk — Core concepts",
    "concepts": [
-    "Triage scopes before it acts: establish the blast radius (who, where, since when) and separate 'the app is down' from 'one office cannot reach the app' \u2014 most misdiagnoses come from acting on an unscoped symptom.",
+    "Triage scopes before it acts: establish the blast radius (who, where, since when) and separate 'the app is down' from 'one office cannot reach the app' — most misdiagnoses come from acting on an unscoped symptom.",
     "Runbooks are conditional procedures, not checklists to rush through. Each step's precondition (like 'only roll back if the spike correlates with a deploy') exists to prevent the fix from becoming a second incident.",
     "Correlate across layers with timestamps: client, load balancer, app, and database logs each see a different slice of a request's life, and a missing entry is itself evidence about where the request died.",
     "Severity is declared by threshold, not by gut feel at 2 AM. Written SEV criteria remove hesitation, mobilize the right responders early, and protect on-call trust by making pages predictable.",
-    "Health signals must match their purpose: liveness asks 'is the process alive', readiness asks 'should it serve traffic' \u2014 coupling either to a downstream dependency converts dependency blips into cascading restarts.",
+    "Health signals must match their purpose: liveness asks 'is the process alive', readiness asks 'should it serve traffic' — coupling either to a downstream dependency converts dependency blips into cascading restarts.",
     "Blameless postmortems fix systems, not people. Every action item should make the failure class impossible or self-healing (guardrails, canaries, automation), with an owner and a date."
    ],
    "example": {
     "lang": "shell",
     "code": "# Correlate a 502 across layers by timestamp\njournalctl -u myapp --since '10 minutes ago' | grep -c 'ERROR'\n# compare against LB 502 count in the same window:\nawk '$9==502' /var/log/nginx/access.log | wc -l\n# requests the LB counted but the app never logged died before the app",
-    "walkthrough": "Counting app-side errors and LB-side 502s in the same window tells you where requests vanished. If the LB saw far more 502s than the app logged errors, the failures happened upstream of application code \u2014 connection queue, hung workers, or network."
+    "walkthrough": "Counting app-side errors and LB-side 502s in the same window tells you where requests vanished. If the LB saw far more 502s than the app logged errors, the failures happened upstream of application code — connection queue, hung workers, or network."
    },
    "pitfalls": [
-    "Common trap: restarting first and investigating later \u2014 you destroy the evidence (memory state, connection pools, in-flight requests) that would have identified the cause.",
-    "Common trap: treating the status page or one dashboard as ground truth \u2014 synthesize multiple signals before concluding 'all clear' or 'confirmed outage'.",
-    "Common trap: skipping runbook preconditions under time pressure \u2014 the conditional step you skip is usually the one that prevents a bad rollback.",
-    "Common trap: writing postmortem actions like 'be more careful' \u2014 if the action does not change the system, the same incident will recur with a different name attached."
+    "Common trap: restarting first and investigating later — you destroy the evidence (memory state, connection pools, in-flight requests) that would have identified the cause.",
+    "Common trap: treating the status page or one dashboard as ground truth — synthesize multiple signals before concluding 'all clear' or 'confirmed outage'.",
+    "Common trap: skipping runbook preconditions under time pressure — the conditional step you skip is usually the one that prevents a bad rollback.",
+    "Common trap: writing postmortem actions like 'be more careful' — if the action does not change the system, the same incident will recur with a different name attached."
    ],
    "try_it": "Work through this in the Labs tab."
   }
@@ -223,7 +223,7 @@
    "objective": "Author a conditional runbook a teammate could follow at 2 AM without paging you.",
    "steps": [
     "Pick a failure mode: a queue consumer lagging and retrying poison messages.",
-    "Write steps 1\u20133: how to confirm the symptom from dashboards/queues (with exact commands).",
+    "Write steps 1–3: how to confirm the symptom from dashboards/queues (with exact commands).",
     "Add a conditional step: when to pause the consumer vs. when to purge the poison message.",
     "Add explicit 'do NOT' guardrails (e.g., do not delete the whole queue).",
     "Include escalation criteria: what metric value pages the owning team."
@@ -237,13 +237,748 @@
    ]
   }
  ],
- "simulations": [],
- "consoleSims": [],
- "terminalMissions": [],
+ "simulations": [
+  {
+   "id": "fsd-sim-1",
+   "title": "The 3 AM page",
+   "kind": "troubleshoot",
+   "domain_id": "fullstack-desk",
+   "difficulty": 2,
+   "points": 100,
+   "brief": "Paged at 3 AM: checkout 500s, cache refusing connections, retry storm backing up the queue. Contain it.",
+   "steps": [
+    {
+     "symptom": "Paged at 3 AM: checkout API returning 500s. Cache connection refused; the app retries forever and the queue backs up.",
+     "evidence": [
+      [
+       "log",
+       "ERROR connection refused: cache:6379"
+      ],
+      [
+       "metric",
+       "p99 latency 30s, queue depth 12k"
+      ]
+     ],
+     "options": [
+      "Fail fast with a circuit breaker and serve degraded (stale cache / direct DB) — retries without bound are the outage",
+      "Keep retrying; the cache will come back",
+      "Restart the app servers",
+      "Page the cache vendor"
+     ],
+     "correct": 0,
+     "explain": "Unbounded retries turn a cache blip into a full outage via queue backup. Break the circuit, degrade gracefully, recover fast."
+    },
+    {
+     "symptom": "Circuit broken, degraded mode on. The cache is back — when do you close the circuit?",
+     "evidence": [
+      [
+       "health",
+       "cache responding, error rate falling"
+      ]
+     ],
+     "options": [
+      "Half-open with a probe: let a trickle through, and close only when probes succeed consistently",
+      "Close immediately at the first success",
+      "Wait an hour",
+      "Never close; stay degraded"
+     ],
+     "correct": 0,
+     "explain": "Half-open probing prevents flapping: a trickle validates recovery before full traffic returns. One success is not a trend."
+    },
+    {
+     "symptom": "Recovered. The postmortem asks for the one systemic fix.",
+     "evidence": [
+      [
+       "root",
+       "no timeout on cache calls; retries unbounded"
+      ]
+     ],
+     "options": [
+      "Timeouts, bounded retries with backoff, and circuit breakers as defaults on every dependency call",
+      "More cache servers",
+      "A bigger queue",
+      "An apology email"
+     ],
+     "correct": 0,
+     "explain": "The systemic fix is defensive defaults: every external call gets a timeout, a retry budget, and a breaker. The outage was a missing-defaults outage."
+    }
+   ],
+   "debrief": "Outages are dependency failures with amplification: bound the retries, break the circuit, degrade — then make the defaults systemic."
+  },
+  {
+   "id": "fsd-sim-2",
+   "title": "The runaway job",
+   "kind": "troubleshoot",
+   "domain_id": "fullstack-desk",
+   "difficulty": 2,
+   "points": 100,
+   "brief": "A nightly job is burning CPU at noon. Work the runbook in order: schedule, lock, kill — then fix the lock.",
+   "steps": [
+    {
+     "symptom": "A background job meant to run nightly is consuming 100% CPU at noon. The runbook says: check the schedule, then the lock.",
+     "evidence": [
+      [
+       "runbook",
+       "1. verify schedule 2. check singleton lock 3. kill and alert"
+      ]
+     ],
+     "options": [
+      "Follow the runbook: confirm it is off-schedule, check whether the singleton lock is held, then kill per procedure",
+      "Kill it immediately",
+      "Let it finish",
+      "Ignore it until tonight"
+     ],
+     "correct": 0,
+     "explain": "Runbooks exist so 3 AM you makes the same decisions as 3 PM you. Diagnose in order; the lock tells you whether it is a duplicate or a zombie."
+    },
+    {
+     "symptom": "The lock is stale — the job died mid-run yesterday and the lock never released. Today's run spawned alongside the orphan.",
+     "evidence": [
+      [
+       "lock",
+       "lock file dated yesterday, PID dead"
+      ]
+     ],
+     "options": [
+      "Kill both, clear the stale lock, and add lock expiry/heartbeats so it cannot happen again",
+      "Clear the lock and walk away",
+      "Kill one and hope",
+      "Disable the job"
+     ],
+     "correct": 0,
+     "explain": "Stale locks are a design bug: locks need expiry or heartbeats. Clear it now, fix the mechanism so it cannot recur."
+    },
+    {
+     "symptom": "Stable. The interviewer asks what the runbook gains you.",
+     "evidence": [
+      [
+       "team",
+       "5 engineers, rotating on-call"
+      ]
+     ],
+     "options": [
+      "Consistent response regardless of who is paged — runbooks transfer judgment, not just steps",
+      "Nothing; seniors know this",
+      "Slower response",
+      "Paperwork"
+     ],
+     "correct": 0,
+     "explain": "A runbook is institutional memory: the diagnosis order, the kill criteria, the alert threshold — decided once, executed the same every time."
+    }
+   ],
+   "debrief": "Background jobs fail in predictable ways: follow the runbook, fix the lock mechanism, and write down what you learned."
+  },
+  {
+   "id": "fsd-sim-3",
+   "title": "Severity call",
+   "kind": "troubleshoot",
+   "domain_id": "fullstack-desk",
+   "difficulty": 2,
+   "points": 100,
+   "brief": "Two incidents, one free engineer. Classify by customer impact, reclassify as facts change, and teach it by precedent.",
+   "steps": [
+    {
+     "symptom": "Two incidents at once: checkout 500s for 10% of users, and the internal admin dashboard is slow. One engineer free. Classify.",
+     "evidence": [
+      [
+       "A",
+       "checkout 500s, 10% of users, revenue impact"
+      ],
+      [
+       "B",
+       "admin dashboard slow, internal only"
+      ]
+     ],
+     "options": [
+      "A is P1 (customer-facing revenue), B is P3 (internal degradation) — severity follows customer impact, and the engineer goes to A",
+      "Both P1",
+      "B first; it is easier",
+      "Alternate"
+     ],
+     "correct": 0,
+     "explain": "Severity is customer impact, not technical interest. Revenue-path failures outrank internal slowness every time."
+    },
+    {
+     "symptom": "While fixing A, the admin dashboard goes fully down. Reclassify?",
+     "evidence": [
+      [
+       "B now",
+       "admin dashboard 100% down; support cannot refund users affected by A"
+      ]
+     ],
+     "options": [
+      "Escalate B to P2: it now blocks the response to the P1 — severity is dynamic, reassess as facts change",
+      "Keep B at P3",
+      "Drop A",
+      "Page everyone"
+     ],
+     "correct": 0,
+     "explain": "Severity follows current impact: B now amplifies A's damage by blocking refunds. Reclassify on new facts, not on first impressions."
+    },
+    {
+     "symptom": "Both resolved. What goes in the severity definitions doc?",
+     "evidence": [
+      [
+       "doc",
+       "needs examples"
+      ]
+     ],
+     "options": [
+      "Customer-impact thresholds with examples from these incidents — definitions are taught by precedent",
+      "Vague principles",
+      "Technical metrics only",
+      "Nothing; everyone knows"
+     ],
+     "correct": 0,
+     "explain": "Severity definitions stick when they carry real examples. 'P1: checkout down (Oct 8)' teaches faster than any abstract rubric."
+    }
+   ],
+   "debrief": "Severity is customer impact, reassessed as facts change, and taught by precedent."
+  },
+  {
+   "id": "fsd-sim-4",
+   "title": "Correlate the logs",
+   "kind": "troubleshoot",
+   "domain_id": "fullstack-desk",
+   "difficulty": 3,
+   "points": 100,
+   "brief": "'The app is slow': frontend 504s, backend timeouts, a 28s query. Find the root by causality, fix it, prove it, monitor it.",
+   "steps": [
+    {
+     "symptom": "Users report 'the app is slow'. Frontend shows 504s on /api/report; backend shows 30s timeouts; DB shows a 28s query. Where is the fault?",
+     "evidence": [
+      [
+       "frontend",
+       "504 on /api/report"
+      ],
+      [
+       "backend",
+       "timeout after 30s"
+      ],
+      [
+       "db",
+       "SELECT ... 28s, full table scan"
+      ]
+     ],
+     "options": [
+      "The database query: the 28s full scan causes the backend timeout which causes the frontend 504 — correlate timestamps, fix the query",
+      "The frontend",
+      "The network",
+      "All three independently"
+     ],
+     "correct": 0,
+     "explain": "Correlate by timestamp and causality: the slowest layer with the earliest start is the root. The 504s are symptoms of the 28s scan."
+    },
+    {
+     "symptom": "The query lacks an index on the filter column. Fix and verify.",
+     "evidence": [
+      [
+       "query",
+       "WHERE created_at > X — no index"
+      ]
+     ],
+     "options": [
+      "Add the index in a migration, then replay the slow query and confirm sub-second — verify with EXPLAIN",
+      "Add the index live without testing",
+      "Cache the report",
+      "Increase the timeout"
+     ],
+     "correct": 0,
+     "explain": "Index, then prove it: EXPLAIN before and after, replay the exact query. 'Probably faster' is not a verification."
+    },
+    {
+     "symptom": "Fixed. What monitoring prevents the sequel?",
+     "evidence": [
+      [
+       "gap",
+       "no slow-query alerting"
+      ]
+     ],
+     "options": [
+      "Slow-query alerting with a threshold plus a dashboard on p99 per endpoint — the next 28s scan pages before users notice",
+      "More logs",
+      "Bigger DB",
+      "Hope"
+     ],
+     "correct": 0,
+     "explain": "Every incident buys a monitor: alert on the symptom (slow queries) and the user-facing signal (p99) so the next one is caught early."
+    }
+   ],
+   "debrief": "Log correlation is causality with timestamps: find the earliest slow layer, fix it, prove it, monitor it."
+  },
+  {
+   "id": "fsd-sim-5",
+   "title": "The blameless postmortem",
+   "kind": "troubleshoot",
+   "domain_id": "fullstack-desk",
+   "difficulty": 2,
+   "points": 100,
+   "brief": "Facilitate the postmortem for the 3 AM outage. Keep it blameless, keep the actions alive, and refuse the naming.",
+   "steps": [
+    {
+     "symptom": "Facilitate the postmortem for the 3 AM outage. An engineer says 'I should have caught the missing timeout.' Redirect.",
+     "evidence": [
+      [
+       "room",
+       "the on-call engineer, their manager, you facilitating"
+      ]
+     ],
+     "options": [
+      "Redirect to the system: 'What allowed a dependency call with no timeout to ship?' — blameless means fixing systems, not people",
+      "Agree and move on",
+      "Skip the postmortem",
+      "Blame the vendor"
+     ],
+     "correct": 0,
+     "explain": "Blameless is a method, not kindness: human error is the starting point of the investigation, never the conclusion."
+    },
+    {
+     "symptom": "The group lists five action items. How do you keep them from dying?",
+     "evidence": [
+      [
+       "items",
+       "5 actions, no owners"
+      ]
+     ],
+     "options": [
+      "One owner and one date per item, tracked like any other work — action items without owners are wishes",
+      "Trust the team",
+      "More items",
+      "File them away"
+     ],
+     "correct": 0,
+     "explain": "Postmortem value is entirely in the follow-through: named owners, dates, and the same tracking as feature work."
+    },
+    {
+     "symptom": "A manager asks to name the engineer in the public report. Answer?",
+     "evidence": [
+      [
+       "request",
+       "name and shame for accountability"
+      ]
+     ],
+     "options": [
+      "Refuse: naming chills future honesty and teaches engineers to hide — accountability is in the fixed system",
+      "Comply",
+      "Name them privately",
+      "Skip the report"
+     ],
+     "correct": 0,
+     "explain": "Public blame optimizes for the appearance of accountability while destroying the reporting culture that prevents the next outage."
+    }
+   ],
+   "debrief": "Blameless postmortems fix systems: ask what allowed it, assign every action, and never trade honesty for the appearance of accountability."
+  }
+ ],
+ "consoleSims": [
+  {
+   "id": "fsd-console-1",
+   "title": "Triage the outage ticket",
+   "console": "ticketing",
+   "domain_id": "fullstack-desk",
+   "difficulty": 2,
+   "brief": "The checkout outage has a ticket: INC-9001, open and unassigned. Take it, start it, and log the diagnosis.",
+   "tasks": [
+    {
+     "id": "fsd-c1-t1",
+     "instruction": "Assign ticket INC-9001 to on-call.",
+     "validate": {
+      "action": "assign-ticket",
+      "params": {
+       "id": "INC-9001",
+       "assignee": "on-call"
+      }
+     },
+     "hint": "Assign INC-9001 to on-call."
+    },
+    {
+     "id": "fsd-c1-t2",
+     "instruction": "Move INC-9001 to in-progress.",
+     "validate": {
+      "action": "update-status",
+      "params": {
+       "id": "INC-9001",
+       "status": "in-progress"
+      }
+     },
+     "hint": "Update INC-9001 status to in-progress."
+    },
+    {
+     "id": "fsd-c1-t3",
+     "instruction": "Add a note to INC-9001: cache refused connections; circuit breaker engaged.",
+     "validate": {
+      "action": "add-note",
+      "params": {
+       "id": "INC-9001",
+       "text": "Cache refused connections; circuit breaker engaged."
+      }
+     },
+     "hint": "Add the diagnosis note to INC-9001."
+    }
+   ],
+   "debrief": "Outage tickets move fast and stay factual: owned, in-progress, and the diagnosis on record."
+  },
+  {
+   "id": "fsd-console-2",
+   "title": "Work the unusual-outbound alert",
+   "console": "siem-dashboard",
+   "domain_id": "fullstack-desk",
+   "difficulty": 2,
+   "brief": "Unusual outbound volume from the backup server. Work ALT-103 in the simulated SIEM: acknowledge, assign, escalate.",
+   "tasks": [
+    {
+     "id": "fsd-c2-t1",
+     "instruction": "Acknowledge alert ALT-103.",
+     "validate": {
+      "action": "acknowledge-alert",
+      "params": {
+       "id": "ALT-103"
+      }
+     },
+     "hint": "Acknowledge alert ALT-103."
+    },
+    {
+     "id": "fsd-c2-t2",
+     "instruction": "Assign ALT-103 to analyst soc-tier1.",
+     "validate": {
+      "action": "assign-alert",
+      "params": {
+       "id": "ALT-103",
+       "analyst": "soc-tier1"
+      }
+     },
+     "hint": "Assign ALT-103 to soc-tier1."
+    },
+    {
+     "id": "fsd-c2-t3",
+     "instruction": "Escalate ALT-103.",
+     "validate": {
+      "action": "escalate",
+      "params": {
+       "id": "ALT-103"
+      }
+     },
+     "hint": "Escalate ALT-103."
+    }
+   ],
+   "debrief": "SIEM triage is acknowledge-assign-escalate: the alert is never just stared at."
+  },
+  {
+   "id": "fsd-console-3",
+   "title": "Debug the handler",
+   "console": "code-editor",
+   "domain_id": "fullstack-desk",
+   "difficulty": 1,
+   "brief": "A request handler misbehaves. Walk it with breakpoints and inspection in the simulated editor.",
+   "tasks": [
+    {
+     "id": "fsd-c3-t1",
+     "instruction": "Open app.py in the Explorer.",
+     "validate": {
+      "action": "open-file",
+      "params": {
+       "name": "app.py"
+      }
+     },
+     "hint": "Explorer tab → Open app.py."
+    },
+    {
+     "id": "fsd-c3-t2",
+     "instruction": "Set a breakpoint at app.py line 4.",
+     "validate": {
+      "action": "toggle-breakpoint",
+      "params": {
+       "file": "app.py",
+       "line": 4
+      }
+     },
+     "hint": "Click line 4 in the editor to toggle a breakpoint."
+    },
+    {
+     "id": "fsd-c3-t3",
+     "instruction": "Run to the breakpoint.",
+     "validate": {
+      "action": "run-to-breakpoint",
+      "params": {}
+     },
+     "hint": "Press Run to breakpoint."
+    },
+    {
+     "id": "fsd-c3-t4",
+     "instruction": "Inspect the variable s.",
+     "validate": {
+      "action": "inspect-variable",
+      "params": {
+       "name": "s"
+      }
+     },
+     "hint": "Use Inspect with variable name s."
+    }
+   ],
+   "debrief": "Handlers are debugged like everything else: open, break, run, inspect — read state before guessing."
+  },
+  {
+   "id": "fsd-console-4",
+   "title": "Protect the logs",
+   "console": "linux-desktop",
+   "domain_id": "fullstack-desk",
+   "difficulty": 2,
+   "brief": "Lock down the app log and open an incident directory for the postmortem notes.",
+   "tasks": [
+    {
+     "id": "fsd-c4-t1",
+     "instruction": "Set /var/log/app.log to owner/group read, others none (mode 640).",
+     "validate": {
+      "action": "chmod",
+      "params": {
+       "path": "/var/log/app.log",
+       "mode": "640"
+      }
+     },
+     "hint": "chmod 640 on /var/log/app.log."
+    },
+    {
+     "id": "fsd-c4-t2",
+     "instruction": "Create the incident directory /home/user/incidents.",
+     "validate": {
+      "action": "create-dir",
+      "params": {
+       "path": "/home/user/incidents"
+      }
+     },
+     "hint": "Create directory /home/user/incidents."
+    },
+    {
+     "id": "fsd-c4-t3",
+     "instruction": "Create the postmortem file /home/user/incidents/postmortem-1008.txt.",
+     "validate": {
+      "action": "create-file",
+      "params": {
+       "path": "/home/user/incidents/postmortem-1008.txt"
+      }
+     },
+     "hint": "Create file /home/user/incidents/postmortem-1008.txt."
+    }
+   ],
+   "debrief": "Incident hygiene is file hygiene: logs permissioned, postmortems filed where the team finds them."
+  }
+ ],
+ "terminalMissions": [
+  {
+   "id": "fsd-mission-1",
+   "title": "Roll call",
+   "domain_id": "fullstack-desk",
+   "difficulty": 1,
+   "brief": "Prove the sandbox answers before the on-call shift starts.",
+   "objectives": [
+    "Print your username",
+    "Print the working directory",
+    "Print the hostname"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^whoami$",
+     "expect_contains": "candidate",
+     "hint": "Type exactly: whoami"
+    },
+    {
+     "command_pattern": "^pwd$",
+     "expect_contains": "/home/candidate",
+     "hint": "Type exactly: pwd"
+    },
+    {
+     "command_pattern": "^hostname$",
+     "expect_contains": "interstitium",
+     "hint": "Type exactly: hostname"
+    }
+   ],
+   "success_message": "Roll call complete — the sandbox is yours."
+  },
+  {
+   "id": "fsd-mission-2",
+   "title": "Survey the stack",
+   "domain_id": "fullstack-desk",
+   "difficulty": 1,
+   "brief": "Recon the practice workspace like a new production stack.",
+   "objectives": [
+    "List the workspace",
+    "Confirm the logs directory exists",
+    "Mark the stack mapped"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^ls$",
+     "expect_contains": "logs/",
+     "hint": "Type exactly: ls"
+    },
+    {
+     "command_pattern": "^ls$",
+     "expect_contains": "README.md",
+     "hint": "Type exactly: ls"
+    },
+    {
+     "command_pattern": "^echo 'stack mapped'$",
+     "expect_contains": "stack mapped",
+     "hint": "Type exactly: echo 'stack mapped'"
+    }
+   ],
+   "success_message": "Stack surveyed — you know every layer."
+  },
+  {
+   "id": "fsd-mission-3",
+   "title": "Know your shift",
+   "domain_id": "fullstack-desk",
+   "difficulty": 1,
+   "brief": "Read the environment the way you would read the on-call handoff.",
+   "objectives": [
+    "Print your user identity",
+    "Print the kernel name",
+    "Print full system info"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^id$",
+     "expect_contains": "uid=1000",
+     "hint": "Type exactly: id"
+    },
+    {
+     "command_pattern": "^uname$",
+     "expect_contains": "Linux",
+     "hint": "Type exactly: uname"
+    },
+    {
+     "command_pattern": "^uname -a$",
+     "expect_contains": "x86_64",
+     "hint": "Type exactly: uname -a"
+    }
+   ],
+   "success_message": "Environment read — shift started."
+  },
+  {
+   "id": "fsd-mission-4",
+   "title": "Triage drill",
+   "domain_id": "fullstack-desk",
+   "difficulty": 2,
+   "brief": "Drill the severity rules every on-call engineer recites.",
+   "objectives": [
+    "State the severity rule",
+    "State the reassessment rule",
+    "State the teaching rule"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^echo 'severity follows customer impact'$",
+     "expect_contains": "severity follows customer impact",
+     "hint": "Type exactly: echo 'severity follows customer impact'"
+    },
+    {
+     "command_pattern": "^echo 'reassess as facts change'$",
+     "expect_contains": "reassess as facts change",
+     "hint": "Type exactly: echo 'reassess as facts change'"
+    },
+    {
+     "command_pattern": "^echo 'precedent teaches faster than rubrics'$",
+     "expect_contains": "precedent teaches faster than rubrics",
+     "hint": "Type exactly: echo 'precedent teaches faster than rubrics'"
+    }
+   ],
+   "success_message": "Triage drilled — classify with confidence."
+  },
+  {
+   "id": "fsd-mission-5",
+   "title": "Runbook drill",
+   "domain_id": "fullstack-desk",
+   "difficulty": 2,
+   "brief": "Drill the runbook discipline.",
+   "objectives": [
+    "State the diagnosis rule",
+    "State the lock rule",
+    "State the runbook's value"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^echo 'diagnose in order'$",
+     "expect_contains": "diagnose in order",
+     "hint": "Type exactly: echo 'diagnose in order'"
+    },
+    {
+     "command_pattern": "^echo 'locks need expiry or heartbeats'$",
+     "expect_contains": "locks need expiry or heartbeats",
+     "hint": "Type exactly: echo 'locks need expiry or heartbeats'"
+    },
+    {
+     "command_pattern": "^echo 'runbooks transfer judgment'$",
+     "expect_contains": "runbooks transfer judgment",
+     "hint": "Type exactly: echo 'runbooks transfer judgment'"
+    }
+   ],
+   "success_message": "Runbook drilled — 3 AM you thanks you."
+  },
+  {
+   "id": "fsd-mission-6",
+   "title": "Postmortem drill",
+   "domain_id": "fullstack-desk",
+   "difficulty": 2,
+   "brief": "Drill the blameless postmortem rules.",
+   "objectives": [
+    "State the blame rule",
+    "State the action rule",
+    "State the honesty rule"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^echo 'fix systems, not people'$",
+     "expect_contains": "fix systems, not people",
+     "hint": "Type exactly: echo 'fix systems, not people'"
+    },
+    {
+     "command_pattern": "^echo 'every action gets an owner and a date'$",
+     "expect_contains": "every action gets an owner and a date",
+     "hint": "Type exactly: echo 'every action gets an owner and a date'"
+    },
+    {
+     "command_pattern": "^echo 'honesty prevents the next outage'$",
+     "expect_contains": "honesty prevents the next outage",
+     "hint": "Type exactly: echo 'honesty prevents the next outage'"
+    }
+   ],
+   "success_message": "Postmortem drilled — blameless and effective."
+  },
+  {
+   "id": "fsd-mission-7",
+   "title": "Closing",
+   "domain_id": "fullstack-desk",
+   "difficulty": 1,
+   "brief": "Close with the on-call mantra: date, host, resilience.",
+   "objectives": [
+    "Print the current date",
+    "Confirm the hostname",
+    "State the resilience rule"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^date$",
+     "expect_contains": "GMT",
+     "hint": "Type exactly: date"
+    },
+    {
+     "command_pattern": "^hostname$",
+     "expect_contains": "interstitium",
+     "hint": "Type exactly: hostname"
+    },
+    {
+     "command_pattern": "^echo 'bound the retries, break the circuit, degrade'$",
+     "expect_contains": "bound the retries, break the circuit, degrade",
+     "hint": "Type exactly: echo 'bound the retries, break the circuit, degrade'"
+    }
+   ],
+   "success_message": "Shift complete — bound, break, degrade."
+  }
+ ],
  "sections": [
   {
    "id": "sec-full-spectrum",
-   "title": "Full Spectrum Dominance \u2014 core path",
+   "title": "Full Spectrum Dominance — core path",
    "kind": "core",
    "lectures": [],
    "lab_ids": [
@@ -269,17 +1004,17 @@
  ],
  "behavioral": [
   {
-   "prompt": "Tell me about the most technically difficult problem you have run into \u2014 a homelab, a broken environment, anything \u2014 and how you solved it.",
+   "prompt": "Tell me about the most technically difficult problem you have run into — a homelab, a broken environment, anything — and how you solved it.",
    "framework": "STAR",
    "points": [
     "Pick ONE problem with a real evidence trail: the symptom, what you measured, the hypothesis you tested",
-    "Show the loop: scope, observe, hypothesize, smallest safe change, validate \u2014 interviewers score the method, not just the fix",
+    "Show the loop: scope, observe, hypothesize, smallest safe change, validate — interviewers score the method, not just the fix",
     "Name the tools (VM build, networking, logs) and the lesson it taught you",
     "Close with the result in concrete terms: what works now that did not before"
    ],
    "pitfalls": [
-    "Choosing a story with no real obstacle (\u201cI Googled it\u201d is not a story)",
-    "Skipping validation \u2014 saying it worked without proving it",
+    "Choosing a story with no real obstacle (“I Googled it” is not a story)",
+    "Skipping validation — saying it worked without proving it",
     "Rambling past two minutes without reaching the result"
    ]
   },
@@ -304,13 +1039,13 @@
    "points": [
     "Connect prevention to something concrete: a moment you saw detection arrive too late, or a system you hardened",
     "Tie their model to your instincts: deny-by-default matches how you already think about trust",
-    "Show service orientation: the Cyber Hero culture rewards the 2 a.m. helper \u2014 give an example of being one",
+    "Show service orientation: the Cyber Hero culture rewards the 2 a.m. helper — give an example of being one",
     "Name one forward-looking reason: Zero Trust, the MSP mission, or the bootcamp community investment"
    ],
    "pitfalls": [
     "Generic flattery with no specifics about the company",
     "Leading with compensation, title, or location convenience",
-    "Claiming expertise in products you have only read about \u2014 frame it as studied, not mastered"
+    "Claiming expertise in products you have only read about — frame it as studied, not mastered"
    ]
   },
   {
@@ -387,13 +1122,13 @@
  ],
  "resources": {
   "cheatsheet": {
-   "title": "Full Spectrum Dominance \u2014 field reference",
+   "title": "Full Spectrum Dominance — field reference",
    "sections": [
     {
      "heading": "Company facts (verified)",
      "items": [
-      "Founded 2017 in Orlando, FL \u2014 Danny Jenkins (CEO), Sami Jenkins (COO), John Carolan (QA)",
-      "Philosophy: deny-by-default / default-deny \u2014 approve known-good, deny the rest",
+      "Founded 2017 in Orlando, FL — Danny Jenkins (CEO), Sami Jenkins (COO), John Carolan (QA)",
+      "Philosophy: deny-by-default / default-deny — approve known-good, deny the rest",
       "Customers: 70,000+ organizations, sold heavily through the MSP channel",
       "Funding: $190M Series F, July 2026 (Elephant-led); ~730 employees",
       "Interview address: 1901 Summit Tower Blvd, Orlando, FL 32810",
@@ -403,116 +1138,116 @@
     {
      "heading": "Product stack",
      "items": [
-      "Allowlisting \u2014 default-deny execution control for apps, DLLs, scripts, installers",
-      "Ringfencing \u2014 constrains allowed apps: app-to-app, file, registry, network",
-      "Storage Control \u2014 USB/device policy by serial, user, file type, encryption",
-      "Elevation Control \u2014 just-in-time per-app admin, no standing rights",
-      "Network Control \u2014 host firewall; port/IP/dynamic-ACL rules; ZTNA foundation",
-      "Web Control \u2014 agent-based DNS/URL category filtering, works off-network",
-      "Cyber Hero MDR \u2014 24/7/365 US-based response, ~60-second average",
-      "Testing Environment \u2014 one-button VDI sandbox; checks AV flags, canary files, registry changes"
+      "Allowlisting — default-deny execution control for apps, DLLs, scripts, installers",
+      "Ringfencing — constrains allowed apps: app-to-app, file, registry, network",
+      "Storage Control — USB/device policy by serial, user, file type, encryption",
+      "Elevation Control — just-in-time per-app admin, no standing rights",
+      "Network Control — host firewall; port/IP/dynamic-ACL rules; ZTNA foundation",
+      "Web Control — agent-based DNS/URL category filtering, works off-network",
+      "Cyber Hero MDR — 24/7/365 US-based response, ~60-second average",
+      "Testing Environment — one-button VDI sandbox; checks AV flags, canary files, registry changes"
      ]
     },
     {
      "heading": "Rule strength (strongest to weakest)",
      "items": [
-      "Certificate/publisher rules \u2014 survive version updates",
-      "Hash rules \u2014 precise but break on every new version",
-      "Path rules \u2014 weakest; never in user-writable locations",
-      "Learning Mode catalogs before enforcement; Installation Mode pauses blocking \u2014 scope and time-box both"
+      "Certificate/publisher rules — survive version updates",
+      "Hash rules — precise but break on every new version",
+      "Path rules — weakest; never in user-writable locations",
+      "Learning Mode catalogs before enforcement; Installation Mode pauses blocking — scope and time-box both"
      ]
     },
     {
      "heading": "Terminal evidence commands",
      "items": [
-      "nmap <host> \u2014 which ports answer (22/80/443 open)",
-      "dig <name> \u2014 ANSWER SECTION with the A record",
-      "ss \u2014 listening sockets",
-      "systemctl status <svc> \u2014 unit state",
-      "journalctl -u <svc> \u2014 service logs",
-      "sha256sum <file> \u2014 real SHA-256 identity",
-      "grep <pattern> <file> \u2014 search the record",
-      "ps \u2014 what is actually running"
+      "nmap <host> — which ports answer (22/80/443 open)",
+      "dig <name> — ANSWER SECTION with the A record",
+      "ss — listening sockets",
+      "systemctl status <svc> — unit state",
+      "journalctl -u <svc> — service logs",
+      "sha256sum <file> — real SHA-256 identity",
+      "grep <pattern> <file> — search the record",
+      "ps — what is actually running"
      ]
     },
     {
      "heading": "Graph vocabulary",
      "items": [
-      "node \u2014 any entity tracked in the model (user, host, IP, domain, file hash, vulnerability)",
-      "edge \u2014 a labeled relationship between two nodes (logged into, resolved to, downloaded)",
-      "degree \u2014 number of edges on a node; high-degree nodes are attacker highways",
-      "centrality \u2014 how much traffic or how many paths flow through a node",
-      "directed edge \u2014 a relationship with a direction (A downloaded FROM B)",
-      "security graph \u2014 the living model of your whole environment as nodes and edges",
-      "attack graph \u2014 the subgraph of exploitable paths to your targets",
-      "knowledge graph \u2014 threat-intel indicators linked to campaigns and actors"
+      "node — any entity tracked in the model (user, host, IP, domain, file hash, vulnerability)",
+      "edge — a labeled relationship between two nodes (logged into, resolved to, downloaded)",
+      "degree — number of edges on a node; high-degree nodes are attacker highways",
+      "centrality — how much traffic or how many paths flow through a node",
+      "directed edge — a relationship with a direction (A downloaded FROM B)",
+      "security graph — the living model of your whole environment as nodes and edges",
+      "attack graph — the subgraph of exploitable paths to your targets",
+      "knowledge graph — threat-intel indicators linked to campaigns and actors"
      ]
     },
     {
      "heading": "Attack-graph playbook",
      "items": [
-      "inventory first \u2014 you cannot graph what you have not discovered",
+      "inventory first — you cannot graph what you have not discovered",
       "model flaws AND misconfigs as exploit edges",
       "compute shortest paths to the crown jewels",
       "find the choke point (highest betweenness on those paths)",
       "break the path: patch, segment, or remove the edge",
       "re-scan and re-run the graph to prove the path is gone",
-      "never trust yesterday's graph \u2014 redeployments redraw the map"
+      "never trust yesterday's graph — redeployments redraw the map"
      ]
     },
     {
      "heading": "Zero Trust + graphs",
      "items": [
-      "never trust, always verify \u2014 re-evaluate every access decision",
-      "assume breach \u2014 treat unexpected edges as hostile until proven otherwise",
-      "microsegmentation \u2014 allow-list approved edges, alert on new ones",
-      "ReBAC \u2014 policies are path queries on the identity graph",
-      "continuous verification \u2014 device/location/behavior edges change, trust follows",
-      "anomalous edge \u2014 a first-seen connection between strangers is the classic signal"
+      "never trust, always verify — re-evaluate every access decision",
+      "assume breach — treat unexpected edges as hostile until proven otherwise",
+      "microsegmentation — allow-list approved edges, alert on new ones",
+      "ReBAC — policies are path queries on the identity graph",
+      "continuous verification — device/location/behavior edges change, trust follows",
+      "anomalous edge — a first-seen connection between strangers is the classic signal"
      ]
     },
     {
      "heading": "ML detection vocabulary",
      "items": [
-      "Supervised learning \u2014 learns from labeled examples; strong on known threats, blind to novel ones",
-      "Unsupervised learning \u2014 finds structure without labels; clustering and dimensionality reduction",
-      "Anomaly detection \u2014 models 'normal' and flags deviations; the workhorse for novel threats",
-      "UEBA \u2014 user and entity behavior analytics: per-user baselines plus peer-group comparison",
-      "Feature engineering \u2014 encoding raw logs into model inputs (login velocity, rare processes, domain entropy)",
-      "Concept drift \u2014 model decay as attacker behavior and legitimate traffic shift over time"
+      "Supervised learning — learns from labeled examples; strong on known threats, blind to novel ones",
+      "Unsupervised learning — finds structure without labels; clustering and dimensionality reduction",
+      "Anomaly detection — models 'normal' and flags deviations; the workhorse for novel threats",
+      "UEBA — user and entity behavior analytics: per-user baselines plus peer-group comparison",
+      "Feature engineering — encoding raw logs into model inputs (login velocity, rare processes, domain entropy)",
+      "Concept drift — model decay as attacker behavior and legitimate traffic shift over time"
      ]
     },
     {
      "heading": "Detection metrics",
      "items": [
-      "Precision \u2014 of all flagged alerts, how many were real",
-      "Recall \u2014 of all real attacks, how many were flagged",
-      "Threshold tuning \u2014 sliding the decision cutoff trades precision against recall",
-      "Alert fatigue \u2014 when false positives train analysts to ignore the queue",
-      "DGA \u2014 domain generation algorithm; detected via character entropy of domain names"
+      "Precision — of all flagged alerts, how many were real",
+      "Recall — of all real attacks, how many were flagged",
+      "Threshold tuning — sliding the decision cutoff trades precision against recall",
+      "Alert fatigue — when false positives train analysts to ignore the queue",
+      "DGA — domain generation algorithm; detected via character entropy of domain names"
      ]
     },
     {
      "heading": "Agent and LLM security",
      "items": [
-      "Direct prompt injection \u2014 attacker input overrides app instructions (OWASP LLM01:2025, the #1 LLM risk)",
-      "Indirect prompt injection \u2014 hidden instructions inside retrieved data (email, web, docs)",
-      "Jailbreak \u2014 defeating the model's own safety policy; distinct from hijacking app behavior",
-      "Tool poisoning \u2014 malicious tool descriptions or metadata steer an agent to misuse its tools (MCP ecosystem risk)",
-      "Insecure output handling \u2014 executing or trusting model output without validation",
-      "Least-privilege tools \u2014 grant each tool only the scope its task requires"
+      "Direct prompt injection — attacker input overrides app instructions (OWASP LLM01:2025, the #1 LLM risk)",
+      "Indirect prompt injection — hidden instructions inside retrieved data (email, web, docs)",
+      "Jailbreak — defeating the model's own safety policy; distinct from hijacking app behavior",
+      "Tool poisoning — malicious tool descriptions or metadata steer an agent to misuse its tools (MCP ecosystem risk)",
+      "Insecure output handling — executing or trusting model output without validation",
+      "Least-privilege tools — grant each tool only the scope its task requires"
      ]
     },
     {
      "heading": "Adversarial ML and governance",
      "items": [
-      "Evasion \u2014 perturbing inputs at inference time to dodge a classifier",
-      "Poisoning \u2014 corrupting training data to corrupt the model",
-      "Extraction \u2014 querying a model to steal its behavior or parameters",
-      "MITRE ATLAS \u2014 knowledge base of adversarial ML tactics and techniques",
-      "Red-teaming and evals \u2014 adversarial testing of AI systems before deployment",
-      "Human-in-the-loop \u2014 required approval for high-impact or irreversible agent actions",
-      "SOAR \u2014 security orchestration, automation and response; automate enrichment, gate containment"
+      "Evasion — perturbing inputs at inference time to dodge a classifier",
+      "Poisoning — corrupting training data to corrupt the model",
+      "Extraction — querying a model to steal its behavior or parameters",
+      "MITRE ATLAS — knowledge base of adversarial ML tactics and techniques",
+      "Red-teaming and evals — adversarial testing of AI systems before deployment",
+      "Human-in-the-loop — required approval for high-impact or irreversible agent actions",
+      "SOAR — security orchestration, automation and response; automate enrichment, gate containment"
      ]
     }
    ]
@@ -524,7 +1259,7 @@
    },
    {
     "term": "Blocklisting",
-    "def": "Default-allow model: everything runs except recognized-bad items \u2014 the window zero-days live in."
+    "def": "Default-allow model: everything runs except recognized-bad items — the window zero-days live in."
    },
    {
     "term": "Default-deny",
@@ -540,15 +1275,15 @@
    },
    {
     "term": "Installation Mode",
-    "def": "Temporary mode that pauses file blocking for installs \u2014 must be tightly scoped and time-boxed."
+    "def": "Temporary mode that pauses file blocking for installs — must be tightly scoped and time-boxed."
    },
    {
     "term": "Elevation Control",
-    "def": "Grants specific approved applications admin rights for standard users \u2014 just-in-time, per-app, time-boxed \u2014 without standing admin rights."
+    "def": "Grants specific approved applications admin rights for standard users — just-in-time, per-app, time-boxed — without standing admin rights."
    },
    {
     "term": "Application hopping",
-    "def": "An elevated or trusted process spawning another tool (e.g., PowerShell) to inherit its privileges \u2014 countered by ringfencing the elevated process."
+    "def": "An elevated or trusted process spawning another tool (e.g., PowerShell) to inherit its privileges — countered by ringfencing the elevated process."
    },
    {
     "term": "Storage Control",
@@ -560,7 +1295,7 @@
    },
    {
     "term": "ZTNA",
-    "def": "Zero Trust Network Access: per-session, per-application brokered connections (commonly over port 443) with no open inbound ports \u2014 deny-by-default for network access."
+    "def": "Zero Trust Network Access: per-session, per-application brokered connections (commonly over port 443) with no open inbound ports — deny-by-default for network access."
    },
    {
     "term": "Approval Center",
@@ -568,7 +1303,7 @@
    },
    {
     "term": "Unified Audit",
-    "def": "Real-time audit showing what was allowed or denied across endpoints \u2014 and why; the evidence layer for triage."
+    "def": "Real-time audit showing what was allowed or denied across endpoints — and why; the evidence layer for triage."
    },
    {
     "term": "Testing Environment",
@@ -580,15 +1315,15 @@
    },
    {
     "term": "Assume breach",
-    "def": "Design and operate as if the attacker already has a foothold \u2014 least privilege, containment, and monitoring everywhere."
+    "def": "Design and operate as if the attacker already has a foothold — least privilege, containment, and monitoring everywhere."
    },
    {
     "term": "Living off the land",
-    "def": "Attacks that hijack trusted built-in tools (Word, PowerShell) instead of dropping malware \u2014 defeated by behavior containment, not signatures."
+    "def": "Attacks that hijack trusted built-in tools (Word, PowerShell) instead of dropping malware — defeated by behavior containment, not signatures."
    },
    {
     "term": "Change control",
-    "def": "Scoped, ticketed, tested changes with validation and rollback \u2014 emergency speed never cancels the process."
+    "def": "Scoped, ticketed, tested changes with validation and rollback — emergency speed never cancels the process."
    },
    {
     "def": "A node in an attack graph representing a system or weakness, connected by edges that represent steps an attacker could take between them.",
@@ -695,7 +1430,7 @@
    {
     "label": "ThreatLocker Zero Trust platform explainer (official)",
     "url": "https://www.threatlocker.com/blog/edr-xdr-vs-zero-trust-prevention",
-    "note": "EDR/XDR vs Zero Trust prevention \u2014 the deny-by-default argument in their own words."
+    "note": "EDR/XDR vs Zero Trust prevention — the deny-by-default argument in their own words."
    },
    {
     "label": "ThreatLocker Bootcamp page (official)",
@@ -733,7 +1468,7 @@
     "note": "Detection and response capability detail."
    },
    {
-    "label": "NIST SP 800-207 \u2014 Zero Trust Architecture",
+    "label": "NIST SP 800-207 — Zero Trust Architecture",
     "url": "https://csrc.nist.gov/pubs/sp/800/207/final",
     "note": "The canonical Zero Trust reference: tenets, deployment models, policy engine trust algorithm."
    },
@@ -748,7 +1483,7 @@
     "url": "https://attack.mitre.org/"
    },
    {
-    "label": "CISA \u2014 Cybersecurity and Infrastructure Security Agency",
+    "label": "CISA — Cybersecurity and Infrastructure Security Agency",
     "note": "US government advisories, alerts, and guidance frequently referenced in threat-intel work.",
     "url": "https://www.cisa.gov/"
    },
@@ -765,7 +1500,7 @@
    {
     "label": "OWASP Top 10 for LLM Applications",
     "url": "https://genai.owasp.org/llm-top-10/",
-    "note": "The ranked LLM risk list \u2014 prompt injection is #1"
+    "note": "The ranked LLM risk list — prompt injection is #1"
    },
    {
     "label": "NIST AI Risk Management Framework",
@@ -775,7 +1510,7 @@
    {
     "label": "MITRE ATLAS",
     "url": "https://atlas.mitre.org/",
-    "note": "Adversarial Threat Landscape for AI Systems \u2014 tactics and techniques"
+    "note": "Adversarial Threat Landscape for AI Systems — tactics and techniques"
    },
    {
     "label": "CISA AI guidance",
@@ -786,11 +1521,11 @@
   "checklist": [
    "Sixty-second company brief rehearsed out loud: year, city, philosophy, three products, one milestone",
    "Two STAR stories ready: hardest technical problem; a frustrated customer or user",
-   "\u201cWhy ThreatLocker / why cybersecurity\u201d answer tied to prevention and service, not slogans",
+   "“Why ThreatLocker / why cybersecurity” answer tied to prevention and service, not slogans",
    "Ringfencing explained in one plain-English sentence (the Word-on-a-leash version)",
    "Elevation Control answer ready: just-in-time, per-app, time-boxed, ringfenced, logged",
-   "Triage loop memorized: scope \u2192 observe \u2192 hypothesize \u2192 smallest safe change \u2192 validate \u2192 explain",
-   "Three questions to ask them: team on-call shape, approval SLA expectations, what \u201cmost helpful\u201d looks like on the team",
+   "Triage loop memorized: scope → observe → hypothesize → smallest safe change → validate → explain",
+   "Three questions to ask them: team on-call shape, approval SLA expectations, what “most helpful” looks like on the team",
    "Logistics: 1901 Summit Tower Blvd, Orlando FL; in-office role; ID and references ready",
    "Define your crown jewels before you model anything.",
    "Build the asset-and-access graph from live sources (scans, configs, identity), not from the CMDB alone.",
@@ -936,7 +1671,7 @@
    "title": "Ringfencing: four leashes on an allowed application",
    "svg": "assets/diagrams/tl-ringfencing.svg",
    "lesson_ref": "c-tl-endpoint-ops",
-   "caption": "Word stays approved, but it cannot spawn PowerShell, read the credential store, or reach the internet \u2014 while opening its document is allowed.",
+   "caption": "Word stays approved, but it cannot spawn PowerShell, read the credential store, or reach the internet — while opening its document is allowed.",
    "alt": "An approved Word application inside a dashed containment ring: arrows show PowerShell launch denied, credential-store registry access denied, external network denied, and document file access allowed."
   },
   {
@@ -945,7 +1680,7 @@
    "title": "The Zero Trust endpoint stack",
    "svg": "assets/diagrams/tl-zero-trust-stack.svg",
    "lesson_ref": "c-tl-interview",
-   "caption": "Five deny-by-default layers \u2014 Allowlisting, Ringfencing, Elevation, Storage, Network \u2014 watched by Web Control, the Testing Environment, Unified Audit, and the Cyber Hero MDR team.",
+   "caption": "Five deny-by-default layers — Allowlisting, Ringfencing, Elevation, Storage, Network — watched by Web Control, the Testing Environment, Unified Audit, and the Cyber Hero MDR team.",
    "alt": "A vertical stack of five layers from Allowlisting at the foundation up through Ringfencing, Elevation Control, Storage Control, and Network Control, with side boxes for Web Control, Testing Environment, Unified Audit, and Cyber Hero MDR."
   },
   {
@@ -999,7 +1734,7 @@
    "title": "ML detection pipeline: telemetry to triage",
    "svg": "assets/diagrams/ai-ml-pipeline.svg",
    "lesson_ref": "c-ml-defense",
-   "caption": "How raw telemetry becomes scored alerts: features feed the model, the model scores, analysts triage top-down \u2014 and analyst verdicts feed retraining.",
+   "caption": "How raw telemetry becomes scored alerts: features feed the model, the model scores, analysts triage top-down — and analyst verdicts feed retraining.",
    "alt": "Flow diagram: telemetry sources feed feature extraction, which feeds an ML model, which outputs scored alerts into an analyst triage queue, with a feedback arrow for retraining."
   },
   {
@@ -1034,5 +1769,23 @@
  "math": [
   "stats",
   "probability"
+ ],
+ "pdfGuides": [
+  {
+   "title": "Cloud Architecture Patterns — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-cloud-patterns.pdf",
+   "source": "Interstitium Labs",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:27:58Z"
+  },
+  {
+   "title": "TLS Handshake — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-tls-handshake.pdf",
+   "source": "Interstitium Labs",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:27:58Z"
+  }
  ]
 }

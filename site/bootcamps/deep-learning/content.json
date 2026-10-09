@@ -221,9 +221,474 @@
    ]
   }
  ],
- "simulations": [],
- "consoleSims": [],
- "terminalMissions": [],
+ "simulations": [
+  {
+   "id": "deep-learning-sim-1",
+   "title": "Loss goes NaN at epoch 3",
+   "kind": "troubleshoot",
+   "domain_id": "deep-learning",
+   "difficulty": 3,
+   "points": 20,
+   "brief": "The training run is healthy for two epochs, then the loss explodes to NaN at epoch 3. The run is dead — diagnose it.",
+   "steps": [
+    {
+     "symptom": "Loss NaN at epoch 3 after two healthy epochs.",
+     "evidence": [
+      [
+       "Gradient norms",
+       "Epoch 1: 2.1, epoch 2: 340, epoch 3 (first batches): 1.2e7 — then NaN"
+      ],
+      [
+       "Optimizer config",
+       "Adam, learning rate 0.1, no gradient clipping"
+      ],
+      [
+       "Precision",
+       "Mixed precision enabled; loss scaler overflowed 40 times in epoch 2"
+      ]
+     ],
+     "options": [
+      "Lower the learning rate and enable gradient clipping, then resume from the epoch-2 checkpoint",
+      "Switch to full float32 precision and keep the learning rate",
+      "Increase the batch size to smooth the gradients",
+      "Restart training from scratch with the same config — NaNs are random"
+     ],
+     "correct": 0,
+     "explain": "Gradient norms exploding 1e6x across two epochs is gradient explosion: lr 0.1 is far too hot and nothing clips the updates. Mixed precision just made the overflow visible sooner. Lower the LR, clip gradients, resume from the last good checkpoint."
+    }
+   ],
+   "debrief": "NaN is never random. Read the gradient norms: explosion means the learning rate is too hot or clipping is missing. Fix the cause, resume from the last healthy checkpoint — never restart blind."
+  },
+  {
+   "id": "deep-learning-sim-2",
+   "title": "The GPU sits idle",
+   "kind": "troubleshoot",
+   "domain_id": "deep-learning",
+   "difficulty": 2,
+   "points": 15,
+   "brief": "Training is slow and nvidia-smi shows 8% GPU utilization. The expensive hardware is waiting on something.",
+   "steps": [
+    {
+     "symptom": "GPU at 8% utilization, epoch takes 4x longer than estimated.",
+     "evidence": [
+      [
+       "DataLoader config",
+       "num_workers=0, pin_memory=False"
+      ],
+      [
+       "Disk I/O",
+       "Training images read from a spinning disk over NFS, one file at a time"
+      ],
+      [
+       "Batch timing",
+       "0.9s data loading per batch vs 0.1s compute per batch"
+      ]
+     ],
+     "options": [
+      "Raise DataLoader workers, enable pin_memory, and move the dataset to fast local storage",
+      "Buy a second GPU to parallelize the slow training",
+      "Reduce the batch size so each batch loads faster",
+      "Switch the model to half precision to speed up compute"
+     ],
+     "correct": 0,
+     "explain": "Compute takes 0.1s and loading takes 0.9s — the GPU starves while the CPU fetches data serially. Workers parallelize loading, pin_memory speeds host-to-device transfer, local SSD removes the NFS bottleneck. The GPU was never the problem."
+    }
+   ],
+   "debrief": "Low GPU utilization is a data-pipeline diagnosis, not a model problem. Profile the batch time split first: when loading dwarfs compute, fix workers, pinning, and storage before touching the model."
+  },
+  {
+   "id": "deep-learning-sim-3",
+   "title": "Pick the architecture",
+   "kind": "branching",
+   "domain_id": "deep-learning",
+   "difficulty": 2,
+   "points": 15,
+   "brief": "You have 8,000 labeled product images and one GPU. Choose the architecture approach.",
+   "steps": [
+    {
+     "id": "s1",
+     "text": "8,000 images, one GPU, image classification. Architecture?",
+     "choices": [
+      {
+       "label": "Pretrained ResNet with transfer learning — freeze the backbone, train the head",
+       "outcome": "good",
+       "next": "END",
+       "points": 2,
+       "feedback": "Correct: transfer learning brings millions of images of prior knowledge. With 8,000 images you fine-tune, not reinvent vision."
+      },
+      {
+       "label": "Train a vision transformer from scratch on the 8,000 images",
+       "outcome": "bad",
+       "next": "END",
+       "points": 0,
+       "feedback": "Transformers are data-hungry; 8,000 images will not train one from scratch. You would overfit long before the model learns edges."
+      }
+     ]
+    }
+   ],
+   "debrief": "Match the architecture to the data budget: small labeled sets get transfer learning; from-scratch training is for data you do not have. Pretrained backbones are the default, not the shortcut."
+  },
+  {
+   "id": "deep-learning-sim-4",
+   "title": "Run a clean training experiment",
+   "kind": "ordering",
+   "domain_id": "deep-learning",
+   "difficulty": 2,
+   "points": 10,
+   "brief": "Put the training experiment steps in the order that keeps results reproducible.",
+   "steps": {
+    "context": "A sound training experiment order",
+    "items": [
+     "Train with checkpointing every N epochs",
+     "Set the random seed for Python, NumPy, and PyTorch",
+     "Evaluate on the held-out test set",
+     "Verify the data pipeline (shapes, labels, augmentation)",
+     "Instantiate the model and optimizer"
+    ],
+    "correct_order": [
+     1,
+     3,
+     4,
+     0,
+     2
+    ]
+   },
+   "debrief": "Seed everything first (reproducibility is decided before the first batch), verify the pipeline before trusting losses, then train with checkpoints and evaluate once. An unseeded run is an anecdote, not an experiment."
+  },
+  {
+   "id": "deep-learning-sim-5",
+   "title": "Review the training config",
+   "kind": "config-check",
+   "domain_id": "deep-learning",
+   "difficulty": 3,
+   "points": 15,
+   "brief": "A teammate's training config for a shared GPU. Click the misconfigured lines (2 issues to find).",
+   "steps": {
+    "config": "model: resnet50\nseed: null\nlr: 0.1\ntrain_shuffle: false\nval_split: 0.15\nepochs: 50\ncheckpoint_every: 5",
+    "find": 2,
+    "issues": [
+     {
+      "line": 2,
+      "description": "No random seed — the run is unreproducible and the results cannot be trusted or compared.",
+      "fix": "Set seed to a fixed integer (e.g. 42) for Python, NumPy, and the framework."
+     },
+     {
+      "line": 4,
+      "description": "Training data is not shuffled — batches carry ordering bias and batch-norm statistics skew.",
+      "fix": "Set train_shuffle to true."
+     }
+    ]
+   },
+   "debrief": "Two silent killers: no seed (unreproducible) and no shuffle (biased batches). Both cost nothing to fix and everything to ignore."
+  }
+ ],
+ "consoleSims": [
+  {
+   "id": "deep-learning-console-1",
+   "title": "Fix the training script",
+   "console": "code-editor",
+   "domain_id": "deep-learning",
+   "difficulty": 1,
+   "brief": "The training script in app.py accumulates the loss wrong on line 4. Open it, fix the line, and inspect the accumulator.",
+   "tasks": [
+    {
+     "id": "deep-learning-console-1-t1",
+     "instruction": "Open app.py in the code editor.",
+     "validate": {
+      "action": "open-file",
+      "params": {
+       "name": "app.py"
+      }
+     },
+     "hint": "Click Open next to app.py in the Explorer."
+    },
+    {
+     "id": "deep-learning-console-1-t2",
+     "instruction": "Replace line 4 of app.py with:         s += x * 2",
+     "validate": {
+      "action": "fix-line",
+      "params": {
+       "file": "app.py",
+       "line": 4
+      }
+     },
+     "hint": "Use the Replace line form: file app.py, line 4, new text."
+    },
+    {
+     "id": "deep-learning-console-1-t3",
+     "instruction": "Inspect the variable s to confirm the accumulator state.",
+     "validate": {
+      "action": "inspect-variable",
+      "params": {
+       "name": "s"
+      }
+     },
+     "hint": "Use the Inspect form with variable name s."
+    }
+   ],
+   "debrief": "Training bugs hide in plain sight: a wrong accumulation line silently corrupts every gradient. Read the loop, fix the line, inspect the state."
+  },
+  {
+   "id": "deep-learning-console-2",
+   "title": "Provision the run database",
+   "console": "db-admin",
+   "domain_id": "deep-learning",
+   "difficulty": 2,
+   "brief": "Create a database for training runs, add the trainer service account, and back the database up.",
+   "tasks": [
+    {
+     "id": "deep-learning-console-2-t1",
+     "instruction": "Create database dl_runs.",
+     "validate": {
+      "action": "create-database",
+      "params": {
+       "name": "dl_runs"
+      }
+     },
+     "hint": "Use the Create database form in the Databases section."
+    },
+    {
+     "id": "deep-learning-console-2-t2",
+     "instruction": "Create database user trainer.",
+     "validate": {
+      "action": "create-user",
+      "params": {
+       "name": "trainer"
+      }
+     },
+     "hint": "Use the Create user form in the Users & grants section."
+    },
+    {
+     "id": "deep-learning-console-2-t3",
+     "instruction": "Back up the dl_runs database.",
+     "validate": {
+      "action": "backup",
+      "params": {
+       "db": "dl_runs"
+      }
+     },
+     "hint": "Click Back up on the dl_runs row in the Databases section."
+    }
+   ],
+   "debrief": "Training metadata is infrastructure: a dedicated database, a service account, and backups before the 3 AM run that you will want to compare against."
+  },
+  {
+   "id": "deep-learning-console-3",
+   "title": "Launch the training pipeline",
+   "console": "cicd-pipeline",
+   "domain_id": "deep-learning",
+   "difficulty": 2,
+   "brief": "Set the epoch count, trigger the training pipeline, and approve the model artifact deploy.",
+   "tasks": [
+    {
+     "id": "deep-learning-console-3-t1",
+     "instruction": "Set the pipeline variable EPOCHS to 50.",
+     "validate": {
+      "action": "set-variable",
+      "params": {
+       "key": "EPOCHS",
+       "value": "50"
+      }
+     },
+     "hint": "Use the Variables section's Set variable form."
+    },
+    {
+     "id": "deep-learning-console-3-t2",
+     "instruction": "Trigger a new build of the training pipeline.",
+     "validate": {
+      "action": "trigger-build",
+      "params": {}
+     },
+     "hint": "Click Trigger new build in the Pipeline section."
+    },
+    {
+     "id": "deep-learning-console-3-t3",
+     "instruction": "Approve the gated deploy stage to release the model artifact.",
+     "validate": {
+      "action": "approve-stage",
+      "params": {
+       "stage": "deploy"
+      }
+     },
+     "hint": "The deploy stage is gated — click Approve on its row."
+    }
+   ],
+   "debrief": "Training runs belong in a pipeline: hyperparameters as variables, reproducible builds, and a gate before the artifact ships. Notebooks do not deploy models; pipelines do."
+  },
+  {
+   "id": "deep-learning-console-4",
+   "title": "Track the checkpoints",
+   "console": "sql-studio",
+   "domain_id": "deep-learning",
+   "difficulty": 2,
+   "brief": "Create a checkpoint tracking table, index it by epoch, and query the best run.",
+   "tasks": [
+    {
+     "id": "deep-learning-console-4-t1",
+     "instruction": "Create table checkpoints with columns id TEXT, epoch INT, val_loss REAL.",
+     "validate": {
+      "action": "create-table",
+      "params": {
+       "name": "checkpoints"
+      }
+     },
+     "hint": "Use the Create table form in the Tables section."
+    },
+    {
+     "id": "deep-learning-console-4-t2",
+     "instruction": "Create an index on checkpoints(epoch).",
+     "validate": {
+      "action": "create-index",
+      "params": {
+       "table": "checkpoints",
+       "column": "epoch"
+      }
+     },
+     "hint": "The Create index form needs the table and column names."
+    },
+    {
+     "id": "deep-learning-console-4-t3",
+     "instruction": "In the Query editor, run: SELECT epoch, val_loss FROM checkpoints ORDER BY val_loss LIMIT 1;",
+     "validate": {
+      "action": "run-query",
+      "params": {
+       "match": "ORDER BY"
+      }
+     },
+     "hint": "Type the SELECT with ORDER BY, then click Run query."
+    }
+   ],
+   "debrief": "Checkpoints are data: log every epoch's validation loss, index it, and let the query — not your memory — pick the best model."
+  }
+ ],
+ "terminalMissions": [
+  {
+   "id": "deep-learning-mission-1",
+   "title": "Stamp the training hyperparameters",
+   "domain_id": "deep-learning",
+   "difficulty": 1,
+   "brief": "Echo the learning rate and epoch count for the run log.",
+   "objectives": [
+    "Print the hyperparameter line"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^echo",
+     "expect_contains": "lr=0.001",
+     "hint": "Run: echo lr=0.001 epochs=50"
+    }
+   ],
+   "success_message": "Mission complete — hyperparameters logged."
+  },
+  {
+   "id": "deep-learning-mission-2",
+   "title": "Record the data loading config",
+   "domain_id": "deep-learning",
+   "difficulty": 1,
+   "brief": "Echo the batch size and worker count that fixed the idle GPU.",
+   "objectives": [
+    "Print the data loading config"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^echo",
+     "expect_contains": "batch_size=32",
+     "hint": "Run: echo batch_size=32 workers=4"
+    }
+   ],
+   "success_message": "Mission complete — data loading config recorded."
+  },
+  {
+   "id": "deep-learning-mission-3",
+   "title": "List the workspace",
+   "domain_id": "deep-learning",
+   "difficulty": 1,
+   "brief": "List the files in the training workspace.",
+   "objectives": [
+    "List workspace files"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^ls$",
+     "expect_contains": "app.py",
+     "hint": "Run: ls"
+    }
+   ],
+   "success_message": "Mission complete — workspace listed."
+  },
+  {
+   "id": "deep-learning-mission-4",
+   "title": "Check the host identity",
+   "domain_id": "deep-learning",
+   "difficulty": 1,
+   "brief": "Verify the GPU host identity before the training run.",
+   "objectives": [
+    "Show full system information"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^uname",
+     "expect_contains": "interstitium",
+     "hint": "Run: uname -a"
+    }
+   ],
+   "success_message": "Mission complete — host identity verified."
+  },
+  {
+   "id": "deep-learning-mission-5",
+   "title": "Report the validation loss",
+   "domain_id": "deep-learning",
+   "difficulty": 2,
+   "brief": "Echo the best validation loss from the run.",
+   "objectives": [
+    "Print the validation loss line"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^echo",
+     "expect_contains": "val_loss=0.23",
+     "hint": "Run: echo val_loss=0.23"
+    }
+   ],
+   "success_message": "Mission complete — validation loss reported."
+  },
+  {
+   "id": "deep-learning-mission-6",
+   "title": "Confirm the working directory",
+   "domain_id": "deep-learning",
+   "difficulty": 2,
+   "brief": "Confirm the shell is in the expected working directory before writing checkpoints.",
+   "objectives": [
+    "Print the working directory"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^pwd$",
+     "expect_contains": "/home/candidate",
+     "hint": "Run: pwd"
+    }
+   ],
+   "success_message": "Mission complete — working directory confirmed."
+  },
+  {
+   "id": "deep-learning-mission-7",
+   "title": "Record the precision setup",
+   "domain_id": "deep-learning",
+   "difficulty": 2,
+   "brief": "Echo the GPU count and precision mode for the run notes.",
+   "objectives": [
+    "Print the hardware/precision line"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^echo",
+     "expect_contains": "gpu=1",
+     "hint": "Run: echo gpu=1 precision=mixed"
+    }
+   ],
+   "success_message": "Mission complete — precision setup recorded."
+  }
+ ],
  "sections": [
   {
    "id": "deep-learning-sec",
@@ -506,5 +971,72 @@
  },
  "media": [],
  "foundations": [],
- "math": []
+ "math": [],
+ "videos": [
+  {
+   "title": "Descent Into the Loss Valley",
+   "url": "/assets/videos/bc-3b1b-dl-loss-valley.mp4",
+   "source": "Interstitium Labs",
+   "blurb": "Gradient descent walks the loss valley: small steps converge on the minimum, a big learning rate bounces over it — the rate is the whole game. (Preview — narration coming; voiceover pending TTS restore.)",
+   "durationMin": 1,
+   "order": 1,
+   "preview": true,
+   "captionsUrl": "/assets/videos/bc-3b1b-dl-loss-valley.vtt",
+   "narrationUrl": "/assets/videos/bc-3b1b-dl-loss-valley.narration.md",
+   "verifiedUtc": "2026-10-09T05:01:37Z",
+   "httpStatus": 200
+  },
+  {
+   "title": "Backprop in 100 Seconds",
+   "url": "/assets/videos/bc-fireship-dl-backprop.mp4",
+   "source": "Interstitium Labs",
+   "blurb": "Backprop is the chain rule at scale: multiply the local gradients backward through the layers, then descend — credit assignment, solved. (Preview — narration coming; voiceover pending TTS restore.)",
+   "durationMin": 1,
+   "order": 2,
+   "preview": true,
+   "captionsUrl": "/assets/videos/bc-fireship-dl-backprop.vtt",
+   "narrationUrl": "/assets/videos/bc-fireship-dl-backprop.narration.md",
+   "verifiedUtc": "2026-10-09T05:01:37Z",
+   "httpStatus": 200
+  },
+  {
+   "title": "The Gradient That Vanished",
+   "url": "/assets/videos/bc-bbg-dl-vanishing.mp4",
+   "source": "Interstitium Labs",
+   "blurb": "Five layers deep and the gradient halves at every step back — layer one learns nothing. The residual skip gives it an express lane. (Preview — narration coming; voiceover pending TTS restore.)",
+   "durationMin": 1,
+   "order": 3,
+   "preview": true,
+   "captionsUrl": "/assets/videos/bc-bbg-dl-vanishing.vtt",
+   "narrationUrl": "/assets/videos/bc-bbg-dl-vanishing.narration.md",
+   "verifiedUtc": "2026-10-09T05:01:37Z",
+   "httpStatus": 200
+  }
+ ],
+ "pdfGuides": [
+  {
+   "title": "Neural Networks — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-neural-networks.pdf",
+   "source": "Interstitium Labs",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:27:58Z"
+  },
+  {
+   "title": "Transformers & Attention — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-transformers.pdf",
+   "source": "Interstitium Labs",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:27:58Z"
+  },
+  {
+   "title": "ML Training Pipelines — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-ml-pipelines.pdf",
+   "source": "Interstitium Labs",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:27:58Z"
+  }
+ ]
 }

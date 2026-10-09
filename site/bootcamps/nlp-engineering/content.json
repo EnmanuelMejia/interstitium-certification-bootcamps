@@ -200,9 +200,477 @@
    ]
   }
  ],
- "simulations": [],
- "consoleSims": [],
- "terminalMissions": [],
+ "simulations": [
+  {
+   "id": "nlp-engineering-sim-1",
+   "title": "Search returns junk after reindex",
+   "kind": "troubleshoot",
+   "domain_id": "nlp-engineering",
+   "difficulty": 3,
+   "points": 20,
+   "brief": "The semantic search index was rebuilt last night. Since then, relevant documents rank below random ones and recall collapsed.",
+   "steps": [
+    {
+     "symptom": "Recall collapsed after a routine reindex; no code changes.",
+     "evidence": [
+      [
+       "Index build log",
+       "Reindex used embedding model v3; the previous index was built with v2"
+      ],
+      [
+       "Embedding check",
+       "The same document embeds to a different vector under v3 — the vector space changed"
+      ],
+      [
+       "Query path",
+       "Queries are still embedded with v2 at request time"
+      ]
+     ],
+     "options": [
+      "Rebuild the index with the pinned v2 model and lock the embedding model version in the index config",
+      "Retrain the ranking model on the new v3 vectors",
+      "Increase ef_search to compensate for the worse recall",
+      "Delete the index and rebuild it the same way — reindexes are flaky"
+     ],
+     "correct": 0,
+     "explain": "Documents embedded with v3 live in a different vector space than queries embedded with v2 — cosine similarity across spaces is meaningless. The embedding model is part of the index contract: pin it, version it, and rebuild the index whenever it changes."
+    }
+   ],
+   "debrief": "An embedding index is a contract between the indexed vectors and the query vectors. Change the embedding model and the contract breaks — pin the model version and rebuild on every change."
+  },
+  {
+   "id": "nlp-engineering-sim-2",
+   "title": "p99 latency spike",
+   "kind": "troubleshoot",
+   "domain_id": "nlp-engineering",
+   "difficulty": 2,
+   "points": 15,
+   "brief": "The embedding service p99 latency tripled after traffic doubled. p50 barely moved — the tail is the problem.",
+   "steps": [
+    {
+     "symptom": "p99 latency 3x, p50 flat, after a traffic doubling.",
+     "evidence": [
+      [
+       "Serving config",
+       "One document per inference request — no batching"
+      ],
+      [
+       "GPU profile",
+       "Kernel launches dominate; the GPU idles between tiny requests"
+      ],
+      [
+       "Queueing",
+       "Requests pile up behind each other at peak; p50 requests slip through the gaps"
+      ]
+     ],
+     "options": [
+      "Add dynamic batching so concurrent requests share GPU kernel launches",
+      "Add more GPUs to handle the doubled traffic",
+      "Cache embeddings for the most common documents",
+      "Reduce the embedding dimension to speed up each request"
+     ],
+     "correct": 0,
+     "explain": "Unbatched single-doc inference wastes the GPU on kernel-launch overhead; doubling traffic turned the queue into a tail-latency disaster. Dynamic batching amortizes the launch cost across concurrent requests — p99 drops without new hardware."
+    }
+   ],
+   "debrief": "Tail latency in embedding services is usually a batching problem, not a hardware problem. Batch concurrent requests dynamically before buying GPUs."
+  },
+  {
+   "id": "nlp-engineering-sim-3",
+   "title": "Pick the chunking strategy",
+   "kind": "branching",
+   "domain_id": "nlp-engineering",
+   "difficulty": 2,
+   "points": 15,
+   "brief": "You are indexing 10,000-page technical manuals for retrieval. Choose the chunking strategy.",
+   "steps": [
+    {
+     "id": "s1",
+     "text": "10,000-page manuals, retrieval use case. Chunking?",
+     "choices": [
+      {
+       "label": "Overlapping fixed-size chunks with section metadata (page, heading, doc id)",
+       "outcome": "good",
+       "next": "END",
+       "points": 2,
+       "feedback": "Correct: overlap preserves context across boundaries, and metadata lets the system cite and filter precisely. Retrieval needs addressable, self-contained chunks."
+      },
+      {
+       "label": "One chunk per whole document — the model can handle long context",
+       "outcome": "bad",
+       "next": "END",
+       "points": 0,
+       "feedback": "Whole-document chunks dilute the embedding: one vector cannot represent 500 pages, and retrieval precision collapses. Long context is not a chunking strategy."
+      }
+     ]
+    }
+   ],
+   "debrief": "Chunk for retrieval, not for reading: overlapping, metadata-rich, self-contained passages. The embedding represents the chunk — make each chunk represent one thing."
+  },
+  {
+   "id": "nlp-engineering-sim-4",
+   "title": "Build the search pipeline",
+   "kind": "ordering",
+   "domain_id": "nlp-engineering",
+   "difficulty": 2,
+   "points": 10,
+   "brief": "Put the semantic search pipeline steps in build order.",
+   "steps": {
+    "context": "A sound search pipeline build order",
+    "items": [
+     "Embed the chunks with the pinned model",
+     "Chunk the documents with overlap and metadata",
+     "Rerank the top candidates with a cross-encoder",
+     "Retrieve top-k candidates from the vector index",
+     "Build the vector index over the embeddings"
+    ],
+    "correct_order": [
+     1,
+     0,
+     4,
+     3,
+     2
+    ]
+   },
+   "debrief": "Chunk first (retrieval quality starts here), embed with the pinned model, index, retrieve broadly, then rerank narrowly. Reranking before retrieval is wasted compute; indexing before chunking is impossible."
+  },
+  {
+   "id": "nlp-engineering-sim-5",
+   "title": "Review the index config",
+   "kind": "config-check",
+   "domain_id": "nlp-engineering",
+   "difficulty": 3,
+   "points": 15,
+   "brief": "This vector index config is headed to production. Click the misconfigured lines (2 issues to find).",
+   "steps": {
+    "config": "index: hnsw\n dim: 768\nembedding_model: null\nmetric: cosine\nef_search: 16\nrebuild_on_model_change: false",
+    "find": 2,
+    "issues": [
+     {
+      "line": 3,
+      "description": "No embedding model pinned — the next model swap silently breaks the query/index contract.",
+      "fix": "Pin the embedding model name and version (e.g. emb-v2)."
+     },
+     {
+      "line": 6,
+      "description": "No rebuild on model change — a future embedding update leaves a stale, mismatched index in production.",
+      "fix": "Set rebuild_on_model_change to true so the index rebuilds with the new model."
+     }
+    ]
+   },
+   "debrief": "Index configs must encode the embedding contract: pinned model version and automatic rebuilds on change. A config that allows silent drift is a future outage."
+  }
+ ],
+ "consoleSims": [
+  {
+   "id": "nlp-engineering-console-1",
+   "title": "Build the embedding store",
+   "console": "sql-studio",
+   "domain_id": "nlp-engineering",
+   "difficulty": 2,
+   "brief": "Create a table tracking indexed documents, index it by doc id, and query the embedding coverage.",
+   "tasks": [
+    {
+     "id": "nlp-engineering-console-1-t1",
+     "instruction": "Create table embeddings with columns doc_id TEXT, chunk_id TEXT, model_version TEXT.",
+     "validate": {
+      "action": "create-table",
+      "params": {
+       "name": "embeddings"
+      }
+     },
+     "hint": "Use the Create table form in the Tables section."
+    },
+    {
+     "id": "nlp-engineering-console-1-t2",
+     "instruction": "Create an index on embeddings(doc_id).",
+     "validate": {
+      "action": "create-index",
+      "params": {
+       "table": "embeddings",
+       "column": "doc_id"
+      }
+     },
+     "hint": "The Create index form needs the table and column names."
+    },
+    {
+     "id": "nlp-engineering-console-1-t3",
+     "instruction": "In the Query editor, run: SELECT model_version, COUNT(*) FROM embeddings GROUP BY model_version;",
+     "validate": {
+      "action": "run-query",
+      "params": {
+       "match": "GROUP BY"
+      }
+     },
+     "hint": "Type the SELECT with GROUP BY, then click Run query."
+    }
+   ],
+   "debrief": "Track what the index holds: every chunk with its embedding model version, queryable at any time. 'Which model built this index?' must never be a mystery."
+  },
+  {
+   "id": "nlp-engineering-console-2",
+   "title": "Provision the search database",
+   "console": "db-admin",
+   "domain_id": "nlp-engineering",
+   "difficulty": 2,
+   "brief": "Create a database for the search service, add the service account, and grant read access.",
+   "tasks": [
+    {
+     "id": "nlp-engineering-console-2-t1",
+     "instruction": "Create database search_svc.",
+     "validate": {
+      "action": "create-database",
+      "params": {
+       "name": "search_svc"
+      }
+     },
+     "hint": "Use the Create database form in the Databases section."
+    },
+    {
+     "id": "nlp-engineering-console-2-t2",
+     "instruction": "Create database user search_ro.",
+     "validate": {
+      "action": "create-user",
+      "params": {
+       "name": "search_ro"
+      }
+     },
+     "hint": "Use the Create user form in the Users & grants section."
+    },
+    {
+     "id": "nlp-engineering-console-2-t3",
+     "instruction": "Grant SELECT on search_svc to search_ro.",
+     "validate": {
+      "action": "grant-priv",
+      "params": {
+       "db": "search_svc",
+       "user": "search_ro",
+       "priv": "SELECT"
+      }
+     },
+     "hint": "Use the Grant privilege form with db, user, and SELECT."
+    }
+   ],
+   "debrief": "The search service reads the document store — SELECT only, through a named service account. Provision database, user, and grant as auditable steps."
+  },
+  {
+   "id": "nlp-engineering-console-3",
+   "title": "Rebuild the index pipeline",
+   "console": "cicd-pipeline",
+   "domain_id": "nlp-engineering",
+   "difficulty": 2,
+   "brief": "Stamp the embedding model version, trigger the reindex pipeline, and approve the deploy.",
+   "tasks": [
+    {
+     "id": "nlp-engineering-console-3-t1",
+     "instruction": "Set the pipeline variable EMBED_MODEL to emb-v2.",
+     "validate": {
+      "action": "set-variable",
+      "params": {
+       "key": "EMBED_MODEL",
+       "value": "emb-v2"
+      }
+     },
+     "hint": "Use the Variables section's Set variable form."
+    },
+    {
+     "id": "nlp-engineering-console-3-t2",
+     "instruction": "Trigger a new build of the reindex pipeline.",
+     "validate": {
+      "action": "trigger-build",
+      "params": {}
+     },
+     "hint": "Click Trigger new build in the Pipeline section."
+    },
+    {
+     "id": "nlp-engineering-console-3-t3",
+     "instruction": "Approve the gated deploy stage to cut over to the new index.",
+     "validate": {
+      "action": "approve-stage",
+      "params": {
+       "stage": "deploy"
+      }
+     },
+     "hint": "The deploy stage is gated — click Approve on its row."
+    }
+   ],
+   "debrief": "Reindexes are releases: versioned embedding model, reproducible build, gated cutover. An index rebuilt by hand is an index nobody can reproduce."
+  },
+  {
+   "id": "nlp-engineering-console-4",
+   "title": "Ticket the recall regression",
+   "console": "ticketing",
+   "domain_id": "nlp-engineering",
+   "difficulty": 1,
+   "brief": "Search recall collapsed after the reindex. Ticket it, assign it, and resolve it.",
+   "tasks": [
+    {
+     "id": "nlp-engineering-console-4-t1",
+     "instruction": "Create a P1 ticket titled 'Search recall collapsed after reindex'.",
+     "validate": {
+      "action": "create-ticket",
+      "params": {
+       "title": "Search recall collapsed after reindex",
+       "priority": "P1"
+      }
+     },
+     "hint": "New ticket section: enter the title and P1 priority."
+    },
+    {
+     "id": "nlp-engineering-console-4-t2",
+     "instruction": "Assign ticket INC-9002 to sam.",
+     "validate": {
+      "action": "assign-ticket",
+      "params": {
+       "id": "INC-9002",
+       "assignee": "sam"
+      }
+     },
+     "hint": "The queue lists the new ticket as INC-9002."
+    },
+    {
+     "id": "nlp-engineering-console-4-t3",
+     "instruction": "Resolve INC-9002.",
+     "validate": {
+      "action": "resolve-ticket",
+      "params": {
+       "id": "INC-9002"
+      }
+     },
+     "hint": "Click Resolve on INC-9002's row."
+    }
+   ],
+   "debrief": "Search regressions are incidents: ticket, owner, resolution. The fix — pinning the embedding model — becomes a config change, not tribal knowledge."
+  }
+ ],
+ "terminalMissions": [
+  {
+   "id": "nlp-engineering-mission-1",
+   "title": "Stamp the index config",
+   "domain_id": "nlp-engineering",
+   "difficulty": 1,
+   "brief": "Echo the embedding dimension and index type for the run log.",
+   "objectives": [
+    "Print the index config line"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^echo",
+     "expect_contains": "dim=768",
+     "hint": "Run: echo dim=768 index=hnsw"
+    }
+   ],
+   "success_message": "Mission complete — index config logged."
+  },
+  {
+   "id": "nlp-engineering-mission-2",
+   "title": "Report the search quality",
+   "domain_id": "nlp-engineering",
+   "difficulty": 1,
+   "brief": "Echo the recall and query throughput for the dashboard.",
+   "objectives": [
+    "Print the quality line"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^echo",
+     "expect_contains": "recall=0.93",
+     "hint": "Run: echo recall=0.93 qps=120"
+    }
+   ],
+   "success_message": "Mission complete — search quality reported."
+  },
+  {
+   "id": "nlp-engineering-mission-3",
+   "title": "List the workspace",
+   "domain_id": "nlp-engineering",
+   "difficulty": 1,
+   "brief": "List the files in the search workspace.",
+   "objectives": [
+    "List workspace files"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^ls$",
+     "expect_contains": "app.py",
+     "hint": "Run: ls"
+    }
+   ],
+   "success_message": "Mission complete — workspace listed."
+  },
+  {
+   "id": "nlp-engineering-mission-4",
+   "title": "Check the host identity",
+   "domain_id": "nlp-engineering",
+   "difficulty": 1,
+   "brief": "Verify the search host identity before the reindex.",
+   "objectives": [
+    "Show full system information"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^uname",
+     "expect_contains": "interstitium",
+     "hint": "Run: uname -a"
+    }
+   ],
+   "success_message": "Mission complete — host identity verified."
+  },
+  {
+   "id": "nlp-engineering-mission-5",
+   "title": "Record the retrieval tuning",
+   "domain_id": "nlp-engineering",
+   "difficulty": 2,
+   "brief": "Echo the ef_search parameter for the tuning notes.",
+   "objectives": [
+    "Print the tuning line"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^echo",
+     "expect_contains": "ef_search=64",
+     "hint": "Run: echo ef_search=64"
+    }
+   ],
+   "success_message": "Mission complete — tuning recorded."
+  },
+  {
+   "id": "nlp-engineering-mission-6",
+   "title": "Confirm the working directory",
+   "domain_id": "nlp-engineering",
+   "difficulty": 2,
+   "brief": "Confirm the shell is in the expected working directory before writing the index.",
+   "objectives": [
+    "Print the working directory"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^pwd$",
+     "expect_contains": "/home/candidate",
+     "hint": "Run: pwd"
+    }
+   ],
+   "success_message": "Mission complete — working directory confirmed."
+  },
+  {
+   "id": "nlp-engineering-mission-7",
+   "title": "Record the rerank stage",
+   "domain_id": "nlp-engineering",
+   "difficulty": 2,
+   "brief": "Echo the reranker status for the pipeline notes.",
+   "objectives": [
+    "Print the rerank line"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^echo",
+     "expect_contains": "rerank=on",
+     "hint": "Run: echo rerank=on"
+    }
+   ],
+   "success_message": "Mission complete — rerank stage recorded."
+  }
+ ],
  "sections": [
   {
    "id": "nlp-engineering-sec",
@@ -476,5 +944,64 @@
  },
  "media": [],
  "foundations": [],
- "math": []
+ "math": [],
+ "videos": [
+  {
+   "title": "The Word Is Not the Unit",
+   "url": "/assets/videos/bc-bbg-nlpe-tokenizer.mp4",
+   "source": "Interstitium Labs",
+   "blurb": "'Unbelievable' is one word and three tokens: un, believ, able — the model never saw a word at all. Tokenizers split the world; count tokens, not words. (Preview — narration coming; voiceover pending TTS restore.)",
+   "durationMin": 1,
+   "order": 1,
+   "preview": true,
+   "captionsUrl": "/assets/videos/bc-bbg-nlpe-tokenizer.vtt",
+   "narrationUrl": "/assets/videos/bc-bbg-nlpe-tokenizer.narration.md",
+   "verifiedUtc": "2026-10-09T05:01:37Z",
+   "httpStatus": 200
+  },
+  {
+   "title": "Search by Meaning in 100 Seconds",
+   "url": "/assets/videos/bc-fireship-nlpe-embeddings.mp4",
+   "source": "Interstitium Labs",
+   "blurb": "Encode docs to vectors, encode the query, cosine-similarity the top three: 'returns & exchanges' matches 'refund policy' at 0.91 without sharing a word. (Preview — narration coming; voiceover pending TTS restore.)",
+   "durationMin": 1,
+   "order": 2,
+   "preview": true,
+   "captionsUrl": "/assets/videos/bc-fireship-nlpe-embeddings.vtt",
+   "narrationUrl": "/assets/videos/bc-fireship-nlpe-embeddings.narration.md",
+   "verifiedUtc": "2026-10-09T05:01:37Z",
+   "httpStatus": 200
+  },
+  {
+   "title": "Grounded or Guessing? Score the RAG",
+   "url": "/assets/videos/bc-primer-nlpe-rag-eval.mp4",
+   "source": "Interstitium Labs",
+   "blurb": "Five chunks retrieved, two cited, groundedness 94%: RAG without eval is a demo — score every answer against the sources it used. (Preview — narration coming; voiceover pending TTS restore.)",
+   "durationMin": 1,
+   "order": 3,
+   "preview": true,
+   "captionsUrl": "/assets/videos/bc-primer-nlpe-rag-eval.vtt",
+   "narrationUrl": "/assets/videos/bc-primer-nlpe-rag-eval.narration.md",
+   "verifiedUtc": "2026-10-09T05:01:37Z",
+   "httpStatus": 200
+  }
+ ],
+ "pdfGuides": [
+  {
+   "title": "Cloud Architecture Patterns — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-cloud-patterns.pdf",
+   "source": "Interstitium Labs",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:27:58Z"
+  },
+  {
+   "title": "TLS Handshake — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-tls-handshake.pdf",
+   "source": "Interstitium Labs",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:27:58Z"
+  }
+ ]
 }

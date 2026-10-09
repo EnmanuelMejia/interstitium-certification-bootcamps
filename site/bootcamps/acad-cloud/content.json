@@ -163,7 +163,7 @@
  "lessons": [
   {
    "domain_id": "acad-cloud",
-   "title": "Cloud \u2014 Core concepts",
+   "title": "Cloud — Core concepts",
    "concepts": [
     "Service models shift the responsibility line: with IaaS you own the OS and up; with PaaS the platform owns the runtime; with SaaS you own only your data and access. Know exactly where your side starts.",
     "Cloud economics are opex, not capex: you trade upfront hardware spend for metered usage, which rewards elastic architectures and punishes always-on waste.",
@@ -233,13 +233,616 @@
    ]
   }
  ],
- "simulations": [],
- "consoleSims": [],
- "terminalMissions": [],
+ "simulations": [
+  {
+   "id": "acad-cloud-sim-1",
+   "title": "The surprise bill",
+   "kind": "troubleshoot",
+   "domain_id": "acad-cloud",
+   "difficulty": 2,
+   "brief": "Monday morning: last month's cloud bill is 4x the forecast. Finance is asking questions and engineering says 'nothing changed.' Find the money before the meeting at noon.",
+   "steps": [
+    {
+     "symptom": "The bill jumped from $12k to $48k in one month. Nobody admits to launching anything new.",
+     "evidence": [
+      [
+       "Billing summary",
+       "Last month: $48,210 (forecast $12,000)\nTop mover: compute +$31,000 | data transfer +$4,200\nTags: 62% of spend untagged"
+      ]
+     ],
+     "options": [
+      "Blame the forecast model and ask finance for a bigger budget",
+      "Break the bill down by service and tag, then hunt the untagged compute first",
+      "Shut down all non-production resources immediately",
+      "Open a support ticket with the cloud provider asking for a refund"
+     ],
+     "correct": 1,
+     "explain": "You cannot fix what you cannot attribute. Service-by-service, tag-by-tag: the untagged 62% is where surprises live. Most 'mystery' bills are one forgotten resource type, not a pricing conspiracy."
+    },
+    {
+     "symptom": "Found it: a load-test cluster from six weeks ago, still running at full size — 40 instances, untagged, in the account nobody watches.",
+     "evidence": [
+      [
+       "Cost explorer",
+       "Resource: loadtest-cluster-07 | 40 instances x 24h x 42 days\nOwner tag: (none) | Created: 6 weeks ago by ex-contractor\nCost: $30,800"
+      ]
+     ],
+     "options": [
+      "Delete it immediately with no notice",
+      "Snapshot anything worth keeping, terminate the cluster, and notify the team first",
+      "Leave it running until the contractor confirms",
+      "Downsize it to 2 instances 'just in case'"
+     ],
+     "correct": 1,
+     "explain": "Terminate, but like a professional: snapshot what might matter, tell the team before you pull the plug (someone's demo might depend on it), then kill it. 'Just in case' infrastructure is how you got a $48k bill."
+    },
+    {
+     "symptom": "The cluster is gone. Now make sure this never happens again.",
+     "evidence": [
+      [
+       "Goal",
+       "No more untagged, ownerless resources burning money silently"
+      ]
+     ],
+     "options": [
+      "Mandate cost tags at creation, add a budget alert at 80% of forecast, and schedule a weekly idle-resource review",
+      "Require VP approval for every instance launch",
+      "Move everything back on-premises",
+      "Trust the team to remember next time"
+     ],
+     "correct": 0,
+     "explain": "FinOps is guardrails, not gates: mandatory tags make spend attributable, budget alerts make overruns visible early, and a weekly idle-resource review makes cleanup routine. VP-approval for every VM just teaches people to work around you."
+    }
+   ],
+   "debrief": "You attributed the spend, killed the zombie cluster professionally, and built guardrails instead of gates. That is FinOps: make the costs visible, then make waste impossible to ignore.",
+   "points": 30
+  },
+  {
+   "id": "acad-cloud-sim-2",
+   "title": "Lift-and-shift or re-platform?",
+   "kind": "decide",
+   "domain_id": "acad-cloud",
+   "difficulty": 2,
+   "brief": "The company is migrating 60 VMs to the cloud in 90 days. The deadline is fixed; the architecture is 15 years old. Choose the migration strategy — and defend it.",
+   "steps": [
+    {
+     "symptom": "Sixty VMs, one 90-day deadline, a monolith nobody fully understands, and two architects arguing: 'just move them' vs 'fix them first.'",
+     "evidence": [
+      [
+       "Assessment",
+       "60 VMs | monolithic app, 15 yrs old | no automated tests\nDeadline: 90 days (data-center contract ends)\nTeam cloud experience: low"
+      ]
+     ],
+     "options": [
+      "Re-platform everything to containers and managed services in 90 days",
+      "Lift-and-shift (rehost) now to hit the deadline, then modernize in waves after",
+      "Rewrite the application cloud-native before migrating",
+      "Delay the migration until the architecture is modern"
+     ],
+     "correct": 1,
+     "explain": "The deadline is the constraint that matters: the data-center contract ends. Rehost gets you out in 90 days with the lowest risk, and modernization happens in waves once you are safe. Big-bang rewrites against fixed deadlines are how migrations die."
+    },
+    {
+     "symptom": "Rehost chosen. But three VMs run a licensed database that costs 5x in the cloud under bring-your-own-license rules.",
+     "evidence": [
+      [
+       "Licensing",
+       "3 VMs: commercial DB, per-core licensing\nCloud cost under BYOL: 5x current | Managed alternative: 0.4x current\nEffort to switch: 3 weeks"
+      ]
+     ],
+     "options": [
+      "Rehost them anyway — consistency beats optimization",
+      "Carve out an exception: re-platform just the database tier to the managed service",
+      "Stay on-premises for those three VMs forever",
+      "Switch database vendors entirely this week"
+     ],
+     "correct": 1,
+     "explain": "Strategy is allowed to have exceptions: rehost the 57 VMs that behave, re-platform the 3 that bankrupt you. The managed database is cheaper AND removes the licensing trap. Uniformity is a means, not a goal."
+    },
+    {
+     "symptom": "Migration complete. The CFO asks: 'Are we actually better off?'",
+     "evidence": [
+      [
+       "Ask",
+       "CFO: 'We spent $400k migrating. Prove it was worth it.'"
+      ]
+     ],
+     "options": [
+      "'The data center contract ended, so we had no choice'",
+      "Show the before/after: eliminated data-center costs, deployment time from weeks to hours, and the wave-1 modernization already cut the database bill 60%",
+      "Promise savings will appear next year",
+      "Blame the licensing costs"
+     ],
+     "correct": 1,
+     "explain": "Migrations are judged on outcomes, not effort: cost deltas, speed deltas, risk deltas. You measured the baseline before you moved (or you reconstructed it), and now you show the numbers. 'Trust us' is not a business case."
+    }
+   ],
+   "debrief": "You let the deadline pick the strategy, made a surgical exception where the economics demanded it, and closed the loop with measured outcomes. Migration strategy is constraint management, not architecture fashion.",
+   "points": 30
+  },
+  {
+   "id": "acad-cloud-sim-3",
+   "title": "Region failover drill",
+   "kind": "respond",
+   "domain_id": "acad-cloud",
+   "difficulty": 2,
+   "brief": "Game day: the primary region just 'failed' (your chaos tool killed it). Customers are hitting errors. Run the failover like it is real — because one day it will be.",
+   "steps": [
+    {
+     "symptom": "Health checks are red in us-east. Error rate climbing. The runbook says: declare, redirect, verify.",
+     "evidence": [
+      [
+       "Status",
+       "us-east health: 0/12 checks passing | error rate: 34% and climbing\nRunbook: 1) declare incident 2) shift DNS to us-west 3) verify"
+      ]
+     ],
+     "options": [
+      "Follow the runbook: declare the incident, shift traffic to us-west, verify health there",
+      "Wait ten minutes to see if us-east recovers on its own",
+      "Restart everything in us-east first",
+      "Tweet that you are investigating"
+     ],
+     "correct": 0,
+     "explain": "Drills exist so you do not improvise during the real thing: declare (so everyone knows), redirect (stop the bleeding), verify (trust the new region, do not assume it). Waiting 'to see' turns a drill into an outage."
+    },
+    {
+     "symptom": "Traffic is in us-west. Health checks are green — but the checkout service is throwing errors for 5% of users.",
+     "evidence": [
+      [
+       "us-west status",
+       "Health: 12/12 passing | checkout errors: 5%\nClue: checkout reads a cache that was only ever warmed in us-east"
+      ]
+     ],
+     "options": [
+      "Fail back to us-east — the drill is broken",
+      "Identify the cold-cache dependency, warm it in us-west, and add cache-warming to the runbook",
+      "Accept 5% errors as the cost of failover",
+      "Blame the checkout team"
+     ],
+     "correct": 1,
+     "explain": "Failover surfaced a hidden regional dependency: the cold cache. You fix it (warm it), and more importantly you write it into the runbook so the next failover does not re-learn it. Drills are for finding exactly these."
+    },
+    {
+     "symptom": "All green. The drill ends. What do you do with what you learned?",
+     "evidence": [
+      [
+       "Outcome",
+       "Failover time: 11 min | data loss: 0 | gap found: cold cache\nNext real incident: unknown"
+      ]
+     ],
+     "options": [
+      "File it away — the drill passed",
+      "Write the blameless postmortem: what worked, the cache gap, the runbook update, and schedule the next drill sooner",
+      "Punish whoever built the cache dependency",
+      "Declare the architecture 'multi-region ready' in the all-hands"
+     ],
+     "correct": 1,
+     "explain": "A drill that finds nothing is a drill that taught nothing — yours found a real gap. The postmortem converts a lucky catch into a permanent fix, and scheduling the next drill keeps the muscle trained."
+    }
+   ],
+   "debrief": "You ran the runbook instead of improvising, fixed the hidden dependency the drill exposed, and turned the lesson into process. Game days are how 'multi-region' stops being a slide and starts being a capability.",
+   "points": 30
+  },
+  {
+   "id": "acad-cloud-sim-4",
+   "title": "The open bucket",
+   "kind": "troubleshoot",
+   "domain_id": "acad-cloud",
+   "difficulty": 3,
+   "brief": "A security researcher emails you: 'Your storage bucket is public. Call me.' Inside: customer exports. Work it.",
+   "steps": [
+    {
+     "symptom": "The researcher's screenshot shows your bucket listing customer export files, world-readable.",
+     "evidence": [
+      [
+       "Report",
+       "Bucket: customer-exports-prod | ACL: public-read\nContents: 214 CSV exports with customer data\nResearcher: 'Found via search engine. No bounty expected, just fix it.'"
+      ]
+     ],
+     "options": [
+      "Make the bucket private immediately, then assess what was exposed",
+      "Delete the bucket and all its contents right now",
+      "Email the researcher back asking for proof first",
+      "Restrict access to the researcher's IP so they cannot see it anymore"
+     ],
+     "correct": 0,
+     "explain": "Stop the bleeding first: private now. Deleting destroys the evidence you need for the exposure assessment; demanding proof wastes the researcher's goodwill while the data sits open. Private first, forensics second."
+    },
+    {
+     "symptom": "Bucket is private. Now: how long was it open, and who looked?",
+     "evidence": [
+      [
+       "Access logs",
+       "Bucket created 8 months ago | public since creation\nAccess log: 1,204 GET requests from 38 unique IPs\nYour own app: 900 of those (legitimate)"
+      ]
+     ],
+     "options": [
+      "Assume the worst quietly and say nothing",
+      "Scope it honestly: 304 non-app requests from 38 IPs over 8 months — treat as a breach, notify per policy, and document",
+      "Only count it as a breach if you can prove data was downloaded",
+      "Blame the engineer who created the bucket"
+     ],
+     "correct": 1,
+     "explain": "You cannot prove a negative — 304 unexplained requests over 8 months is exposure until proven otherwise. Honest scoping, notification per your incident policy, and documentation. 'Probably nobody looked' is not a finding."
+    },
+    {
+     "symptom": "Incident closed. Harden the storage posture for good.",
+     "evidence": [
+      [
+       "Goal",
+       "No bucket is ever public-by-default again"
+      ]
+     ],
+     "options": [
+      "Enable block-public-access at the account level, add a policy check to the deployment pipeline, and inventory every existing bucket",
+      "Send a reminder about bucket permissions",
+      "Move all storage on-premises",
+      "Hire someone to watch the buckets"
+     ],
+     "correct": 0,
+     "explain": "Defense in depth for storage: an account-level block makes 'public' impossible by default, a pipeline check catches the drift, and the inventory finds the ones already out there. One control is a hope; three is a posture."
+    }
+   ],
+   "debrief": "You closed the exposure before investigating it, scoped honestly instead of hopefully, and built three layers so it cannot recur. That is cloud security done right: fast hands, honest scope, durable guardrails.",
+   "points": 30
+  },
+  {
+   "id": "acad-cloud-sim-5",
+   "title": "The multi-cloud exit",
+   "kind": "decide",
+   "domain_id": "acad-cloud",
+   "difficulty": 3,
+   "brief": "Leadership wants 'multi-cloud' to avoid lock-in. Engineering wants to go deep on one provider's managed services. The board meets Friday. Make the call.",
+   "steps": [
+    {
+     "symptom": "Two proposals: (A) run everything on both clouds for 'leverage'; (B) go all-in on one provider's managed services for speed.",
+     "evidence": [
+      [
+       "Proposals",
+       "A: active-active multi-cloud, +60% engineering cost, portable-by-design\nB: single cloud, managed services, -40% ops load, deep lock-in\nTeam size: 8 engineers"
+      ]
+     ],
+     "options": [
+      "Pick A — lock-in is the bigger risk",
+      "Pick B — with 8 engineers, operational leverage beats theoretical portability",
+      "Do both: half the team on each cloud",
+      "Delay the decision until the team is bigger"
+     ],
+     "correct": 1,
+     "explain": "Multi-cloud is a strategy for organizations that can afford two of everything — two skill sets, two bills, two failure modes. With 8 engineers, the real risk is not lock-in, it is drowning in undifferentiated operations. Go deep, ship fast, revisit at 10x scale."
+    },
+    {
+     "symptom": "Single cloud chosen. Now address the lock-in fear without building a second cloud.",
+     "evidence": [
+      [
+       "Concern",
+       "Board: 'What if they raise prices 30%?'"
+      ]
+     ],
+     "options": [
+      "Keep all infrastructure as code, use open interfaces at the boundaries, and keep the data exportable — portability without a second cloud",
+      "Build a shadow deployment on the other cloud just in case",
+      "Negotiate a price lock and stop worrying",
+      "Accept the lock-in as the cost of doing business"
+     ],
+     "correct": 0,
+     "explain": "The cheap version of multi-cloud is exit-readiness: everything as code, open interfaces, exportable data, and a tested restore somewhere else. You do not need two clouds running — you need one cloud you could leave."
+    },
+    {
+     "symptom": "Friday board meeting. One slide to defend the decision.",
+     "evidence": [
+      [
+       "Ask",
+       "Board: 'Why not multi-cloud like our competitors?'"
+      ]
+     ],
+     "options": [
+      "'Because our competitors are bigger than us'",
+      "'Active-active multi-cloud costs us 60% more engineering for insurance we cannot collect: with our team size we would run both clouds badly. Instead we are exit-ready — portable code, exportable data, tested restores — at a fraction of the cost.'",
+      "'We will revisit it next year'",
+      "'The engineers prefer one cloud'"
+     ],
+     "correct": 1,
+     "explain": "Decisions presented as trade-offs with numbers survive board meetings; preferences do not. You named the cost of the alternative, the risk of the chosen path, and the mitigation — that is a strategy, not a preference."
+    }
+   ],
+   "debrief": "You sized the strategy to the team, bought exit-readiness instead of a second cloud, and defended it with economics. Multi-cloud is a means; the goal is leverage without fragility.",
+   "points": 30
+  }
+ ],
+ "consoleSims": [
+  {
+   "id": "acad-cloud-csim-vpc-1",
+   "title": "Build the landing zone network",
+   "console": "aws-vpc",
+   "domain_id": "acad-cloud",
+   "difficulty": 1,
+   "brief": "Every cloud migration starts with the network. Create a VPC named lab-vpc (10.1.0.0/16), then carve a public subnet 10.1.1.0/24 in us-east-1a inside it.",
+   "tasks": [
+    {
+     "id": "t1",
+     "instruction": "Create a VPC named lab-vpc with CIDR 10.1.0.0/16.",
+     "validate": {
+      "action": "create-vpc",
+      "params": {
+       "name": "lab-vpc",
+       "cidr": "10.1.0.0/16"
+      }
+     },
+     "hint": "Open the VPC section and create a VPC: NAME=lab-vpc, CIDR=10.1.0.0/16."
+    },
+    {
+     "id": "t2",
+     "instruction": "Create a subnet 10.1.1.0/24 in lab-vpc, availability zone us-east-1a.",
+     "validate": {
+      "action": "create-subnet",
+      "params": {
+       "vpc": "lab-vpc",
+       "cidr": "10.1.1.0/24",
+       "az": "us-east-1a"
+      }
+     },
+     "hint": "Create a subnet inside lab-vpc: VPC=lab-vpc, CIDR=10.1.1.0/24, AZ=us-east-1a."
+    }
+   ],
+   "debrief": "Network first, everything else second. A VPC with a real subnet is the foundation every workload after this will stand on."
+  },
+  {
+   "id": "acad-cloud-csim-vpc-2",
+   "title": "Lock down the web tier",
+   "console": "aws-vpc",
+   "domain_id": "acad-cloud",
+   "difficulty": 2,
+   "brief": "The web tier needs a security group that allows HTTPS from anywhere — and nothing else. Create the group web-sg on a VPC, then add the single inbound rule.",
+   "tasks": [
+    {
+     "id": "t1",
+     "instruction": "Create a VPC named web-vpc with CIDR 10.3.0.0/16 (the group needs a home).",
+     "validate": {
+      "action": "create-vpc",
+      "params": {
+       "name": "web-vpc",
+       "cidr": "10.3.0.0/16"
+      }
+     },
+     "hint": "Create a VPC first: NAME=web-vpc, CIDR=10.3.0.0/16."
+    },
+    {
+     "id": "t2",
+     "instruction": "Create a security group named web-sg on web-vpc.",
+     "validate": {
+      "action": "create-sg",
+      "params": {
+       "vpc": "web-vpc",
+       "name": "web-sg"
+      }
+     },
+     "hint": "Create a security group: VPC=web-vpc, NAME=web-sg."
+    },
+    {
+     "id": "t3",
+     "instruction": "Add an inbound rule to web-sg: TCP port 443 from 0.0.0.0/0.",
+     "validate": {
+      "action": "add-sg-rule",
+      "params": {
+       "sg": "web-sg",
+       "protocol": "tcp",
+       "port": 443,
+       "cidr": "0.0.0.0/0"
+      }
+     },
+     "hint": "Add an inbound rule on web-sg: PROTOCOL=tcp, PORT=443, CIDR=0.0.0.0/0."
+    }
+   ],
+   "debrief": "Security groups are whitelists: one explicit allow, everything else denied. The web tier gets exactly HTTPS and nothing more."
+  },
+  {
+   "id": "acad-cloud-csim-iam-1",
+   "title": "Onboard the deploy bot",
+   "console": "aws-iam",
+   "domain_id": "acad-cloud",
+   "difficulty": 2,
+   "brief": "Automation needs an identity too. Create a user named deploy-bot for the CI system, then enable MFA on it — bots get the same identity hygiene as humans.",
+   "tasks": [
+    {
+     "id": "t1",
+     "instruction": "Create a user named deploy-bot.",
+     "validate": {
+      "action": "create-user",
+      "params": {
+       "name": "deploy-bot"
+      }
+     },
+     "hint": "Open Users and create a user: NAME=deploy-bot."
+    },
+    {
+     "id": "t2",
+     "instruction": "Enable MFA for deploy-bot.",
+     "validate": {
+      "action": "enable-mfa",
+      "params": {
+       "user": "deploy-bot"
+      }
+     },
+     "hint": "Enable MFA on the deploy-bot user — find the MFA action on the user row."
+    }
+   ],
+   "debrief": "Every identity — human or machine — gets MFA. The deploy bot is one of the most powerful accounts you own; protect it like one."
+  },
+  {
+   "id": "acad-cloud-csim-az-1",
+   "title": "Stand up the migration resource group",
+   "console": "azure-portal",
+   "domain_id": "acad-cloud",
+   "difficulty": 1,
+   "brief": "The migration's second region lives in Azure. Create a resource group migration-rg in eastus, then a virtual network 10.2.0.0/16 inside it.",
+   "tasks": [
+    {
+     "id": "t1",
+     "instruction": "Create a resource group named migration-rg in location eastus.",
+     "validate": {
+      "action": "create-rg",
+      "params": {
+       "name": "migration-rg",
+       "location": "eastus"
+      }
+     },
+     "hint": "Create a resource group: NAME=migration-rg, LOCATION=eastus."
+    },
+    {
+     "id": "t2",
+     "instruction": "Create a virtual network with CIDR 10.2.0.0/16 in migration-rg.",
+     "validate": {
+      "action": "create-vnet",
+      "params": {
+       "rg": "migration-rg",
+       "cidr": "10.2.0.0/16"
+      }
+     },
+     "hint": "Create a VNet: RG=migration-rg, CIDR=10.2.0.0/16."
+    }
+   ],
+   "debrief": "Resource groups are the unit of lifecycle: everything for the migration lives, gets tagged, and can be deleted together. Multi-cloud starts with tidy foundations."
+  }
+ ],
+ "terminalMissions": [
+  {
+   "id": "acad-cloud-mission-1",
+   "title": "Name your region",
+   "domain_id": "acad-cloud",
+   "difficulty": 1,
+   "brief": "Every cloud resource lives in a region. Print this machine's hostname — its region codename for this drill.",
+   "objectives": [
+    "Print the region codename"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^hostname$",
+     "expect_contains": "interstitium",
+     "hint": "Run: hostname — name your region."
+    }
+   ],
+   "success_message": "Region named. Resources without regions are just hopes."
+  },
+  {
+   "id": "acad-cloud-mission-2",
+   "title": "Who is deploying",
+   "domain_id": "acad-cloud",
+   "difficulty": 1,
+   "brief": "Deployments are attributed to identities. Print your username.",
+   "objectives": [
+    "Print your username"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^whoami$",
+     "expect_contains": "candidate",
+     "hint": "Run: whoami — who is deploying?"
+    }
+   ],
+   "success_message": "Deployer identified. Every change has an owner."
+  },
+  {
+   "id": "acad-cloud-mission-3",
+   "title": "List the migration staging area",
+   "domain_id": "acad-cloud",
+   "difficulty": 1,
+   "brief": "Before migrating anything, map the territory. List the home directory.",
+   "objectives": [
+    "List the staging area"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^ls$",
+     "expect_contains": "logs/",
+     "hint": "Run: ls — map the staging area."
+    }
+   ],
+   "success_message": "Territory mapped. Migrations fail when people move things they never inventoried."
+  },
+  {
+   "id": "acad-cloud-mission-4",
+   "title": "Confirm the working directory",
+   "domain_id": "acad-cloud",
+   "difficulty": 2,
+   "brief": "Cloud consoles are context-sensitive — the wrong directory means the wrong deployment. Print yours.",
+   "objectives": [
+    "Print working directory"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^pwd$",
+     "expect_contains": "/home/candidate",
+     "hint": "Run: pwd — confirm your context."
+    }
+   ],
+   "success_message": "Context confirmed. Deploy from the wrong directory and you deploy the wrong thing."
+  },
+  {
+   "id": "acad-cloud-mission-5",
+   "title": "State the migration wave",
+   "domain_id": "acad-cloud",
+   "difficulty": 2,
+   "brief": "Migrations move in waves. Announce the current wave with echo — status must be stated, not assumed.",
+   "objectives": [
+    "Announce the migration wave"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^echo\\s+.*wave.*$",
+     "expect_contains": "wave",
+     "hint": "Run: echo with the wave status (e.g. echo \"wave 1 complete\")."
+    }
+   ],
+   "success_message": "Wave stated. Silent migrations are how cutovers surprise people."
+  },
+  {
+   "id": "acad-cloud-mission-6",
+   "title": "Verify the platform",
+   "domain_id": "acad-cloud",
+   "difficulty": 2,
+   "brief": "Instance types matter. Print the full system information to confirm the platform architecture.",
+   "objectives": [
+    "Print platform architecture"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^uname\\s+-a$",
+     "expect_contains": "x86_64",
+     "hint": "Run: uname -a — confirm the architecture."
+    }
+   ],
+   "success_message": "Platform verified. Right-size from facts, not guesses."
+  },
+  {
+   "id": "acad-cloud-mission-7",
+   "title": "Attest the deploy identity",
+   "domain_id": "acad-cloud",
+   "difficulty": 3,
+   "brief": "Print your full identity record, then attest it with echo — the deploy bot gets the same identity hygiene as humans.",
+   "objectives": [
+    "Print identity record",
+    "Attest the identity"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^id$",
+     "expect_contains": "uid=1000",
+     "hint": "Run: id — read the full identity string."
+    },
+    {
+     "command_pattern": "^echo\\s+.*attested.*$",
+     "expect_contains": "attested",
+     "hint": "Run: echo with an attestation (e.g. echo \"identity attested\")."
+    }
+   ],
+   "success_message": "Identity attested. Every deploy identity — human or machine — gets verified."
+  }
+ ],
  "sections": [
   {
    "id": "sec-full-spectrum",
-   "title": "Full Spectrum Dominance \u2014 core path",
+   "title": "Full Spectrum Dominance — core path",
    "kind": "core",
    "lectures": [],
    "lab_ids": [
@@ -265,17 +868,17 @@
  ],
  "behavioral": [
   {
-   "prompt": "Tell me about the most technically difficult problem you have run into \u2014 a homelab, a broken environment, anything \u2014 and how you solved it.",
+   "prompt": "Tell me about the most technically difficult problem you have run into — a homelab, a broken environment, anything — and how you solved it.",
    "framework": "STAR",
    "points": [
     "Pick ONE problem with a real evidence trail: the symptom, what you measured, the hypothesis you tested",
-    "Show the loop: scope, observe, hypothesize, smallest safe change, validate \u2014 interviewers score the method, not just the fix",
+    "Show the loop: scope, observe, hypothesize, smallest safe change, validate — interviewers score the method, not just the fix",
     "Name the tools (VM build, networking, logs) and the lesson it taught you",
     "Close with the result in concrete terms: what works now that did not before"
    ],
    "pitfalls": [
-    "Choosing a story with no real obstacle (\u201cI Googled it\u201d is not a story)",
-    "Skipping validation \u2014 saying it worked without proving it",
+    "Choosing a story with no real obstacle (“I Googled it” is not a story)",
+    "Skipping validation — saying it worked without proving it",
     "Rambling past two minutes without reaching the result"
    ]
   },
@@ -300,13 +903,13 @@
    "points": [
     "Connect prevention to something concrete: a moment you saw detection arrive too late, or a system you hardened",
     "Tie their model to your instincts: deny-by-default matches how you already think about trust",
-    "Show service orientation: the Cyber Hero culture rewards the 2 a.m. helper \u2014 give an example of being one",
+    "Show service orientation: the Cyber Hero culture rewards the 2 a.m. helper — give an example of being one",
     "Name one forward-looking reason: Zero Trust, the MSP mission, or the bootcamp community investment"
    ],
    "pitfalls": [
     "Generic flattery with no specifics about the company",
     "Leading with compensation, title, or location convenience",
-    "Claiming expertise in products you have only read about \u2014 frame it as studied, not mastered"
+    "Claiming expertise in products you have only read about — frame it as studied, not mastered"
    ]
   },
   {
@@ -383,13 +986,13 @@
  ],
  "resources": {
   "cheatsheet": {
-   "title": "Full Spectrum Dominance \u2014 field reference",
+   "title": "Full Spectrum Dominance — field reference",
    "sections": [
     {
      "heading": "Company facts (verified)",
      "items": [
-      "Founded 2017 in Orlando, FL \u2014 Danny Jenkins (CEO), Sami Jenkins (COO), John Carolan (QA)",
-      "Philosophy: deny-by-default / default-deny \u2014 approve known-good, deny the rest",
+      "Founded 2017 in Orlando, FL — Danny Jenkins (CEO), Sami Jenkins (COO), John Carolan (QA)",
+      "Philosophy: deny-by-default / default-deny — approve known-good, deny the rest",
       "Customers: 70,000+ organizations, sold heavily through the MSP channel",
       "Funding: $190M Series F, July 2026 (Elephant-led); ~730 employees",
       "Interview address: 1901 Summit Tower Blvd, Orlando, FL 32810",
@@ -399,116 +1002,116 @@
     {
      "heading": "Product stack",
      "items": [
-      "Allowlisting \u2014 default-deny execution control for apps, DLLs, scripts, installers",
-      "Ringfencing \u2014 constrains allowed apps: app-to-app, file, registry, network",
-      "Storage Control \u2014 USB/device policy by serial, user, file type, encryption",
-      "Elevation Control \u2014 just-in-time per-app admin, no standing rights",
-      "Network Control \u2014 host firewall; port/IP/dynamic-ACL rules; ZTNA foundation",
-      "Web Control \u2014 agent-based DNS/URL category filtering, works off-network",
-      "Cyber Hero MDR \u2014 24/7/365 US-based response, ~60-second average",
-      "Testing Environment \u2014 one-button VDI sandbox; checks AV flags, canary files, registry changes"
+      "Allowlisting — default-deny execution control for apps, DLLs, scripts, installers",
+      "Ringfencing — constrains allowed apps: app-to-app, file, registry, network",
+      "Storage Control — USB/device policy by serial, user, file type, encryption",
+      "Elevation Control — just-in-time per-app admin, no standing rights",
+      "Network Control — host firewall; port/IP/dynamic-ACL rules; ZTNA foundation",
+      "Web Control — agent-based DNS/URL category filtering, works off-network",
+      "Cyber Hero MDR — 24/7/365 US-based response, ~60-second average",
+      "Testing Environment — one-button VDI sandbox; checks AV flags, canary files, registry changes"
      ]
     },
     {
      "heading": "Rule strength (strongest to weakest)",
      "items": [
-      "Certificate/publisher rules \u2014 survive version updates",
-      "Hash rules \u2014 precise but break on every new version",
-      "Path rules \u2014 weakest; never in user-writable locations",
-      "Learning Mode catalogs before enforcement; Installation Mode pauses blocking \u2014 scope and time-box both"
+      "Certificate/publisher rules — survive version updates",
+      "Hash rules — precise but break on every new version",
+      "Path rules — weakest; never in user-writable locations",
+      "Learning Mode catalogs before enforcement; Installation Mode pauses blocking — scope and time-box both"
      ]
     },
     {
      "heading": "Terminal evidence commands",
      "items": [
-      "nmap <host> \u2014 which ports answer (22/80/443 open)",
-      "dig <name> \u2014 ANSWER SECTION with the A record",
-      "ss \u2014 listening sockets",
-      "systemctl status <svc> \u2014 unit state",
-      "journalctl -u <svc> \u2014 service logs",
-      "sha256sum <file> \u2014 real SHA-256 identity",
-      "grep <pattern> <file> \u2014 search the record",
-      "ps \u2014 what is actually running"
+      "nmap <host> — which ports answer (22/80/443 open)",
+      "dig <name> — ANSWER SECTION with the A record",
+      "ss — listening sockets",
+      "systemctl status <svc> — unit state",
+      "journalctl -u <svc> — service logs",
+      "sha256sum <file> — real SHA-256 identity",
+      "grep <pattern> <file> — search the record",
+      "ps — what is actually running"
      ]
     },
     {
      "heading": "Graph vocabulary",
      "items": [
-      "node \u2014 any entity tracked in the model (user, host, IP, domain, file hash, vulnerability)",
-      "edge \u2014 a labeled relationship between two nodes (logged into, resolved to, downloaded)",
-      "degree \u2014 number of edges on a node; high-degree nodes are attacker highways",
-      "centrality \u2014 how much traffic or how many paths flow through a node",
-      "directed edge \u2014 a relationship with a direction (A downloaded FROM B)",
-      "security graph \u2014 the living model of your whole environment as nodes and edges",
-      "attack graph \u2014 the subgraph of exploitable paths to your targets",
-      "knowledge graph \u2014 threat-intel indicators linked to campaigns and actors"
+      "node — any entity tracked in the model (user, host, IP, domain, file hash, vulnerability)",
+      "edge — a labeled relationship between two nodes (logged into, resolved to, downloaded)",
+      "degree — number of edges on a node; high-degree nodes are attacker highways",
+      "centrality — how much traffic or how many paths flow through a node",
+      "directed edge — a relationship with a direction (A downloaded FROM B)",
+      "security graph — the living model of your whole environment as nodes and edges",
+      "attack graph — the subgraph of exploitable paths to your targets",
+      "knowledge graph — threat-intel indicators linked to campaigns and actors"
      ]
     },
     {
      "heading": "Attack-graph playbook",
      "items": [
-      "inventory first \u2014 you cannot graph what you have not discovered",
+      "inventory first — you cannot graph what you have not discovered",
       "model flaws AND misconfigs as exploit edges",
       "compute shortest paths to the crown jewels",
       "find the choke point (highest betweenness on those paths)",
       "break the path: patch, segment, or remove the edge",
       "re-scan and re-run the graph to prove the path is gone",
-      "never trust yesterday's graph \u2014 redeployments redraw the map"
+      "never trust yesterday's graph — redeployments redraw the map"
      ]
     },
     {
      "heading": "Zero Trust + graphs",
      "items": [
-      "never trust, always verify \u2014 re-evaluate every access decision",
-      "assume breach \u2014 treat unexpected edges as hostile until proven otherwise",
-      "microsegmentation \u2014 allow-list approved edges, alert on new ones",
-      "ReBAC \u2014 policies are path queries on the identity graph",
-      "continuous verification \u2014 device/location/behavior edges change, trust follows",
-      "anomalous edge \u2014 a first-seen connection between strangers is the classic signal"
+      "never trust, always verify — re-evaluate every access decision",
+      "assume breach — treat unexpected edges as hostile until proven otherwise",
+      "microsegmentation — allow-list approved edges, alert on new ones",
+      "ReBAC — policies are path queries on the identity graph",
+      "continuous verification — device/location/behavior edges change, trust follows",
+      "anomalous edge — a first-seen connection between strangers is the classic signal"
      ]
     },
     {
      "heading": "ML detection vocabulary",
      "items": [
-      "Supervised learning \u2014 learns from labeled examples; strong on known threats, blind to novel ones",
-      "Unsupervised learning \u2014 finds structure without labels; clustering and dimensionality reduction",
-      "Anomaly detection \u2014 models 'normal' and flags deviations; the workhorse for novel threats",
-      "UEBA \u2014 user and entity behavior analytics: per-user baselines plus peer-group comparison",
-      "Feature engineering \u2014 encoding raw logs into model inputs (login velocity, rare processes, domain entropy)",
-      "Concept drift \u2014 model decay as attacker behavior and legitimate traffic shift over time"
+      "Supervised learning — learns from labeled examples; strong on known threats, blind to novel ones",
+      "Unsupervised learning — finds structure without labels; clustering and dimensionality reduction",
+      "Anomaly detection — models 'normal' and flags deviations; the workhorse for novel threats",
+      "UEBA — user and entity behavior analytics: per-user baselines plus peer-group comparison",
+      "Feature engineering — encoding raw logs into model inputs (login velocity, rare processes, domain entropy)",
+      "Concept drift — model decay as attacker behavior and legitimate traffic shift over time"
      ]
     },
     {
      "heading": "Detection metrics",
      "items": [
-      "Precision \u2014 of all flagged alerts, how many were real",
-      "Recall \u2014 of all real attacks, how many were flagged",
-      "Threshold tuning \u2014 sliding the decision cutoff trades precision against recall",
-      "Alert fatigue \u2014 when false positives train analysts to ignore the queue",
-      "DGA \u2014 domain generation algorithm; detected via character entropy of domain names"
+      "Precision — of all flagged alerts, how many were real",
+      "Recall — of all real attacks, how many were flagged",
+      "Threshold tuning — sliding the decision cutoff trades precision against recall",
+      "Alert fatigue — when false positives train analysts to ignore the queue",
+      "DGA — domain generation algorithm; detected via character entropy of domain names"
      ]
     },
     {
      "heading": "Agent and LLM security",
      "items": [
-      "Direct prompt injection \u2014 attacker input overrides app instructions (OWASP LLM01:2025, the #1 LLM risk)",
-      "Indirect prompt injection \u2014 hidden instructions inside retrieved data (email, web, docs)",
-      "Jailbreak \u2014 defeating the model's own safety policy; distinct from hijacking app behavior",
-      "Tool poisoning \u2014 malicious tool descriptions or metadata steer an agent to misuse its tools (MCP ecosystem risk)",
-      "Insecure output handling \u2014 executing or trusting model output without validation",
-      "Least-privilege tools \u2014 grant each tool only the scope its task requires"
+      "Direct prompt injection — attacker input overrides app instructions (OWASP LLM01:2025, the #1 LLM risk)",
+      "Indirect prompt injection — hidden instructions inside retrieved data (email, web, docs)",
+      "Jailbreak — defeating the model's own safety policy; distinct from hijacking app behavior",
+      "Tool poisoning — malicious tool descriptions or metadata steer an agent to misuse its tools (MCP ecosystem risk)",
+      "Insecure output handling — executing or trusting model output without validation",
+      "Least-privilege tools — grant each tool only the scope its task requires"
      ]
     },
     {
      "heading": "Adversarial ML and governance",
      "items": [
-      "Evasion \u2014 perturbing inputs at inference time to dodge a classifier",
-      "Poisoning \u2014 corrupting training data to corrupt the model",
-      "Extraction \u2014 querying a model to steal its behavior or parameters",
-      "MITRE ATLAS \u2014 knowledge base of adversarial ML tactics and techniques",
-      "Red-teaming and evals \u2014 adversarial testing of AI systems before deployment",
-      "Human-in-the-loop \u2014 required approval for high-impact or irreversible agent actions",
-      "SOAR \u2014 security orchestration, automation and response; automate enrichment, gate containment"
+      "Evasion — perturbing inputs at inference time to dodge a classifier",
+      "Poisoning — corrupting training data to corrupt the model",
+      "Extraction — querying a model to steal its behavior or parameters",
+      "MITRE ATLAS — knowledge base of adversarial ML tactics and techniques",
+      "Red-teaming and evals — adversarial testing of AI systems before deployment",
+      "Human-in-the-loop — required approval for high-impact or irreversible agent actions",
+      "SOAR — security orchestration, automation and response; automate enrichment, gate containment"
      ]
     }
    ]
@@ -520,7 +1123,7 @@
    },
    {
     "term": "Blocklisting",
-    "def": "Default-allow model: everything runs except recognized-bad items \u2014 the window zero-days live in."
+    "def": "Default-allow model: everything runs except recognized-bad items — the window zero-days live in."
    },
    {
     "term": "Default-deny",
@@ -536,15 +1139,15 @@
    },
    {
     "term": "Installation Mode",
-    "def": "Temporary mode that pauses file blocking for installs \u2014 must be tightly scoped and time-boxed."
+    "def": "Temporary mode that pauses file blocking for installs — must be tightly scoped and time-boxed."
    },
    {
     "term": "Elevation Control",
-    "def": "Grants specific approved applications admin rights for standard users \u2014 just-in-time, per-app, time-boxed \u2014 without standing admin rights."
+    "def": "Grants specific approved applications admin rights for standard users — just-in-time, per-app, time-boxed — without standing admin rights."
    },
    {
     "term": "Application hopping",
-    "def": "An elevated or trusted process spawning another tool (e.g., PowerShell) to inherit its privileges \u2014 countered by ringfencing the elevated process."
+    "def": "An elevated or trusted process spawning another tool (e.g., PowerShell) to inherit its privileges — countered by ringfencing the elevated process."
    },
    {
     "term": "Storage Control",
@@ -556,7 +1159,7 @@
    },
    {
     "term": "ZTNA",
-    "def": "Zero Trust Network Access: per-session, per-application brokered connections (commonly over port 443) with no open inbound ports \u2014 deny-by-default for network access."
+    "def": "Zero Trust Network Access: per-session, per-application brokered connections (commonly over port 443) with no open inbound ports — deny-by-default for network access."
    },
    {
     "term": "Approval Center",
@@ -564,7 +1167,7 @@
    },
    {
     "term": "Unified Audit",
-    "def": "Real-time audit showing what was allowed or denied across endpoints \u2014 and why; the evidence layer for triage."
+    "def": "Real-time audit showing what was allowed or denied across endpoints — and why; the evidence layer for triage."
    },
    {
     "term": "Testing Environment",
@@ -576,15 +1179,15 @@
    },
    {
     "term": "Assume breach",
-    "def": "Design and operate as if the attacker already has a foothold \u2014 least privilege, containment, and monitoring everywhere."
+    "def": "Design and operate as if the attacker already has a foothold — least privilege, containment, and monitoring everywhere."
    },
    {
     "term": "Living off the land",
-    "def": "Attacks that hijack trusted built-in tools (Word, PowerShell) instead of dropping malware \u2014 defeated by behavior containment, not signatures."
+    "def": "Attacks that hijack trusted built-in tools (Word, PowerShell) instead of dropping malware — defeated by behavior containment, not signatures."
    },
    {
     "term": "Change control",
-    "def": "Scoped, ticketed, tested changes with validation and rollback \u2014 emergency speed never cancels the process."
+    "def": "Scoped, ticketed, tested changes with validation and rollback — emergency speed never cancels the process."
    },
    {
     "def": "A node in an attack graph representing a system or weakness, connected by edges that represent steps an attacker could take between them.",
@@ -691,7 +1294,7 @@
    {
     "label": "ThreatLocker Zero Trust platform explainer (official)",
     "url": "https://www.threatlocker.com/blog/edr-xdr-vs-zero-trust-prevention",
-    "note": "EDR/XDR vs Zero Trust prevention \u2014 the deny-by-default argument in their own words."
+    "note": "EDR/XDR vs Zero Trust prevention — the deny-by-default argument in their own words."
    },
    {
     "label": "ThreatLocker Bootcamp page (official)",
@@ -729,7 +1332,7 @@
     "note": "Detection and response capability detail."
    },
    {
-    "label": "NIST SP 800-207 \u2014 Zero Trust Architecture",
+    "label": "NIST SP 800-207 — Zero Trust Architecture",
     "url": "https://csrc.nist.gov/pubs/sp/800/207/final",
     "note": "The canonical Zero Trust reference: tenets, deployment models, policy engine trust algorithm."
    },
@@ -744,7 +1347,7 @@
     "url": "https://attack.mitre.org/"
    },
    {
-    "label": "CISA \u2014 Cybersecurity and Infrastructure Security Agency",
+    "label": "CISA — Cybersecurity and Infrastructure Security Agency",
     "note": "US government advisories, alerts, and guidance frequently referenced in threat-intel work.",
     "url": "https://www.cisa.gov/"
    },
@@ -761,7 +1364,7 @@
    {
     "label": "OWASP Top 10 for LLM Applications",
     "url": "https://genai.owasp.org/llm-top-10/",
-    "note": "The ranked LLM risk list \u2014 prompt injection is #1"
+    "note": "The ranked LLM risk list — prompt injection is #1"
    },
    {
     "label": "NIST AI Risk Management Framework",
@@ -771,7 +1374,7 @@
    {
     "label": "MITRE ATLAS",
     "url": "https://atlas.mitre.org/",
-    "note": "Adversarial Threat Landscape for AI Systems \u2014 tactics and techniques"
+    "note": "Adversarial Threat Landscape for AI Systems — tactics and techniques"
    },
    {
     "label": "CISA AI guidance",
@@ -782,11 +1385,11 @@
   "checklist": [
    "Sixty-second company brief rehearsed out loud: year, city, philosophy, three products, one milestone",
    "Two STAR stories ready: hardest technical problem; a frustrated customer or user",
-   "\u201cWhy ThreatLocker / why cybersecurity\u201d answer tied to prevention and service, not slogans",
+   "“Why ThreatLocker / why cybersecurity” answer tied to prevention and service, not slogans",
    "Ringfencing explained in one plain-English sentence (the Word-on-a-leash version)",
    "Elevation Control answer ready: just-in-time, per-app, time-boxed, ringfenced, logged",
-   "Triage loop memorized: scope \u2192 observe \u2192 hypothesize \u2192 smallest safe change \u2192 validate \u2192 explain",
-   "Three questions to ask them: team on-call shape, approval SLA expectations, what \u201cmost helpful\u201d looks like on the team",
+   "Triage loop memorized: scope → observe → hypothesize → smallest safe change → validate → explain",
+   "Three questions to ask them: team on-call shape, approval SLA expectations, what “most helpful” looks like on the team",
    "Logistics: 1901 Summit Tower Blvd, Orlando FL; in-office role; ID and references ready",
    "Define your crown jewels before you model anything.",
    "Build the asset-and-access graph from live sources (scans, configs, identity), not from the CMDB alone.",
@@ -932,7 +1535,7 @@
    "title": "Ringfencing: four leashes on an allowed application",
    "svg": "assets/diagrams/tl-ringfencing.svg",
    "lesson_ref": "c-tl-endpoint-ops",
-   "caption": "Word stays approved, but it cannot spawn PowerShell, read the credential store, or reach the internet \u2014 while opening its document is allowed.",
+   "caption": "Word stays approved, but it cannot spawn PowerShell, read the credential store, or reach the internet — while opening its document is allowed.",
    "alt": "An approved Word application inside a dashed containment ring: arrows show PowerShell launch denied, credential-store registry access denied, external network denied, and document file access allowed."
   },
   {
@@ -941,7 +1544,7 @@
    "title": "The Zero Trust endpoint stack",
    "svg": "assets/diagrams/tl-zero-trust-stack.svg",
    "lesson_ref": "c-tl-interview",
-   "caption": "Five deny-by-default layers \u2014 Allowlisting, Ringfencing, Elevation, Storage, Network \u2014 watched by Web Control, the Testing Environment, Unified Audit, and the Cyber Hero MDR team.",
+   "caption": "Five deny-by-default layers — Allowlisting, Ringfencing, Elevation, Storage, Network — watched by Web Control, the Testing Environment, Unified Audit, and the Cyber Hero MDR team.",
    "alt": "A vertical stack of five layers from Allowlisting at the foundation up through Ringfencing, Elevation Control, Storage Control, and Network Control, with side boxes for Web Control, Testing Environment, Unified Audit, and Cyber Hero MDR."
   },
   {
@@ -995,7 +1598,7 @@
    "title": "ML detection pipeline: telemetry to triage",
    "svg": "assets/diagrams/ai-ml-pipeline.svg",
    "lesson_ref": "c-ml-defense",
-   "caption": "How raw telemetry becomes scored alerts: features feed the model, the model scores, analysts triage top-down \u2014 and analyst verdicts feed retraining.",
+   "caption": "How raw telemetry becomes scored alerts: features feed the model, the model scores, analysts triage top-down — and analyst verdicts feed retraining.",
    "alt": "Flow diagram: telemetry sources feed feature extraction, which feeds an ML model, which outputs scored alerts into an analyst triage queue, with a feedback arrow for retraining."
   },
   {
@@ -1030,5 +1633,72 @@
  "math": [
   "stats",
   "probability"
+ ],
+ "videos": [
+  {
+   "title": "The Surprise FinOps Bill",
+   "url": "/assets/videos/bc-bbg-cloud-surprise-bill.mp4",
+   "source": "Interstitium Labs",
+   "blurb": "A FinOps teardown of the surprise cloud bill: idle VMs burn 40% of spend with zero traffic — tag, alert, and shut them down. (Preview — narration coming; voiceover pending TTS restore.)",
+   "durationMin": 1,
+   "order": 1,
+   "preview": true,
+   "captionsUrl": "/assets/videos/bc-bbg-cloud-surprise-bill.vtt",
+   "narrationUrl": "/assets/videos/bc-bbg-cloud-surprise-bill.narration.md",
+   "verifiedUtc": "2026-10-09T04:08:23Z",
+   "httpStatus": 200
+  },
+  {
+   "title": "Region Failover Drill",
+   "url": "/assets/videos/bc-bbg-cloud-region-failover.mp4",
+   "source": "Interstitium Labs",
+   "blurb": "An architecture walkthrough of a region failover drill: primary fails, traffic shifts, RTO five minutes, RPO zero. (Preview — narration coming; voiceover pending TTS restore.)",
+   "durationMin": 1,
+   "order": 2,
+   "preview": true,
+   "captionsUrl": "/assets/videos/bc-bbg-cloud-region-failover.vtt",
+   "narrationUrl": "/assets/videos/bc-bbg-cloud-region-failover.narration.md",
+   "verifiedUtc": "2026-10-09T04:08:23Z",
+   "httpStatus": 200
+  },
+  {
+   "title": "Shared Responsibility in 100 Seconds",
+   "url": "/assets/videos/bc-fireship-cloud-shared-responsibility.mp4",
+   "source": "Interstitium Labs",
+   "blurb": "A rapid explainer on the shared responsibility model: IaaS, PaaS, and SaaS each move the line between the cloud and you. (Preview — narration coming; voiceover pending TTS restore.)",
+   "durationMin": 1,
+   "order": 3,
+   "preview": true,
+   "captionsUrl": "/assets/videos/bc-fireship-cloud-shared-responsibility.vtt",
+   "narrationUrl": "/assets/videos/bc-fireship-cloud-shared-responsibility.narration.md",
+   "verifiedUtc": "2026-10-09T04:08:23Z",
+   "httpStatus": 200
+  }
+ ],
+ "pdfGuides": [
+  {
+   "title": "Cloud Architecture Patterns — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-cloud-patterns.pdf",
+   "source": "Interstitium Labs",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:27:58Z"
+  },
+  {
+   "title": "Load Balancing — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-load-balancing.pdf",
+   "source": "Interstitium Labs",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:27:58Z"
+  },
+  {
+   "title": "Caching & CDNs — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-caching-cdn.pdf",
+   "source": "Interstitium Labs",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:27:58Z"
+  }
  ]
 }

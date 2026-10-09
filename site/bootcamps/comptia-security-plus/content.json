@@ -1768,6 +1768,166 @@
    "points": 30
   }
  ],
+ "consoleSims": [
+  {
+   "id": "secplus-csim-1",
+   "title": "Harden the new web server",
+   "console": "firewall",
+   "domain_id": "comptia-security-plus",
+   "difficulty": 1,
+   "brief": "The new web server goes live at noon. Policy is deny-by-default: open exactly one hole — HTTPS (TCP 443) from the corporate network 10.0.0.0/8 — then set the INPUT chain to DROP everything else.",
+   "tasks": [
+    {
+     "id": "t1",
+     "instruction": "Add an ACCEPT rule: INPUT, TCP 443, source 10.0.0.0/8.",
+     "validate": {
+      "action": "add-rule",
+      "params": {
+       "chain": "INPUT",
+       "protocol": "tcp",
+       "port": "443",
+       "source": "10.0.0.0/8",
+       "action": "ACCEPT"
+      }
+     },
+     "hint": "Rules tab → Add rule: CHAIN=INPUT, PROTOCOL=tcp, PORT=443, SOURCE=10.0.0.0/8, ACTION=ACCEPT"
+    },
+    {
+     "id": "t2",
+     "instruction": "Set the INPUT chain default policy to DROP.",
+     "validate": {
+      "action": "set-default-policy",
+      "params": {
+       "chain": "INPUT",
+       "policy": "DROP"
+      }
+     },
+     "hint": "Default policies tab: CHAIN=INPUT, POLICY=DROP"
+    }
+   ],
+   "debrief": "Order matters: the explicit allow must exist before the default deny, or you lock yourself out of the very service you're publishing. Least privilege, expressed in firewall rules."
+  },
+  {
+   "id": "secplus-csim-2",
+   "title": "Contain the crypto-miner",
+   "console": "siem-dashboard",
+   "domain_id": "comptia-security-plus",
+   "difficulty": 2,
+   "brief": "The SIEM fired ALT-102: a malware hash match on a download — severity critical, host wkst-117. Work it like an analyst: acknowledge the alert, assign it to soc-tier1, then isolate the host.",
+   "tasks": [
+    {
+     "id": "t1",
+     "instruction": "Acknowledge alert ALT-102.",
+     "validate": {
+      "action": "acknowledge-alert",
+      "params": {
+       "id": "ALT-102"
+      }
+     },
+     "hint": "Alerts tab → click Ack on the ALT-102 row."
+    },
+    {
+     "id": "t2",
+     "instruction": "Assign ALT-102 to analyst soc-tier1.",
+     "validate": {
+      "action": "assign-alert",
+      "params": {
+       "id": "ALT-102",
+       "analyst": "soc-tier1"
+      }
+     },
+     "hint": "Assign alert form: ALERT ID=ALT-102, ANALYST=soc-tier1"
+    },
+    {
+     "id": "t3",
+     "instruction": "Isolate host wkst-117.",
+     "validate": {
+      "action": "isolate-host",
+      "params": {
+       "host": "wkst-117"
+      }
+     },
+     "hint": "Click 'Isolate host' on the ALT-102 row."
+    }
+   ],
+   "debrief": "Acknowledge, assign, contain — the first three moves of incident-response triage. Isolation stops lateral movement while you investigate; it never deletes evidence."
+  },
+  {
+   "id": "secplus-csim-3",
+   "title": "Block the RDP brute-forcer",
+   "console": "firewall",
+   "domain_id": "comptia-security-plus",
+   "difficulty": 2,
+   "brief": "Logs show 203.0.113.45 hammering RDP (TCP 3389). Drop that source on port 3389 — but keep RDP reachable for admins on the corporate network 10.0.0.0/8.",
+   "tasks": [
+    {
+     "id": "t1",
+     "instruction": "DROP TCP 3389 from 203.0.113.45.",
+     "validate": {
+      "action": "add-rule",
+      "params": {
+       "chain": "INPUT",
+       "protocol": "tcp",
+       "port": "3389",
+       "source": "203.0.113.45",
+       "action": "DROP"
+      }
+     },
+     "hint": "CHAIN=INPUT, PROTOCOL=tcp, PORT=3389, SOURCE=203.0.113.45, ACTION=DROP"
+    },
+    {
+     "id": "t2",
+     "instruction": "ACCEPT TCP 3389 from 10.0.0.0/8.",
+     "validate": {
+      "action": "add-rule",
+      "params": {
+       "chain": "INPUT",
+       "protocol": "tcp",
+       "port": "3389",
+       "source": "10.0.0.0/8",
+       "action": "ACCEPT"
+      }
+     },
+     "hint": "Same form with SOURCE=10.0.0.0/8, ACTION=ACCEPT — management stays reachable."
+    }
+   ],
+   "debrief": "Block the attacker, keep the admins: host-based firewall rules can be surgical. (And the long-term fix is never exposing RDP to the internet at all — VPN or jump host.)"
+  },
+  {
+   "id": "secplus-csim-4",
+   "title": "Write the failed-login detector",
+   "console": "siem-dashboard",
+   "domain_id": "comptia-security-plus",
+   "difficulty": 3,
+   "brief": "After last night's VPN login storm, build a detection rule that fires when one source IP racks up more than 20 failed logins — then escalate the open impossible-travel alert ALT-101 to incident response.",
+   "tasks": [
+    {
+     "id": "t1",
+     "instruction": "Create a detection rule named exactly: VPN failed-login burst — query: event:authfail | stats count by src_ip | where count > 20",
+     "validate": {
+      "action": "create-rule",
+      "params": {
+       "name": "VPN failed-login burst",
+       "query": "event:authfail | stats count by src_ip | where count > 20"
+      }
+     },
+     "hint": "Detection rules tab → Create rule: NAME=VPN failed-login burst, QUERY=event:authfail | stats count by src_ip | where count > 20"
+    },
+    {
+     "id": "t2",
+     "instruction": "Escalate alert ALT-101.",
+     "validate": {
+      "action": "escalate",
+      "params": {
+       "id": "ALT-101"
+      }
+     },
+     "hint": "Alerts tab → click Escalate on the ALT-101 row."
+    }
+   ],
+   "debrief": "Detection engineering is proactive defense: you turned one incident into a rule that catches the next one. Escalation hands the active threat to the incident-response process with full context."
+  }
+ ],
  "foundations": [
   {
    "track": "concepts",
@@ -1786,6 +1946,73 @@
   {
    "label": "NIST Cybersecurity Framework",
    "url": "https://www.nist.gov/cyberframework"
+  }
+ ],
+ "videos": [
+  {
+   "title": "Know the Attacker's Menu",
+   "url": "/assets/videos/bc-bbg-secplus-threat-actors.mp4",
+   "source": "Interstitium Labs",
+   "blurb": "The threat-actor menu: script kiddies, hacktivists, organized crime, nation-states — motive predicts method. (Preview — narration coming; voiceover pending TTS restore.)",
+   "durationMin": 1,
+   "order": 1,
+   "preview": true,
+   "captionsUrl": "/assets/videos/bc-bbg-secplus-threat-actors.vtt",
+   "narrationUrl": "/assets/videos/bc-bbg-secplus-threat-actors.narration.md",
+   "verifiedUtc": "2026-10-09T04:44:39Z",
+   "httpStatus": 200
+  },
+  {
+   "title": "Crypto That Matters in 100 Seconds",
+   "url": "/assets/videos/bc-fireship-secplus-crypto.mp4",
+   "source": "Interstitium Labs",
+   "blurb": "The crypto that matters: AES for bulk, RSA/ECC for exchange, SHA-256 for integrity — TLS combines them all. Never roll your own. (Preview — narration coming; voiceover pending TTS restore.)",
+   "durationMin": 1,
+   "order": 2,
+   "preview": true,
+   "captionsUrl": "/assets/videos/bc-fireship-secplus-crypto.vtt",
+   "narrationUrl": "/assets/videos/bc-fireship-secplus-crypto.narration.md",
+   "verifiedUtc": "2026-10-09T04:44:39Z",
+   "httpStatus": 200
+  },
+  {
+   "title": "The Click Heard Round the Office",
+   "url": "/assets/videos/bc-story-secplus-click.mp4",
+   "source": "Interstitium Labs",
+   "blurb": "A phishing click from a fake CEO email: the EDR caught the callback in four minutes, the user reported it in six — reward the report. (Preview — narration coming; voiceover pending TTS restore.)",
+   "durationMin": 1,
+   "order": 3,
+   "preview": true,
+   "captionsUrl": "/assets/videos/bc-story-secplus-click.vtt",
+   "narrationUrl": "/assets/videos/bc-story-secplus-click.narration.md",
+   "verifiedUtc": "2026-10-09T04:44:39Z",
+   "httpStatus": 200
+  }
+ ],
+ "pdfGuides": [
+  {
+   "title": "Zero Trust Architecture — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-zero-trust.pdf",
+   "source": "Interstitium Labs",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:27:58Z"
+  },
+  {
+   "title": "PKI & Encryption — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-pki-encryption.pdf",
+   "source": "Interstitium Labs",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:27:58Z"
+  },
+  {
+   "title": "TLS Handshake — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-tls-handshake.pdf",
+   "source": "Interstitium Labs",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:27:58Z"
   }
  ]
 }

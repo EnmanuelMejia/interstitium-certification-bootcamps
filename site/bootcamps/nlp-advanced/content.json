@@ -200,9 +200,475 @@
    ]
   }
  ],
- "simulations": [],
- "consoleSims": [],
- "terminalMissions": [],
+ "simulations": [
+  {
+   "id": "nlp-advanced-sim-1",
+   "title": "BLEU up, humans down",
+   "kind": "troubleshoot",
+   "domain_id": "nlp-advanced",
+   "difficulty": 3,
+   "points": 20,
+   "brief": "The translation model hit a record BLEU of 41, but human reviewers rate the new outputs worse than the old model's. The metric and the humans disagree.",
+   "steps": [
+    {
+     "symptom": "BLEU 41 (record), human preference down 12 points vs the previous model.",
+     "evidence": [
+      [
+       "Output samples",
+       "New model copies source phrasing verbatim — high n-gram overlap, stilted and sometimes wrong"
+      ],
+      [
+       "Training change",
+       "Added a BLEU-reward term to the training objective last month"
+      ],
+      [
+       "Human eval notes",
+       "'Technically overlapping, reads like a dictionary, misses the meaning'"
+      ]
+     ],
+     "options": [
+      "Remove the BLEU reward, retrain, and gate releases on human eval plus task-based metrics",
+      "Push BLEU higher — 45 will surely fix the human ratings",
+      "Average the BLEU and human scores into one number and optimize that",
+      "Blame the reviewers and keep shipping on BLEU"
+     ],
+     "correct": 0,
+     "explain": "Optimizing the metric became the goal: the model learned to game n-gram overlap instead of translating well. This is Goodhart's law in production. Automatic metrics are proxies — releases gate on human judgment and task success, not the proxy."
+    }
+   ],
+   "debrief": "When a metric becomes the target, it stops being a good metric. Gate NLP releases on human eval and task-based outcomes; use BLEU and friends as diagnostics, never as the objective."
+  },
+  {
+   "id": "nlp-advanced-sim-2",
+   "title": "The tokenizer mismatch",
+   "kind": "troubleshoot",
+   "domain_id": "nlp-advanced",
+   "difficulty": 2,
+   "points": 15,
+   "brief": "The fine-tuned model worked in the notebook but produces gibberish in production. Same weights, different behavior.",
+   "steps": [
+    {
+     "symptom": "Notebook outputs fluent; production outputs gibberish with identical weights.",
+     "evidence": [
+      [
+       "Tokenizer versions",
+       "Training used tokenizer v1 (32k vocab); serving bundles tokenizer v2 (50k vocab)"
+      ],
+      [
+       "Token IDs",
+       "The same word maps to ID 4102 in v1 and 22917 in v2 — the embedding rows no longer align"
+      ],
+      [
+       "Deploy diff",
+       "Serving image rebuilt last week pulled the latest tokenizer package"
+      ]
+     ],
+     "options": [
+      "Pin the tokenizer version to v1 in the serving image and add a vocab-hash check to the deploy pipeline",
+      "Retrain the model from scratch with tokenizer v2",
+      "Lower the temperature — gibberish is a sampling problem",
+      "Add more training data to make the model robust to tokenizers"
+     ],
+     "correct": 0,
+     "explain": "The embedding matrix is indexed by token ID; a new vocab scrambles every ID, so the model reads garbage embeddings. Tokenizer and weights are one unit — version them together and verify the vocab hash at deploy time."
+    }
+   ],
+   "debrief": "The tokenizer is part of the model, not packaging. Pin it, hash the vocab at deploy, and treat any tokenizer change as a model change requiring re-evaluation."
+  },
+  {
+   "id": "nlp-advanced-sim-3",
+   "title": "Pick the fine-tuning method",
+   "kind": "branching",
+   "domain_id": "nlp-advanced",
+   "difficulty": 2,
+   "points": 15,
+   "brief": "You have one GPU with 24GB and an 8B instruction model to adapt to support tickets. Choose the fine-tuning method.",
+   "steps": [
+    {
+     "id": "s1",
+     "text": "8B model, single 24GB GPU, support-ticket adaptation. Method?",
+     "choices": [
+      {
+       "label": "LoRA adapters on the attention layers — train a fraction of the parameters",
+       "outcome": "good",
+       "next": "END",
+       "points": 2,
+       "feedback": "Correct: LoRA fits in 24GB, trains fast, and the base model stays intact — you can swap adapters per task."
+      },
+      {
+       "label": "Full fine-tuning of all 8B parameters",
+       "outcome": "bad",
+       "next": "END",
+       "points": 0,
+       "feedback": "Full fine-tuning of 8B parameters needs far more than 24GB with optimizer states, and risks catastrophic forgetting of the base capabilities."
+      }
+     ]
+    }
+   ],
+   "debrief": "Parameter-efficient methods are the default for adaptation: LoRA trains a small adapter, fits on one GPU, and keeps the base model reusable. Full fine-tuning must justify its cost."
+  },
+  {
+   "id": "nlp-advanced-sim-4",
+   "title": "Fine-tune safely",
+   "kind": "ordering",
+   "domain_id": "nlp-advanced",
+   "difficulty": 2,
+   "points": 10,
+   "brief": "Put the fine-tuning workflow in the order that produces a safe, working model.",
+   "steps": {
+    "context": "A sound fine-tuning workflow",
+    "items": [
+     "Train the adapter with validation monitoring",
+     "Curate and clean the task dataset",
+     "Red-team the fine-tuned model before release",
+     "Verify the tokenizer matches the base model",
+     "Evaluate on the held-out task set"
+    ],
+    "correct_order": [
+     1,
+     3,
+     0,
+     4,
+     2
+    ]
+   },
+   "debrief": "Clean data first, tokenizer compatibility before training (a mismatch wastes the whole run), train with validation, evaluate, then red-team. Skipping the red-team step ships vulnerabilities with the weights."
+  },
+  {
+   "id": "nlp-advanced-sim-5",
+   "title": "Review the serving config",
+   "kind": "config-check",
+   "domain_id": "nlp-advanced",
+   "difficulty": 3,
+   "points": 15,
+   "brief": "This LLM serving config is headed to production. Click the misconfigured lines (2 issues to find).",
+   "steps": {
+    "config": "model: nlp-8b-instruct\nmax_tokens: null\ntemperature: 2.5\ntop_p: 0.9\nsystem_prompt: pinned\ncontent_filter: enabled",
+    "find": 2,
+    "issues": [
+     {
+      "line": 2,
+      "description": "No max_tokens cap — a runaway generation can burn the token budget and wedge the request queue.",
+      "fix": "Set max_tokens to a bounded value (e.g. 512)."
+     },
+     {
+      "line": 3,
+      "description": "Temperature 2.5 produces near-random token soup; the model will be incoherent.",
+      "fix": "Set temperature to a sane value (e.g. 0.7) for the task."
+     }
+    ]
+   },
+   "debrief": "Serving configs bound the model's behavior: cap the output length and keep sampling parameters in sane ranges. Unbounded, overheated generation is a cost and quality incident."
+  }
+ ],
+ "consoleSims": [
+  {
+   "id": "nlp-advanced-console-1",
+   "title": "Build the eval corpus table",
+   "console": "sql-studio",
+   "domain_id": "nlp-advanced",
+   "difficulty": 2,
+   "brief": "Create a table for human eval ratings, index it by model version, and query the average rating.",
+   "tasks": [
+    {
+     "id": "nlp-advanced-console-1-t1",
+     "instruction": "Create table human_evals with columns id TEXT, model_version TEXT, rating REAL.",
+     "validate": {
+      "action": "create-table",
+      "params": {
+       "name": "human_evals"
+      }
+     },
+     "hint": "Use the Create table form in the Tables section."
+    },
+    {
+     "id": "nlp-advanced-console-1-t2",
+     "instruction": "Create an index on human_evals(model_version).",
+     "validate": {
+      "action": "create-index",
+      "params": {
+       "table": "human_evals",
+       "column": "model_version"
+      }
+     },
+     "hint": "The Create index form needs the table and column names."
+    },
+    {
+     "id": "nlp-advanced-console-1-t3",
+     "instruction": "In the Query editor, run: SELECT model_version, AVG(rating) FROM human_evals GROUP BY model_version;",
+     "validate": {
+      "action": "run-query",
+      "params": {
+       "match": "AVG"
+      }
+     },
+     "hint": "Type the SELECT with AVG and GROUP BY, then click Run query."
+    }
+   ],
+   "debrief": "Human evals are data: every rating logged with its model version, queryable for the trend. 'Did v8 actually get better?' is a query, not an argument."
+  },
+  {
+   "id": "nlp-advanced-console-2",
+   "title": "Review the tokenizer pin PR",
+   "console": "git-host",
+   "domain_id": "nlp-advanced",
+   "difficulty": 1,
+   "brief": "Branch for the tokenizer pin fix, open the PR, and approve it.",
+   "tasks": [
+    {
+     "id": "nlp-advanced-console-2-t1",
+     "instruction": "Create branch fix/tokenizer-pin.",
+     "validate": {
+      "action": "create-branch",
+      "params": {
+       "name": "fix/tokenizer-pin"
+      }
+     },
+     "hint": "Use the Create branch form in the Branches section."
+    },
+    {
+     "id": "nlp-advanced-console-2-t2",
+     "instruction": "Open a pull request titled 'Pin tokenizer v1 in serving image' from head fix/tokenizer-pin into base main.",
+     "validate": {
+      "action": "open-pr",
+      "params": {
+       "title": "Pin tokenizer v1 in serving image",
+       "head": "fix/tokenizer-pin"
+      }
+     },
+     "hint": "Use the Open pull request form with the title, base main, head fix/tokenizer-pin."
+    },
+    {
+     "id": "nlp-advanced-console-2-t3",
+     "instruction": "Approve PR #2 (the tokenizer pin PR).",
+     "validate": {
+      "action": "approve-pr",
+      "params": {
+       "pr": 2
+      }
+     },
+     "hint": "Click Approve on PR #2's row."
+    }
+   ],
+   "debrief": "The tokenizer pin is a production fix and gets the full review ritual: branch, PR, approval. Version the tokenizer with the weights."
+  },
+  {
+   "id": "nlp-advanced-console-3",
+   "title": "Fix the eval script",
+   "console": "code-editor",
+   "domain_id": "nlp-advanced",
+   "difficulty": 1,
+   "brief": "The eval scoring script in app.py has a wrong line. Open it, fix line 4, and inspect the accumulator.",
+   "tasks": [
+    {
+     "id": "nlp-advanced-console-3-t1",
+     "instruction": "Open app.py in the code editor.",
+     "validate": {
+      "action": "open-file",
+      "params": {
+       "name": "app.py"
+      }
+     },
+     "hint": "Click Open next to app.py in the Explorer."
+    },
+    {
+     "id": "nlp-advanced-console-3-t2",
+     "instruction": "Replace line 4 of app.py with:         s += x * 2",
+     "validate": {
+      "action": "fix-line",
+      "params": {
+       "file": "app.py",
+       "line": 4
+      }
+     },
+     "hint": "Use the Replace line form: file app.py, line 4, new text."
+    },
+    {
+     "id": "nlp-advanced-console-3-t3",
+     "instruction": "Inspect the variable s to confirm the accumulator state.",
+     "validate": {
+      "action": "inspect-variable",
+      "params": {
+       "name": "s"
+      }
+     },
+     "hint": "Use the Inspect form with variable name s."
+    }
+   ],
+   "debrief": "A scoring bug corrupts the metric that gates releases. Open, fix, inspect — the eval code gets the same care as the model code."
+  },
+  {
+   "id": "nlp-advanced-console-4",
+   "title": "Launch the fine-tune pipeline",
+   "console": "cicd-pipeline",
+   "domain_id": "nlp-advanced",
+   "difficulty": 2,
+   "brief": "Set the adapter rank, trigger the fine-tuning pipeline, and approve the artifact deploy.",
+   "tasks": [
+    {
+     "id": "nlp-advanced-console-4-t1",
+     "instruction": "Set the pipeline variable LORA_RANK to 16.",
+     "validate": {
+      "action": "set-variable",
+      "params": {
+       "key": "LORA_RANK",
+       "value": "16"
+      }
+     },
+     "hint": "Use the Variables section's Set variable form."
+    },
+    {
+     "id": "nlp-advanced-console-4-t2",
+     "instruction": "Trigger a new build of the fine-tuning pipeline.",
+     "validate": {
+      "action": "trigger-build",
+      "params": {}
+     },
+     "hint": "Click Trigger new build in the Pipeline section."
+    },
+    {
+     "id": "nlp-advanced-console-4-t3",
+     "instruction": "Approve the gated deploy stage to release the adapter.",
+     "validate": {
+      "action": "approve-stage",
+      "params": {
+       "stage": "deploy"
+      }
+     },
+     "hint": "The deploy stage is gated — click Approve on its row."
+    }
+   ],
+   "debrief": "Fine-tuning runs in a pipeline: rank and data as variables, reproducible builds, gated release. Adapters are artifacts — version them like any other."
+  }
+ ],
+ "terminalMissions": [
+  {
+   "id": "nlp-advanced-mission-1",
+   "title": "Stamp the sampling config",
+   "domain_id": "nlp-advanced",
+   "difficulty": 1,
+   "brief": "Echo the max tokens and temperature for the run log.",
+   "objectives": [
+    "Print the sampling config line"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^echo",
+     "expect_contains": "max_tokens=512",
+     "hint": "Run: echo max_tokens=512 temperature=0.7"
+    }
+   ],
+   "success_message": "Mission complete — sampling config logged."
+  },
+  {
+   "id": "nlp-advanced-mission-2",
+   "title": "Record the vocabulary size",
+   "domain_id": "nlp-advanced",
+   "difficulty": 1,
+   "brief": "Echo the tokenizer vocabulary size for the model card.",
+   "objectives": [
+    "Print the vocabulary size"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^echo",
+     "expect_contains": "vocab=50000",
+     "hint": "Run: echo vocab=50000"
+    }
+   ],
+   "success_message": "Mission complete — vocabulary size recorded."
+  },
+  {
+   "id": "nlp-advanced-mission-3",
+   "title": "List the workspace",
+   "domain_id": "nlp-advanced",
+   "difficulty": 1,
+   "brief": "List the files in the NLP workspace.",
+   "objectives": [
+    "List workspace files"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^ls$",
+     "expect_contains": "app.py",
+     "hint": "Run: ls"
+    }
+   ],
+   "success_message": "Mission complete — workspace listed."
+  },
+  {
+   "id": "nlp-advanced-mission-4",
+   "title": "Check the host identity",
+   "domain_id": "nlp-advanced",
+   "difficulty": 1,
+   "brief": "Verify the training host identity before the fine-tuning run.",
+   "objectives": [
+    "Show full system information"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^uname",
+     "expect_contains": "interstitium",
+     "hint": "Run: uname -a"
+    }
+   ],
+   "success_message": "Mission complete — host identity verified."
+  },
+  {
+   "id": "nlp-advanced-mission-5",
+   "title": "Report the translation scores",
+   "domain_id": "nlp-advanced",
+   "difficulty": 2,
+   "brief": "Echo the BLEU and ROUGE scores for the eval notes.",
+   "objectives": [
+    "Print the metric line"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^echo",
+     "expect_contains": "bleu=0.42",
+     "hint": "Run: echo bleu=0.42 rouge=0.61"
+    }
+   ],
+   "success_message": "Mission complete — scores reported."
+  },
+  {
+   "id": "nlp-advanced-mission-6",
+   "title": "Confirm the working directory",
+   "domain_id": "nlp-advanced",
+   "difficulty": 2,
+   "brief": "Confirm the shell is in the expected working directory before writing eval outputs.",
+   "objectives": [
+    "Print the working directory"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^pwd$",
+     "expect_contains": "/home/candidate",
+     "hint": "Run: pwd"
+    }
+   ],
+   "success_message": "Mission complete — working directory confirmed."
+  },
+  {
+   "id": "nlp-advanced-mission-7",
+   "title": "Record the language coverage",
+   "domain_id": "nlp-advanced",
+   "difficulty": 2,
+   "brief": "Echo the language coverage for the model card.",
+   "objectives": [
+    "Print the language line"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^echo",
+     "expect_contains": "lang=multilingual",
+     "hint": "Run: echo lang=multilingual"
+    }
+   ],
+   "success_message": "Mission complete — language coverage recorded."
+  }
+ ],
  "sections": [
   {
    "id": "nlp-advanced-sec",
@@ -476,5 +942,64 @@
  },
  "media": [],
  "foundations": [],
- "math": []
+ "math": [],
+ "videos": [
+  {
+   "title": "Attention Is All You Need",
+   "url": "/assets/videos/bc-3b1b-nlpa-attention.mp4",
+   "source": "Interstitium Labs",
+   "blurb": "The attention heatmap for 'the cat sat / it': the word 'it' puts 0.75 weight on 'cat' — the model resolved the pronoun. Attention is learned relevance. (Preview — narration coming; voiceover pending TTS restore.)",
+   "durationMin": 1,
+   "order": 1,
+   "preview": true,
+   "captionsUrl": "/assets/videos/bc-3b1b-nlpa-attention.vtt",
+   "narrationUrl": "/assets/videos/bc-3b1b-nlpa-attention.narration.md",
+   "verifiedUtc": "2026-10-09T05:01:37Z",
+   "httpStatus": 200
+  },
+  {
+   "title": "The Transformer Block in 100 Seconds",
+   "url": "/assets/videos/bc-fireship-nlpa-transformer-block.mp4",
+   "source": "Interstitium Labs",
+   "blurb": "One transformer block: attend, add, normalize, MLP, add — stack it 96 times and you have GPT. Attention costs quadratically, so context needs datacenters. (Preview — narration coming; voiceover pending TTS restore.)",
+   "durationMin": 1,
+   "order": 2,
+   "preview": true,
+   "captionsUrl": "/assets/videos/bc-fireship-nlpa-transformer-block.vtt",
+   "narrationUrl": "/assets/videos/bc-fireship-nlpa-transformer-block.narration.md",
+   "verifiedUtc": "2026-10-09T05:01:37Z",
+   "httpStatus": 200
+  },
+  {
+   "title": "The Citation That Never Existed",
+   "url": "/assets/videos/bc-story-nlpa-hallucination.mp4",
+   "source": "Interstitium Labs",
+   "blurb": "Asked for sources, the model invents 'Smith et al. 2019' in perfect format — the journal, the author, the finding: none exist. Fluency is not truth. (Preview — narration coming; voiceover pending TTS restore.)",
+   "durationMin": 1,
+   "order": 3,
+   "preview": true,
+   "captionsUrl": "/assets/videos/bc-story-nlpa-hallucination.vtt",
+   "narrationUrl": "/assets/videos/bc-story-nlpa-hallucination.narration.md",
+   "verifiedUtc": "2026-10-09T05:01:37Z",
+   "httpStatus": 200
+  }
+ ],
+ "pdfGuides": [
+  {
+   "title": "Cloud Architecture Patterns — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-cloud-patterns.pdf",
+   "source": "Interstitium Labs",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:27:58Z"
+  },
+  {
+   "title": "TLS Handshake — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-tls-handshake.pdf",
+   "source": "Interstitium Labs",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:27:58Z"
+  }
+ ]
 }

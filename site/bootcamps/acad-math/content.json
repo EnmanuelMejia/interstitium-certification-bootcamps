@@ -153,7 +153,7 @@
  "lessons": [
   {
    "domain_id": "acad-math",
-   "title": "Math \u2014 Core concepts",
+   "title": "Math — Core concepts",
    "concepts": [
     "Estimate before you calculate: orders of magnitude and back-of-envelope arithmetic catch absurdities that precise spreadsheets hide.",
     "Expected value decides under uncertainty: multiply each outcome by its probability and sum; feelings about risk are no substitute for the arithmetic.",
@@ -228,13 +228,609 @@
    ]
   }
  ],
- "simulations": [],
- "consoleSims": [],
- "terminalMissions": [],
+ "simulations": [
+  {
+   "id": "acad-math-sim-1",
+   "title": "The 99% accurate test",
+   "kind": "decide",
+   "domain_id": "acad-math",
+   "difficulty": 2,
+   "brief": "A vendor pitches a threat-detection tool: '99% accurate!' Your CISO wants to buy it for the SOC. You run the numbers. Decide.",
+   "steps": [
+    {
+     "symptom": "The tool is 99% accurate: 99% true-positive rate, 1% false-positive rate. Real attacks are rare: 1 in 10,000 events is an actual attack.",
+     "evidence": [
+      [
+       "Vendor claim",
+       "True positive rate: 99% | false positive rate: 1%\nBase rate: 1 real attack per 10,000 events\nCISO: '99% accurate — let's buy it'"
+      ]
+     ],
+     "options": [
+      "Buy it — 99% accuracy speaks for itself",
+      "Run the base-rate math first: with 10,000 events, expect ~1 true alarm and ~100 false alarms — so a positive alert is ~1% likely to be real",
+      "Ask for a demo instead of doing math",
+      "Reject it — no tool is 99% accurate"
+     ],
+     "correct": 1,
+     "explain": "The base rate dominates: 1 true positive drowns in ~100 false positives, so P(attack | alert) is about 1%, not 99%. 'Accuracy' without the base rate is a marketing number. Always multiply by the base rate before you buy — or believe."
+    },
+    {
+     "symptom": "The math is done: 99% 'accurate', ~1% useful. The vendor counters: 'But it catches 99% of real attacks!'",
+     "evidence": [
+      [
+       "Counter",
+       "Vendor: 'Missing attacks is worse than false alarms.'\nSOC capacity: 3 analysts, ~40 alerts/day sustainable"
+      ]
+     ],
+     "options": [
+      "Buy it — catching attacks matters most",
+      "Decline on capacity math: ~100 false alarms/day buries 3 analysts, so real attacks get missed in the noise — the tool makes detection worse, not better",
+      "Buy it but turn off the alerts",
+      "Hire 20 more analysts to handle the alerts"
+     ],
+     "correct": 1,
+     "explain": "A detector your team cannot keep up with is not a detector — it is a noise machine that hides the real signal. Expected value includes the cost of acting on the output: 100 false alarms a day at 3 analysts means the 1 true positive dies unread."
+    },
+    {
+     "symptom": "Declined. The CISO asks what a good detection investment looks like.",
+     "evidence": [
+      [
+       "Ask",
+       "CISO: 'What should we buy instead?'"
+      ]
+     ],
+     "options": [
+      "'Nothing — detection is hopeless.'",
+      "'Invest where the base rate is favorable: high-signal detections on crown-jewel assets, tuned to our environment, measured by precision in production — not vendor accuracy claims.'",
+      "'The cheapest tool.'",
+      "'Whatever our competitors bought.'"
+     ],
+     "correct": 1,
+     "explain": "Good security spending follows the math: concentrate detection where attacks are likeliest and signals are cleanest, and evaluate on precision in YOUR environment. The lesson generalizes: never buy a rate without asking 'rate of what, out of what?'"
+    }
+   ],
+   "debrief": "You multiplied by the base rate, priced the false alarms in analyst-hours, and redirected the budget to high-signal detection. Base-rate neglect is the most expensive innumeracy in technology.",
+   "points": 30
+  },
+  {
+   "id": "acad-math-sim-2",
+   "title": "Expected value of the outage",
+   "kind": "decide",
+   "domain_id": "acad-math",
+   "difficulty": 2,
+   "brief": "A redundancy project costs $80k. Without it, a regional outage costs $500k and happens 'every few years.' Finance wants a yes or no with numbers. Decide with expected value.",
+   "steps": [
+    {
+     "symptom": "Project cost: $80k one-time. Outage cost: $500k per event. Historical frequency: roughly once every 4 years.",
+     "evidence": [
+      [
+       "Numbers",
+       "Redundancy: $80k once\nOutage: $500k/event, ~1 per 4 years\nFinance: 'Show me the math'"
+      ]
+     ],
+     "options": [
+      "'$500k is bigger than $80k, so yes.'",
+      "Compute expected annual loss: $500k / 4 = $125k/year. The $80k project pays for itself in under a year of expected loss — yes, with margin",
+      "'Outages are rare, so no.'",
+      "Ask for a consultant's opinion"
+     ],
+     "correct": 1,
+     "explain": "Expected value turns vibes into arithmetic: $125k/year of expected loss versus a one-time $80k. The project pays back in about 8 months of risk. 'Every few years' felt rare; $125k/year does not."
+    },
+    {
+     "symptom": "Finance pushes back: 'Your 1-in-4-years is a guess. What if it is 1 in 10?'",
+     "evidence": [
+      [
+       "Challenge",
+       "Finance: 'If the real rate is 1 in 10 years, the math flips.'"
+      ]
+     ],
+     "options": [
+      "Insist the 1-in-4 estimate is right",
+      "Do the sensitivity analysis: at 1 in 10 years the expected loss is $50k/year — still positive over a 2-year horizon, and the break-even rate is 1 in 6.25 years. Show the range, not just the point estimate",
+      "Abandon the project — they might be right",
+      "Find data that supports 1-in-4"
+     ],
+     "correct": 1,
+     "explain": "Point estimates are fragile; ranges are honest. The sensitivity analysis shows the decision survives even pessimistic assumptions (break-even at 1 in 6.25 years). Decisions under uncertainty get ranges, not false precision."
+    },
+    {
+     "symptom": "Approved. But finance adds: 'If no outage happens in 2 years, was the $80k wasted?'",
+     "evidence": [
+      [
+       "Ask",
+       "Finance: 'How will we know it was worth it?'"
+      ]
+     ],
+     "options": [
+      "'We won't — that's the deal.'",
+      "'We judge the decision by the information at the time, not the outcome. Fire insurance isn't wasted if the house doesn't burn — and we'll also track leading indicators like failover drill times.'",
+      "'If nothing happens, I'll admit it was wasted.'",
+      "Promise an outage to prove the value"
+     ],
+     "correct": 1,
+     "explain": "Good decisions can have quiet outcomes — that is what insurance means. You evaluate the bet by its expected value at decision time, and you track leading indicators (drill performance) so the capability stays real even when the event stays hypothetical."
+    }
+   ],
+   "debrief": "You priced the risk, stress-tested the estimate, and defended the decision against outcome bias. Expected value is how adults buy down risk.",
+   "points": 30
+  },
+  {
+   "id": "acad-math-sim-3",
+   "title": "The misleading average",
+   "kind": "troubleshoot",
+   "domain_id": "acad-math",
+   "difficulty": 2,
+   "brief": "The dashboard says average latency is 120ms — excellent. Users say the app feels broken. Both are telling the truth. Find the statistic that lies.",
+   "steps": [
+    {
+     "symptom": "Mean latency: 120ms. User complaints: 'every few minutes it hangs for seconds.' The dashboard is green.",
+     "evidence": [
+      [
+       "Dashboard",
+       "Mean latency: 120ms (SLO: <200ms) — green\nComplaints: periodic multi-second hangs\nSample: 10,000 requests"
+      ]
+     ],
+     "options": [
+      "Trust the dashboard — the users are exaggerating",
+      "Look at the distribution, not the mean: check p95/p99 and the histogram — a good mean can hide a terrible tail",
+      "Lower the SLO to make the dashboard honest",
+      "Add more servers"
+     ],
+     "correct": 1,
+     "explain": "The mean is a liar when distributions skew: 9,900 fast requests and 100 horrible ones average to 'fine.' Users live in the tail, not the mean. Percentiles (p95, p99) describe experience; means describe arithmetic."
+    },
+    {
+     "symptom": "p99 is 4.2 seconds. The histogram shows a clean fast cluster and a long ugly tail — periodic, every few minutes.",
+     "evidence": [
+      [
+       "Distribution",
+       "p50: 80ms | p95: 300ms | p99: 4.2s\nPattern: tail spikes every ~5 minutes, then recovers"
+      ]
+     ],
+     "options": [
+      "Report the p99 and call it a day",
+      "Hypothesize from the periodicity: a 5-minute cycle smells like GC pauses, cron jobs, or cache expiry — correlate the spikes with system events",
+      "Average the p99 away with more samples",
+      "Tell users the p99 is acceptable"
+     ],
+     "correct": 1,
+     "explain": "Periodicity is a fingerprint: 5-minute cycles point at scheduled causes (GC, cron, expiry), not random ones. The statistic told you where to look; the pattern tells you what to suspect. Diagnose the tail, not the average."
+    },
+    {
+     "symptom": "Found: a cron job every 5 minutes locks a table the requests need. Fixed. What changes about the dashboard?",
+     "evidence": [
+      [
+       "Fix",
+       "Cron rescheduled off-peak, lock removed\np99: 4.2s -> 210ms"
+      ]
+     ],
+     "options": [
+      "Keep the mean dashboard — it is green again",
+      "Replace the mean with p50/p95/p99 on the dashboard, and alert on the tail — the mean hid this for weeks",
+      "Delete the latency dashboard",
+      "Set the SLO on the mean, tighter"
+     ],
+     "correct": 1,
+     "explain": "The dashboard was not wrong, it was the wrong statistic. Percentiles on the dashboard, alerts on the tail: measure what users feel. The mean can stay as a footnote."
+    }
+   ],
+   "debrief": "You distrusted the mean, read the distribution, used periodicity as a fingerprint, and fixed the dashboard's statistic. Averages summarize; percentiles testify.",
+   "points": 30
+  },
+  {
+   "id": "acad-math-sim-4",
+   "title": "A/B test or noise?",
+   "kind": "decide",
+   "domain_id": "acad-math",
+   "difficulty": 3,
+   "brief": "The new checkout flow converted 5.2% vs 4.9% for the old — over 3 days, 2,000 users per side. Product wants to ship it. Is it real?",
+   "steps": [
+    {
+     "symptom": "Variant B: 5.2% (104/2000). Control A: 4.9% (98/2000). Three days of data. Product: 'Ship it, B wins.'",
+     "evidence": [
+      [
+       "Test",
+       "A: 98/2000 = 4.9% | B: 104/2000 = 5.2%\nDuration: 3 days | Product: 'B wins, ship it'"
+      ]
+     ],
+     "options": [
+      "Ship B — 5.2 is bigger than 4.9",
+      "Check significance first: a 6-conversion gap on 2,000 users is well within noise — run the test longer or accept you cannot tell",
+      "Ship B but watch it",
+      "Declare the test inconclusive and never test again"
+     ],
+     "correct": 1,
+     "explain": "Six conversions out of two thousand is noise wearing a costume. With this sample size, the standard error swallows the 0.3-point gap — you cannot distinguish B's 'win' from a coin flip. Shipping on noise means shipping randomly."
+    },
+    {
+     "symptom": "You explain it is noise. Product asks: 'How long until we know?'",
+     "evidence": [
+      [
+       "Ask",
+       "Product: 'How many users do we need?'"
+      ]
+     ],
+     "options": [
+      "'A few more days should do it.'",
+      "Do the power math: detecting a 0.3-point lift at 5% base needs roughly 100k+ users per side — weeks, not days. Offer the real trade: run longer, accept a bigger minimum effect, or test bigger changes",
+      "'Statistics can't answer that.'",
+      "Peek at the data daily and ship when it looks good"
+     ],
+     "correct": 1,
+     "explain": "Small effects need big samples — that is the iron law. Give the real number (order of 100k per side for a 0.3-point lift) and the real options: longer run, bigger minimum detectable effect, or bolder variants. And never peek-and-ship: peeking inflates false positives."
+    },
+    {
+     "symptom": "The test runs to full power: B wins by 0.4 points, significant. Product wants to ship and move on.",
+     "evidence": [
+      [
+       "Result",
+       "B: +0.4pts, p < 0.05, full power\nProduct: 'Ship it'"
+      ]
+     ],
+     "options": [
+      "Ship and forget",
+      "Ship, but record the effect size honestly: a real but small win — and bank the learning about what moves checkout",
+      "Keep testing B variants forever",
+      "Question the p-value"
+     ],
+     "correct": 1,
+     "explain": "Significant is not the same as important: +0.4 points is real and worth shipping, but it is a small win, not a breakthrough. Record the effect size, bank the learning, and keep hunting bigger levers. Statistics tells you it is real; judgment tells you what it is worth."
+    }
+   ],
+   "debrief": "You refused to ship on noise, priced the sample size honestly, and treated significance as the start of judgment, not the end. Most 'wins' are noise — the math tells you which.",
+   "points": 30
+  },
+  {
+   "id": "acad-math-sim-5",
+   "title": "Fermi the migration",
+   "kind": "respond",
+   "domain_id": "acad-math",
+   "difficulty": 1,
+   "brief": "The CTO asks in the hallway: 'Roughly what will the cloud migration cost per month?' You have 30 seconds and no spreadsheet. Estimate like a physicist.",
+   "steps": [
+    {
+     "symptom": "Hallway, CTO, 30 seconds: 'Ballpark the monthly cloud cost for the migration.' You know: ~60 VMs, mostly idle.",
+     "evidence": [
+      [
+       "Known",
+       "~60 VMs | mostly idle web/app servers\nCTO wants: order of magnitude, now"
+      ]
+     ],
+     "options": [
+      "'I'll get back to you with a spreadsheet.'",
+      "Fermi it: 60 VMs x ~$50/month average (mix of small sizes, mostly idle) = ~$3k/month compute, double for storage/transfer overhead -> ~$5-10k/month ballpark",
+      "'Probably around a million.'",
+      "'It depends.'"
+     ],
+     "correct": 1,
+     "explain": "Fermi estimation is decomposition with round numbers: count the units, price a typical unit, multiply, add an overhead factor, state the range. $5-10k/month is a decision-useful ballpark in 30 seconds; 'I'll get back to you' is a decision delayed."
+    },
+    {
+     "symptom": "CTO: 'Is that high or low? I need to know if we're in trouble.'",
+     "evidence": [
+      [
+       "Follow-up",
+       "CTO: 'Compare it to something.'"
+      ]
+     ],
+     "options": [
+      "'It's just an estimate.'",
+      "Anchor it: 'Current data-center run-rate is ~$25k/month, so $5-10k is a reduction — but the estimate's uncertainty is 2x, and data transfer is the wild card. I'll firm it up this week.'",
+      "'We're definitely fine.'",
+      "Refuse to compare without more data"
+     ],
+     "correct": 1,
+     "explain": "Estimates need anchors and uncertainty bars: compare to the known $25k, state the 2x uncertainty honestly, name the biggest unknown (transfer). A ballpark with error bars beats a precise number built on guesses."
+    },
+    {
+     "symptom": "Back at your desk: how do you firm up the Fermi estimate properly?",
+     "evidence": [
+      [
+       "Next step",
+       "Turn the hallway math into a real estimate"
+      ]
+     ],
+     "options": [
+      "Keep the hallway number — it was fine",
+      "Replace each Fermi factor with measured data: actual VM sizes from the inventory, real utilization from monitoring, priced with the provider calculator, plus a 20% contingency",
+      "Ask the vendor for a quote and trust it",
+      "Add 50% to be safe and present that"
+     ],
+     "correct": 1,
+     "explain": "Fermi estimates get refined factor by factor: inventory replaces the VM guess, monitoring replaces the utilization guess, the price calculator replaces the $50 guess. Keep the structure, upgrade the inputs — and keep the contingency explicit, not hidden."
+    }
+   ],
+   "debrief": "You estimated under pressure with round numbers, anchored with uncertainty, and knew exactly how to refine it. Fermi estimation is not guessing — it is structured, upgradable guessing.",
+   "points": 30
+  }
+ ],
+ "consoleSims": [
+  {
+   "id": "acad-math-csim-sql-1",
+   "title": "Measure the experiment",
+   "console": "sql-studio",
+   "domain_id": "acad-math",
+   "difficulty": 2,
+   "brief": "The A/B test needs a measurements table. Create it with an id, a value, and a taken_at — then write a query computing the average value. The console checks your SQL actually averages.",
+   "tasks": [
+    {
+     "id": "t1",
+     "instruction": "Create a table named measurements with columns: id INTEGER, value REAL, taken_at TEXT.",
+     "validate": {
+      "action": "create-table",
+      "params": {
+       "name": "measurements",
+       "columns": "id INTEGER, value REAL, taken_at TEXT"
+      }
+     },
+     "hint": "Create table: NAME=measurements, COLUMNS='id INTEGER, value REAL, taken_at TEXT'."
+    },
+    {
+     "id": "t2",
+     "instruction": "Run a SQL query that averages the value column (use AVG).",
+     "validate": {
+      "action": "run-query",
+      "params": {
+       "match": "AVG"
+      }
+     },
+     "hint": "Type a query containing AVG, e.g. SELECT AVG(value) FROM measurements."
+    }
+   ],
+   "debrief": "Schema for the experiment, then the average — but remember the misleading-average simulation: AVG is the start of the analysis, never the end."
+  },
+  {
+   "id": "acad-math-csim-code-1",
+   "title": "Breakpoint the accumulator",
+   "console": "code-editor",
+   "domain_id": "acad-math",
+   "difficulty": 2,
+   "brief": "You are debugging a statistics script. Open app.py and set a breakpoint on line 4 — where the accumulator grows — so you can watch the sum evolve.",
+   "tasks": [
+    {
+     "id": "t1",
+     "instruction": "Open the file app.py.",
+     "validate": {
+      "action": "open-file",
+      "params": {
+       "name": "app.py"
+      }
+     },
+     "hint": "Open app.py in the editor."
+    },
+    {
+     "id": "t2",
+     "instruction": "Set a breakpoint on line 4 of app.py.",
+     "validate": {
+      "action": "toggle-breakpoint",
+      "params": {
+       "file": "app.py",
+       "line": 4
+      }
+     },
+     "hint": "Toggle a breakpoint: FILE=app.py, LINE=4 (the accumulator line)."
+    }
+   ],
+   "debrief": "Breakpoints are how you watch math happen. Set them where the state changes — accumulators, loop variables, running totals."
+  },
+  {
+   "id": "acad-math-csim-web-1",
+   "title": "File the estimation worksheet",
+   "console": "generic-web",
+   "domain_id": "acad-math",
+   "difficulty": 1,
+   "brief": "Fermi estimates deserve to be written down. Title the worksheet, set the owner contact, and submit it — estimates with owners get refined; others evaporate.",
+   "tasks": [
+    {
+     "id": "t1",
+     "instruction": "Set the site_name field to 'Estimation worksheet'.",
+     "validate": {
+      "action": "set-field",
+      "params": {
+       "id": "site_name",
+       "value": "Estimation worksheet"
+      }
+     },
+     "hint": "Set field: FIELD=site_name, VALUE='Estimation worksheet'."
+    },
+    {
+     "id": "t2",
+     "instruction": "Set the admin_email field to 'keeper@example.com'.",
+     "validate": {
+      "action": "set-field",
+      "params": {
+       "id": "admin_email",
+       "value": "keeper@example.com"
+      }
+     },
+     "hint": "Set field: FIELD=admin_email, VALUE=keeper@example.com."
+    },
+    {
+     "id": "t3",
+     "instruction": "Submit the form.",
+     "validate": {
+      "action": "submit-form",
+      "params": {}
+     },
+     "hint": "Click Submit settings."
+    }
+   ],
+   "debrief": "Written estimates beat remembered ones. The worksheet is where the hallway math becomes a plan."
+  },
+  {
+   "id": "acad-math-csim-sql-2",
+   "title": "Filter the measurements",
+   "console": "sql-studio",
+   "domain_id": "acad-math",
+   "difficulty": 2,
+   "brief": "Averages lie when the sample is polluted. Index the taken_at column of measurements for time-window queries, then write a query that filters with WHERE.",
+   "tasks": [
+    {
+     "id": "t1",
+     "instruction": "Create an index on the taken_at column of measurements.",
+     "validate": {
+      "action": "create-index",
+      "params": {
+       "table": "measurements",
+       "column": "taken_at"
+      }
+     },
+     "hint": "Create index: TABLE=measurements, COLUMN=taken_at."
+    },
+    {
+     "id": "t2",
+     "instruction": "Run a SQL query that filters measurements with a WHERE clause.",
+     "validate": {
+      "action": "run-query",
+      "params": {
+       "match": "WHERE"
+      }
+     },
+     "hint": "Type a query containing WHERE, e.g. SELECT * FROM measurements WHERE value > 100."
+    }
+   ],
+   "debrief": "Filter before you average. The WHERE clause is where data quality lives — every honest analysis starts by defining the sample."
+  }
+ ],
+ "terminalMissions": [
+  {
+   "id": "acad-math-mission-1",
+   "title": "Who is calculating",
+   "domain_id": "acad-math",
+   "difficulty": 1,
+   "brief": "Calculations have authors. Print your username.",
+   "objectives": [
+    "Print your username"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^whoami$",
+     "expect_contains": "candidate",
+     "hint": "Run: whoami — who is calculating?"
+    }
+   ],
+   "success_message": "Calculator identified. Numbers have authors."
+  },
+  {
+   "id": "acad-math-mission-2",
+   "title": "List the data files",
+   "domain_id": "acad-math",
+   "difficulty": 1,
+   "brief": "Quantitative work starts with the data at hand. List the home directory.",
+   "objectives": [
+    "List available data"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^ls$",
+     "expect_contains": "notes.txt",
+     "hint": "Run: ls — list the data files."
+    }
+   ],
+   "success_message": "Data listed. Measure what is here before estimating what is not."
+  },
+  {
+   "id": "acad-math-mission-3",
+   "title": "State the estimate",
+   "domain_id": "acad-math",
+   "difficulty": 2,
+   "brief": "Fermi estimate: 60 VMs at ~$50/month = $3,000/month compute. State the number with echo — estimates get stated, not mumbled.",
+   "objectives": [
+    "State the Fermi estimate"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^echo\\s+.*3000.*$",
+     "expect_contains": "3000",
+     "hint": "Run: echo with the estimate (e.g. echo \"estimate 3000 per month\")."
+    }
+   ],
+   "success_message": "Estimate stated. A stated number can be checked; a mumbled one cannot."
+  },
+  {
+   "id": "acad-math-mission-4",
+   "title": "State the base rate",
+   "domain_id": "acad-math",
+   "difficulty": 2,
+   "brief": "Two errors in six log lines: the base rate is ~33%. State it with echo — base rates get written down.",
+   "objectives": [
+    "State the base rate"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^echo\\s+.*33.*$",
+     "expect_contains": "33",
+     "hint": "Run: echo with the base rate (e.g. echo \"base rate 33 percent\")."
+    }
+   ],
+   "success_message": "Base rate stated. The first thing people forget and the last thing that matters."
+  },
+  {
+   "id": "acad-math-mission-5",
+   "title": "Name the host",
+   "domain_id": "acad-math",
+   "difficulty": 2,
+   "brief": "Even math runs somewhere. Print the hostname.",
+   "objectives": [
+    "Print the host name"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^hostname$",
+     "expect_contains": "interstitium",
+     "hint": "Run: hostname — name the host."
+    }
+   ],
+   "success_message": "Host named. Context is part of the calculation."
+  },
+  {
+   "id": "acad-math-mission-6",
+   "title": "Verify the platform",
+   "domain_id": "acad-math",
+   "difficulty": 2,
+   "brief": "Print the full system information — the instrument gets calibrated.",
+   "objectives": [
+    "Print platform information"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^uname\\s+-a$",
+     "expect_contains": "6.8.0-ilb",
+     "hint": "Run: uname -a — calibrate the instrument."
+    }
+   ],
+   "success_message": "Instrument calibrated. Know what you compute on."
+  },
+  {
+   "id": "acad-math-mission-7",
+   "title": "Sign the proof",
+   "domain_id": "acad-math",
+   "difficulty": 3,
+   "brief": "Conclude with QED via echo, then print your identity record — the prover signs the proof.",
+   "objectives": [
+    "State QED",
+    "Sign the proof"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^echo\\s+.*QED.*$",
+     "expect_contains": "QED",
+     "hint": "Run: echo QED — conclude the proof."
+    },
+    {
+     "command_pattern": "^id$",
+     "expect_contains": "uid=1000",
+     "hint": "Run: id — sign the proof."
+    }
+   ],
+   "success_message": "QED, signed. A proof without a prover is just a rumor with notation."
+  }
+ ],
  "sections": [
   {
    "id": "sec-full-spectrum",
-   "title": "Full Spectrum Dominance \u2014 core path",
+   "title": "Full Spectrum Dominance — core path",
    "kind": "core",
    "lectures": [],
    "lab_ids": [
@@ -260,17 +856,17 @@
  ],
  "behavioral": [
   {
-   "prompt": "Tell me about the most technically difficult problem you have run into \u2014 a homelab, a broken environment, anything \u2014 and how you solved it.",
+   "prompt": "Tell me about the most technically difficult problem you have run into — a homelab, a broken environment, anything — and how you solved it.",
    "framework": "STAR",
    "points": [
     "Pick ONE problem with a real evidence trail: the symptom, what you measured, the hypothesis you tested",
-    "Show the loop: scope, observe, hypothesize, smallest safe change, validate \u2014 interviewers score the method, not just the fix",
+    "Show the loop: scope, observe, hypothesize, smallest safe change, validate — interviewers score the method, not just the fix",
     "Name the tools (VM build, networking, logs) and the lesson it taught you",
     "Close with the result in concrete terms: what works now that did not before"
    ],
    "pitfalls": [
-    "Choosing a story with no real obstacle (\u201cI Googled it\u201d is not a story)",
-    "Skipping validation \u2014 saying it worked without proving it",
+    "Choosing a story with no real obstacle (“I Googled it” is not a story)",
+    "Skipping validation — saying it worked without proving it",
     "Rambling past two minutes without reaching the result"
    ]
   },
@@ -295,13 +891,13 @@
    "points": [
     "Connect prevention to something concrete: a moment you saw detection arrive too late, or a system you hardened",
     "Tie their model to your instincts: deny-by-default matches how you already think about trust",
-    "Show service orientation: the Cyber Hero culture rewards the 2 a.m. helper \u2014 give an example of being one",
+    "Show service orientation: the Cyber Hero culture rewards the 2 a.m. helper — give an example of being one",
     "Name one forward-looking reason: Zero Trust, the MSP mission, or the bootcamp community investment"
    ],
    "pitfalls": [
     "Generic flattery with no specifics about the company",
     "Leading with compensation, title, or location convenience",
-    "Claiming expertise in products you have only read about \u2014 frame it as studied, not mastered"
+    "Claiming expertise in products you have only read about — frame it as studied, not mastered"
    ]
   },
   {
@@ -378,13 +974,13 @@
  ],
  "resources": {
   "cheatsheet": {
-   "title": "Full Spectrum Dominance \u2014 field reference",
+   "title": "Full Spectrum Dominance — field reference",
    "sections": [
     {
      "heading": "Company facts (verified)",
      "items": [
-      "Founded 2017 in Orlando, FL \u2014 Danny Jenkins (CEO), Sami Jenkins (COO), John Carolan (QA)",
-      "Philosophy: deny-by-default / default-deny \u2014 approve known-good, deny the rest",
+      "Founded 2017 in Orlando, FL — Danny Jenkins (CEO), Sami Jenkins (COO), John Carolan (QA)",
+      "Philosophy: deny-by-default / default-deny — approve known-good, deny the rest",
       "Customers: 70,000+ organizations, sold heavily through the MSP channel",
       "Funding: $190M Series F, July 2026 (Elephant-led); ~730 employees",
       "Interview address: 1901 Summit Tower Blvd, Orlando, FL 32810",
@@ -394,116 +990,116 @@
     {
      "heading": "Product stack",
      "items": [
-      "Allowlisting \u2014 default-deny execution control for apps, DLLs, scripts, installers",
-      "Ringfencing \u2014 constrains allowed apps: app-to-app, file, registry, network",
-      "Storage Control \u2014 USB/device policy by serial, user, file type, encryption",
-      "Elevation Control \u2014 just-in-time per-app admin, no standing rights",
-      "Network Control \u2014 host firewall; port/IP/dynamic-ACL rules; ZTNA foundation",
-      "Web Control \u2014 agent-based DNS/URL category filtering, works off-network",
-      "Cyber Hero MDR \u2014 24/7/365 US-based response, ~60-second average",
-      "Testing Environment \u2014 one-button VDI sandbox; checks AV flags, canary files, registry changes"
+      "Allowlisting — default-deny execution control for apps, DLLs, scripts, installers",
+      "Ringfencing — constrains allowed apps: app-to-app, file, registry, network",
+      "Storage Control — USB/device policy by serial, user, file type, encryption",
+      "Elevation Control — just-in-time per-app admin, no standing rights",
+      "Network Control — host firewall; port/IP/dynamic-ACL rules; ZTNA foundation",
+      "Web Control — agent-based DNS/URL category filtering, works off-network",
+      "Cyber Hero MDR — 24/7/365 US-based response, ~60-second average",
+      "Testing Environment — one-button VDI sandbox; checks AV flags, canary files, registry changes"
      ]
     },
     {
      "heading": "Rule strength (strongest to weakest)",
      "items": [
-      "Certificate/publisher rules \u2014 survive version updates",
-      "Hash rules \u2014 precise but break on every new version",
-      "Path rules \u2014 weakest; never in user-writable locations",
-      "Learning Mode catalogs before enforcement; Installation Mode pauses blocking \u2014 scope and time-box both"
+      "Certificate/publisher rules — survive version updates",
+      "Hash rules — precise but break on every new version",
+      "Path rules — weakest; never in user-writable locations",
+      "Learning Mode catalogs before enforcement; Installation Mode pauses blocking — scope and time-box both"
      ]
     },
     {
      "heading": "Terminal evidence commands",
      "items": [
-      "nmap <host> \u2014 which ports answer (22/80/443 open)",
-      "dig <name> \u2014 ANSWER SECTION with the A record",
-      "ss \u2014 listening sockets",
-      "systemctl status <svc> \u2014 unit state",
-      "journalctl -u <svc> \u2014 service logs",
-      "sha256sum <file> \u2014 real SHA-256 identity",
-      "grep <pattern> <file> \u2014 search the record",
-      "ps \u2014 what is actually running"
+      "nmap <host> — which ports answer (22/80/443 open)",
+      "dig <name> — ANSWER SECTION with the A record",
+      "ss — listening sockets",
+      "systemctl status <svc> — unit state",
+      "journalctl -u <svc> — service logs",
+      "sha256sum <file> — real SHA-256 identity",
+      "grep <pattern> <file> — search the record",
+      "ps — what is actually running"
      ]
     },
     {
      "heading": "Graph vocabulary",
      "items": [
-      "node \u2014 any entity tracked in the model (user, host, IP, domain, file hash, vulnerability)",
-      "edge \u2014 a labeled relationship between two nodes (logged into, resolved to, downloaded)",
-      "degree \u2014 number of edges on a node; high-degree nodes are attacker highways",
-      "centrality \u2014 how much traffic or how many paths flow through a node",
-      "directed edge \u2014 a relationship with a direction (A downloaded FROM B)",
-      "security graph \u2014 the living model of your whole environment as nodes and edges",
-      "attack graph \u2014 the subgraph of exploitable paths to your targets",
-      "knowledge graph \u2014 threat-intel indicators linked to campaigns and actors"
+      "node — any entity tracked in the model (user, host, IP, domain, file hash, vulnerability)",
+      "edge — a labeled relationship between two nodes (logged into, resolved to, downloaded)",
+      "degree — number of edges on a node; high-degree nodes are attacker highways",
+      "centrality — how much traffic or how many paths flow through a node",
+      "directed edge — a relationship with a direction (A downloaded FROM B)",
+      "security graph — the living model of your whole environment as nodes and edges",
+      "attack graph — the subgraph of exploitable paths to your targets",
+      "knowledge graph — threat-intel indicators linked to campaigns and actors"
      ]
     },
     {
      "heading": "Attack-graph playbook",
      "items": [
-      "inventory first \u2014 you cannot graph what you have not discovered",
+      "inventory first — you cannot graph what you have not discovered",
       "model flaws AND misconfigs as exploit edges",
       "compute shortest paths to the crown jewels",
       "find the choke point (highest betweenness on those paths)",
       "break the path: patch, segment, or remove the edge",
       "re-scan and re-run the graph to prove the path is gone",
-      "never trust yesterday's graph \u2014 redeployments redraw the map"
+      "never trust yesterday's graph — redeployments redraw the map"
      ]
     },
     {
      "heading": "Zero Trust + graphs",
      "items": [
-      "never trust, always verify \u2014 re-evaluate every access decision",
-      "assume breach \u2014 treat unexpected edges as hostile until proven otherwise",
-      "microsegmentation \u2014 allow-list approved edges, alert on new ones",
-      "ReBAC \u2014 policies are path queries on the identity graph",
-      "continuous verification \u2014 device/location/behavior edges change, trust follows",
-      "anomalous edge \u2014 a first-seen connection between strangers is the classic signal"
+      "never trust, always verify — re-evaluate every access decision",
+      "assume breach — treat unexpected edges as hostile until proven otherwise",
+      "microsegmentation — allow-list approved edges, alert on new ones",
+      "ReBAC — policies are path queries on the identity graph",
+      "continuous verification — device/location/behavior edges change, trust follows",
+      "anomalous edge — a first-seen connection between strangers is the classic signal"
      ]
     },
     {
      "heading": "ML detection vocabulary",
      "items": [
-      "Supervised learning \u2014 learns from labeled examples; strong on known threats, blind to novel ones",
-      "Unsupervised learning \u2014 finds structure without labels; clustering and dimensionality reduction",
-      "Anomaly detection \u2014 models 'normal' and flags deviations; the workhorse for novel threats",
-      "UEBA \u2014 user and entity behavior analytics: per-user baselines plus peer-group comparison",
-      "Feature engineering \u2014 encoding raw logs into model inputs (login velocity, rare processes, domain entropy)",
-      "Concept drift \u2014 model decay as attacker behavior and legitimate traffic shift over time"
+      "Supervised learning — learns from labeled examples; strong on known threats, blind to novel ones",
+      "Unsupervised learning — finds structure without labels; clustering and dimensionality reduction",
+      "Anomaly detection — models 'normal' and flags deviations; the workhorse for novel threats",
+      "UEBA — user and entity behavior analytics: per-user baselines plus peer-group comparison",
+      "Feature engineering — encoding raw logs into model inputs (login velocity, rare processes, domain entropy)",
+      "Concept drift — model decay as attacker behavior and legitimate traffic shift over time"
      ]
     },
     {
      "heading": "Detection metrics",
      "items": [
-      "Precision \u2014 of all flagged alerts, how many were real",
-      "Recall \u2014 of all real attacks, how many were flagged",
-      "Threshold tuning \u2014 sliding the decision cutoff trades precision against recall",
-      "Alert fatigue \u2014 when false positives train analysts to ignore the queue",
-      "DGA \u2014 domain generation algorithm; detected via character entropy of domain names"
+      "Precision — of all flagged alerts, how many were real",
+      "Recall — of all real attacks, how many were flagged",
+      "Threshold tuning — sliding the decision cutoff trades precision against recall",
+      "Alert fatigue — when false positives train analysts to ignore the queue",
+      "DGA — domain generation algorithm; detected via character entropy of domain names"
      ]
     },
     {
      "heading": "Agent and LLM security",
      "items": [
-      "Direct prompt injection \u2014 attacker input overrides app instructions (OWASP LLM01:2025, the #1 LLM risk)",
-      "Indirect prompt injection \u2014 hidden instructions inside retrieved data (email, web, docs)",
-      "Jailbreak \u2014 defeating the model's own safety policy; distinct from hijacking app behavior",
-      "Tool poisoning \u2014 malicious tool descriptions or metadata steer an agent to misuse its tools (MCP ecosystem risk)",
-      "Insecure output handling \u2014 executing or trusting model output without validation",
-      "Least-privilege tools \u2014 grant each tool only the scope its task requires"
+      "Direct prompt injection — attacker input overrides app instructions (OWASP LLM01:2025, the #1 LLM risk)",
+      "Indirect prompt injection — hidden instructions inside retrieved data (email, web, docs)",
+      "Jailbreak — defeating the model's own safety policy; distinct from hijacking app behavior",
+      "Tool poisoning — malicious tool descriptions or metadata steer an agent to misuse its tools (MCP ecosystem risk)",
+      "Insecure output handling — executing or trusting model output without validation",
+      "Least-privilege tools — grant each tool only the scope its task requires"
      ]
     },
     {
      "heading": "Adversarial ML and governance",
      "items": [
-      "Evasion \u2014 perturbing inputs at inference time to dodge a classifier",
-      "Poisoning \u2014 corrupting training data to corrupt the model",
-      "Extraction \u2014 querying a model to steal its behavior or parameters",
-      "MITRE ATLAS \u2014 knowledge base of adversarial ML tactics and techniques",
-      "Red-teaming and evals \u2014 adversarial testing of AI systems before deployment",
-      "Human-in-the-loop \u2014 required approval for high-impact or irreversible agent actions",
-      "SOAR \u2014 security orchestration, automation and response; automate enrichment, gate containment"
+      "Evasion — perturbing inputs at inference time to dodge a classifier",
+      "Poisoning — corrupting training data to corrupt the model",
+      "Extraction — querying a model to steal its behavior or parameters",
+      "MITRE ATLAS — knowledge base of adversarial ML tactics and techniques",
+      "Red-teaming and evals — adversarial testing of AI systems before deployment",
+      "Human-in-the-loop — required approval for high-impact or irreversible agent actions",
+      "SOAR — security orchestration, automation and response; automate enrichment, gate containment"
      ]
     }
    ]
@@ -515,7 +1111,7 @@
    },
    {
     "term": "Blocklisting",
-    "def": "Default-allow model: everything runs except recognized-bad items \u2014 the window zero-days live in."
+    "def": "Default-allow model: everything runs except recognized-bad items — the window zero-days live in."
    },
    {
     "term": "Default-deny",
@@ -531,15 +1127,15 @@
    },
    {
     "term": "Installation Mode",
-    "def": "Temporary mode that pauses file blocking for installs \u2014 must be tightly scoped and time-boxed."
+    "def": "Temporary mode that pauses file blocking for installs — must be tightly scoped and time-boxed."
    },
    {
     "term": "Elevation Control",
-    "def": "Grants specific approved applications admin rights for standard users \u2014 just-in-time, per-app, time-boxed \u2014 without standing admin rights."
+    "def": "Grants specific approved applications admin rights for standard users — just-in-time, per-app, time-boxed — without standing admin rights."
    },
    {
     "term": "Application hopping",
-    "def": "An elevated or trusted process spawning another tool (e.g., PowerShell) to inherit its privileges \u2014 countered by ringfencing the elevated process."
+    "def": "An elevated or trusted process spawning another tool (e.g., PowerShell) to inherit its privileges — countered by ringfencing the elevated process."
    },
    {
     "term": "Storage Control",
@@ -551,7 +1147,7 @@
    },
    {
     "term": "ZTNA",
-    "def": "Zero Trust Network Access: per-session, per-application brokered connections (commonly over port 443) with no open inbound ports \u2014 deny-by-default for network access."
+    "def": "Zero Trust Network Access: per-session, per-application brokered connections (commonly over port 443) with no open inbound ports — deny-by-default for network access."
    },
    {
     "term": "Approval Center",
@@ -559,7 +1155,7 @@
    },
    {
     "term": "Unified Audit",
-    "def": "Real-time audit showing what was allowed or denied across endpoints \u2014 and why; the evidence layer for triage."
+    "def": "Real-time audit showing what was allowed or denied across endpoints — and why; the evidence layer for triage."
    },
    {
     "term": "Testing Environment",
@@ -571,15 +1167,15 @@
    },
    {
     "term": "Assume breach",
-    "def": "Design and operate as if the attacker already has a foothold \u2014 least privilege, containment, and monitoring everywhere."
+    "def": "Design and operate as if the attacker already has a foothold — least privilege, containment, and monitoring everywhere."
    },
    {
     "term": "Living off the land",
-    "def": "Attacks that hijack trusted built-in tools (Word, PowerShell) instead of dropping malware \u2014 defeated by behavior containment, not signatures."
+    "def": "Attacks that hijack trusted built-in tools (Word, PowerShell) instead of dropping malware — defeated by behavior containment, not signatures."
    },
    {
     "term": "Change control",
-    "def": "Scoped, ticketed, tested changes with validation and rollback \u2014 emergency speed never cancels the process."
+    "def": "Scoped, ticketed, tested changes with validation and rollback — emergency speed never cancels the process."
    },
    {
     "def": "A node in an attack graph representing a system or weakness, connected by edges that represent steps an attacker could take between them.",
@@ -686,7 +1282,7 @@
    {
     "label": "ThreatLocker Zero Trust platform explainer (official)",
     "url": "https://www.threatlocker.com/blog/edr-xdr-vs-zero-trust-prevention",
-    "note": "EDR/XDR vs Zero Trust prevention \u2014 the deny-by-default argument in their own words."
+    "note": "EDR/XDR vs Zero Trust prevention — the deny-by-default argument in their own words."
    },
    {
     "label": "ThreatLocker Bootcamp page (official)",
@@ -724,7 +1320,7 @@
     "note": "Detection and response capability detail."
    },
    {
-    "label": "NIST SP 800-207 \u2014 Zero Trust Architecture",
+    "label": "NIST SP 800-207 — Zero Trust Architecture",
     "url": "https://csrc.nist.gov/pubs/sp/800/207/final",
     "note": "The canonical Zero Trust reference: tenets, deployment models, policy engine trust algorithm."
    },
@@ -739,7 +1335,7 @@
     "url": "https://attack.mitre.org/"
    },
    {
-    "label": "CISA \u2014 Cybersecurity and Infrastructure Security Agency",
+    "label": "CISA — Cybersecurity and Infrastructure Security Agency",
     "note": "US government advisories, alerts, and guidance frequently referenced in threat-intel work.",
     "url": "https://www.cisa.gov/"
    },
@@ -756,7 +1352,7 @@
    {
     "label": "OWASP Top 10 for LLM Applications",
     "url": "https://genai.owasp.org/llm-top-10/",
-    "note": "The ranked LLM risk list \u2014 prompt injection is #1"
+    "note": "The ranked LLM risk list — prompt injection is #1"
    },
    {
     "label": "NIST AI Risk Management Framework",
@@ -766,7 +1362,7 @@
    {
     "label": "MITRE ATLAS",
     "url": "https://atlas.mitre.org/",
-    "note": "Adversarial Threat Landscape for AI Systems \u2014 tactics and techniques"
+    "note": "Adversarial Threat Landscape for AI Systems — tactics and techniques"
    },
    {
     "label": "CISA AI guidance",
@@ -777,11 +1373,11 @@
   "checklist": [
    "Sixty-second company brief rehearsed out loud: year, city, philosophy, three products, one milestone",
    "Two STAR stories ready: hardest technical problem; a frustrated customer or user",
-   "\u201cWhy ThreatLocker / why cybersecurity\u201d answer tied to prevention and service, not slogans",
+   "“Why ThreatLocker / why cybersecurity” answer tied to prevention and service, not slogans",
    "Ringfencing explained in one plain-English sentence (the Word-on-a-leash version)",
    "Elevation Control answer ready: just-in-time, per-app, time-boxed, ringfenced, logged",
-   "Triage loop memorized: scope \u2192 observe \u2192 hypothesize \u2192 smallest safe change \u2192 validate \u2192 explain",
-   "Three questions to ask them: team on-call shape, approval SLA expectations, what \u201cmost helpful\u201d looks like on the team",
+   "Triage loop memorized: scope → observe → hypothesize → smallest safe change → validate → explain",
+   "Three questions to ask them: team on-call shape, approval SLA expectations, what “most helpful” looks like on the team",
    "Logistics: 1901 Summit Tower Blvd, Orlando FL; in-office role; ID and references ready",
    "Define your crown jewels before you model anything.",
    "Build the asset-and-access graph from live sources (scans, configs, identity), not from the CMDB alone.",
@@ -927,7 +1523,7 @@
    "title": "Ringfencing: four leashes on an allowed application",
    "svg": "assets/diagrams/tl-ringfencing.svg",
    "lesson_ref": "c-tl-endpoint-ops",
-   "caption": "Word stays approved, but it cannot spawn PowerShell, read the credential store, or reach the internet \u2014 while opening its document is allowed.",
+   "caption": "Word stays approved, but it cannot spawn PowerShell, read the credential store, or reach the internet — while opening its document is allowed.",
    "alt": "An approved Word application inside a dashed containment ring: arrows show PowerShell launch denied, credential-store registry access denied, external network denied, and document file access allowed."
   },
   {
@@ -936,7 +1532,7 @@
    "title": "The Zero Trust endpoint stack",
    "svg": "assets/diagrams/tl-zero-trust-stack.svg",
    "lesson_ref": "c-tl-interview",
-   "caption": "Five deny-by-default layers \u2014 Allowlisting, Ringfencing, Elevation, Storage, Network \u2014 watched by Web Control, the Testing Environment, Unified Audit, and the Cyber Hero MDR team.",
+   "caption": "Five deny-by-default layers — Allowlisting, Ringfencing, Elevation, Storage, Network — watched by Web Control, the Testing Environment, Unified Audit, and the Cyber Hero MDR team.",
    "alt": "A vertical stack of five layers from Allowlisting at the foundation up through Ringfencing, Elevation Control, Storage Control, and Network Control, with side boxes for Web Control, Testing Environment, Unified Audit, and Cyber Hero MDR."
   },
   {
@@ -990,7 +1586,7 @@
    "title": "ML detection pipeline: telemetry to triage",
    "svg": "assets/diagrams/ai-ml-pipeline.svg",
    "lesson_ref": "c-ml-defense",
-   "caption": "How raw telemetry becomes scored alerts: features feed the model, the model scores, analysts triage top-down \u2014 and analyst verdicts feed retraining.",
+   "caption": "How raw telemetry becomes scored alerts: features feed the model, the model scores, analysts triage top-down — and analyst verdicts feed retraining.",
    "alt": "Flow diagram: telemetry sources feed feature extraction, which feeds an ML model, which outputs scored alerts into an analyst triage queue, with a feedback arrow for retraining."
   },
   {
@@ -1025,5 +1621,64 @@
  "math": [
   "stats",
   "probability"
+ ],
+ "videos": [
+  {
+   "title": "Expected Value of the Outage",
+   "url": "/assets/videos/bc-3b1b-math-expected-value.mp4",
+   "source": "Interstitium Labs",
+   "blurb": "Expected value applied to the outage decision: a 20% chance of a $500k outage makes a $40k fix the obvious buy. (Preview — narration coming; voiceover pending TTS restore.)",
+   "durationMin": 1,
+   "order": 1,
+   "preview": true,
+   "captionsUrl": "/assets/videos/bc-3b1b-math-expected-value.vtt",
+   "narrationUrl": "/assets/videos/bc-3b1b-math-expected-value.narration.md",
+   "verifiedUtc": "2026-10-09T04:08:23Z",
+   "httpStatus": 200
+  },
+  {
+   "title": "The Misleading Average",
+   "url": "/assets/videos/bc-3b1b-math-misleading-average.mp4",
+   "source": "Interstitium Labs",
+   "blurb": "A latency-histogram visualization of the misleading average: mean 120ms hides a p99 of 480ms — the tail is the experience. (Preview — narration coming; voiceover pending TTS restore.)",
+   "durationMin": 1,
+   "order": 2,
+   "preview": true,
+   "captionsUrl": "/assets/videos/bc-3b1b-math-misleading-average.vtt",
+   "narrationUrl": "/assets/videos/bc-3b1b-math-misleading-average.narration.md",
+   "verifiedUtc": "2026-10-09T04:08:23Z",
+   "httpStatus": 200
+  },
+  {
+   "title": "Fermi the Migration",
+   "url": "/assets/videos/bc-primer-math-fermi.mp4",
+   "source": "Interstitium Labs",
+   "blurb": "A Fermi-estimation simulation for the migration: multiply the orders of magnitude — within a factor of ten is good enough to plan. (Preview — narration coming; voiceover pending TTS restore.)",
+   "durationMin": 1,
+   "order": 3,
+   "preview": true,
+   "captionsUrl": "/assets/videos/bc-primer-math-fermi.vtt",
+   "narrationUrl": "/assets/videos/bc-primer-math-fermi.narration.md",
+   "verifiedUtc": "2026-10-09T04:08:23Z",
+   "httpStatus": 200
+  }
+ ],
+ "pdfGuides": [
+  {
+   "title": "Cloud Architecture Patterns — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-cloud-patterns.pdf",
+   "source": "Interstitium Labs",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:27:58Z"
+  },
+  {
+   "title": "TLS Handshake — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-tls-handshake.pdf",
+   "source": "Interstitium Labs",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:27:58Z"
+  }
  ]
 }

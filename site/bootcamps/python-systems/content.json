@@ -31,14 +31,14 @@
       ]
      ],
      "choices": [
-      "An attacker can inject shell metacharacters (e.g. `pattern='x; rm -rf ~'`) \u2014 shell=True runs the string through /bin/sh; pass an argument list with shell=False: subprocess.run(['grep', pattern, path], ...)",
+      "An attacker can inject shell metacharacters (e.g. `pattern='x; rm -rf ~'`) — shell=True runs the string through /bin/sh; pass an argument list with shell=False: subprocess.run(['grep', pattern, path], ...)",
       "shell=True is only a performance issue; the fix is to add timeout=30",
       "The risk is that grep is slow on large files; replace grep with Python's re module for speed",
       "capture_output=True leaks the output to other users; remove it and write to a temp file instead"
      ],
      "answer": 0,
-     "why": "With shell=True the command string is parsed by a shell, so `;`, `$()`, and backticks in user input execute arbitrary commands. An argv list with shell=False passes each element as a literal argument \u2014 no shell parsing, no injection.",
-     "hint": "What interprets the string when shell=True \u2014 and what does it do with a semicolon?",
+     "why": "With shell=True the command string is parsed by a shell, so `;`, `$()`, and backticks in user input execute arbitrary commands. An argv list with shell=False passes each element as a literal argument — no shell parsing, no injection.",
+     "hint": "What interprets the string when shell=True — and what does it do with a semicolon?",
      "objectives": [
       "subprocess",
       "shell injection",
@@ -50,7 +50,7 @@
     {
      "id": "python-systems-sc2",
      "title": "asyncio: tasks vs coroutines",
-     "situation": "A script must fetch 200 URLs. The first version awaits each fetch in a loop (slow, sequential). The rewrite wraps each fetch in asyncio.create_task and awaits them with asyncio.gather \u2014 and it is 40x faster.",
+     "situation": "A script must fetch 200 URLs. The first version awaits each fetch in a loop (slow, sequential). The rewrite wraps each fetch in asyncio.create_task and awaits them with asyncio.gather — and it is 40x faster.",
      "prompt": "Why did the rewrite get faster?",
      "evidence": [
       [
@@ -69,7 +69,7 @@
       "Version B reuses one TCP connection, version A opens a new one per URL"
      ],
      "answer": 0,
-     "why": "await in a loop serializes the waits; create_task schedules each coroutine on the event loop immediately, so all 200 network waits overlap \u2014 the loop is never idle while any fetch is in flight. No threads are involved (still one thread, one loop), which is why it only helps I/O-bound work.",
+     "why": "await in a loop serializes the waits; create_task schedules each coroutine on the event loop immediately, so all 200 network waits overlap — the loop is never idle while any fetch is in flight. No threads are involved (still one thread, one loop), which is why it only helps I/O-bound work.",
      "hint": "While one fetch is waiting on the network, what is the event loop doing in each version?",
      "objectives": [
       "asyncio",
@@ -95,9 +95,9 @@
       ]
      ],
      "choices": [
-      "Candidate A: PEP 621 [project] metadata with requires-python, dependencies, and a [project.scripts] console entry point \u2014 the modern standard buildable by any PEP 517 backend",
+      "Candidate A: PEP 621 [project] metadata with requires-python, dependencies, and a [project.scripts] console entry point — the modern standard buildable by any PEP 517 backend",
       "Candidate B: setup.py-style keys under [tool.setup] keep compatibility with the widest range of installers",
-      "Neither \u2014 entry points must be declared in a separate entry_points.txt committed to the repo root",
+      "Neither — entry points must be declared in a separate entry_points.txt committed to the repo root",
       "Candidate A but with dependencies listed in requirements.txt and referenced by path, which pip prefers"
      ],
      "answer": 0,
@@ -128,13 +128,13 @@
      ],
      "choices": [
       "Compile the patterns once at module level (or cache them) so parse_row reuses the compiled objects instead of recompiling 48,000 times",
-      "Rewrite the parser in C \u2014 Python regex is fundamentally too slow for 48k rows",
+      "Rewrite the parser in C — Python regex is fundamentally too slow for 48k rows",
       "Add multiprocessing so the 48k compiles run across cores",
       "Switch from re to the fnmatch module, which has no compile step"
      ],
      "answer": 0,
      "why": "re.compile is expensive and the patterns never change; hoisting the three compiles to module import time (or functools.lru_cache) removes ~63s of redundant work with a two-line change. Profile-guided fixes target the measured hot spot instead of rewriting the system.",
-     "hint": "The profiler measured 144,000 compiles of patterns that never change \u2014 where could they be compiled exactly once?",
+     "hint": "The profiler measured 144,000 compiles of patterns that never change — where could they be compiled exactly once?",
      "objectives": [
       "profiling",
       "cProfile",
@@ -159,14 +159,14 @@
       ]
      ],
      "choices": [
-      "await q.put() on a full bounded queue blocks until a consumer takes an item \u2014 with no consumer running this deadlocks; start the consumer concurrently (create_task) so puts and gets interleave, keeping the maxsize backpressure",
-      "Remove maxsize so the queue is unbounded \u2014 memory growth is preferable to deadlock",
+      "await q.put() on a full bounded queue blocks until a consumer takes an item — with no consumer running this deadlocks; start the consumer concurrently (create_task) so puts and gets interleave, keeping the maxsize backpressure",
+      "Remove maxsize so the queue is unbounded — memory growth is preferable to deadlock",
       "Replace await q.put with q.put_nowait and drop items when the queue is full",
       "Queues cannot be shared between coroutines; use a global list with a lock instead"
      ],
      "answer": 0,
-     "why": "A bounded queue's put() applying backpressure is correct behavior \u2014 the bug is sequencing: the producer was awaited to completion before the consumer started. Running both as tasks lets the consumer drain the queue as the producer fills it; the maxsize bound still protects memory.",
-     "hint": "The queue is doing its job (blocking when full) \u2014 so what is missing from the schedule?",
+     "why": "A bounded queue's put() applying backpressure is correct behavior — the bug is sequencing: the producer was awaited to completion before the consumer started. Running both as tasks lets the consumer drain the queue as the producer fills it; the maxsize bound still protects memory.",
+     "hint": "The queue is doing its job (blocking when full) — so what is missing from the schedule?",
      "objectives": [
       "asyncio",
       "Queue",
@@ -187,14 +187,14 @@
       ]
      ],
      "choices": [
-      "Install a SIGTERM/SIGINT handler that terminates the children (proc.terminate(), then wait with a timeout, then kill stragglers) \u2014 optionally start children in their own process group (start_new_session=True) and signal the group",
+      "Install a SIGTERM/SIGINT handler that terminates the children (proc.terminate(), then wait with a timeout, then kill stragglers) — optionally start children in their own process group (start_new_session=True) and signal the group",
       "Rely on the OS: when a parent dies, the kernel automatically SIGKILLs its children",
       "Set daemon=True on the Popen objects so they die with the parent",
       "Have each worker poll for its parent's PID and exit when the parent disappears"
      ],
      "answer": 0,
-     "why": "Orphaned children are reparented to init, not killed \u2014 cleanup is the parent's job. A signal handler that terminate()s each child, waits, then kill()s survivors is the reliable pattern; a separate process group lets one signal reach the whole tree including grandchildren.",
-     "hint": "When the parent dies, what actually happens to its children \u2014 who is responsible for them?",
+     "why": "Orphaned children are reparented to init, not killed — cleanup is the parent's job. A signal handler that terminate()s each child, waits, then kill()s survivors is the reliable pattern; a separate process group lets one signal reach the whole tree including grandchildren.",
+     "hint": "When the parent dies, what actually happens to its children — who is responsible for them?",
      "objectives": [
       "subprocess",
       "signals",
@@ -209,10 +209,10 @@
  "lessons": [
   {
    "domain_id": "python-systems",
-   "title": "Python for Systems Programming \u2014 Core concepts",
+   "title": "Python for Systems Programming — Core concepts",
    "concepts": [
     "subprocess replaces os.system for running external commands: pass an argument list with shell=False to avoid shell injection, use capture_output=True and text=True for readable output, check=True to raise on nonzero exit, and timeout= to bound hangs.",
-    "asyncio runs many I/O-bound tasks on one thread: coroutines await each other cooperatively, the event loop switches during I/O waits, and create_task + gather overlap waits. It never speeds up CPU-bound work \u2014 the GIL still serializes bytecode.",
+    "asyncio runs many I/O-bound tasks on one thread: coroutines await each other cooperatively, the event loop switches during I/O waits, and create_task + gather overlap waits. It never speeds up CPU-bound work — the GIL still serializes bytecode.",
     "Packaging is metadata plus a build backend: pyproject.toml's [project] table (PEP 621) declares name, version, requires-python, dependencies, and console entry points; pip installs from it, and virtual environments keep each project's dependency set isolated.",
     "Profiling precedes optimization: cProfile measures where time actually goes (tottime vs cumtime), and the fix is usually algorithmic or structural (hoist repeated work, reduce I/O) rather than micro-tuning. Measure before and after every change.",
     "Systems code must handle the unhappy paths: subprocess calls can hang (use timeouts), children can outlive parents (handle SIGTERM and reap with wait), queues can deadlock (bounded queues need a live consumer), and resources need deterministic cleanup (context managers, try/finally)."
@@ -220,13 +220,13 @@
    "example": {
     "lang": "python",
     "code": "import asyncio, sys\n\nasync def fetch_one(client, url):\n    async with client.get(url) as resp:\n        return url, resp.status\n\nasync def main(urls):\n    async with asyncio.TaskGroup() as tg:   # 3.11+: structured concurrency\n        tasks = [tg.create_task(fetch_one(u)) for u in urls]\n    return [t.result() for t in tasks]\n\nasyncio.run(main(sys.argv[1:]))",
-    "walkthrough": "TaskGroup (Python 3.11+) schedules every fetch as a task so the network waits overlap, and it waits for all of them \u2014 cancelling stragglers if one fails. asyncio.run builds and tears down the event loop; the whole program stays on one thread."
+    "walkthrough": "TaskGroup (Python 3.11+) schedules every fetch as a task so the network waits overlap, and it waits for all of them — cancelling stragglers if one fails. asyncio.run builds and tears down the event loop; the whole program stays on one thread."
    },
    "pitfalls": [
-    "Common trap: shell=True with any user-influenced string \u2014 injection, not just a style issue.",
+    "Common trap: shell=True with any user-influenced string — injection, not just a style issue.",
     "Common trap: awaiting coroutines one-by-one in a loop and wondering why nothing is concurrent.",
-    "Common trap: using asyncio for CPU-bound number crunching \u2014 threads don't help either under the GIL; use multiprocessing.",
-    "Common trap: optimizing before profiling \u2014 cProfile first, or you will speed up code that doesn't matter."
+    "Common trap: using asyncio for CPU-bound number crunching — threads don't help either under the GIL; use multiprocessing.",
+    "Common trap: optimizing before profiling — cProfile first, or you will speed up code that doesn't matter."
    ],
    "try_it": "Work through this in the Labs tab."
   }
@@ -280,13 +280,745 @@
    ]
   }
  ],
- "simulations": [],
- "consoleSims": [],
- "terminalMissions": [],
+ "simulations": [
+  {
+   "id": "pys-sim-1",
+   "title": "The deadlocking pipeline",
+   "kind": "troubleshoot",
+   "domain_id": "python-systems",
+   "difficulty": 2,
+   "points": 100,
+   "brief": "A Python wrapper around ffmpeg hangs forever on large files; small files work fine. Find the plumbing bug.",
+   "steps": [
+    {
+     "symptom": "The wrapper hangs forever on large inputs; small inputs complete.",
+     "evidence": [
+      [
+       "code",
+       "p = Popen(['ffmpeg', ...], stdin=PIPE, stdout=PIPE)\np.stdin.write(big_blob)\nout = p.stdout.read()  # hangs here"
+      ],
+      [
+       "strace",
+       "ffmpeg blocked writing to a full pipe; parent blocked reading before it finishes writing"
+      ]
+     ],
+     "options": [
+      "Use p.communicate(input=big_blob) — it pumps both directions concurrently",
+      "Write first, then read, in that order",
+      "Increase the pipe buffer",
+      "Run ffmpeg with shell=True"
+     ],
+     "correct": 0,
+     "explain": "Classic pipe deadlock: both sides block waiting on each other. communicate() handles the concurrent pumping for you."
+    },
+    {
+     "symptom": "communicate() fixed the hang. Now stderr fills its pipe on noisy inputs and it hangs again.",
+     "evidence": [
+      [
+       "code",
+       "p = Popen(..., stdout=PIPE)  # stderr inherits the terminal pipe, unbounded"
+      ]
+     ],
+     "options": [
+      "Capture stderr too (stderr=PIPE) and let communicate() drain both, or redirect it to DEVNULL",
+      "Ignore stderr",
+      "Read stderr in a thread manually",
+      "Use os.system instead"
+     ],
+     "correct": 0,
+     "explain": "Every PIPE you open is a pipe you must drain. communicate() drains stdout and stderr together; an undrained stderr re-creates the same deadlock."
+    },
+    {
+     "symptom": "Robust now. The interviewer asks how you would run 50 of these concurrently.",
+     "evidence": [
+      [
+       "scale",
+       "50 files, 8 cores"
+      ]
+     ],
+     "options": [
+      "A bounded asyncio semaphore around run-in-executor subprocess calls — concurrency with backpressure",
+      "50 threads with no limit",
+      "One at a time to be safe",
+      "multiprocessing with 50 processes"
+     ],
+     "correct": 0,
+     "explain": "Subprocesses are already separate processes; the limit you need is on how many run at once. A semaphore gives throughput with backpressure."
+    }
+   ],
+   "debrief": "Subprocess bugs are plumbing bugs: every PIPE gets drained, communicate() pumps both ways, and concurrency gets a bound."
+  },
+  {
+   "id": "pys-sim-2",
+   "title": "The leaking event loop",
+   "kind": "troubleshoot",
+   "domain_id": "python-systems",
+   "difficulty": 2,
+   "points": 100,
+   "brief": "The logs fill with 'Task was destroyed but it is pending' after every deploy. Trace the abandoned tasks.",
+   "steps": [
+    {
+     "symptom": "Logs fill with 'Task was destroyed but it is pending' after every deploy.",
+     "evidence": [
+      [
+       "log",
+       "Task was destroyed but it is pending! task=<fetch(url)> ×400"
+      ]
+     ],
+     "options": [
+      "Track every created task and await them (asyncio.gather / TaskGroup) so none is abandoned",
+      "Suppress the warning",
+      "Create tasks with daemon=True",
+      "Restart the loop hourly"
+     ],
+     "correct": 0,
+     "explain": "Fire-and-forget tasks are leaks: un-awaited coroutines hold their whole call stack. Structured concurrency (TaskGroup) makes abandonment impossible by construction."
+    },
+    {
+     "symptom": "Tasks are gathered. Now shutdown hangs: tasks ignore cancellation.",
+     "evidence": [
+      [
+       "code",
+       "try:\n    await fetch()\nexcept CancelledError:\n    await cleanup()  # swallows the cancellation"
+      ]
+     ],
+     "options": [
+      "Re-raise CancelledError after cleanup (or shield only the cleanup) — cancellation must propagate",
+      "Catch and ignore CancelledError",
+      "Use timeouts instead of cancellation",
+      "Kill -9 on shutdown"
+     ],
+     "correct": 0,
+     "explain": "Swallowed cancellation is a shutdown hang. Cleanup runs, then the CancelledError must propagate so the task actually dies."
+    },
+    {
+     "symptom": "Clean shutdown. How do you prove no task leaks in CI?",
+     "evidence": [
+      [
+       "test",
+       "pytest-asyncio available"
+      ]
+     ],
+     "options": [
+      "Assert asyncio.all_tasks() is empty (minus the test task) at the end of the integration test",
+      "Count log lines",
+      "Manual code review each PR",
+      "Watch production logs"
+     ],
+     "correct": 0,
+     "explain": "The loop knows its tasks. Asserting the set is empty after the workload turns the leak into a failing test."
+    }
+   ],
+   "debrief": "Asyncio leaks are abandoned tasks: structure them, propagate cancellation, and assert the loop is empty."
+  },
+  {
+   "id": "pys-sim-3",
+   "title": "The package that would not install",
+   "kind": "troubleshoot",
+   "domain_id": "python-systems",
+   "difficulty": 2,
+   "points": 100,
+   "brief": "pip install succeeds, but the CLI command is missing and its data file is gone. Two packaging bugs, one install.",
+   "steps": [
+    {
+     "symptom": "pip install works, but the `fetch` command is not found after install.",
+     "evidence": [
+      [
+       "pyproject",
+       "[project]\nname = 'fetch-tool'\n# no [project.scripts] section"
+      ],
+      [
+       "shell",
+       "fetch: command not found"
+      ]
+     ],
+     "options": [
+      "Add [project.scripts] fetch = 'fetch_tool.cli:main' so the installer creates the console script",
+      "Tell users to run python -m fetch_tool",
+      "Add the script to PATH manually",
+      "Rename the package to fetch"
+     ],
+     "correct": 0,
+     "explain": "Console scripts are metadata: without [project.scripts] the installer builds no executable. The entry point maps the command name to a callable."
+    },
+    {
+     "symptom": "Entry point added; the command runs but crashes: FileNotFoundError for config/defaults.yaml.",
+     "evidence": [
+      [
+       "layout",
+       "config/defaults.yaml sits next to the source, not in the wheel"
+      ]
+     ],
+     "options": [
+      "Ship it as package data and load via importlib.resources — no filesystem assumptions",
+      "Read it from the source checkout path",
+      "Hardcode the defaults",
+      "Require users to create the file"
+     ],
+     "correct": 0,
+     "explain": "Wheels only contain declared package data. importlib.resources reads data files portably from installed packages."
+    },
+    {
+     "symptom": "Installs cleanly everywhere. The interviewer asks about version pinning for a CLI tool.",
+     "evidence": [
+      [
+       "consumers",
+       "end users install the CLI directly"
+      ]
+     ],
+     "options": [
+      "Pin in a lockfile for reproducible dev/CI, but keep install_requires ranges loose for library consumers",
+      "Pin everything == in install_requires",
+      "Never pin anything",
+      "Vendor all dependencies"
+     ],
+     "correct": 0,
+     "explain": "Applications pin for reproducibility; libraries range for compatibility. A CLI is an application — lock it, but do not force pins on downstream importers."
+    }
+   ],
+   "debrief": "Packaging bugs are metadata bugs: entry points create commands, package-data ships files, and importlib.resources finds them."
+  },
+  {
+   "id": "pys-sim-4",
+   "title": "The GIL-bound batch job",
+   "kind": "troubleshoot",
+   "domain_id": "python-systems",
+   "difficulty": 3,
+   "points": 100,
+   "brief": "Hashing 10k images with 8 threads is no faster than serial. The profiler points at the GIL — pick the right tool.",
+   "steps": [
+    {
+     "symptom": "Hashing 10k images with ThreadPoolExecutor(8) is no faster than serial.",
+     "evidence": [
+      [
+       "profile",
+       "8 threads, 1 core at 100%, rest idle"
+      ],
+      [
+       "code",
+       "hashlib.sha256(pixels).hexdigest() — pure CPU"
+      ]
+     ],
+     "options": [
+      "Use ProcessPoolExecutor — CPU-bound bytecode needs separate processes to escape the GIL",
+      "Use 64 threads",
+      "Rewrite in C",
+      "Buy a faster machine"
+     ],
+     "correct": 0,
+     "explain": "Threads share the GIL; CPU-bound Python bytecode serializes. Processes each get their own interpreter and GIL — that is what the pool is for."
+    },
+    {
+     "symptom": "ProcessPoolExecutor crashes: Can't pickle local function.",
+     "evidence": [
+      [
+       "code",
+       "def main():\n    def hash_one(p): ...\n    pool.map(hash_one, paths)"
+      ]
+     ],
+     "options": [
+      "Move the worker to module top level — pickle needs an importable qualified name",
+      "Use threads instead",
+      "Use dill",
+      "Inline the function"
+     ],
+     "correct": 0,
+     "explain": "Multiprocessing ships work by pickling; pickle references functions by module path. Closures and lambdas have no importable name."
+    },
+    {
+     "symptom": "Works. But process startup dominates on small batches.",
+     "evidence": [
+      [
+       "timing",
+       "process spawn ~300ms each; small batches slower than serial"
+      ]
+     ],
+     "options": [
+      "Reuse one long-lived pool and set a chunksize so scheduling overhead stays below the work",
+      "Spawn a fresh pool per batch",
+      "Use one process per image",
+      "Accept the overhead"
+     ],
+     "correct": 0,
+     "explain": "Process pools amortize spawn cost across the batch; chunksize amortizes scheduling cost across items. Both knobs exist for exactly this."
+    }
+   ],
+   "debrief": "The GIL decides the tool: threads for I/O waiting, processes for CPU burning, and pickle-able top-level functions for the pool."
+  },
+  {
+   "id": "pys-sim-5",
+   "title": "The 40-minute CLI",
+   "kind": "troubleshoot",
+   "domain_id": "python-systems",
+   "difficulty": 2,
+   "points": 100,
+   "brief": "A log-grepping CLI takes 40 minutes on a 2 GB file. Profile it, fix the dominant cost, and know when to stop.",
+   "steps": [
+    {
+     "symptom": "The log-grepping CLI takes 40 minutes on a 2 GB file.",
+     "evidence": [
+      [
+       "cProfile",
+       "80% of time in re.compile — called once per line"
+      ],
+      [
+       "code",
+       "for line in f:\n    if re.compile(pattern).search(line): ..."
+      ]
+     ],
+     "options": [
+      "Compile the regex once outside the loop",
+      "Use a faster machine",
+      "Read the file in bigger chunks first",
+      "Rewrite in Go"
+     ],
+     "correct": 0,
+     "explain": "Profile first, then fix the hotspot: compiling the same pattern 10M times is pure waste. One compile outside the loop removes 80%."
+    },
+    {
+     "symptom": "Down to 8 minutes. The profile now shows 70% in f.readline().",
+     "evidence": [
+      [
+       "profile",
+       "70% in readline; per-line Python overhead dominates"
+      ]
+     ],
+     "options": [
+      "Read in chunks (or mmap) and split in Python — fewer interpreter round-trips per byte",
+      "Read line by line but faster",
+      "Use threads",
+      "Compress the file"
+     ],
+     "correct": 0,
+     "explain": "Per-line I/O syscalls and Python-level looping cost more than the work. Chunked/mmap reads move the splitting into C."
+    },
+    {
+     "symptom": "Down to 90 seconds. The interviewer asks what you would do next.",
+     "evidence": [
+      [
+       "budget",
+       "90s is acceptable; correctness matters more now"
+      ]
+     ],
+     "options": [
+      "Stop: profile-driven work ends when the budget is met — add a regression benchmark instead",
+      "Keep optimizing to 10s",
+      "Rewrite the hot loop in C",
+      "Parallelize across 32 cores"
+     ],
+     "correct": 0,
+     "explain": "Optimization has a budget. cProfile told you where the time was; a benchmark test keeps it there. Further work has no business case."
+    }
+   ],
+   "debrief": "Performance work is measurement work: profile, fix the dominant cost, re-profile, and stop at the budget."
+  }
+ ],
+ "consoleSims": [
+  {
+   "id": "pys-console-1",
+   "title": "Debug the batch script",
+   "console": "code-editor",
+   "domain_id": "python-systems",
+   "difficulty": 1,
+   "brief": "A batch script misbehaves. Walk it with breakpoints and inspection in the simulated editor.",
+   "tasks": [
+    {
+     "id": "pys-c1-t1",
+     "instruction": "Open app.py in the Explorer.",
+     "validate": {
+      "action": "open-file",
+      "params": {
+       "name": "app.py"
+      }
+     },
+     "hint": "Explorer tab → Open app.py."
+    },
+    {
+     "id": "pys-c1-t2",
+     "instruction": "Set a breakpoint at app.py line 4.",
+     "validate": {
+      "action": "toggle-breakpoint",
+      "params": {
+       "file": "app.py",
+       "line": 4
+      }
+     },
+     "hint": "Click line 4 in the editor to toggle a breakpoint."
+    },
+    {
+     "id": "pys-c1-t3",
+     "instruction": "Run to the breakpoint.",
+     "validate": {
+      "action": "run-to-breakpoint",
+      "params": {}
+     },
+     "hint": "Press Run to breakpoint."
+    },
+    {
+     "id": "pys-c1-t4",
+     "instruction": "Inspect the variable s.",
+     "validate": {
+      "action": "inspect-variable",
+      "params": {
+       "name": "s"
+      }
+     },
+     "hint": "Use Inspect with variable name s."
+    }
+   ],
+   "debrief": "Systems debugging starts the same way everywhere: open, break, run, inspect — read state before guessing."
+  },
+  {
+   "id": "pys-console-2",
+   "title": "Ship the CLI script",
+   "console": "linux-desktop",
+   "domain_id": "python-systems",
+   "difficulty": 2,
+   "brief": "Stage a CLI script for distribution: create it, make it executable, and give it a home directory.",
+   "tasks": [
+    {
+     "id": "pys-c2-t1",
+     "instruction": "Create the script file /home/user/fetch.py.",
+     "validate": {
+      "action": "create-file",
+      "params": {
+       "path": "/home/user/fetch.py"
+      }
+     },
+     "hint": "Create file /home/user/fetch.py."
+    },
+    {
+     "id": "pys-c2-t2",
+     "instruction": "Make the script executable (mode 755).",
+     "validate": {
+      "action": "chmod",
+      "params": {
+       "path": "/home/user/fetch.py",
+       "mode": "755"
+      }
+     },
+     "hint": "chmod 755 on /home/user/fetch.py."
+    },
+    {
+     "id": "pys-c2-t3",
+     "instruction": "Create the install directory /home/user/bin.",
+     "validate": {
+      "action": "create-dir",
+      "params": {
+       "path": "/home/user/bin"
+      }
+     },
+     "hint": "Create directory /home/user/bin."
+    }
+   ],
+   "debrief": "Shipping a CLI is file discipline: the script, the executable bit, and a directory on the PATH."
+  },
+  {
+   "id": "pys-console-3",
+   "title": "Publish the package",
+   "console": "cicd-pipeline",
+   "domain_id": "python-systems",
+   "difficulty": 2,
+   "brief": "The package pipeline is ready to cut release 1.4.0. Version it, build it, and approve the publish gate.",
+   "tasks": [
+    {
+     "id": "pys-c3-t1",
+     "instruction": "Set the PACKAGE_VERSION pipeline variable to 1.4.0.",
+     "validate": {
+      "action": "set-variable",
+      "params": {
+       "key": "PACKAGE_VERSION",
+       "value": "1.4.0"
+      }
+     },
+     "hint": "Set variable PACKAGE_VERSION = 1.4.0."
+    },
+    {
+     "id": "pys-c3-t2",
+     "instruction": "Trigger a fresh build.",
+     "validate": {
+      "action": "trigger-build",
+      "params": {}
+     },
+     "hint": "Trigger the build."
+    },
+    {
+     "id": "pys-c3-t3",
+     "instruction": "Approve the gated deploy stage.",
+     "validate": {
+      "action": "approve-stage",
+      "params": {
+       "stage": "deploy"
+      }
+     },
+     "hint": "Approve the deploy stage to publish."
+    }
+   ],
+   "debrief": "Releases are explicit: pin the version, rebuild clean, and approve the publish gate by hand."
+  },
+  {
+   "id": "pys-console-4",
+   "title": "Stand up the telemetry DB",
+   "console": "db-admin",
+   "domain_id": "python-systems",
+   "difficulty": 2,
+   "brief": "The batch jobs need a telemetry database with a least-privilege writer. Create it in the simulated DB console.",
+   "tasks": [
+    {
+     "id": "pys-c4-t1",
+     "instruction": "Create the database telemetry.",
+     "validate": {
+      "action": "create-database",
+      "params": {
+       "name": "telemetry"
+      }
+     },
+     "hint": "Create database telemetry."
+    },
+    {
+     "id": "pys-c4-t2",
+     "instruction": "Create the database user collector.",
+     "validate": {
+      "action": "create-user",
+      "params": {
+       "name": "collector"
+      }
+     },
+     "hint": "Create user collector."
+    },
+    {
+     "id": "pys-c4-t3",
+     "instruction": "Grant INSERT on telemetry to collector.",
+     "validate": {
+      "action": "grant-priv",
+      "params": {
+       "db": "telemetry",
+       "user": "collector",
+       "priv": "INSERT"
+      }
+     },
+     "hint": "Grant INSERT on telemetry to collector."
+    }
+   ],
+   "debrief": "Telemetry storage is least privilege: its own database, its own writer, INSERT and nothing more."
+  }
+ ],
+ "terminalMissions": [
+  {
+   "id": "pys-mission-1",
+   "title": "REPL roll call",
+   "domain_id": "python-systems",
+   "difficulty": 1,
+   "brief": "Prove the Python sandbox evaluates before the systems work starts.",
+   "objectives": [
+    "Print a readiness string",
+    "Evaluate an arithmetic expression",
+    "Measure a string"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^print\\(\"systems-ready\"\\)$",
+     "expect_contains": "systems-ready",
+     "hint": "Type exactly: print(\"systems-ready\")"
+    },
+    {
+     "command_pattern": "^print\\(6 \\* 7\\)$",
+     "expect_contains": "42",
+     "hint": "Type exactly: print(6 * 7)"
+    },
+    {
+     "command_pattern": "^print\\(len\\(\"subprocess\"\\)\\)$",
+     "expect_contains": "10",
+     "hint": "Type exactly: print(len(\"subprocess\"))"
+    }
+   ],
+   "success_message": "REPL roll call complete — the interpreter is yours."
+  },
+  {
+   "id": "pys-mission-2",
+   "title": "Subprocess arithmetic",
+   "domain_id": "python-systems",
+   "difficulty": 2,
+   "brief": "Drill the numbers behind process plumbing: powers, rates, remainders.",
+   "objectives": [
+    "Compute 2^10",
+    "Compute minutes per 1000 seconds",
+    "Compute 17 mod 5"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^print\\(2 \\*\\* 10\\)$",
+     "expect_contains": "1024",
+     "hint": "Type exactly: print(2 ** 10)"
+    },
+    {
+     "command_pattern": "^print\\(1000 // 60\\)$",
+     "expect_contains": "16",
+     "hint": "Type exactly: print(1000 // 60)"
+    },
+    {
+     "command_pattern": "^print\\(17 % 5\\)$",
+     "expect_contains": "2",
+     "hint": "Type exactly: print(17 % 5)"
+    }
+   ],
+   "success_message": "Plumbing math drilled — buffers next."
+  },
+  {
+   "id": "pys-mission-3",
+   "title": "Timeout math",
+   "domain_id": "python-systems",
+   "difficulty": 2,
+   "brief": "Timeouts are arithmetic. Drill the retry and backoff numbers.",
+   "objectives": [
+    "Compute a 30s x 3 retry budget",
+    "Compute 2^4 + 1",
+    "Take an absolute value"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^print\\(30 \\* 3\\)$",
+     "expect_contains": "90",
+     "hint": "Type exactly: print(30 * 3)"
+    },
+    {
+     "command_pattern": "^print\\(2 \\*\\* 4 \\+ 1\\)$",
+     "expect_contains": "17",
+     "hint": "Type exactly: print(2 ** 4 + 1)"
+    },
+    {
+     "command_pattern": "^print\\(abs\\(-17\\)\\)$",
+     "expect_contains": "17",
+     "hint": "Type exactly: print(abs(-17))"
+    }
+   ],
+   "success_message": "Timeout math drilled — backoff with confidence."
+  },
+  {
+   "id": "pys-mission-4",
+   "title": "Worker pool sizing",
+   "domain_id": "python-systems",
+   "difficulty": 2,
+   "brief": "Size the pool before you build it: workers, floors, ceilings.",
+   "objectives": [
+    "Compute workers as 4 x 2",
+    "Take the smaller bound",
+    "Take the larger reading"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^print\\(\"workers=\" \\+ str\\(4 \\* 2\\)\\)$",
+     "expect_contains": "workers=8",
+     "hint": "Type exactly: print(\"workers=\" + str(4 * 2))"
+    },
+    {
+     "command_pattern": "^print\\(min\\(8, 3\\)\\)$",
+     "expect_contains": "3",
+     "hint": "Type exactly: print(min(8, 3))"
+    },
+    {
+     "command_pattern": "^print\\(max\\(\\[4, 9, 2\\]\\)\\)$",
+     "expect_contains": "9",
+     "hint": "Type exactly: print(max([4, 9, 2]))"
+    }
+   ],
+   "success_message": "Pool sized — now bound it with a semaphore."
+  },
+  {
+   "id": "pys-mission-5",
+   "title": "Sorting the evidence",
+   "domain_id": "python-systems",
+   "difficulty": 2,
+   "brief": "Order the evidence: sort numbers, sort strings, count items.",
+   "objectives": [
+    "Sort a number list",
+    "Sort a string list",
+    "Count a list"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^print\\(sorted\\(\\[3, 1, 2\\]\\)\\)$",
+     "expect_contains": "[1, 2, 3]",
+     "hint": "Type exactly: print(sorted([3, 1, 2]))"
+    },
+    {
+     "command_pattern": "^print\\(sorted\\(\\[\"b\", \"a\", \"c\"\\]\\)\\)$",
+     "expect_contains": "['a', 'b', 'c']",
+     "hint": "Type exactly: print(sorted([\"b\", \"a\", \"c\"]))"
+    },
+    {
+     "command_pattern": "^print\\(len\\(\\[10, 20, 30\\]\\)\\)$",
+     "expect_contains": "3",
+     "hint": "Type exactly: print(len([10, 20, 30]))"
+    }
+   ],
+   "success_message": "Evidence sorted — triage like a system."
+  },
+  {
+   "id": "pys-mission-6",
+   "title": "Sanity checks",
+   "domain_id": "python-systems",
+   "difficulty": 1,
+   "brief": "Boolean and conversion sanity before the real work.",
+   "objectives": [
+    "Evaluate a comparison",
+    "Evaluate bool(0)",
+    "Convert a numeric string"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^print\\(1 < 2\\)$",
+     "expect_contains": "True",
+     "hint": "Type exactly: print(1 < 2)"
+    },
+    {
+     "command_pattern": "^print\\(bool\\(0\\)\\)$",
+     "expect_contains": "False",
+     "hint": "Type exactly: print(bool(0))"
+    },
+    {
+     "command_pattern": "^print\\(int\\(\"42\"\\)\\)$",
+     "expect_contains": "42",
+     "hint": "Type exactly: print(int(\"42\"))"
+    }
+   ],
+   "success_message": "Sanity confirmed — types behave."
+  },
+  {
+   "id": "pys-mission-7",
+   "title": "Float discipline",
+   "domain_id": "python-systems",
+   "difficulty": 2,
+   "brief": "Close with float arithmetic — the kind that bites in billing code.",
+   "objectives": [
+    "Add two floats",
+    "Divide a float",
+    "Round to two places"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^print\\(2\\.5 \\+ 2\\.5\\)$",
+     "expect_contains": "5.0",
+     "hint": "Type exactly: print(2.5 + 2.5)"
+    },
+    {
+     "command_pattern": "^print\\(3\\.0 / 2\\)$",
+     "expect_contains": "1.5",
+     "hint": "Type exactly: print(3.0 / 2)"
+    },
+    {
+     "command_pattern": "^print\\(round\\(3\\.14159, 2\\)\\)$",
+     "expect_contains": "3.14",
+     "hint": "Type exactly: print(round(3.14159, 2))"
+    }
+   ],
+   "success_message": "Float discipline drilled — never trust binary fractions."
+  }
+ ],
  "sections": [
   {
    "id": "sec-full-spectrum",
-   "title": "Full Spectrum Dominance \u2014 core path",
+   "title": "Full Spectrum Dominance — core path",
    "kind": "core",
    "lectures": [],
    "lab_ids": [
@@ -312,17 +1044,17 @@
  ],
  "behavioral": [
   {
-   "prompt": "Tell me about the most technically difficult problem you have run into \u2014 a homelab, a broken environment, anything \u2014 and how you solved it.",
+   "prompt": "Tell me about the most technically difficult problem you have run into — a homelab, a broken environment, anything — and how you solved it.",
    "framework": "STAR",
    "points": [
     "Pick ONE problem with a real evidence trail: the symptom, what you measured, the hypothesis you tested",
-    "Show the loop: scope, observe, hypothesize, smallest safe change, validate \u2014 interviewers score the method, not just the fix",
+    "Show the loop: scope, observe, hypothesize, smallest safe change, validate — interviewers score the method, not just the fix",
     "Name the tools (VM build, networking, logs) and the lesson it taught you",
     "Close with the result in concrete terms: what works now that did not before"
    ],
    "pitfalls": [
-    "Choosing a story with no real obstacle (\u201cI Googled it\u201d is not a story)",
-    "Skipping validation \u2014 saying it worked without proving it",
+    "Choosing a story with no real obstacle (“I Googled it” is not a story)",
+    "Skipping validation — saying it worked without proving it",
     "Rambling past two minutes without reaching the result"
    ]
   },
@@ -347,13 +1079,13 @@
    "points": [
     "Connect prevention to something concrete: a moment you saw detection arrive too late, or a system you hardened",
     "Tie their model to your instincts: deny-by-default matches how you already think about trust",
-    "Show service orientation: the Cyber Hero culture rewards the 2 a.m. helper \u2014 give an example of being one",
+    "Show service orientation: the Cyber Hero culture rewards the 2 a.m. helper — give an example of being one",
     "Name one forward-looking reason: Zero Trust, the MSP mission, or the bootcamp community investment"
    ],
    "pitfalls": [
     "Generic flattery with no specifics about the company",
     "Leading with compensation, title, or location convenience",
-    "Claiming expertise in products you have only read about \u2014 frame it as studied, not mastered"
+    "Claiming expertise in products you have only read about — frame it as studied, not mastered"
    ]
   },
   {
@@ -430,13 +1162,13 @@
  ],
  "resources": {
   "cheatsheet": {
-   "title": "Full Spectrum Dominance \u2014 field reference",
+   "title": "Full Spectrum Dominance — field reference",
    "sections": [
     {
      "heading": "Company facts (verified)",
      "items": [
-      "Founded 2017 in Orlando, FL \u2014 Danny Jenkins (CEO), Sami Jenkins (COO), John Carolan (QA)",
-      "Philosophy: deny-by-default / default-deny \u2014 approve known-good, deny the rest",
+      "Founded 2017 in Orlando, FL — Danny Jenkins (CEO), Sami Jenkins (COO), John Carolan (QA)",
+      "Philosophy: deny-by-default / default-deny — approve known-good, deny the rest",
       "Customers: 70,000+ organizations, sold heavily through the MSP channel",
       "Funding: $190M Series F, July 2026 (Elephant-led); ~730 employees",
       "Interview address: 1901 Summit Tower Blvd, Orlando, FL 32810",
@@ -446,116 +1178,116 @@
     {
      "heading": "Product stack",
      "items": [
-      "Allowlisting \u2014 default-deny execution control for apps, DLLs, scripts, installers",
-      "Ringfencing \u2014 constrains allowed apps: app-to-app, file, registry, network",
-      "Storage Control \u2014 USB/device policy by serial, user, file type, encryption",
-      "Elevation Control \u2014 just-in-time per-app admin, no standing rights",
-      "Network Control \u2014 host firewall; port/IP/dynamic-ACL rules; ZTNA foundation",
-      "Web Control \u2014 agent-based DNS/URL category filtering, works off-network",
-      "Cyber Hero MDR \u2014 24/7/365 US-based response, ~60-second average",
-      "Testing Environment \u2014 one-button VDI sandbox; checks AV flags, canary files, registry changes"
+      "Allowlisting — default-deny execution control for apps, DLLs, scripts, installers",
+      "Ringfencing — constrains allowed apps: app-to-app, file, registry, network",
+      "Storage Control — USB/device policy by serial, user, file type, encryption",
+      "Elevation Control — just-in-time per-app admin, no standing rights",
+      "Network Control — host firewall; port/IP/dynamic-ACL rules; ZTNA foundation",
+      "Web Control — agent-based DNS/URL category filtering, works off-network",
+      "Cyber Hero MDR — 24/7/365 US-based response, ~60-second average",
+      "Testing Environment — one-button VDI sandbox; checks AV flags, canary files, registry changes"
      ]
     },
     {
      "heading": "Rule strength (strongest to weakest)",
      "items": [
-      "Certificate/publisher rules \u2014 survive version updates",
-      "Hash rules \u2014 precise but break on every new version",
-      "Path rules \u2014 weakest; never in user-writable locations",
-      "Learning Mode catalogs before enforcement; Installation Mode pauses blocking \u2014 scope and time-box both"
+      "Certificate/publisher rules — survive version updates",
+      "Hash rules — precise but break on every new version",
+      "Path rules — weakest; never in user-writable locations",
+      "Learning Mode catalogs before enforcement; Installation Mode pauses blocking — scope and time-box both"
      ]
     },
     {
      "heading": "Terminal evidence commands",
      "items": [
-      "nmap <host> \u2014 which ports answer (22/80/443 open)",
-      "dig <name> \u2014 ANSWER SECTION with the A record",
-      "ss \u2014 listening sockets",
-      "systemctl status <svc> \u2014 unit state",
-      "journalctl -u <svc> \u2014 service logs",
-      "sha256sum <file> \u2014 real SHA-256 identity",
-      "grep <pattern> <file> \u2014 search the record",
-      "ps \u2014 what is actually running"
+      "nmap <host> — which ports answer (22/80/443 open)",
+      "dig <name> — ANSWER SECTION with the A record",
+      "ss — listening sockets",
+      "systemctl status <svc> — unit state",
+      "journalctl -u <svc> — service logs",
+      "sha256sum <file> — real SHA-256 identity",
+      "grep <pattern> <file> — search the record",
+      "ps — what is actually running"
      ]
     },
     {
      "heading": "Graph vocabulary",
      "items": [
-      "node \u2014 any entity tracked in the model (user, host, IP, domain, file hash, vulnerability)",
-      "edge \u2014 a labeled relationship between two nodes (logged into, resolved to, downloaded)",
-      "degree \u2014 number of edges on a node; high-degree nodes are attacker highways",
-      "centrality \u2014 how much traffic or how many paths flow through a node",
-      "directed edge \u2014 a relationship with a direction (A downloaded FROM B)",
-      "security graph \u2014 the living model of your whole environment as nodes and edges",
-      "attack graph \u2014 the subgraph of exploitable paths to your targets",
-      "knowledge graph \u2014 threat-intel indicators linked to campaigns and actors"
+      "node — any entity tracked in the model (user, host, IP, domain, file hash, vulnerability)",
+      "edge — a labeled relationship between two nodes (logged into, resolved to, downloaded)",
+      "degree — number of edges on a node; high-degree nodes are attacker highways",
+      "centrality — how much traffic or how many paths flow through a node",
+      "directed edge — a relationship with a direction (A downloaded FROM B)",
+      "security graph — the living model of your whole environment as nodes and edges",
+      "attack graph — the subgraph of exploitable paths to your targets",
+      "knowledge graph — threat-intel indicators linked to campaigns and actors"
      ]
     },
     {
      "heading": "Attack-graph playbook",
      "items": [
-      "inventory first \u2014 you cannot graph what you have not discovered",
+      "inventory first — you cannot graph what you have not discovered",
       "model flaws AND misconfigs as exploit edges",
       "compute shortest paths to the crown jewels",
       "find the choke point (highest betweenness on those paths)",
       "break the path: patch, segment, or remove the edge",
       "re-scan and re-run the graph to prove the path is gone",
-      "never trust yesterday's graph \u2014 redeployments redraw the map"
+      "never trust yesterday's graph — redeployments redraw the map"
      ]
     },
     {
      "heading": "Zero Trust + graphs",
      "items": [
-      "never trust, always verify \u2014 re-evaluate every access decision",
-      "assume breach \u2014 treat unexpected edges as hostile until proven otherwise",
-      "microsegmentation \u2014 allow-list approved edges, alert on new ones",
-      "ReBAC \u2014 policies are path queries on the identity graph",
-      "continuous verification \u2014 device/location/behavior edges change, trust follows",
-      "anomalous edge \u2014 a first-seen connection between strangers is the classic signal"
+      "never trust, always verify — re-evaluate every access decision",
+      "assume breach — treat unexpected edges as hostile until proven otherwise",
+      "microsegmentation — allow-list approved edges, alert on new ones",
+      "ReBAC — policies are path queries on the identity graph",
+      "continuous verification — device/location/behavior edges change, trust follows",
+      "anomalous edge — a first-seen connection between strangers is the classic signal"
      ]
     },
     {
      "heading": "ML detection vocabulary",
      "items": [
-      "Supervised learning \u2014 learns from labeled examples; strong on known threats, blind to novel ones",
-      "Unsupervised learning \u2014 finds structure without labels; clustering and dimensionality reduction",
-      "Anomaly detection \u2014 models 'normal' and flags deviations; the workhorse for novel threats",
-      "UEBA \u2014 user and entity behavior analytics: per-user baselines plus peer-group comparison",
-      "Feature engineering \u2014 encoding raw logs into model inputs (login velocity, rare processes, domain entropy)",
-      "Concept drift \u2014 model decay as attacker behavior and legitimate traffic shift over time"
+      "Supervised learning — learns from labeled examples; strong on known threats, blind to novel ones",
+      "Unsupervised learning — finds structure without labels; clustering and dimensionality reduction",
+      "Anomaly detection — models 'normal' and flags deviations; the workhorse for novel threats",
+      "UEBA — user and entity behavior analytics: per-user baselines plus peer-group comparison",
+      "Feature engineering — encoding raw logs into model inputs (login velocity, rare processes, domain entropy)",
+      "Concept drift — model decay as attacker behavior and legitimate traffic shift over time"
      ]
     },
     {
      "heading": "Detection metrics",
      "items": [
-      "Precision \u2014 of all flagged alerts, how many were real",
-      "Recall \u2014 of all real attacks, how many were flagged",
-      "Threshold tuning \u2014 sliding the decision cutoff trades precision against recall",
-      "Alert fatigue \u2014 when false positives train analysts to ignore the queue",
-      "DGA \u2014 domain generation algorithm; detected via character entropy of domain names"
+      "Precision — of all flagged alerts, how many were real",
+      "Recall — of all real attacks, how many were flagged",
+      "Threshold tuning — sliding the decision cutoff trades precision against recall",
+      "Alert fatigue — when false positives train analysts to ignore the queue",
+      "DGA — domain generation algorithm; detected via character entropy of domain names"
      ]
     },
     {
      "heading": "Agent and LLM security",
      "items": [
-      "Direct prompt injection \u2014 attacker input overrides app instructions (OWASP LLM01:2025, the #1 LLM risk)",
-      "Indirect prompt injection \u2014 hidden instructions inside retrieved data (email, web, docs)",
-      "Jailbreak \u2014 defeating the model's own safety policy; distinct from hijacking app behavior",
-      "Tool poisoning \u2014 malicious tool descriptions or metadata steer an agent to misuse its tools (MCP ecosystem risk)",
-      "Insecure output handling \u2014 executing or trusting model output without validation",
-      "Least-privilege tools \u2014 grant each tool only the scope its task requires"
+      "Direct prompt injection — attacker input overrides app instructions (OWASP LLM01:2025, the #1 LLM risk)",
+      "Indirect prompt injection — hidden instructions inside retrieved data (email, web, docs)",
+      "Jailbreak — defeating the model's own safety policy; distinct from hijacking app behavior",
+      "Tool poisoning — malicious tool descriptions or metadata steer an agent to misuse its tools (MCP ecosystem risk)",
+      "Insecure output handling — executing or trusting model output without validation",
+      "Least-privilege tools — grant each tool only the scope its task requires"
      ]
     },
     {
      "heading": "Adversarial ML and governance",
      "items": [
-      "Evasion \u2014 perturbing inputs at inference time to dodge a classifier",
-      "Poisoning \u2014 corrupting training data to corrupt the model",
-      "Extraction \u2014 querying a model to steal its behavior or parameters",
-      "MITRE ATLAS \u2014 knowledge base of adversarial ML tactics and techniques",
-      "Red-teaming and evals \u2014 adversarial testing of AI systems before deployment",
-      "Human-in-the-loop \u2014 required approval for high-impact or irreversible agent actions",
-      "SOAR \u2014 security orchestration, automation and response; automate enrichment, gate containment"
+      "Evasion — perturbing inputs at inference time to dodge a classifier",
+      "Poisoning — corrupting training data to corrupt the model",
+      "Extraction — querying a model to steal its behavior or parameters",
+      "MITRE ATLAS — knowledge base of adversarial ML tactics and techniques",
+      "Red-teaming and evals — adversarial testing of AI systems before deployment",
+      "Human-in-the-loop — required approval for high-impact or irreversible agent actions",
+      "SOAR — security orchestration, automation and response; automate enrichment, gate containment"
      ]
     }
    ]
@@ -567,7 +1299,7 @@
    },
    {
     "term": "Blocklisting",
-    "def": "Default-allow model: everything runs except recognized-bad items \u2014 the window zero-days live in."
+    "def": "Default-allow model: everything runs except recognized-bad items — the window zero-days live in."
    },
    {
     "term": "Default-deny",
@@ -583,15 +1315,15 @@
    },
    {
     "term": "Installation Mode",
-    "def": "Temporary mode that pauses file blocking for installs \u2014 must be tightly scoped and time-boxed."
+    "def": "Temporary mode that pauses file blocking for installs — must be tightly scoped and time-boxed."
    },
    {
     "term": "Elevation Control",
-    "def": "Grants specific approved applications admin rights for standard users \u2014 just-in-time, per-app, time-boxed \u2014 without standing admin rights."
+    "def": "Grants specific approved applications admin rights for standard users — just-in-time, per-app, time-boxed — without standing admin rights."
    },
    {
     "term": "Application hopping",
-    "def": "An elevated or trusted process spawning another tool (e.g., PowerShell) to inherit its privileges \u2014 countered by ringfencing the elevated process."
+    "def": "An elevated or trusted process spawning another tool (e.g., PowerShell) to inherit its privileges — countered by ringfencing the elevated process."
    },
    {
     "term": "Storage Control",
@@ -603,7 +1335,7 @@
    },
    {
     "term": "ZTNA",
-    "def": "Zero Trust Network Access: per-session, per-application brokered connections (commonly over port 443) with no open inbound ports \u2014 deny-by-default for network access."
+    "def": "Zero Trust Network Access: per-session, per-application brokered connections (commonly over port 443) with no open inbound ports — deny-by-default for network access."
    },
    {
     "term": "Approval Center",
@@ -611,7 +1343,7 @@
    },
    {
     "term": "Unified Audit",
-    "def": "Real-time audit showing what was allowed or denied across endpoints \u2014 and why; the evidence layer for triage."
+    "def": "Real-time audit showing what was allowed or denied across endpoints — and why; the evidence layer for triage."
    },
    {
     "term": "Testing Environment",
@@ -623,15 +1355,15 @@
    },
    {
     "term": "Assume breach",
-    "def": "Design and operate as if the attacker already has a foothold \u2014 least privilege, containment, and monitoring everywhere."
+    "def": "Design and operate as if the attacker already has a foothold — least privilege, containment, and monitoring everywhere."
    },
    {
     "term": "Living off the land",
-    "def": "Attacks that hijack trusted built-in tools (Word, PowerShell) instead of dropping malware \u2014 defeated by behavior containment, not signatures."
+    "def": "Attacks that hijack trusted built-in tools (Word, PowerShell) instead of dropping malware — defeated by behavior containment, not signatures."
    },
    {
     "term": "Change control",
-    "def": "Scoped, ticketed, tested changes with validation and rollback \u2014 emergency speed never cancels the process."
+    "def": "Scoped, ticketed, tested changes with validation and rollback — emergency speed never cancels the process."
    },
    {
     "def": "A node in an attack graph representing a system or weakness, connected by edges that represent steps an attacker could take between them.",
@@ -738,7 +1470,7 @@
    {
     "label": "ThreatLocker Zero Trust platform explainer (official)",
     "url": "https://www.threatlocker.com/blog/edr-xdr-vs-zero-trust-prevention",
-    "note": "EDR/XDR vs Zero Trust prevention \u2014 the deny-by-default argument in their own words."
+    "note": "EDR/XDR vs Zero Trust prevention — the deny-by-default argument in their own words."
    },
    {
     "label": "ThreatLocker Bootcamp page (official)",
@@ -776,7 +1508,7 @@
     "note": "Detection and response capability detail."
    },
    {
-    "label": "NIST SP 800-207 \u2014 Zero Trust Architecture",
+    "label": "NIST SP 800-207 — Zero Trust Architecture",
     "url": "https://csrc.nist.gov/pubs/sp/800/207/final",
     "note": "The canonical Zero Trust reference: tenets, deployment models, policy engine trust algorithm."
    },
@@ -791,7 +1523,7 @@
     "url": "https://attack.mitre.org/"
    },
    {
-    "label": "CISA \u2014 Cybersecurity and Infrastructure Security Agency",
+    "label": "CISA — Cybersecurity and Infrastructure Security Agency",
     "note": "US government advisories, alerts, and guidance frequently referenced in threat-intel work.",
     "url": "https://www.cisa.gov/"
    },
@@ -808,7 +1540,7 @@
    {
     "label": "OWASP Top 10 for LLM Applications",
     "url": "https://genai.owasp.org/llm-top-10/",
-    "note": "The ranked LLM risk list \u2014 prompt injection is #1"
+    "note": "The ranked LLM risk list — prompt injection is #1"
    },
    {
     "label": "NIST AI Risk Management Framework",
@@ -818,7 +1550,7 @@
    {
     "label": "MITRE ATLAS",
     "url": "https://atlas.mitre.org/",
-    "note": "Adversarial Threat Landscape for AI Systems \u2014 tactics and techniques"
+    "note": "Adversarial Threat Landscape for AI Systems — tactics and techniques"
    },
    {
     "label": "CISA AI guidance",
@@ -829,11 +1561,11 @@
   "checklist": [
    "Sixty-second company brief rehearsed out loud: year, city, philosophy, three products, one milestone",
    "Two STAR stories ready: hardest technical problem; a frustrated customer or user",
-   "\u201cWhy ThreatLocker / why cybersecurity\u201d answer tied to prevention and service, not slogans",
+   "“Why ThreatLocker / why cybersecurity” answer tied to prevention and service, not slogans",
    "Ringfencing explained in one plain-English sentence (the Word-on-a-leash version)",
    "Elevation Control answer ready: just-in-time, per-app, time-boxed, ringfenced, logged",
-   "Triage loop memorized: scope \u2192 observe \u2192 hypothesize \u2192 smallest safe change \u2192 validate \u2192 explain",
-   "Three questions to ask them: team on-call shape, approval SLA expectations, what \u201cmost helpful\u201d looks like on the team",
+   "Triage loop memorized: scope → observe → hypothesize → smallest safe change → validate → explain",
+   "Three questions to ask them: team on-call shape, approval SLA expectations, what “most helpful” looks like on the team",
    "Logistics: 1901 Summit Tower Blvd, Orlando FL; in-office role; ID and references ready",
    "Define your crown jewels before you model anything.",
    "Build the asset-and-access graph from live sources (scans, configs, identity), not from the CMDB alone.",
@@ -979,7 +1711,7 @@
    "title": "Ringfencing: four leashes on an allowed application",
    "svg": "assets/diagrams/tl-ringfencing.svg",
    "lesson_ref": "c-tl-endpoint-ops",
-   "caption": "Word stays approved, but it cannot spawn PowerShell, read the credential store, or reach the internet \u2014 while opening its document is allowed.",
+   "caption": "Word stays approved, but it cannot spawn PowerShell, read the credential store, or reach the internet — while opening its document is allowed.",
    "alt": "An approved Word application inside a dashed containment ring: arrows show PowerShell launch denied, credential-store registry access denied, external network denied, and document file access allowed."
   },
   {
@@ -988,7 +1720,7 @@
    "title": "The Zero Trust endpoint stack",
    "svg": "assets/diagrams/tl-zero-trust-stack.svg",
    "lesson_ref": "c-tl-interview",
-   "caption": "Five deny-by-default layers \u2014 Allowlisting, Ringfencing, Elevation, Storage, Network \u2014 watched by Web Control, the Testing Environment, Unified Audit, and the Cyber Hero MDR team.",
+   "caption": "Five deny-by-default layers — Allowlisting, Ringfencing, Elevation, Storage, Network — watched by Web Control, the Testing Environment, Unified Audit, and the Cyber Hero MDR team.",
    "alt": "A vertical stack of five layers from Allowlisting at the foundation up through Ringfencing, Elevation Control, Storage Control, and Network Control, with side boxes for Web Control, Testing Environment, Unified Audit, and Cyber Hero MDR."
   },
   {
@@ -1042,7 +1774,7 @@
    "title": "ML detection pipeline: telemetry to triage",
    "svg": "assets/diagrams/ai-ml-pipeline.svg",
    "lesson_ref": "c-ml-defense",
-   "caption": "How raw telemetry becomes scored alerts: features feed the model, the model scores, analysts triage top-down \u2014 and analyst verdicts feed retraining.",
+   "caption": "How raw telemetry becomes scored alerts: features feed the model, the model scores, analysts triage top-down — and analyst verdicts feed retraining.",
    "alt": "Flow diagram: telemetry sources feed feature extraction, which feeds an ML model, which outputs scored alerts into an analyst triage queue, with a feedback arrow for retraining."
   },
   {
@@ -1077,5 +1809,23 @@
  "math": [
   "stats",
   "probability"
+ ],
+ "pdfGuides": [
+  {
+   "title": "Cloud Architecture Patterns — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-cloud-patterns.pdf",
+   "source": "Interstitium Labs",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:27:58Z"
+  },
+  {
+   "title": "TLS Handshake — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-tls-handshake.pdf",
+   "source": "Interstitium Labs",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:27:58Z"
+  }
  ]
 }

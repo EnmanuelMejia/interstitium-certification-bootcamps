@@ -1749,6 +1749,180 @@
    "points": 25
   }
  ],
+ "consoleSims": [
+  {
+   "id": "netplus-csim-1",
+   "title": "Open DNS for the new resolver",
+   "console": "firewall",
+   "domain_id": "comptia-network-plus",
+   "difficulty": 1,
+   "brief": "The new internal DNS resolver must answer queries from the 192.168.1.0/24 LAN. DNS needs both UDP and TCP port 53. Add both ACCEPT rules on the INPUT chain.",
+   "tasks": [
+    {
+     "id": "t1",
+     "instruction": "Allow UDP port 53 from 192.168.1.0/24.",
+     "validate": {
+      "action": "add-rule",
+      "params": {
+       "chain": "INPUT",
+       "protocol": "udp",
+       "port": "53",
+       "source": "192.168.1.0/24",
+       "action": "ACCEPT"
+      }
+     },
+     "hint": "Rules tab → Add rule: CHAIN=INPUT, PROTOCOL=udp, PORT=53, SOURCE=192.168.1.0/24, ACTION=ACCEPT"
+    },
+    {
+     "id": "t2",
+     "instruction": "Allow TCP port 53 from 192.168.1.0/24.",
+     "validate": {
+      "action": "add-rule",
+      "params": {
+       "chain": "INPUT",
+       "protocol": "tcp",
+       "port": "53",
+       "source": "192.168.1.0/24",
+       "action": "ACCEPT"
+      }
+     },
+     "hint": "Same form with PROTOCOL=tcp — zone transfers and large DNS replies need TCP."
+    }
+   ],
+   "debrief": "DNS is the classic 'works by IP, fails by name' culprit, and it needs both UDP and TCP 53. Network+ loves asking which ports a service needs — memorize the pairs."
+  },
+  {
+   "id": "netplus-csim-2",
+   "title": "Kill legacy Telnet at the border",
+   "console": "firewall",
+   "domain_id": "comptia-network-plus",
+   "difficulty": 2,
+   "brief": "Security policy bans Telnet (port 23) — it sends credentials in cleartext. Block it in both directions on this host: no outbound Telnet, and no inbound Telnet from anywhere.",
+   "tasks": [
+    {
+     "id": "t1",
+     "instruction": "DROP outbound TCP port 23.",
+     "validate": {
+      "action": "add-rule",
+      "params": {
+       "chain": "OUTPUT",
+       "protocol": "tcp",
+       "port": "23",
+       "source": "0.0.0.0/0",
+       "action": "DROP"
+      }
+     },
+     "hint": "CHAIN=OUTPUT, PROTOCOL=tcp, PORT=23, SOURCE=0.0.0.0/0, ACTION=DROP"
+    },
+    {
+     "id": "t2",
+     "instruction": "DROP inbound TCP port 23 from anywhere.",
+     "validate": {
+      "action": "add-rule",
+      "params": {
+       "chain": "INPUT",
+       "protocol": "tcp",
+       "port": "23",
+       "source": "0.0.0.0/0",
+       "action": "DROP"
+      }
+     },
+     "hint": "CHAIN=INPUT with the same values — block the listener side too."
+    }
+   ],
+   "debrief": "Telnet vs SSH is the textbook insecure-vs-secure protocol swap. Blocking both chains closes the loop: nobody can Telnet out, and nobody can Telnet in."
+  },
+  {
+   "id": "netplus-csim-3",
+   "title": "Stand up the management VLAN",
+   "console": "switch-cli",
+   "domain_id": "comptia-network-plus",
+   "difficulty": 2,
+   "brief": "Switch management interfaces are moving to VLAN 99 (named MGMT) for isolation, and the uplink on Gi0/24 must trunk all VLANs to the core. Build the VLAN, trunk the uplink, save.",
+   "tasks": [
+    {
+     "id": "t1",
+     "instruction": "Create VLAN 99 named MGMT.",
+     "validate": {
+      "action": "create-vlan",
+      "params": {
+       "id": "99",
+       "name": "MGMT"
+      }
+     },
+     "hint": "Type: vlan 99 name MGMT"
+    },
+    {
+     "id": "t2",
+     "instruction": "Make Gi0/24 a trunk.",
+     "validate": {
+      "action": "set-trunk",
+      "params": {
+       "port": "Gi0/24"
+      }
+     },
+     "hint": "Type: interface Gi0/24 trunk"
+    },
+    {
+     "id": "t3",
+     "instruction": "Save the configuration.",
+     "validate": {
+      "action": "save-config",
+      "params": {}
+     },
+     "hint": "Type: write memory"
+    }
+   ],
+   "debrief": "A dedicated management VLAN keeps admin traffic off user broadcast domains — a Network+ design best practice — and the trunk carries it (plus everything else) upstream."
+  },
+  {
+   "id": "netplus-csim-4",
+   "title": "File the maintenance change ticket",
+   "console": "ticketing",
+   "domain_id": "comptia-network-plus",
+   "difficulty": 1,
+   "brief": "Tonight's core-switch firmware window (22:00–23:00) is approved. File a P2 change ticket, attach the approval note, and assign it to netops.",
+   "tasks": [
+    {
+     "id": "t1",
+     "instruction": "Create a P2 ticket titled exactly: Change: core switch firmware 22:00-23:00",
+     "validate": {
+      "action": "create-ticket",
+      "params": {
+       "title": "Change: core switch firmware 22:00-23:00",
+       "priority": "P2"
+      }
+     },
+     "hint": "New ticket tab — copy the title exactly, it becomes INC-9002."
+    },
+    {
+     "id": "t2",
+     "instruction": "Add the note: Change board approved; rollback plan on file.",
+     "validate": {
+      "action": "add-note",
+      "params": {
+       "id": "INC-9002",
+       "text": "Change board approved; rollback plan on file."
+      }
+     },
+     "hint": "Add note form with the exact text."
+    },
+    {
+     "id": "t3",
+     "instruction": "Assign INC-9002 to netops.",
+     "validate": {
+      "action": "assign-ticket",
+      "params": {
+       "id": "INC-9002",
+       "assignee": "netops"
+      }
+     },
+     "hint": "Assign form: TICKET ID=INC-9002, ASSIGNEE=netops"
+    }
+   ],
+   "debrief": "Network+ change management: every change gets documented, approved, and assigned before it happens — with a rollback plan, always."
+  }
+ ],
  "foundations": [
   {
    "track": "networking",
@@ -1767,6 +1941,81 @@
   {
    "label": "CompTIA Network+ certification page",
    "url": "https://www.comptia.org/certifications/network"
+  }
+ ],
+ "videos": [
+  {
+   "title": "The VLAN That Leaked",
+   "url": "/assets/videos/bc-bbg-netplus-vlan-leak.mp4",
+   "source": "Interstitium Labs",
+   "blurb": "A VLAN-hopping attack via double-tagging: the native VLAN mismatch lets finance frames leak — move native to 999 and turn DTP off. (Preview — narration coming; voiceover pending TTS restore.)",
+   "durationMin": 1,
+   "order": 1,
+   "preview": true,
+   "captionsUrl": "/assets/videos/bc-bbg-netplus-vlan-leak.vtt",
+   "narrationUrl": "/assets/videos/bc-bbg-netplus-vlan-leak.narration.md",
+   "verifiedUtc": "2026-10-09T04:44:39Z",
+   "httpStatus": 200
+  },
+  {
+   "title": "Carve the /24 in 100 Seconds",
+   "url": "/assets/videos/bc-fireship-netplus-carve.mp4",
+   "source": "Interstitium Labs",
+   "blurb": "Carving 192.168.1.0/24 into four /26s: borrow two bits, new mask 255.255.255.192 — 62 usable hosts per subnet. (Preview — narration coming; voiceover pending TTS restore.)",
+   "durationMin": 1,
+   "order": 2,
+   "preview": true,
+   "captionsUrl": "/assets/videos/bc-fireship-netplus-carve.vtt",
+   "narrationUrl": "/assets/videos/bc-fireship-netplus-carve.narration.md",
+   "verifiedUtc": "2026-10-09T04:44:39Z",
+   "httpStatus": 200
+  },
+  {
+   "title": "Half the Office Is Offline",
+   "url": "/assets/videos/bc-3b1b-netplus-storm.mp4",
+   "source": "Interstitium Labs",
+   "blurb": "A broadcast storm from a switching loop with no spanning tree: broadcasts multiply exponentially — STP blocks the port and the storm dies. (Preview — narration coming; voiceover pending TTS restore.)",
+   "durationMin": 1,
+   "order": 3,
+   "preview": true,
+   "captionsUrl": "/assets/videos/bc-3b1b-netplus-storm.vtt",
+   "narrationUrl": "/assets/videos/bc-3b1b-netplus-storm.narration.md",
+   "verifiedUtc": "2026-10-09T04:44:39Z",
+   "httpStatus": 200
+  }
+ ],
+ "pdfGuides": [
+  {
+   "title": "TCP 3-Way Handshake — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-tcp-handshake.pdf",
+   "source": "Interstitium Labs",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:27:58Z"
+  },
+  {
+   "title": "DNS Resolution — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-dns-resolution.pdf",
+   "source": "Interstitium Labs",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:27:58Z"
+  },
+  {
+   "title": "TLS Handshake — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-tls-handshake.pdf",
+   "source": "Interstitium Labs",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:27:58Z"
+  },
+  {
+   "title": "Load Balancing — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-load-balancing.pdf",
+   "source": "Interstitium Labs",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:27:58Z"
   }
  ]
 }

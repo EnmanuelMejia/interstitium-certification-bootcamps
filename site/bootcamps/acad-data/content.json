@@ -159,7 +159,7 @@
  "lessons": [
   {
    "domain_id": "acad-data",
-   "title": "Data \u2014 Core concepts",
+   "title": "Data — Core concepts",
    "concepts": [
     "Tidy data has one structure: each variable a column, each observation a row, each value a cell. Most 'messy data' pain is data that violates this shape.",
     "Pipelines fail silently more often than loudly: build freshness checks, row-count assertions, and schema validation into every run, and alert on the checks, not just on crashes.",
@@ -234,13 +234,599 @@
    ]
   }
  ],
- "simulations": [],
- "consoleSims": [],
- "terminalMissions": [],
+ "simulations": [
+  {
+   "id": "acad-data-sim-1",
+   "title": "The dirty CSV",
+   "kind": "troubleshoot",
+   "domain_id": "acad-data",
+   "difficulty": 2,
+   "brief": "The nightly pipeline failed at 2 AM. The error says 'malformed row 48,211.' The dashboard the CEO checks at 8 AM is now stale. Fix the pipeline without corrupting the data.",
+   "steps": [
+    {
+     "symptom": "Pipeline failed on row 48,211 of the customer export. The file came from a vendor.",
+     "evidence": [
+      [
+       "Pipeline error",
+       "Row 48,211: expected 12 columns, found 14\nSource: vendor export customers_2026-10-07.csv\nDownstream: CEO dashboard (stale since 02:00)"
+      ]
+     ],
+     "options": [
+      "Delete row 48,211 and re-run",
+      "Inspect the row first: quoted commas or embedded newlines are the usual cause — then fix the parser, not the data",
+      "Re-run the pipeline and hope it was transient",
+      "Ask the vendor for a new file and wait"
+     ],
+     "correct": 1,
+     "explain": "Malformed rows are usually a parsing problem, not a data problem: quoted fields containing commas, or embedded newlines splitting one row into two. Deleting the row destroys evidence (and maybe a real customer); fixing the parser fixes every future file too."
+    },
+    {
+     "symptom": "Confirmed: the vendor wraps addresses in quotes, and some contain commas. The parser was splitting on every comma.",
+     "evidence": [
+      [
+       "Row sample",
+       "48210,\"Acme, Inc.\",...  <- quoted comma\nParser: naive split(\",\") -> 14 columns instead of 12"
+      ]
+     ],
+     "options": [
+      "Switch to a proper CSV parser that respects quoting, add a schema check (12 columns), and quarantine bad rows instead of failing the whole run",
+      "Tell the vendor to stop using commas in addresses",
+      "Keep the naive split but skip quoted rows",
+      "Process the file by hand in a spreadsheet"
+     ],
+     "correct": 0,
+     "explain": "Real CSV parsing respects quoting — that is what the format is for. And pipelines should degrade gracefully: schema-check every row, quarantine the bad ones for review, and let the good 48,210 flow. One bad row should never hold a dashboard hostage."
+    },
+    {
+     "symptom": "Pipeline is green. The CEO asks why the dashboard was stale this morning.",
+     "evidence": [
+      [
+       "Ask",
+       "CEO: 'The numbers were frozen at 2 AM. What happened?'"
+      ]
+     ],
+     "options": [
+      "'The vendor sent us a bad file.'",
+      "'A malformed vendor row failed the load; we fixed the parser, quarantined the bad rows for review, and added alerting so the next failure pages us instead of greeting you at 8 AM.'",
+      "'These things happen with data.'",
+      "Blame the vendor by name in the all-hands"
+     ],
+     "correct": 1,
+     "explain": "Data incidents get the same honest treatment as outages: what broke, what you changed, and what prevents recurrence. 'The vendor sent a bad file' is true but useless — the fix is yours to own."
+    }
+   ],
+   "debrief": "You diagnosed the parser instead of blaming the data, built graceful degradation into the pipeline, and reported honestly. Messy data is the job — pipelines that survive it are the skill.",
+   "points": 30
+  },
+  {
+   "id": "acad-data-sim-2",
+   "title": "Correlation is not causation",
+   "kind": "decide",
+   "domain_id": "acad-data",
+   "difficulty": 2,
+   "brief": "Marketing found it: ice-cream sales and signup spikes move together (r=0.91). They want the all-hands slide to say 'ice cream drives signups.' You own the data. Decide what the chart can honestly say.",
+   "steps": [
+    {
+     "symptom": "The correlation is real: r=0.91 over 12 months. Marketing wants a causal claim for the campaign.",
+     "evidence": [
+      [
+       "Analysis",
+       "ice_cream_sales vs signups, monthly, n=12\nPearson r = 0.91, p < 0.01\nMarketing draft: 'Ice cream drives signups — summer campaign approved'"
+      ]
+     ],
+     "options": [
+      "Approve the causal claim — the numbers back it",
+      "Block the causal claim: check for a confounder first (season is the obvious one), and report only what the data supports",
+      "Ask for a bigger sample before deciding",
+      "Let marketing say whatever sells"
+     ],
+     "correct": 1,
+     "explain": "A strong correlation with an obvious confounder — summer drives both — is the textbook trap. The honest move is to test the confounder (seasonality) before anyone prints a causal claim. r=0.91 tells you they move together; it says nothing about why."
+    },
+    {
+     "symptom": "Seasonality confirmed: both series peak in summer, flat otherwise. Within-season correlation is 0.12.",
+     "evidence": [
+      [
+       "Deconfounded",
+       "Within-month correlation: r = 0.12 (noise)\nDriver: summer season -> more outings -> both rise"
+      ]
+     ],
+     "options": [
+      "Publish the 0.91 anyway — it is technically accurate",
+      "Report the honest finding: 'No meaningful relationship after accounting for season. Do not base the campaign on this.'",
+      "Bury the analysis so marketing is not embarrassed",
+      "Find a different variable that correlates and pitch that"
+     ],
+     "correct": 1,
+     "explain": "Technically-accurate-but-misleading is still misleading. Your job is the honest finding, delivered plainly, with the evidence attached. Killing a bad campaign with data is one of the highest-value things an analyst does."
+    },
+    {
+     "symptom": "Marketing is disappointed. They ask what analysis WOULD support a campaign decision.",
+     "evidence": [
+      [
+       "Ask",
+       "Marketing: 'Fine — what should we measure instead?'"
+      ]
+     ],
+     "options": [
+      "'Nothing — data cannot help marketing.'",
+      "Propose a real test: run the campaign in half the regions (randomized), compare signup lift against control, and pre-register the success metric before launch",
+      "Suggest a bigger correlational study",
+      "Tell them to trust their gut"
+     ],
+     "correct": 1,
+     "explain": "Do not just kill the bad analysis — replace it with a good one. A randomized regional rollout with a pre-registered metric turns 'does it work?' from an argument into an experiment. That is the analyst's real product: better questions, answered honestly."
+    }
+   ],
+   "debrief": "You caught the confounder, refused to launder correlation into causation, and replaced the bad analysis with an experiment. Data literacy is mostly the discipline to say 'not proven' when everyone wants a story.",
+   "points": 30
+  },
+  {
+   "id": "acad-data-sim-3",
+   "title": "PII in the warehouse",
+   "kind": "respond",
+   "domain_id": "acad-data",
+   "difficulty": 3,
+   "brief": "Routine audit, routine horror: the analytics warehouse has unmasked emails and phone numbers in three tables that 40 analysts can query. Respond — carefully, because the data is already everywhere.",
+   "steps": [
+    {
+     "symptom": "Three warehouse tables contain plaintext PII. Forty analysts have query access. The tables feed six dashboards.",
+     "evidence": [
+      [
+       "Audit finding",
+       "Tables: users_raw, events_raw, support_tickets\nPII: email + phone, unmasked | access: 40 analysts\nDownstream: 6 dashboards, 2 vendor exports"
+      ]
+     ],
+     "options": [
+      "Delete the tables immediately",
+      "Contain first: revoke broad access to a need-to-know group, mask the columns, then trace every downstream copy before deciding on deletion",
+      "Email all 40 analysts asking them to delete any exports",
+      "Do nothing — the data was collected legitimately"
+     ],
+     "correct": 1,
+     "explain": "You cannot un-spread data, so you sequence it: stop the spread (narrow access, mask columns), map where it already went (dashboards, exports), then remediate. Immediate deletion destroys the evidence of exposure and breaks six dashboards with no plan."
+    },
+    {
+     "symptom": "Contained. Now: who accessed the PII, and was any of it exfiltrated?",
+     "evidence": [
+      [
+       "Query logs",
+       "90 days of query history available\n2 vendor exports included the PII columns\n1 analyst downloaded 2M rows last month (says it was for a churn model)"
+      ]
+     ],
+     "options": [
+      "Assume the downloads were innocent",
+      "Review the query logs against business justification, interview the analyst, notify legal/compliance, and follow the incident process",
+      "Fire the analyst who downloaded the rows",
+      "Delete the query logs to limit liability"
+     ],
+     "correct": 1,
+     "explain": "PII exposure is a governance incident, not just a technical one: legal and compliance own the notification decisions, and the query logs are evidence — you preserve them, not purge them. The analyst gets a fair review, not a summary judgment."
+    },
+    {
+     "symptom": "Incident closed. Build the system that prevents the next one.",
+     "evidence": [
+      [
+       "Goal",
+       "PII never lands unmasked in the warehouse again"
+      ]
+     ],
+     "options": [
+      "Ban analysts from querying raw tables",
+      "Classify data at ingestion, mask PII by default with an approval flow for unmasking, and add automated PII detection to the pipeline",
+      "Trust the team to be careful now",
+      "Move the warehouse on-premises"
+     ],
+     "correct": 1,
+     "explain": "Governance that works is built into the pipeline: classification at ingestion, masking by default, unmasking by approval, and automated detection as the backstop. 'Be careful' is not a control; a masked-by-default warehouse is."
+    }
+   ],
+   "debrief": "You contained before purging, treated exposure as a governance incident with evidence preserved, and built masking into the pipeline. Data governance is not paperwork — it is architecture.",
+   "points": 30
+  },
+  {
+   "id": "acad-data-sim-4",
+   "title": "The metric that moved",
+   "kind": "troubleshoot",
+   "domain_id": "acad-data",
+   "difficulty": 3,
+   "brief": "Activation rate dropped 12 points overnight. Product wants to roll back yesterday's release. But the release touched nothing near activation. Find out what actually moved.",
+   "steps": [
+    {
+     "symptom": "Activation: 64% -> 52% overnight. Yesterday's release changed the billing page only.",
+     "evidence": [
+      [
+       "Dashboard",
+       "Activation rate: 64% -> 52% (overnight)\nYesterday's release: billing page copy changes only\nProduct: 'Roll it back now.'"
+      ]
+     ],
+     "options": [
+      "Roll back the billing release immediately",
+      "Check the metric definition and pipeline first — a 12-point overnight move with no plausible cause smells like a measurement change, not a product change",
+      "Blame seasonality",
+      "Wait a week to see if it recovers"
+     ],
+     "correct": 1,
+     "explain": "When the cause cannot plausibly produce the effect, suspect the measurement. Metric definitions, pipeline filters, and event instrumentation change silently — and a broken funnel definition moves the number without moving reality."
+    },
+    {
+     "symptom": "Found it: the analytics SDK update last night renamed the 'activated' event. The funnel counts the old name. Real activations are flat.",
+     "evidence": [
+      [
+       "Root cause",
+       "SDK 4.2 renamed event 'activated' -> 'activation_completed'\nFunnel definition: still counts 'activated' (old name)\nTrue activations: flat at 64%"
+      ]
+     ],
+     "options": [
+      "Fix the funnel to count both event names, backfill, and add an event-schema contract test to CI",
+      "Rename the event back in the SDK",
+      "Tell product the metric was wrong and move on",
+      "Freeze all SDK updates"
+     ],
+     "correct": 0,
+     "explain": "Fix the definition (count both names during transition), backfill the history so trends stay true, and add a contract test so the next rename breaks CI instead of the dashboard. Metrics are code — they get tests like code."
+    },
+    {
+     "symptom": "Metric restored. Product still wants someone to blame for the scare.",
+     "evidence": [
+      [
+       "Ask",
+       "Product: 'Whose fault was the bad number?'"
+      ]
+     ],
+     "options": [
+      "Blame the SDK team",
+      "'Nobody's — and that's the point. The system allowed a silent metric break. We fixed the definition, backfilled, and added contract tests. The scare is now impossible to repeat.'",
+      "Blame the analyst who built the funnel",
+      "Promise it will never happen again"
+     ],
+     "correct": 1,
+     "explain": "Metric incidents get the blameless treatment too: the failure was systemic (no contract between SDK and funnel), and the fix is systemic. 'Never happen again' is a promise you cannot keep; 'cannot happen silently again' is one you can."
+    }
+   ],
+   "debrief": "You suspected the measurement before the product, fixed the definition with backfill, and turned a scare into contract tests. When a metric moves impossibly, check the ruler before the thing being measured.",
+   "points": 30
+  },
+  {
+   "id": "acad-data-sim-5",
+   "title": "To publish or not",
+   "kind": "decide",
+   "domain_id": "acad-data",
+   "difficulty": 2,
+   "brief": "The research team wants to publish an 'anonymized' dataset of user behavior. You can see the quasi-identifiers from here. Decide whether it ships.",
+   "steps": [
+    {
+     "symptom": "The dataset is 'anonymized': names removed, but zip code, birth date, and gender remain. 50,000 rows.",
+     "evidence": [
+      [
+       "Dataset",
+       "Rows: 50,000 | removed: names, emails\nKept: zip code, birth date, gender, behavior events\nClaim: 'anonymized'"
+      ]
+     ],
+     "options": [
+      "Approve — names are gone, so it is anonymous",
+      "Reject as-is: zip + birth date + gender uniquely identifies most Americans (the classic re-identification result). Require k-anonymity or aggregation first",
+      "Approve but add a terms-of-service banning re-identification",
+      "Publish only the summary statistics"
+     ],
+     "correct": 1,
+     "explain": "Removing names is not anonymization — it is pseudonymization theater. The famous result stands: a handful of quasi-identifiers re-identify most people. A ToS ban on re-identification is a legal fig leaf, not a technical protection."
+    },
+    {
+     "symptom": "The researchers push back: 'We need row-level data for the analysis. Aggregation kills the research.'",
+     "evidence": [
+      [
+       "Pushback",
+       "Researchers: 'Row-level or the paper dies.'"
+      ]
+     ],
+     "options": [
+      "Cave and publish the rows",
+      "Offer the middle path: a governed research enclave (query access, no downloads, audited) or differential-privacy release with a stated epsilon budget",
+      "Tell them to find another dataset",
+      "Publish and hope nobody re-identifies"
+     ],
+     "correct": 1,
+     "explain": "The honest negotiation: row-level utility without row-level exposure. A governed enclave or differential privacy gives researchers real analytical power with real privacy math. 'Publish and hope' is not a governance position."
+    },
+    {
+     "symptom": "A release path is agreed. What do you document?",
+     "evidence": [
+      [
+       "Requirement",
+       "Document the release decision for the audit trail"
+      ]
+     ],
+     "options": [
+      "Nothing — the decision is made",
+      "Document the privacy review: the re-identification risk found, the mitigation chosen, the epsilon budget or enclave controls, and the approval signatures",
+      "Write 'approved by data team'",
+      "Delete the original dataset to be safe"
+     ],
+     "correct": 1,
+     "explain": "Privacy decisions are auditable decisions: what risk you found, what mitigation you chose, who approved it. If a regulator or a researcher asks in two years, the doc — not your memory — is the answer."
+    }
+   ],
+   "debrief": "You recognized quasi-identifiers for what they are, negotiated a real privacy-preserving path, and documented the decision. Data ethics is not saying no — it is finding the yes that does not harm people.",
+   "points": 30
+  }
+ ],
+ "consoleSims": [
+  {
+   "id": "acad-data-csim-sql-1",
+   "title": "Model the signups table",
+   "console": "sql-studio",
+   "domain_id": "acad-data",
+   "difficulty": 1,
+   "brief": "The analytics project needs a signups table. Create it with an id, email, and created_at — then index the email column, because every lookup will filter on it.",
+   "tasks": [
+    {
+     "id": "t1",
+     "instruction": "Create a table named signups with columns: id INTEGER, email TEXT, created_at TEXT.",
+     "validate": {
+      "action": "create-table",
+      "params": {
+       "name": "signups",
+       "columns": "id INTEGER, email TEXT, created_at TEXT"
+      }
+     },
+     "hint": "Create table: NAME=signups, COLUMNS='id INTEGER, email TEXT, created_at TEXT'."
+    },
+    {
+     "id": "t2",
+     "instruction": "Create an index on the email column of signups.",
+     "validate": {
+      "action": "create-index",
+      "params": {
+       "table": "signups",
+       "column": "email"
+      }
+     },
+     "hint": "Create index: TABLE=signups, COLUMN=email — index what you filter on."
+    }
+   ],
+   "debrief": "Schema first, indexes on the access patterns. A table modeled around its queries stays fast as it grows."
+  },
+  {
+   "id": "acad-data-csim-sql-2",
+   "title": "Count what matters",
+   "console": "sql-studio",
+   "domain_id": "acad-data",
+   "difficulty": 2,
+   "brief": "The stakeholder asks 'how many signups this week?' Write a query that counts rows in the signups table — the console validates that your SQL actually performs a COUNT.",
+   "tasks": [
+    {
+     "id": "t1",
+     "instruction": "Run a SQL query that counts the rows in signups (use COUNT).",
+     "validate": {
+      "action": "run-query",
+      "params": {
+       "match": "COUNT"
+      }
+     },
+     "hint": "Type a query containing COUNT, e.g. SELECT COUNT(*) FROM signups — the console checks your SQL contains COUNT."
+    }
+   ],
+   "debrief": "Every metric is a query. Writing the COUNT yourself — instead of trusting a dashboard — is how you know what the number actually means."
+  },
+  {
+   "id": "acad-data-csim-db-1",
+   "title": "Provision the analytics database",
+   "console": "db-admin",
+   "domain_id": "acad-data",
+   "difficulty": 2,
+   "brief": "The analytics team needs its own database with least-privilege access. Create the analytics database, add a read-only user analyst_ro, and grant them SELECT only.",
+   "tasks": [
+    {
+     "id": "t1",
+     "instruction": "Create a database named analytics.",
+     "validate": {
+      "action": "create-database",
+      "params": {
+       "name": "analytics"
+      }
+     },
+     "hint": "Create database: NAME=analytics."
+    },
+    {
+     "id": "t2",
+     "instruction": "Create a user named analyst_ro.",
+     "validate": {
+      "action": "create-user",
+      "params": {
+       "name": "analyst_ro"
+      }
+     },
+     "hint": "Create user: NAME=analyst_ro."
+    },
+    {
+     "id": "t3",
+     "instruction": "Grant SELECT on analytics to analyst_ro.",
+     "validate": {
+      "action": "grant-priv",
+      "params": {
+       "db": "analytics",
+       "user": "analyst_ro",
+       "priv": "SELECT"
+      }
+     },
+     "hint": "Grant privilege: DB=analytics, USER=analyst_ro, PRIV=SELECT — read-only, nothing more."
+    }
+   ],
+   "debrief": "Databases get owners, users get least privilege. analyst_ro can read and analyze — and cannot accidentally drop anything."
+  },
+  {
+   "id": "acad-data-csim-db-2",
+   "title": "Back up before the migration",
+   "console": "db-admin",
+   "domain_id": "acad-data",
+   "difficulty": 1,
+   "brief": "The warehouse migration starts tomorrow. Create the analytics database in this console, then take a backup — migrations without backups are just hope with extra steps.",
+   "tasks": [
+    {
+     "id": "t1",
+     "instruction": "Create a database named analytics.",
+     "validate": {
+      "action": "create-database",
+      "params": {
+       "name": "analytics"
+      }
+     },
+     "hint": "Create database: NAME=analytics."
+    },
+    {
+     "id": "t2",
+     "instruction": "Back up the analytics database.",
+     "validate": {
+      "action": "backup",
+      "params": {
+       "db": "analytics"
+      }
+     },
+     "hint": "Run a backup on the analytics database."
+    }
+   ],
+   "debrief": "Backup before migration, always. The restore you never test is the restore that fails when you need it."
+  }
+ ],
+ "terminalMissions": [
+  {
+   "id": "acad-data-mission-1",
+   "title": "Who is the analyst",
+   "domain_id": "acad-data",
+   "difficulty": 1,
+   "brief": "Analyses are attributed. Print your username.",
+   "objectives": [
+    "Print your username"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^whoami$",
+     "expect_contains": "candidate",
+     "hint": "Run: whoami — who is analyzing?"
+    }
+   ],
+   "success_message": "Analyst identified. Every number has an author."
+  },
+  {
+   "id": "acad-data-mission-2",
+   "title": "Name the warehouse host",
+   "domain_id": "acad-data",
+   "difficulty": 1,
+   "brief": "Data lives somewhere. Print the hostname of this machine.",
+   "objectives": [
+    "Print the host name"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^hostname$",
+     "expect_contains": "interstitium",
+     "hint": "Run: hostname — name the host."
+    }
+   ],
+   "success_message": "Host named. Lineage starts with location."
+  },
+  {
+   "id": "acad-data-mission-3",
+   "title": "List the datasets",
+   "domain_id": "acad-data",
+   "difficulty": 1,
+   "brief": "Profile before you analyze: list what data is available here.",
+   "objectives": [
+    "List available data"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^ls$",
+     "expect_contains": "logs/",
+     "hint": "Run: ls — what datasets are here?"
+    }
+   ],
+   "success_message": "Datasets listed. Never analyze data you have not inventoried."
+  },
+  {
+   "id": "acad-data-mission-4",
+   "title": "State the sample size",
+   "domain_id": "acad-data",
+   "difficulty": 2,
+   "brief": "The dataset holds 6 records. State the sample size with echo — conclusions scale with n, so n gets stated.",
+   "objectives": [
+    "State the sample size"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^echo\\s+.*6.*$",
+     "expect_contains": "6",
+     "hint": "Run: echo with the sample size (e.g. echo \"n=6 records\")."
+    }
+   ],
+   "success_message": "Sample size stated. A number without its n is a rumor."
+  },
+  {
+   "id": "acad-data-mission-5",
+   "title": "Confirm the working directory",
+   "domain_id": "acad-data",
+   "difficulty": 2,
+   "brief": "Reproducibility starts with context. Print your working directory.",
+   "objectives": [
+    "Print working directory"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^pwd$",
+     "expect_contains": "/home/candidate",
+     "hint": "Run: pwd — record your context."
+    }
+   ],
+   "success_message": "Context recorded. Reproducible work states where it ran."
+  },
+  {
+   "id": "acad-data-mission-6",
+   "title": "Check the platform",
+   "domain_id": "acad-data",
+   "difficulty": 2,
+   "brief": "Print the full system information — the platform is part of the methodology section.",
+   "objectives": [
+    "Print platform information"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^uname\\s+-a$",
+     "expect_contains": "6.8.0-ilb",
+     "hint": "Run: uname -a — record the platform."
+    }
+   ],
+   "success_message": "Platform recorded. Methods sections include the machine."
+  },
+  {
+   "id": "acad-data-mission-7",
+   "title": "Publish the finding",
+   "domain_id": "acad-data",
+   "difficulty": 3,
+   "brief": "State your headline finding with echo (the error rate is 33%), then print your identity record to sign the analysis.",
+   "objectives": [
+    "State the finding",
+    "Sign the analysis"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^echo\\s+.*33.*$",
+     "expect_contains": "33",
+     "hint": "Run: echo with the finding (e.g. echo \"error rate 33 percent\")."
+    },
+    {
+     "command_pattern": "^id$",
+     "expect_contains": "uid=1000",
+     "hint": "Run: id — sign your work."
+    }
+   ],
+   "success_message": "Finding published and signed. Honest numbers, named author."
+  }
+ ],
  "sections": [
   {
    "id": "sec-full-spectrum",
-   "title": "Full Spectrum Dominance \u2014 core path",
+   "title": "Full Spectrum Dominance — core path",
    "kind": "core",
    "lectures": [],
    "lab_ids": [
@@ -266,17 +852,17 @@
  ],
  "behavioral": [
   {
-   "prompt": "Tell me about the most technically difficult problem you have run into \u2014 a homelab, a broken environment, anything \u2014 and how you solved it.",
+   "prompt": "Tell me about the most technically difficult problem you have run into — a homelab, a broken environment, anything — and how you solved it.",
    "framework": "STAR",
    "points": [
     "Pick ONE problem with a real evidence trail: the symptom, what you measured, the hypothesis you tested",
-    "Show the loop: scope, observe, hypothesize, smallest safe change, validate \u2014 interviewers score the method, not just the fix",
+    "Show the loop: scope, observe, hypothesize, smallest safe change, validate — interviewers score the method, not just the fix",
     "Name the tools (VM build, networking, logs) and the lesson it taught you",
     "Close with the result in concrete terms: what works now that did not before"
    ],
    "pitfalls": [
-    "Choosing a story with no real obstacle (\u201cI Googled it\u201d is not a story)",
-    "Skipping validation \u2014 saying it worked without proving it",
+    "Choosing a story with no real obstacle (“I Googled it” is not a story)",
+    "Skipping validation — saying it worked without proving it",
     "Rambling past two minutes without reaching the result"
    ]
   },
@@ -301,13 +887,13 @@
    "points": [
     "Connect prevention to something concrete: a moment you saw detection arrive too late, or a system you hardened",
     "Tie their model to your instincts: deny-by-default matches how you already think about trust",
-    "Show service orientation: the Cyber Hero culture rewards the 2 a.m. helper \u2014 give an example of being one",
+    "Show service orientation: the Cyber Hero culture rewards the 2 a.m. helper — give an example of being one",
     "Name one forward-looking reason: Zero Trust, the MSP mission, or the bootcamp community investment"
    ],
    "pitfalls": [
     "Generic flattery with no specifics about the company",
     "Leading with compensation, title, or location convenience",
-    "Claiming expertise in products you have only read about \u2014 frame it as studied, not mastered"
+    "Claiming expertise in products you have only read about — frame it as studied, not mastered"
    ]
   },
   {
@@ -384,13 +970,13 @@
  ],
  "resources": {
   "cheatsheet": {
-   "title": "Full Spectrum Dominance \u2014 field reference",
+   "title": "Full Spectrum Dominance — field reference",
    "sections": [
     {
      "heading": "Company facts (verified)",
      "items": [
-      "Founded 2017 in Orlando, FL \u2014 Danny Jenkins (CEO), Sami Jenkins (COO), John Carolan (QA)",
-      "Philosophy: deny-by-default / default-deny \u2014 approve known-good, deny the rest",
+      "Founded 2017 in Orlando, FL — Danny Jenkins (CEO), Sami Jenkins (COO), John Carolan (QA)",
+      "Philosophy: deny-by-default / default-deny — approve known-good, deny the rest",
       "Customers: 70,000+ organizations, sold heavily through the MSP channel",
       "Funding: $190M Series F, July 2026 (Elephant-led); ~730 employees",
       "Interview address: 1901 Summit Tower Blvd, Orlando, FL 32810",
@@ -400,116 +986,116 @@
     {
      "heading": "Product stack",
      "items": [
-      "Allowlisting \u2014 default-deny execution control for apps, DLLs, scripts, installers",
-      "Ringfencing \u2014 constrains allowed apps: app-to-app, file, registry, network",
-      "Storage Control \u2014 USB/device policy by serial, user, file type, encryption",
-      "Elevation Control \u2014 just-in-time per-app admin, no standing rights",
-      "Network Control \u2014 host firewall; port/IP/dynamic-ACL rules; ZTNA foundation",
-      "Web Control \u2014 agent-based DNS/URL category filtering, works off-network",
-      "Cyber Hero MDR \u2014 24/7/365 US-based response, ~60-second average",
-      "Testing Environment \u2014 one-button VDI sandbox; checks AV flags, canary files, registry changes"
+      "Allowlisting — default-deny execution control for apps, DLLs, scripts, installers",
+      "Ringfencing — constrains allowed apps: app-to-app, file, registry, network",
+      "Storage Control — USB/device policy by serial, user, file type, encryption",
+      "Elevation Control — just-in-time per-app admin, no standing rights",
+      "Network Control — host firewall; port/IP/dynamic-ACL rules; ZTNA foundation",
+      "Web Control — agent-based DNS/URL category filtering, works off-network",
+      "Cyber Hero MDR — 24/7/365 US-based response, ~60-second average",
+      "Testing Environment — one-button VDI sandbox; checks AV flags, canary files, registry changes"
      ]
     },
     {
      "heading": "Rule strength (strongest to weakest)",
      "items": [
-      "Certificate/publisher rules \u2014 survive version updates",
-      "Hash rules \u2014 precise but break on every new version",
-      "Path rules \u2014 weakest; never in user-writable locations",
-      "Learning Mode catalogs before enforcement; Installation Mode pauses blocking \u2014 scope and time-box both"
+      "Certificate/publisher rules — survive version updates",
+      "Hash rules — precise but break on every new version",
+      "Path rules — weakest; never in user-writable locations",
+      "Learning Mode catalogs before enforcement; Installation Mode pauses blocking — scope and time-box both"
      ]
     },
     {
      "heading": "Terminal evidence commands",
      "items": [
-      "nmap <host> \u2014 which ports answer (22/80/443 open)",
-      "dig <name> \u2014 ANSWER SECTION with the A record",
-      "ss \u2014 listening sockets",
-      "systemctl status <svc> \u2014 unit state",
-      "journalctl -u <svc> \u2014 service logs",
-      "sha256sum <file> \u2014 real SHA-256 identity",
-      "grep <pattern> <file> \u2014 search the record",
-      "ps \u2014 what is actually running"
+      "nmap <host> — which ports answer (22/80/443 open)",
+      "dig <name> — ANSWER SECTION with the A record",
+      "ss — listening sockets",
+      "systemctl status <svc> — unit state",
+      "journalctl -u <svc> — service logs",
+      "sha256sum <file> — real SHA-256 identity",
+      "grep <pattern> <file> — search the record",
+      "ps — what is actually running"
      ]
     },
     {
      "heading": "Graph vocabulary",
      "items": [
-      "node \u2014 any entity tracked in the model (user, host, IP, domain, file hash, vulnerability)",
-      "edge \u2014 a labeled relationship between two nodes (logged into, resolved to, downloaded)",
-      "degree \u2014 number of edges on a node; high-degree nodes are attacker highways",
-      "centrality \u2014 how much traffic or how many paths flow through a node",
-      "directed edge \u2014 a relationship with a direction (A downloaded FROM B)",
-      "security graph \u2014 the living model of your whole environment as nodes and edges",
-      "attack graph \u2014 the subgraph of exploitable paths to your targets",
-      "knowledge graph \u2014 threat-intel indicators linked to campaigns and actors"
+      "node — any entity tracked in the model (user, host, IP, domain, file hash, vulnerability)",
+      "edge — a labeled relationship between two nodes (logged into, resolved to, downloaded)",
+      "degree — number of edges on a node; high-degree nodes are attacker highways",
+      "centrality — how much traffic or how many paths flow through a node",
+      "directed edge — a relationship with a direction (A downloaded FROM B)",
+      "security graph — the living model of your whole environment as nodes and edges",
+      "attack graph — the subgraph of exploitable paths to your targets",
+      "knowledge graph — threat-intel indicators linked to campaigns and actors"
      ]
     },
     {
      "heading": "Attack-graph playbook",
      "items": [
-      "inventory first \u2014 you cannot graph what you have not discovered",
+      "inventory first — you cannot graph what you have not discovered",
       "model flaws AND misconfigs as exploit edges",
       "compute shortest paths to the crown jewels",
       "find the choke point (highest betweenness on those paths)",
       "break the path: patch, segment, or remove the edge",
       "re-scan and re-run the graph to prove the path is gone",
-      "never trust yesterday's graph \u2014 redeployments redraw the map"
+      "never trust yesterday's graph — redeployments redraw the map"
      ]
     },
     {
      "heading": "Zero Trust + graphs",
      "items": [
-      "never trust, always verify \u2014 re-evaluate every access decision",
-      "assume breach \u2014 treat unexpected edges as hostile until proven otherwise",
-      "microsegmentation \u2014 allow-list approved edges, alert on new ones",
-      "ReBAC \u2014 policies are path queries on the identity graph",
-      "continuous verification \u2014 device/location/behavior edges change, trust follows",
-      "anomalous edge \u2014 a first-seen connection between strangers is the classic signal"
+      "never trust, always verify — re-evaluate every access decision",
+      "assume breach — treat unexpected edges as hostile until proven otherwise",
+      "microsegmentation — allow-list approved edges, alert on new ones",
+      "ReBAC — policies are path queries on the identity graph",
+      "continuous verification — device/location/behavior edges change, trust follows",
+      "anomalous edge — a first-seen connection between strangers is the classic signal"
      ]
     },
     {
      "heading": "ML detection vocabulary",
      "items": [
-      "Supervised learning \u2014 learns from labeled examples; strong on known threats, blind to novel ones",
-      "Unsupervised learning \u2014 finds structure without labels; clustering and dimensionality reduction",
-      "Anomaly detection \u2014 models 'normal' and flags deviations; the workhorse for novel threats",
-      "UEBA \u2014 user and entity behavior analytics: per-user baselines plus peer-group comparison",
-      "Feature engineering \u2014 encoding raw logs into model inputs (login velocity, rare processes, domain entropy)",
-      "Concept drift \u2014 model decay as attacker behavior and legitimate traffic shift over time"
+      "Supervised learning — learns from labeled examples; strong on known threats, blind to novel ones",
+      "Unsupervised learning — finds structure without labels; clustering and dimensionality reduction",
+      "Anomaly detection — models 'normal' and flags deviations; the workhorse for novel threats",
+      "UEBA — user and entity behavior analytics: per-user baselines plus peer-group comparison",
+      "Feature engineering — encoding raw logs into model inputs (login velocity, rare processes, domain entropy)",
+      "Concept drift — model decay as attacker behavior and legitimate traffic shift over time"
      ]
     },
     {
      "heading": "Detection metrics",
      "items": [
-      "Precision \u2014 of all flagged alerts, how many were real",
-      "Recall \u2014 of all real attacks, how many were flagged",
-      "Threshold tuning \u2014 sliding the decision cutoff trades precision against recall",
-      "Alert fatigue \u2014 when false positives train analysts to ignore the queue",
-      "DGA \u2014 domain generation algorithm; detected via character entropy of domain names"
+      "Precision — of all flagged alerts, how many were real",
+      "Recall — of all real attacks, how many were flagged",
+      "Threshold tuning — sliding the decision cutoff trades precision against recall",
+      "Alert fatigue — when false positives train analysts to ignore the queue",
+      "DGA — domain generation algorithm; detected via character entropy of domain names"
      ]
     },
     {
      "heading": "Agent and LLM security",
      "items": [
-      "Direct prompt injection \u2014 attacker input overrides app instructions (OWASP LLM01:2025, the #1 LLM risk)",
-      "Indirect prompt injection \u2014 hidden instructions inside retrieved data (email, web, docs)",
-      "Jailbreak \u2014 defeating the model's own safety policy; distinct from hijacking app behavior",
-      "Tool poisoning \u2014 malicious tool descriptions or metadata steer an agent to misuse its tools (MCP ecosystem risk)",
-      "Insecure output handling \u2014 executing or trusting model output without validation",
-      "Least-privilege tools \u2014 grant each tool only the scope its task requires"
+      "Direct prompt injection — attacker input overrides app instructions (OWASP LLM01:2025, the #1 LLM risk)",
+      "Indirect prompt injection — hidden instructions inside retrieved data (email, web, docs)",
+      "Jailbreak — defeating the model's own safety policy; distinct from hijacking app behavior",
+      "Tool poisoning — malicious tool descriptions or metadata steer an agent to misuse its tools (MCP ecosystem risk)",
+      "Insecure output handling — executing or trusting model output without validation",
+      "Least-privilege tools — grant each tool only the scope its task requires"
      ]
     },
     {
      "heading": "Adversarial ML and governance",
      "items": [
-      "Evasion \u2014 perturbing inputs at inference time to dodge a classifier",
-      "Poisoning \u2014 corrupting training data to corrupt the model",
-      "Extraction \u2014 querying a model to steal its behavior or parameters",
-      "MITRE ATLAS \u2014 knowledge base of adversarial ML tactics and techniques",
-      "Red-teaming and evals \u2014 adversarial testing of AI systems before deployment",
-      "Human-in-the-loop \u2014 required approval for high-impact or irreversible agent actions",
-      "SOAR \u2014 security orchestration, automation and response; automate enrichment, gate containment"
+      "Evasion — perturbing inputs at inference time to dodge a classifier",
+      "Poisoning — corrupting training data to corrupt the model",
+      "Extraction — querying a model to steal its behavior or parameters",
+      "MITRE ATLAS — knowledge base of adversarial ML tactics and techniques",
+      "Red-teaming and evals — adversarial testing of AI systems before deployment",
+      "Human-in-the-loop — required approval for high-impact or irreversible agent actions",
+      "SOAR — security orchestration, automation and response; automate enrichment, gate containment"
      ]
     }
    ]
@@ -521,7 +1107,7 @@
    },
    {
     "term": "Blocklisting",
-    "def": "Default-allow model: everything runs except recognized-bad items \u2014 the window zero-days live in."
+    "def": "Default-allow model: everything runs except recognized-bad items — the window zero-days live in."
    },
    {
     "term": "Default-deny",
@@ -537,15 +1123,15 @@
    },
    {
     "term": "Installation Mode",
-    "def": "Temporary mode that pauses file blocking for installs \u2014 must be tightly scoped and time-boxed."
+    "def": "Temporary mode that pauses file blocking for installs — must be tightly scoped and time-boxed."
    },
    {
     "term": "Elevation Control",
-    "def": "Grants specific approved applications admin rights for standard users \u2014 just-in-time, per-app, time-boxed \u2014 without standing admin rights."
+    "def": "Grants specific approved applications admin rights for standard users — just-in-time, per-app, time-boxed — without standing admin rights."
    },
    {
     "term": "Application hopping",
-    "def": "An elevated or trusted process spawning another tool (e.g., PowerShell) to inherit its privileges \u2014 countered by ringfencing the elevated process."
+    "def": "An elevated or trusted process spawning another tool (e.g., PowerShell) to inherit its privileges — countered by ringfencing the elevated process."
    },
    {
     "term": "Storage Control",
@@ -557,7 +1143,7 @@
    },
    {
     "term": "ZTNA",
-    "def": "Zero Trust Network Access: per-session, per-application brokered connections (commonly over port 443) with no open inbound ports \u2014 deny-by-default for network access."
+    "def": "Zero Trust Network Access: per-session, per-application brokered connections (commonly over port 443) with no open inbound ports — deny-by-default for network access."
    },
    {
     "term": "Approval Center",
@@ -565,7 +1151,7 @@
    },
    {
     "term": "Unified Audit",
-    "def": "Real-time audit showing what was allowed or denied across endpoints \u2014 and why; the evidence layer for triage."
+    "def": "Real-time audit showing what was allowed or denied across endpoints — and why; the evidence layer for triage."
    },
    {
     "term": "Testing Environment",
@@ -577,15 +1163,15 @@
    },
    {
     "term": "Assume breach",
-    "def": "Design and operate as if the attacker already has a foothold \u2014 least privilege, containment, and monitoring everywhere."
+    "def": "Design and operate as if the attacker already has a foothold — least privilege, containment, and monitoring everywhere."
    },
    {
     "term": "Living off the land",
-    "def": "Attacks that hijack trusted built-in tools (Word, PowerShell) instead of dropping malware \u2014 defeated by behavior containment, not signatures."
+    "def": "Attacks that hijack trusted built-in tools (Word, PowerShell) instead of dropping malware — defeated by behavior containment, not signatures."
    },
    {
     "term": "Change control",
-    "def": "Scoped, ticketed, tested changes with validation and rollback \u2014 emergency speed never cancels the process."
+    "def": "Scoped, ticketed, tested changes with validation and rollback — emergency speed never cancels the process."
    },
    {
     "def": "A node in an attack graph representing a system or weakness, connected by edges that represent steps an attacker could take between them.",
@@ -692,7 +1278,7 @@
    {
     "label": "ThreatLocker Zero Trust platform explainer (official)",
     "url": "https://www.threatlocker.com/blog/edr-xdr-vs-zero-trust-prevention",
-    "note": "EDR/XDR vs Zero Trust prevention \u2014 the deny-by-default argument in their own words."
+    "note": "EDR/XDR vs Zero Trust prevention — the deny-by-default argument in their own words."
    },
    {
     "label": "ThreatLocker Bootcamp page (official)",
@@ -730,7 +1316,7 @@
     "note": "Detection and response capability detail."
    },
    {
-    "label": "NIST SP 800-207 \u2014 Zero Trust Architecture",
+    "label": "NIST SP 800-207 — Zero Trust Architecture",
     "url": "https://csrc.nist.gov/pubs/sp/800/207/final",
     "note": "The canonical Zero Trust reference: tenets, deployment models, policy engine trust algorithm."
    },
@@ -745,7 +1331,7 @@
     "url": "https://attack.mitre.org/"
    },
    {
-    "label": "CISA \u2014 Cybersecurity and Infrastructure Security Agency",
+    "label": "CISA — Cybersecurity and Infrastructure Security Agency",
     "note": "US government advisories, alerts, and guidance frequently referenced in threat-intel work.",
     "url": "https://www.cisa.gov/"
    },
@@ -762,7 +1348,7 @@
    {
     "label": "OWASP Top 10 for LLM Applications",
     "url": "https://genai.owasp.org/llm-top-10/",
-    "note": "The ranked LLM risk list \u2014 prompt injection is #1"
+    "note": "The ranked LLM risk list — prompt injection is #1"
    },
    {
     "label": "NIST AI Risk Management Framework",
@@ -772,7 +1358,7 @@
    {
     "label": "MITRE ATLAS",
     "url": "https://atlas.mitre.org/",
-    "note": "Adversarial Threat Landscape for AI Systems \u2014 tactics and techniques"
+    "note": "Adversarial Threat Landscape for AI Systems — tactics and techniques"
    },
    {
     "label": "CISA AI guidance",
@@ -783,11 +1369,11 @@
   "checklist": [
    "Sixty-second company brief rehearsed out loud: year, city, philosophy, three products, one milestone",
    "Two STAR stories ready: hardest technical problem; a frustrated customer or user",
-   "\u201cWhy ThreatLocker / why cybersecurity\u201d answer tied to prevention and service, not slogans",
+   "“Why ThreatLocker / why cybersecurity” answer tied to prevention and service, not slogans",
    "Ringfencing explained in one plain-English sentence (the Word-on-a-leash version)",
    "Elevation Control answer ready: just-in-time, per-app, time-boxed, ringfenced, logged",
-   "Triage loop memorized: scope \u2192 observe \u2192 hypothesize \u2192 smallest safe change \u2192 validate \u2192 explain",
-   "Three questions to ask them: team on-call shape, approval SLA expectations, what \u201cmost helpful\u201d looks like on the team",
+   "Triage loop memorized: scope → observe → hypothesize → smallest safe change → validate → explain",
+   "Three questions to ask them: team on-call shape, approval SLA expectations, what “most helpful” looks like on the team",
    "Logistics: 1901 Summit Tower Blvd, Orlando FL; in-office role; ID and references ready",
    "Define your crown jewels before you model anything.",
    "Build the asset-and-access graph from live sources (scans, configs, identity), not from the CMDB alone.",
@@ -933,7 +1519,7 @@
    "title": "Ringfencing: four leashes on an allowed application",
    "svg": "assets/diagrams/tl-ringfencing.svg",
    "lesson_ref": "c-tl-endpoint-ops",
-   "caption": "Word stays approved, but it cannot spawn PowerShell, read the credential store, or reach the internet \u2014 while opening its document is allowed.",
+   "caption": "Word stays approved, but it cannot spawn PowerShell, read the credential store, or reach the internet — while opening its document is allowed.",
    "alt": "An approved Word application inside a dashed containment ring: arrows show PowerShell launch denied, credential-store registry access denied, external network denied, and document file access allowed."
   },
   {
@@ -942,7 +1528,7 @@
    "title": "The Zero Trust endpoint stack",
    "svg": "assets/diagrams/tl-zero-trust-stack.svg",
    "lesson_ref": "c-tl-interview",
-   "caption": "Five deny-by-default layers \u2014 Allowlisting, Ringfencing, Elevation, Storage, Network \u2014 watched by Web Control, the Testing Environment, Unified Audit, and the Cyber Hero MDR team.",
+   "caption": "Five deny-by-default layers — Allowlisting, Ringfencing, Elevation, Storage, Network — watched by Web Control, the Testing Environment, Unified Audit, and the Cyber Hero MDR team.",
    "alt": "A vertical stack of five layers from Allowlisting at the foundation up through Ringfencing, Elevation Control, Storage Control, and Network Control, with side boxes for Web Control, Testing Environment, Unified Audit, and Cyber Hero MDR."
   },
   {
@@ -996,7 +1582,7 @@
    "title": "ML detection pipeline: telemetry to triage",
    "svg": "assets/diagrams/ai-ml-pipeline.svg",
    "lesson_ref": "c-ml-defense",
-   "caption": "How raw telemetry becomes scored alerts: features feed the model, the model scores, analysts triage top-down \u2014 and analyst verdicts feed retraining.",
+   "caption": "How raw telemetry becomes scored alerts: features feed the model, the model scores, analysts triage top-down — and analyst verdicts feed retraining.",
    "alt": "Flow diagram: telemetry sources feed feature extraction, which feeds an ML model, which outputs scored alerts into an analyst triage queue, with a feedback arrow for retraining."
   },
   {
@@ -1031,5 +1617,72 @@
  "math": [
   "stats",
   "probability"
+ ],
+ "videos": [
+  {
+   "title": "The 99% Accurate Test",
+   "url": "/assets/videos/bc-3b1b-data-base-rate.mp4",
+   "source": "Interstitium Labs",
+   "blurb": "A population visualization of the base-rate fallacy: a 99% accurate test on a rare condition still produces mostly false positives. (Preview — narration coming; voiceover pending TTS restore.)",
+   "durationMin": 1,
+   "order": 1,
+   "preview": true,
+   "captionsUrl": "/assets/videos/bc-3b1b-data-base-rate.vtt",
+   "narrationUrl": "/assets/videos/bc-3b1b-data-base-rate.narration.md",
+   "verifiedUtc": "2026-10-09T04:08:23Z",
+   "httpStatus": 200
+  },
+  {
+   "title": "Correlation Is Not Causation",
+   "url": "/assets/videos/bc-3b1b-data-correlation.mp4",
+   "source": "Interstitium Labs",
+   "blurb": "A scatter-plot walkthrough of correlation versus causation: r = 0.91 collapses when a hidden confounder splits the cloud. (Preview — narration coming; voiceover pending TTS restore.)",
+   "durationMin": 1,
+   "order": 2,
+   "preview": true,
+   "captionsUrl": "/assets/videos/bc-3b1b-data-correlation.vtt",
+   "narrationUrl": "/assets/videos/bc-3b1b-data-correlation.narration.md",
+   "verifiedUtc": "2026-10-09T04:08:23Z",
+   "httpStatus": 200
+  },
+  {
+   "title": "The Dirty CSV",
+   "url": "/assets/videos/bc-primer-data-dirty-csv.mp4",
+   "source": "Interstitium Labs",
+   "blurb": "A living simulation of a data-ingestion pipeline: a thousand rows flow in, malformed rows are rejected with reasons, the clean set grows. (Preview — narration coming; voiceover pending TTS restore.)",
+   "durationMin": 1,
+   "order": 3,
+   "preview": true,
+   "captionsUrl": "/assets/videos/bc-primer-data-dirty-csv.vtt",
+   "narrationUrl": "/assets/videos/bc-primer-data-dirty-csv.narration.md",
+   "verifiedUtc": "2026-10-09T04:08:23Z",
+   "httpStatus": 200
+  }
+ ],
+ "pdfGuides": [
+  {
+   "title": "ETL Data Pipelines — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-etl-pipelines.pdf",
+   "source": "Interstitium Labs",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:27:58Z"
+  },
+  {
+   "title": "Data Warehouses & Lakehouses — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-data-warehouses.pdf",
+   "source": "Interstitium Labs",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:27:58Z"
+  },
+  {
+   "title": "Stream Processing — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-stream-processing.pdf",
+   "source": "Interstitium Labs",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:27:58Z"
+  }
  ]
 }

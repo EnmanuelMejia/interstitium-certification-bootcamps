@@ -200,9 +200,474 @@
    ]
   }
  ],
- "simulations": [],
- "consoleSims": [],
- "terminalMissions": [],
+ "simulations": [
+  {
+   "id": "neuroai-sim-1",
+   "title": "The spiking net that won't spike",
+   "kind": "troubleshoot",
+   "domain_id": "neuroai",
+   "difficulty": 3,
+   "points": 20,
+   "brief": "The spiking neural network trains for hours and the output layer never fires a single spike. The network is effectively dead.",
+   "steps": [
+    {
+     "symptom": "Zero spikes at the output layer across all timesteps; loss never moves.",
+     "evidence": [
+      [
+       "Membrane potentials",
+       "Peak membrane potential reaches 0.6; firing threshold is set to 2.0"
+      ],
+      [
+       "Input encoding",
+       "Rate-encoded inputs deliver mean current 0.5 per timestep"
+      ],
+      [
+       "Leak config",
+       "tau_mem is 5ms with 100 timesteps — the membrane decays between sparse inputs"
+      ]
+     ],
+     "options": [
+      "Lower the firing threshold toward the observed potential range and strengthen the input current",
+      "Increase the threshold to 5.0 to make spikes more selective",
+      "Add more layers — depth will amplify the signal",
+      "Switch to a longer simulation with the same parameters"
+     ],
+     "correct": 0,
+     "explain": "The membrane never reaches threshold: 0.6 peak against a 2.0 threshold means no neuron can ever fire, so no gradient ever flows. Raising the threshold or adding layers deepens the silence. Bring the threshold into the range the inputs can actually reach."
+    }
+   ],
+   "debrief": "A spiking net that cannot spike cannot learn. Always verify the spike budget first: membrane potentials must actually cross threshold under your inputs, or the whole network is decoration."
+  },
+  {
+   "id": "neuroai-sim-2",
+   "title": "Catastrophic forgetting",
+   "kind": "troubleshoot",
+   "domain_id": "neuroai",
+   "difficulty": 2,
+   "points": 15,
+   "brief": "The continual-learning agent masters the new navigation task at 90% — and its accuracy on the old grasping task collapses from 88% to 12%.",
+   "steps": [
+    {
+     "symptom": "New task 90%, old task 12% after sequential training.",
+     "evidence": [
+      [
+       "Training regime",
+       "Pure sequential: task B trained with task A data deleted"
+      ],
+      [
+       "Weight drift",
+       "Synapses critical to task A moved 4x more than average during task B"
+      ],
+      [
+       "Replay buffer",
+       "None configured"
+      ]
+     ],
+     "options": [
+      "Add experience replay of task A and consolidate important synapses (e.g. elastic weight consolidation)",
+      "Train task B longer until task A recovers on its own",
+      "Freeze the entire network and only train a new output head",
+      "Accept the forgetting — continual learning always loses the old task"
+     ],
+     "correct": 0,
+     "explain": "Sequential training without replay overwrites the weights task A needs — the weight drift data proves it. Replay keeps old-task gradients alive; consolidation protects the synapses that mattered. More task-B training just digs the hole deeper."
+    }
+   ],
+   "debrief": "Brains do not delete the past to learn the present: replay and consolidation are how continual learners keep old skills. Measure old-task accuracy during new-task training — forgetting is a metric, not a mystery."
+  },
+  {
+   "id": "neuroai-sim-3",
+   "title": "Pick the brain-inspired model",
+   "kind": "branching",
+   "domain_id": "neuroai",
+   "difficulty": 2,
+   "points": 15,
+   "brief": "You have event-camera data — sparse, asynchronous brightness changes — for gesture recognition on a neuromorphic chip. Choose the model.",
+   "steps": [
+    {
+     "id": "s1",
+     "text": "Sparse event-camera stream, neuromorphic chip target. Model?",
+     "choices": [
+      {
+       "label": "Spiking neural network that consumes the event stream natively",
+       "outcome": "good",
+       "next": "END",
+       "points": 2,
+       "feedback": "Correct: the data is already spikes. An SNN processes events as they arrive with no frame conversion, matching the chip's asynchronous hardware."
+      },
+      {
+       "label": "Convert events to 60fps frames and run a standard CNN",
+       "outcome": "bad",
+       "next": "END",
+       "points": 0,
+       "feedback": "Framing the events throws away the temporal sparsity that makes event cameras efficient, then runs a dense CNN on mostly-empty frames — the worst of both worlds."
+      }
+     ]
+    }
+   ],
+   "debrief": "Match the model to the signal: event data wants event-driven models. Converting sparse asynchronous data into dense frames discards exactly the efficiency neuromorphic hardware is built for."
+  },
+  {
+   "id": "neuroai-sim-4",
+   "title": "Run the neuromorphic experiment",
+   "kind": "ordering",
+   "domain_id": "neuroai",
+   "difficulty": 2,
+   "points": 10,
+   "brief": "Put the neuromorphic experiment steps in the order that produces a trustworthy result.",
+   "steps": {
+    "context": "A sound neuromorphic experiment order",
+    "items": [
+     "Simulate the SNN and record spike trains",
+     "Encode the dataset into spike trains",
+     "Compare against the ANN baseline on accuracy and energy",
+     "Decode the output spikes into predictions",
+     "Measure spike rates and energy per inference"
+    ],
+    "correct_order": [
+     1,
+     0,
+     4,
+     3,
+     2
+    ]
+   },
+   "debrief": "Encode first (the encoding is part of the model), simulate and measure spikes, decode to predictions, then compare against the baseline on both accuracy and energy. An SNN that is less accurate and no more efficient than the ANN is a failed experiment."
+  },
+  {
+   "id": "neuroai-sim-5",
+   "title": "Review the SNN config",
+   "kind": "config-check",
+   "domain_id": "neuroai",
+   "difficulty": 3,
+   "points": 15,
+   "brief": "This spiking network config is headed to the neuromorphic chip. Click the misconfigured lines (2 issues to find).",
+   "steps": {
+    "config": "neurons: 1024\nthreshold: 5.0\ntau_mem: 0ms\ntimesteps: 100\nencoding: rate\nlearning: stdp",
+    "find": 2,
+    "issues": [
+     {
+      "line": 2,
+      "description": "Threshold 5.0 with the observed input range — neurons will never reach it and the network stays silent.",
+      "fix": "Set the threshold within the range inputs can reach (e.g. near 1.0)."
+     },
+     {
+      "line": 3,
+      "description": "tau_mem of 0ms means the membrane has no memory — it resets instantly and integrates nothing across timesteps.",
+      "fix": "Set tau_mem to a positive value (e.g. 20ms) so potentials accumulate."
+     }
+    ]
+   },
+   "debrief": "SNN configs live or die on neuron dynamics: a reachable threshold and a real membrane time constant. Zero memory plus an unreachable threshold is a network that cannot compute."
+  }
+ ],
+ "consoleSims": [
+  {
+   "id": "neuroai-console-1",
+   "title": "Fix the neuron simulation script",
+   "console": "code-editor",
+   "domain_id": "neuroai",
+   "difficulty": 1,
+   "brief": "The membrane simulation in app.py accumulates wrong on line 4. Open it, fix the line, and inspect the state.",
+   "tasks": [
+    {
+     "id": "neuroai-console-1-t1",
+     "instruction": "Open app.py in the code editor.",
+     "validate": {
+      "action": "open-file",
+      "params": {
+       "name": "app.py"
+      }
+     },
+     "hint": "Click Open next to app.py in the Explorer."
+    },
+    {
+     "id": "neuroai-console-1-t2",
+     "instruction": "Replace line 4 of app.py with:         s += x * 2",
+     "validate": {
+      "action": "fix-line",
+      "params": {
+       "file": "app.py",
+       "line": 4
+      }
+     },
+     "hint": "Use the Replace line form: file app.py, line 4, new text."
+    },
+    {
+     "id": "neuroai-console-1-t3",
+     "instruction": "Inspect the variable s to confirm the accumulator state.",
+     "validate": {
+      "action": "inspect-variable",
+      "params": {
+       "name": "s"
+      }
+     },
+     "hint": "Use the Inspect form with variable name s."
+    }
+   ],
+   "debrief": "Neuron dynamics are just accumulation with decay — a wrong line here means wrong spikes everywhere. Read the loop, fix the line, inspect the state."
+  },
+  {
+   "id": "neuroai-console-2",
+   "title": "Provision the experiment database",
+   "console": "db-admin",
+   "domain_id": "neuroai",
+   "difficulty": 2,
+   "brief": "Create a database for neuromorphic experiments, add the researcher account, and back it up.",
+   "tasks": [
+    {
+     "id": "neuroai-console-2-t1",
+     "instruction": "Create database neuro_experiments.",
+     "validate": {
+      "action": "create-database",
+      "params": {
+       "name": "neuro_experiments"
+      }
+     },
+     "hint": "Use the Create database form in the Databases section."
+    },
+    {
+     "id": "neuroai-console-2-t2",
+     "instruction": "Create database user researcher.",
+     "validate": {
+      "action": "create-user",
+      "params": {
+       "name": "researcher"
+      }
+     },
+     "hint": "Use the Create user form in the Users & grants section."
+    },
+    {
+     "id": "neuroai-console-2-t3",
+     "instruction": "Back up the neuro_experiments database.",
+     "validate": {
+      "action": "backup",
+      "params": {
+       "db": "neuro_experiments"
+      }
+     },
+     "hint": "Click Back up on the neuro_experiments row in the Databases section."
+    }
+   ],
+   "debrief": "Experiment data is infrastructure: dedicated database, named account, backups before the long simulation runs you will compare for months."
+  },
+  {
+   "id": "neuroai-console-3",
+   "title": "Track the spike-rate runs",
+   "console": "sql-studio",
+   "domain_id": "neuroai",
+   "difficulty": 2,
+   "brief": "Create a table for simulation runs, index it by config, and query the highest spike rate.",
+   "tasks": [
+    {
+     "id": "neuroai-console-3-t1",
+     "instruction": "Create table snn_runs with columns id TEXT, threshold REAL, spike_rate REAL.",
+     "validate": {
+      "action": "create-table",
+      "params": {
+       "name": "snn_runs"
+      }
+     },
+     "hint": "Use the Create table form in the Tables section."
+    },
+    {
+     "id": "neuroai-console-3-t2",
+     "instruction": "Create an index on snn_runs(threshold).",
+     "validate": {
+      "action": "create-index",
+      "params": {
+       "table": "snn_runs",
+       "column": "threshold"
+      }
+     },
+     "hint": "The Create index form needs the table and column names."
+    },
+    {
+     "id": "neuroai-console-3-t3",
+     "instruction": "In the Query editor, run: SELECT threshold, spike_rate FROM snn_runs ORDER BY spike_rate DESC LIMIT 1;",
+     "validate": {
+      "action": "run-query",
+      "params": {
+       "match": "ORDER BY"
+      }
+     },
+     "hint": "Type the SELECT with ORDER BY, then click Run query."
+    }
+   ],
+   "debrief": "Simulation sweeps are data: every threshold logged with its spike rate, indexed for comparison. Let the query find the working regime."
+  },
+  {
+   "id": "neuroai-console-4",
+   "title": "Launch the simulation pipeline",
+   "console": "cicd-pipeline",
+   "domain_id": "neuroai",
+   "difficulty": 2,
+   "brief": "Set the timestep count, trigger the simulation pipeline, and approve the results deploy.",
+   "tasks": [
+    {
+     "id": "neuroai-console-4-t1",
+     "instruction": "Set the pipeline variable TIMESTEPS to 100.",
+     "validate": {
+      "action": "set-variable",
+      "params": {
+       "key": "TIMESTEPS",
+       "value": "100"
+      }
+     },
+     "hint": "Use the Variables section's Set variable form."
+    },
+    {
+     "id": "neuroai-console-4-t2",
+     "instruction": "Trigger a new build of the simulation pipeline.",
+     "validate": {
+      "action": "trigger-build",
+      "params": {}
+     },
+     "hint": "Click Trigger new build in the Pipeline section."
+    },
+    {
+     "id": "neuroai-console-4-t3",
+     "instruction": "Approve the gated deploy stage to publish the results.",
+     "validate": {
+      "action": "approve-stage",
+      "params": {
+       "stage": "deploy"
+      }
+     },
+     "hint": "The deploy stage is gated — click Approve on its row."
+    }
+   ],
+   "debrief": "Long simulations belong in a pipeline: parameters as variables, reproducible runs, gated publish. A simulation run by hand is a result you cannot reproduce."
+  }
+ ],
+ "terminalMissions": [
+  {
+   "id": "neuroai-mission-1",
+   "title": "Stamp the neuron parameters",
+   "domain_id": "neuroai",
+   "difficulty": 1,
+   "brief": "Echo the firing threshold and membrane time constant for the run log.",
+   "objectives": [
+    "Print the neuron parameter line"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^echo",
+     "expect_contains": "threshold=1.0",
+     "hint": "Run: echo threshold=1.0 tau=20ms"
+    }
+   ],
+   "success_message": "Mission complete — neuron parameters logged."
+  },
+  {
+   "id": "neuroai-mission-2",
+   "title": "Record the network size",
+   "domain_id": "neuroai",
+   "difficulty": 1,
+   "brief": "Echo the neuron count and timestep count for the experiment notes.",
+   "objectives": [
+    "Print the network size line"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^echo",
+     "expect_contains": "neurons=1024",
+     "hint": "Run: echo neurons=1024 timesteps=100"
+    }
+   ],
+   "success_message": "Mission complete — network size recorded."
+  },
+  {
+   "id": "neuroai-mission-3",
+   "title": "List the workspace",
+   "domain_id": "neuroai",
+   "difficulty": 1,
+   "brief": "List the files in the simulation workspace.",
+   "objectives": [
+    "List workspace files"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^ls$",
+     "expect_contains": "app.py",
+     "hint": "Run: ls"
+    }
+   ],
+   "success_message": "Mission complete — workspace listed."
+  },
+  {
+   "id": "neuroai-mission-4",
+   "title": "Check the host identity",
+   "domain_id": "neuroai",
+   "difficulty": 1,
+   "brief": "Verify the simulation host identity before the long run.",
+   "objectives": [
+    "Show full system information"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^uname",
+     "expect_contains": "interstitium",
+     "hint": "Run: uname -a"
+    }
+   ],
+   "success_message": "Mission complete — host identity verified."
+  },
+  {
+   "id": "neuroai-mission-5",
+   "title": "Report the spike rate",
+   "domain_id": "neuroai",
+   "difficulty": 2,
+   "brief": "Echo the measured output spike rate.",
+   "objectives": [
+    "Print the spike rate line"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^echo",
+     "expect_contains": "spike_rate=12Hz",
+     "hint": "Run: echo spike_rate=12Hz"
+    }
+   ],
+   "success_message": "Mission complete — spike rate reported."
+  },
+  {
+   "id": "neuroai-mission-6",
+   "title": "Confirm the working directory",
+   "domain_id": "neuroai",
+   "difficulty": 2,
+   "brief": "Confirm the shell is in the expected working directory before writing spike trains.",
+   "objectives": [
+    "Print the working directory"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^pwd$",
+     "expect_contains": "/home/candidate",
+     "hint": "Run: pwd"
+    }
+   ],
+   "success_message": "Mission complete — working directory confirmed."
+  },
+  {
+   "id": "neuroai-mission-7",
+   "title": "Record the encoding scheme",
+   "domain_id": "neuroai",
+   "difficulty": 2,
+   "brief": "Echo the spike encoding scheme used for the inputs.",
+   "objectives": [
+    "Print the encoding line"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^echo",
+     "expect_contains": "encoding=rate",
+     "hint": "Run: echo encoding=rate"
+    }
+   ],
+   "success_message": "Mission complete — encoding recorded."
+  }
+ ],
  "sections": [
   {
    "id": "neuroai-sec",
@@ -486,5 +951,64 @@
  },
  "media": [],
  "foundations": [],
- "math": []
+ "math": [],
+ "videos": [
+  {
+   "title": "The Neuron That Learned to Fire",
+   "url": "/assets/videos/bc-story-nai-spike.mp4",
+   "source": "Interstitium Labs",
+   "blurb": "The membrane potential climbs, crosses threshold, and spikes — spiking networks compute in events: sparse, fast, brain-like. (Preview — narration coming; voiceover pending TTS restore.)",
+   "durationMin": 1,
+   "order": 1,
+   "preview": true,
+   "captionsUrl": "/assets/videos/bc-story-nai-spike.vtt",
+   "narrationUrl": "/assets/videos/bc-story-nai-spike.narration.md",
+   "verifiedUtc": "2026-10-09T05:01:37Z",
+   "httpStatus": 200
+  },
+  {
+   "title": "Neurons That Fire Together, Wire Together",
+   "url": "/assets/videos/bc-3b1b-nai-hebbian.mp4",
+   "source": "Interstitium Labs",
+   "blurb": "Hebb's rule in motion: every paired firing of A and B thickens their synapse — eight pulses, double the weight. This is memory, physically. (Preview — narration coming; voiceover pending TTS restore.)",
+   "durationMin": 1,
+   "order": 2,
+   "preview": true,
+   "captionsUrl": "/assets/videos/bc-3b1b-nai-hebbian.vtt",
+   "narrationUrl": "/assets/videos/bc-3b1b-nai-hebbian.narration.md",
+   "verifiedUtc": "2026-10-09T05:01:37Z",
+   "httpStatus": 200
+  },
+  {
+   "title": "Training With Half the Brain Off",
+   "url": "/assets/videos/bc-bbg-nai-dropout.mp4",
+   "source": "Interstitium Labs",
+   "blurb": "Training drops a random 50% of units each step; at inference the full brain switches on — dropout forces redundancy, no neuron becomes load-bearing. (Preview — narration coming; voiceover pending TTS restore.)",
+   "durationMin": 1,
+   "order": 3,
+   "preview": true,
+   "captionsUrl": "/assets/videos/bc-bbg-nai-dropout.vtt",
+   "narrationUrl": "/assets/videos/bc-bbg-nai-dropout.narration.md",
+   "verifiedUtc": "2026-10-09T05:01:37Z",
+   "httpStatus": 200
+  }
+ ],
+ "pdfGuides": [
+  {
+   "title": "Cloud Architecture Patterns — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-cloud-patterns.pdf",
+   "source": "Interstitium Labs",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:27:58Z"
+  },
+  {
+   "title": "TLS Handshake — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-tls-handshake.pdf",
+   "source": "Interstitium Labs",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:27:58Z"
+  }
+ ]
 }

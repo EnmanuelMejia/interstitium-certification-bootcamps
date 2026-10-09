@@ -1020,9 +1020,748 @@
    ]
   }
  ],
- "simulations": [],
- "consoleSims": [],
- "terminalMissions": [],
+ "simulations": [
+  {
+   "id": "andr-sim-1",
+   "title": "The ANR in the final round",
+   "kind": "troubleshoot",
+   "domain_id": "android-coroutines",
+   "difficulty": 2,
+   "points": 100,
+   "brief": "Play Console flags your checkout flow: the ANR rate spiked to 2.1% after the last release. Walk the interviewer through your diagnosis.",
+   "steps": [
+    {
+     "symptom": "ANR traces show the main thread blocked for 5.2 seconds inside CheckoutRepository.sync() during a network call.",
+     "evidence": [
+      [
+       "ANR trace",
+       "main tid=1 blocked 5.2s\n  at CheckoutRepository.sync (CheckoutRepository.kt:41)\n  at CheckoutViewModel.onPay (CheckoutViewModel.kt:88)"
+      ],
+      [
+       "Play Console",
+       "ANR rate 2.1% (bad-behavior threshold 0.47%), clustered on the checkout screen"
+      ]
+     ],
+     "options": [
+      "Move the network call off the main thread with viewModelScope.launch(Dispatchers.IO)",
+      "Add StrictMode penalties so the ANR logs more detail",
+      "Raise the ANR timeout in the manifest",
+      "Show a loading spinner while the main thread finishes"
+     ],
+     "correct": 0,
+     "explain": "The main thread must never do network I/O. Moving the call to Dispatchers.IO inside viewModelScope fixes the root cause; the other options hide or decorate the freeze."
+    },
+    {
+     "symptom": "The freeze is gone, but rotating the phone during checkout now crashes: IllegalStateException, view already detached.",
+     "evidence": [
+      [
+       "crash log",
+       "java.lang.IllegalStateException: Fragment CheckoutFragment not attached\n  at CheckoutRepository$sync$2.invokeSuspend (launched in GlobalScope)"
+      ]
+     ],
+     "options": [
+      "Scope the coroutine to the UI lifecycle with viewModelScope or lifecycleScope instead of GlobalScope",
+      "Catch IllegalStateException around every UI call",
+      "Disable rotation in the manifest",
+      "Move the network call back to the main thread"
+     ],
+     "correct": 0,
+     "explain": "GlobalScope outlives the screen. viewModelScope cancels automatically when the ViewModel clears, so detached-view crashes disappear by construction."
+    },
+    {
+     "symptom": "Fix verified on device. The interviewer asks: how do you prove this stays fixed in CI?",
+     "evidence": [
+      [
+       "CI config",
+       "./gradlew connectedCheck runs on every PR — no coroutine tests exist yet"
+      ]
+     ],
+     "options": [
+      "Add a test on a TestDispatcher asserting the repository never touches the main thread, and gate merges on it",
+      "Rely on manual QA rotation tests before each release",
+      "Test only on a Pixel with developer options on",
+      "Delete the UI test module to keep CI fast"
+     ],
+     "correct": 0,
+     "explain": "A regression test on a test dispatcher makes the fix structural: any future main-thread I/O fails the build instead of reaching users."
+    }
+   ],
+   "debrief": "ANRs are a main-thread discipline problem: I/O leaves the main thread, coroutines die with their scope, and a dispatcher test locks the fix in CI."
+  },
+  {
+   "id": "andr-sim-2",
+   "title": "The leaking Activity",
+   "kind": "troubleshoot",
+   "domain_id": "android-framework",
+   "difficulty": 2,
+   "points": 100,
+   "brief": "LeakCanary fires after every rotation of the settings screen. The interviewer wants the leak found, fixed, and proven gone.",
+   "steps": [
+    {
+     "symptom": "LeakCanary: SettingsActivity leaked — one retained instance after rotation, 12 MB held.",
+     "evidence": [
+      [
+       "LeakCanary trace",
+       "SettingsActivity leaked via\n  static Analytics.tracker → Context field\n  (tracker holds the Activity instance)"
+      ]
+     ],
+     "options": [
+      "Break the static reference: pass applicationContext to the tracker, or hold a WeakReference",
+      "Call System.gc() in onDestroy",
+      "Set largeHeap=true in the manifest",
+      "Ignore it — 12 MB is small"
+     ],
+     "correct": 0,
+     "explain": "A static field is a GC root: anything it touches lives forever. applicationContext is process-scoped and safe to hold; the Activity is not."
+    },
+    {
+     "symptom": "Static reference fixed. Now the location callback keeps the map screen alive after the user navigates away.",
+     "evidence": [
+      [
+       "code",
+       "locationClient.requestUpdates(callback) // never removed\n// callback is an inner class of MapActivity"
+      ]
+     ],
+     "options": [
+      "Unregister the callback in onStop/onDestroy — every register needs a matching unregister",
+      "Make the callback static and keep it registered",
+      "Post the unregister to a Handler with a delay",
+      "Move registration to Application.onCreate"
+     ],
+     "correct": 0,
+     "explain": "Listeners are the classic second leak: registration without unregistration pins the host. Pair every register with an unregister in the matching lifecycle callback."
+    },
+    {
+     "symptom": "Both leaks fixed. How do you prove it to the interviewer?",
+     "evidence": [
+      [
+       "test plan",
+       "Rotate the device 10 times on the settings and map screens"
+      ]
+     ],
+     "options": [
+      "Rotate repeatedly and confirm LeakCanary reports zero retained instances",
+      "Check the APK size shrank",
+      "Profile once and eyeball the heap graph",
+      "Ship and watch crash-free sessions"
+     ],
+     "correct": 0,
+     "explain": "The proof is mechanical: rotate, and LeakCanary stays silent. Leak detection is a regression gate, not a one-time cleanup."
+    }
+   ],
+   "debrief": "Leaks are lifetime mismatches: statics and listeners that outlive their Activity. Fix the reference, pair register with unregister, and let LeakCanary guard the fix."
+  },
+  {
+   "id": "andr-sim-3",
+   "title": "The flaky UI test",
+   "kind": "troubleshoot",
+   "domain_id": "android-mock-circuit",
+   "difficulty": 2,
+   "points": 100,
+   "brief": "Your Espresso checkout test passes locally and fails on CI every third run. The loop interviewer asks you to stabilize it live.",
+   "steps": [
+    {
+     "symptom": "The test taps Pay then asserts the receipt screen; on CI the receipt sometimes has not loaded when the assertion runs.",
+     "evidence": [
+      [
+       "CI log",
+       "androidx.test.espresso.NoMatchingViewException: receipt_total\n(flaky: 7 failures / 20 runs)"
+      ]
+     ],
+     "options": [
+      "Synchronize with the app's async work — register an IdlingResource or drive the test with a TestDispatcher",
+      "Add Thread.sleep(3000) before the assertion",
+      "Run the test 5 times and take the majority result",
+      "Mark the test @Ignore on CI"
+     ],
+     "correct": 0,
+     "explain": "Flakiness is unsynchronized async work. Idling resources make Espresso wait for the real condition; sleeps just move the race and slow the suite."
+    },
+    {
+     "symptom": "IdlingResource added. The test still flakes when the fake payment gateway responds slowly.",
+     "evidence": [
+      [
+       "test setup",
+       "val gateway = RealGateway(sandboxUrl) // hits network in tests"
+      ]
+     ],
+     "options": [
+      "Replace the gateway with a fake that returns instantly and deterministically",
+      "Increase the Espresso idling timeout to 60s",
+      "Retry the whole test class on failure",
+      "Run UI tests only on release branches"
+     ],
+     "correct": 0,
+     "explain": "UI tests must not touch the network. A fake gateway removes the last nondeterminism; the network boundary belongs in a separate integration test."
+    },
+    {
+     "symptom": "Green 20/20. The interviewer asks how this stays green.",
+     "evidence": [
+      [
+       "CI",
+       "PRs merge when connectedCheck passes"
+      ]
+     ],
+     "options": [
+      "Keep the test in the PR gate and treat any new flake as a blocking bug, not a retry",
+      "Quarantine it in a nightly job nobody watches",
+      "Allow 2 retries in the CI config",
+      "Delete it now that the feature shipped"
+     ],
+     "correct": 0,
+     "explain": "A flaky-test culture starts with one tolerated retry. Gating on it and treating flakes as bugs keeps the suite trustworthy."
+    }
+   ],
+   "debrief": "Flaky UI tests are synchronization bugs: wait on real conditions, fake the network, and gate on the result."
+  },
+  {
+   "id": "andr-sim-4",
+   "title": "The Room migration crash",
+   "kind": "troubleshoot",
+   "domain_id": "android-persistence",
+   "difficulty": 2,
+   "points": 100,
+   "brief": "Release 2.4 adds a column to the articles table. Users updating from 2.3 crash on launch. Diagnose it like a senior would.",
+   "steps": [
+    {
+     "symptom": "Crash on launch for upgraders only: IllegalStateException, a migration from 1 to 2 was required but not found.",
+     "evidence": [
+      [
+       "stack",
+       "Room cannot verify the data integrity — migration 1 -> 2 missing"
+      ],
+      [
+       "DB version",
+       "@Database(version = 2) with no Migration supplied"
+      ]
+     ],
+     "options": [
+      "Supply Migration(1, 2) with the ALTER TABLE that adds the column",
+      "Set fallbackToDestructiveMigration() and ship",
+      "Tell users to reinstall",
+      "Bump to version 3 and hope Room figures it out"
+     ],
+     "correct": 0,
+     "explain": "Room requires an explicit migration path. Destructive fallback deletes user data — the one thing an upgrade must never do."
+    },
+    {
+     "symptom": "Migration written. How do you test it before it reaches users?",
+     "evidence": [
+      [
+       "test deps",
+       "androidx.room:room-testing is already in the project"
+      ]
+     ],
+     "options": [
+      "Use MigrationTestHelper: create v1, insert rows, run the migration, assert the data survives",
+      "Install the release APK over the debug APK manually once",
+      "Trust the ALTER TABLE syntax",
+      "Test only fresh installs"
+     ],
+     "correct": 0,
+     "explain": "MigrationTestHelper automates the upgrade path: old schema, real data, then the migration. Manual once-testing does not survive the next schema change."
+    },
+    {
+     "symptom": "Migration tested. The interviewer asks about a column rename instead of an add.",
+     "evidence": [
+      [
+       "schema diff",
+       "v2 -> v3 renames 'title' to 'headline'"
+      ]
+     ],
+     "options": [
+      "Write Migration(2, 3) that creates the new table, copies data, drops the old, renames — SQLite has no RENAME COLUMN on older APIs",
+      "Use ALTER TABLE RENAME COLUMN and require API 30+",
+      "Destructive migration for renames only",
+      "Skip the version bump for renames"
+     ],
+     "correct": 0,
+     "explain": "Room supports renames via the table-copy pattern. On older SQLite there is no rename primitive, so the migration does it in four explicit steps."
+    }
+   ],
+   "debrief": "Schema changes are contracts with existing user data: explicit migrations, MigrationTestHelper proof, and never destructive fallback on a real database."
+  },
+  {
+   "id": "andr-sim-5",
+   "title": "Whiteboard: offline-first feed",
+   "kind": "troubleshoot",
+   "domain_id": "android-architecture",
+   "difficulty": 3,
+   "points": 100,
+   "brief": "System-design round: design an offline-first news feed in 40 minutes. Talk through tradeoffs, not just the happy path.",
+   "steps": [
+    {
+     "symptom": "Requirements: the feed must render instantly offline, refresh when online, and survive process death.",
+     "evidence": [
+      [
+       "constraints",
+       "Spotty connectivity; 50k articles; images"
+      ]
+     ],
+     "options": [
+      "Single source of truth: a Room cache serves the UI via Flow; network refresh writes into Room",
+      "The UI reads the network directly and caches in memory",
+      "Two sources: the UI merges network and cache responses itself",
+      "SharedPreferences for the article list"
+     ],
+     "correct": 0,
+     "explain": "One source of truth keeps the UI simple: it always renders the cache, and refresh is a cache write. Merging in the UI duplicates consistency logic everywhere."
+    },
+    {
+     "symptom": "The interviewer pushes: what happens when the refresh fails halfway through?",
+     "evidence": [
+      [
+       "failure",
+       "500 articles written, then the connection drops"
+      ]
+     ],
+     "options": [
+      "Write the refresh in a Room transaction — partial writes roll back, the cache stays consistent",
+      "Leave the partial page; the next refresh fixes it",
+      "Clear the cache on any failure",
+      "Show an error and require pull-to-refresh"
+     ],
+     "correct": 0,
+     "explain": "Transactions make refresh atomic: users never see a half-written page. Consistency is a database property, not a UI prayer."
+    },
+    {
+     "symptom": "Last 10 minutes: how does the UI stay responsive while the refresh runs?",
+     "evidence": [
+      [
+       "UI",
+       "Compose screen collecting the feed Flow"
+      ]
+     ],
+     "options": [
+      "The repository exposes Flow from Room on Dispatchers.IO; the UI collects with lifecycle awareness — no main-thread I/O anywhere",
+      "Refresh on the main thread but show a spinner",
+      "Poll the database on a timer from the Activity",
+      "Load everything into memory at startup"
+     ],
+     "correct": 0,
+     "explain": "Room + Flow already moves work off the main thread; lifecycle-aware collection cancels when the screen goes away. Responsiveness is architecture, not spinners."
+    }
+   ],
+   "debrief": "Offline-first is one decision repeated everywhere: the database is the source of truth, refreshes are atomic writes, and the UI only ever reads the cache."
+  }
+ ],
+ "consoleSims": [
+  {
+   "id": "andr-console-1",
+   "title": "Ship the release-flavor PR",
+   "console": "git-host",
+   "domain_id": "android-guided-build",
+   "difficulty": 2,
+   "brief": "The 2.4 release needs its build-flavor branch reviewed. Drive the PR from branch to approval in the simulated git host.",
+   "tasks": [
+    {
+     "id": "andr-c1-t1",
+     "instruction": "Create the release branch release/2.4 in the Branches tab.",
+     "validate": {
+      "action": "create-branch",
+      "params": {
+       "name": "release/2.4"
+      }
+     },
+     "hint": "Branches tab → Create branch, name it release/2.4."
+    },
+    {
+     "id": "andr-c1-t2",
+     "instruction": "Open a pull request titled 'Add release build flavor' from release/2.4 into main.",
+     "validate": {
+      "action": "open-pr",
+      "params": {
+       "title": "Add release build flavor",
+       "base": "main",
+       "head": "release/2.4"
+      }
+     },
+     "hint": "Pull requests tab → Open pull request; head is release/2.4, base is main."
+    },
+    {
+     "id": "andr-c1-t3",
+     "instruction": "Leave a review comment on PR #2 confirming the release checklist passed.",
+     "validate": {
+      "action": "add-comment",
+      "params": {
+       "pr": 2,
+       "text": "Release checklist verified."
+      }
+     },
+     "hint": "Add a comment on PR 2 noting the checklist passed."
+    },
+    {
+     "id": "andr-c1-t4",
+     "instruction": "Approve PR #2.",
+     "validate": {
+      "action": "approve-pr",
+      "params": {
+       "pr": 2
+      }
+     },
+     "hint": "Click Approve on PR #2."
+    }
+   ],
+   "debrief": "Release hygiene is a branch, a PR, a recorded review, and an approval — the same four moves every release, every time."
+  },
+  {
+   "id": "andr-console-2",
+   "title": "Unstick the release pipeline",
+   "console": "cicd-pipeline",
+   "domain_id": "android-guided-build",
+   "difficulty": 2,
+   "brief": "The release pipeline is stuck: tests failed and deploy is gated. Get 2.4 moving again in the simulated CI console.",
+   "tasks": [
+    {
+     "id": "andr-c2-t1",
+     "instruction": "Set the BUILD_TYPE pipeline variable to release.",
+     "validate": {
+      "action": "set-variable",
+      "params": {
+       "key": "BUILD_TYPE",
+       "value": "release"
+      }
+     },
+     "hint": "Set variable BUILD_TYPE = release."
+    },
+    {
+     "id": "andr-c2-t2",
+     "instruction": "Retry the failed test stage.",
+     "validate": {
+      "action": "retry-stage",
+      "params": {
+       "stage": "test"
+      }
+     },
+     "hint": "Retry the test stage."
+    },
+    {
+     "id": "andr-c2-t3",
+     "instruction": "Approve the gated deploy stage.",
+     "validate": {
+      "action": "approve-stage",
+      "params": {
+       "stage": "deploy"
+      }
+     },
+     "hint": "Approve the deploy stage to release the gate."
+    }
+   ],
+   "debrief": "A stuck pipeline is a state machine: configure the release variable, retry what failed, and explicitly approve the gate."
+  },
+  {
+   "id": "andr-console-3",
+   "title": "Trace the counter bug",
+   "console": "code-editor",
+   "domain_id": "android-kotlin-core",
+   "difficulty": 1,
+   "brief": "A sample function misbehaves in the interviewer's debugger exercise. Use breakpoints and inspection to trace it.",
+   "tasks": [
+    {
+     "id": "andr-c3-t1",
+     "instruction": "Open app.py in the Explorer.",
+     "validate": {
+      "action": "open-file",
+      "params": {
+       "name": "app.py"
+      }
+     },
+     "hint": "Explorer tab → Open app.py."
+    },
+    {
+     "id": "andr-c3-t2",
+     "instruction": "Set a breakpoint at app.py line 4.",
+     "validate": {
+      "action": "toggle-breakpoint",
+      "params": {
+       "file": "app.py",
+       "line": 4
+      }
+     },
+     "hint": "Click line 4 in the editor to toggle a breakpoint."
+    },
+    {
+     "id": "andr-c3-t3",
+     "instruction": "Run to the breakpoint.",
+     "validate": {
+      "action": "run-to-breakpoint",
+      "params": {}
+     },
+     "hint": "Press Run to breakpoint."
+    },
+    {
+     "id": "andr-c3-t4",
+     "instruction": "Inspect the variable s.",
+     "validate": {
+      "action": "inspect-variable",
+      "params": {
+       "name": "s"
+      }
+     },
+     "hint": "Use Inspect with variable name s."
+    }
+   ],
+   "debrief": "Debugger discipline transfers across languages: open, break, run, inspect — read state before guessing."
+  },
+  {
+   "id": "andr-console-4",
+   "title": "Model the Room export",
+   "console": "sql-studio",
+   "domain_id": "android-persistence",
+   "difficulty": 2,
+   "brief": "The interviewer hands you a Room database export. Recreate its articles table and query it in the SQL workbench.",
+   "tasks": [
+    {
+     "id": "andr-c4-t1",
+     "instruction": "Create table articles with columns id INTEGER, title TEXT.",
+     "validate": {
+      "action": "create-table",
+      "params": {
+       "name": "articles",
+       "columns": "id INTEGER, title TEXT"
+      }
+     },
+     "hint": "Create table articles (id INTEGER, title TEXT)."
+    },
+    {
+     "id": "andr-c4-t2",
+     "instruction": "Index the title column for fast lookup.",
+     "validate": {
+      "action": "create-index",
+      "params": {
+       "table": "articles",
+       "column": "title"
+      }
+     },
+     "hint": "Create an index on articles.title."
+    },
+    {
+     "id": "andr-c4-t3",
+     "instruction": "Run a query selecting titles from articles.",
+     "validate": {
+      "action": "run-query",
+      "params": {
+       "match": "articles"
+      }
+     },
+     "hint": "Run any SELECT that mentions the articles table."
+    }
+   ],
+   "debrief": "Persistence questions are table design plus index judgment: model it, index the lookup, query it."
+  }
+ ],
+ "terminalMissions": [
+  {
+   "id": "andr-mission-1",
+   "title": "Roll call",
+   "domain_id": "android-kotlin-core",
+   "difficulty": 1,
+   "brief": "Prove the sandbox answers before the interview loop starts.",
+   "objectives": [
+    "Print your username",
+    "Print the working directory",
+    "Print the hostname"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^whoami$",
+     "expect_contains": "candidate",
+     "hint": "Type exactly: whoami"
+    },
+    {
+     "command_pattern": "^pwd$",
+     "expect_contains": "/home/candidate",
+     "hint": "Type exactly: pwd"
+    },
+    {
+     "command_pattern": "^hostname$",
+     "expect_contains": "interstitium",
+     "hint": "Type exactly: hostname"
+    }
+   ],
+   "success_message": "Roll call complete — the sandbox is yours."
+  },
+  {
+   "id": "andr-mission-2",
+   "title": "Survey the workspace",
+   "domain_id": "android-framework",
+   "difficulty": 1,
+   "brief": "Recon the practice workspace like you would a new codebase on day one.",
+   "objectives": [
+    "List the workspace",
+    "Confirm the logs directory exists",
+    "Mark the workspace mapped"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^ls$",
+     "expect_contains": "logs/",
+     "hint": "Type exactly: ls"
+    },
+    {
+     "command_pattern": "^ls$",
+     "expect_contains": "README.md",
+     "hint": "Type exactly: ls"
+    },
+    {
+     "command_pattern": "^echo 'workspace mapped'$",
+     "expect_contains": "workspace mapped",
+     "hint": "Type exactly: echo 'workspace mapped'"
+    }
+   ],
+   "success_message": "Workspace surveyed — you know where everything lives."
+  },
+  {
+   "id": "andr-mission-3",
+   "title": "Know your identity",
+   "domain_id": "android-framework",
+   "difficulty": 1,
+   "brief": "Interviewers ask about environments; start by reading this one.",
+   "objectives": [
+    "Print your user identity",
+    "Print the kernel name",
+    "Print full system info"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^id$",
+     "expect_contains": "uid=1000",
+     "hint": "Type exactly: id"
+    },
+    {
+     "command_pattern": "^uname$",
+     "expect_contains": "Linux",
+     "hint": "Type exactly: uname"
+    },
+    {
+     "command_pattern": "^uname -a$",
+     "expect_contains": "x86_64",
+     "hint": "Type exactly: uname -a"
+    }
+   ],
+   "success_message": "Environment read — now read the interview room the same way."
+  },
+  {
+   "id": "andr-mission-4",
+   "title": "Null-safety mantra",
+   "domain_id": "android-kotlin-core",
+   "difficulty": 2,
+   "brief": "Drill the Kotlin null-safety rules every Android interview probes.",
+   "objectives": [
+    "State the nullable-type syntax",
+    "State the safe-call rule",
+    "State the !! rule"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^echo 'nullable types end with \\?'$",
+     "expect_contains": "nullable types end with ?",
+     "hint": "Type exactly: echo 'nullable types end with ?'"
+    },
+    {
+     "command_pattern": "^echo '\\?\\. calls only when non-null'$",
+     "expect_contains": "?. calls only when non-null",
+     "hint": "Type exactly: echo '?. calls only when non-null'"
+    },
+    {
+     "command_pattern": "^echo '!! asserts non-null and can crash'$",
+     "expect_contains": "!! asserts non-null and can crash",
+     "hint": "Type exactly: echo '!! asserts non-null and can crash'"
+    }
+   ],
+   "success_message": "Null-safety drilled — say it in the interview without thinking."
+  },
+  {
+   "id": "andr-mission-5",
+   "title": "Dispatchers drill",
+   "domain_id": "android-coroutines",
+   "difficulty": 2,
+   "brief": "Name the three coroutine dispatchers and their jobs — a guaranteed interview question.",
+   "objectives": [
+    "State the Main dispatcher's job",
+    "State the IO dispatcher's job",
+    "State the Default dispatcher's job"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^echo 'Main: UI work only'$",
+     "expect_contains": "Main: UI work only",
+     "hint": "Type exactly: echo 'Main: UI work only'"
+    },
+    {
+     "command_pattern": "^echo 'IO: network and disk'$",
+     "expect_contains": "IO: network and disk",
+     "hint": "Type exactly: echo 'IO: network and disk'"
+    },
+    {
+     "command_pattern": "^echo 'Default: CPU-heavy work'$",
+     "expect_contains": "Default: CPU-heavy work",
+     "hint": "Type exactly: echo 'Default: CPU-heavy work'"
+    }
+   ],
+   "success_message": "Dispatchers drilled — Main, IO, Default, no hesitation."
+  },
+  {
+   "id": "andr-mission-6",
+   "title": "Interview-day check",
+   "domain_id": "android-mock-circuit",
+   "difficulty": 1,
+   "brief": "Final systems check before the loop: date, host, readiness.",
+   "objectives": [
+    "Print the current date",
+    "Confirm the hostname",
+    "Declare yourself ready"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^date$",
+     "expect_contains": "GMT",
+     "hint": "Type exactly: date"
+    },
+    {
+     "command_pattern": "^hostname$",
+     "expect_contains": "interstitium",
+     "hint": "Type exactly: hostname"
+    },
+    {
+     "command_pattern": "^echo 'on-site ready'$",
+     "expect_contains": "on-site ready",
+     "hint": "Type exactly: echo 'on-site ready'"
+    }
+   ],
+   "success_message": "Systems check green — walk into the loop ready."
+  },
+  {
+   "id": "andr-mission-7",
+   "title": "Architecture recap",
+   "domain_id": "android-architecture",
+   "difficulty": 2,
+   "brief": "Close with the architecture one-liners senior interviewers expect.",
+   "objectives": [
+    "State how the UI observes data",
+    "State the repository's role",
+    "State the Room/network split"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^echo 'UI observes StateFlow'$",
+     "expect_contains": "UI observes StateFlow",
+     "hint": "Type exactly: echo 'UI observes StateFlow'"
+    },
+    {
+     "command_pattern": "^echo 'Repository is the single source of truth'$",
+     "expect_contains": "Repository is the single source of truth",
+     "hint": "Type exactly: echo 'Repository is the single source of truth'"
+    },
+    {
+     "command_pattern": "^echo 'Room caches, network refreshes'$",
+     "expect_contains": "Room caches, network refreshes",
+     "hint": "Type exactly: echo 'Room caches, network refreshes'"
+    }
+   ],
+   "success_message": "Architecture recap complete — you sound like the senior in the room."
+  }
+ ],
  "sections": [
   {
    "id": "android-interview-sec",
@@ -1254,5 +1993,23 @@
  },
  "media": [],
  "foundations": [],
- "math": []
+ "math": [],
+ "pdfGuides": [
+  {
+   "title": "Cloud Architecture Patterns — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-cloud-patterns.pdf",
+   "source": "Interstitium Labs",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:27:58Z"
+  },
+  {
+   "title": "TLS Handshake — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-tls-handshake.pdf",
+   "source": "Interstitium Labs",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:27:58Z"
+  }
+ ]
 }

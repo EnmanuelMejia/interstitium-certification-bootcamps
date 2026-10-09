@@ -1,1050 +1,1741 @@
 {
-  "slug": "sre-practices",
-  "title": "SRE Practices",
-  "tagline": "Site reliability engineering fundamentals: SLIs, SLOs and error budgets, incident response discipline, and systematically eliminating toil. Independent training content; this course confers no certifi",
-  "vendor": {
-    "name": "Independent interview prep (not affiliated with ThreatLocker)",
-    "certs": "",
-    "docs": "https://www.threatlocker.com"
+ "slug": "sre-practices",
+ "title": "SRE Practices",
+ "tagline": "Site reliability engineering fundamentals: SLIs, SLOs and error budgets, incident response discipline, and systematically eliminating toil. Independent training content; this course confers no certifi",
+ "vendor": {
+  "name": "Independent interview prep (not affiliated with ThreatLocker)",
+  "certs": "",
+  "docs": "https://www.threatlocker.com"
+ },
+ "disclaimer": "Independent interview-prep material by Interstitium Labs. Not affiliated with, endorsed by, or sponsored by ThreatLocker or any vendor mentioned. Confers no certificate. All scenarios are original practice content; no exam or vendor-training content is reproduced.",
+ "accent": "#e5484d",
+ "domains": [
+  {
+   "id": "sre-practices",
+   "name": "SRE Practices",
+   "scenarios": [
+    {
+     "answer": 0,
+     "choices": [
+      "CPU utilization measures resource usage, not user experience — a good SLI quantifies what users feel (request success rate, latency percentiles), because the SLO exists to protect users, not servers",
+      "70% is too high; the SLO should be < 50% to be safe",
+      "Average is wrong; they should use the maximum CPU across the fleet",
+      "SLIs must be defined by the infrastructure team, not the service team"
+     ],
+     "difficulty": 1,
+     "evidence": [],
+     "hint": "If this SLI is green but every user request fails, what has the SLO actually protected?",
+     "id": "sre-practices-sc1",
+     "mins": 5,
+     "objectives": [
+      "SLIs",
+      "user-centric metrics"
+     ],
+     "prompt": "What is wrong with this SLI?",
+     "situation": "A team defines their SLI as 'average CPU utilization across the fleet' with an SLO of '< 70%'.",
+     "title": "Picking a Good SLI",
+     "why": "SLIs must reflect the user's experience of the service: proportion of successful requests, latency of successful requests, freshness of data. Resource metrics are useful for capacity planning and alerting internals, but a service can be at 40% CPU and completely broken (or 95% CPU and perfectly healthy). SLOs on the wrong signal drive the wrong behavior."
+    },
+    {
+     "answer": 0,
+     "choices": [
+      "Freeze non-urgent feature releases and focus on reliability work until the budget recovers — the error budget is the agreed trade-off mechanism: budget spent means reliability work takes priority over features",
+      "Ship anyway; SLOs are aspirational and budgets reset monthly",
+      "Lower the SLO to 99% so the budget is no longer exhausted",
+      "Exclude the bad deploy's errors from the SLI retroactively"
+     ],
+     "difficulty": 1,
+     "evidence": [
+      [
+       "burn",
+       "Error budget: 43.2 min/month\nConsumed by day 10: 43.2 min (100%)"
+      ]
+     ],
+     "hint": "The budget is a deal made in advance between product and engineering. What was the deal?",
+     "id": "sre-practices-sc2",
+     "mins": 6,
+     "objectives": [
+      "error budgets",
+      "SLOs",
+      "release policy"
+     ],
+     "prompt": "What does the error-budget policy dictate?",
+     "situation": "The checkout service has a 99.9% SLO (43 min/month error budget). It's the 10th and the budget is fully burned after a bad deploy. Product wants to ship a big feature on the 12th.",
+     "title": "Error Budget Exhausted",
+     "why": "The error budget makes the reliability/feature trade-off explicit and pre-negotiated: as long as budget remains, ship fast; when it's gone, reliability work wins. That's the entire point — decisions during calm times, not arguments during incidents. Retroactively editing the SLI or lowering the SLO to dodge the policy destroys trust in the system."
+    },
+    {
+     "answer": 0,
+     "choices": [
+      "Establish command: declare the incident, assign roles (commander, communications, ops), set a coordination rhythm — parallel uncoordinated debugging wastes the critical first minutes and leaves stakeholders blind",
+      "Let the most senior engineer debug alone; too many cooks spoil the incident",
+      "Immediately roll back the last deploy; action beats process",
+      "Wait 15 minutes to see if monitoring self-resolves before declaring"
+     ],
+     "difficulty": 2,
+     "evidence": [],
+     "hint": "Five people debugging five theories with no updates — what role is missing?",
+     "id": "sre-practices-sc3",
+     "mins": 6,
+     "objectives": [
+      "incident management",
+      "incident commander"
+     ],
+     "prompt": "What is the incident commander's first move?",
+     "situation": "The payments API is down. Five engineers are in the incident channel, all debugging different theories, and nobody is updating the status page.",
+     "title": "Incident Commander First Move",
+     "why": "The first minutes of an incident are a coordination problem, not a technical one. Declaring the incident and assigning roles (who debugs, who communicates, who tracks time) converts chaos into parallel productive work and ensures stakeholders get updates. Blind rollback without diagnosis can worsen things; waiting wastes the golden window."
+    },
+    {
+     "answer": 0,
+     "choices": [
+      "Blame fixes nothing: the system allowed a single command to cause an outage, so the action items must address systemic causes (guardrails, confirmations, dry-run modes, blast-radius limits) — blameless postmortems keep people honest, and honesty is what finds real root causes",
+      "The engineer should be named so others learn from the example",
+      "'Be more careful' is sufficient; most outages are human error",
+      "Skip the postmortem; the cause is obvious"
+     ],
+     "difficulty": 2,
+     "evidence": [],
+     "hint": "If a careful, well-rested engineer could still make this mistake tomorrow, what have you actually fixed by naming them?",
+     "id": "sre-practices-sc4",
+     "mins": 7,
+     "objectives": [
+      "blameless postmortems",
+      "root cause analysis"
+     ],
+     "prompt": "Why is this the wrong response, and what should replace it?",
+     "situation": "After an outage caused by an engineer running a destructive command, a manager wants the postmortem to name the engineer and add 'be more careful' as the action item.",
+     "title": "Blameless Postmortem Pushback",
+     "why": "Human error is never the root cause — it's the starting point. If one mistyped command can take down production, the system is fragile by design: missing confirmations, no dry-run, excessive privileges, no canary. Blame drives incidents underground (people hide mistakes), while blameless analysis surfaces the systemic fixes that prevent entire classes of failure."
+    },
+    {
+     "answer": 0,
+     "choices": [
+      "Cap toil (Google's SRE book sets the bar at 50% max, aiming lower), then systematically automate the toil away — adding headcount to a toil-heavy team just scales the toil linearly instead of eliminating it",
+      "Hire two more SREs; toil is normal operations work",
+      "Outsource the toil to a managed services vendor and keep headcount flat",
+      "Accept 60% toil; SRE is mostly operations anyway"
+     ],
+     "difficulty": 3,
+     "evidence": [
+      [
+       "time split",
+       "Toil: 60%  Project work: 25%  Interrupts: 15%"
+      ]
+     ],
+     "hint": "If traffic doubles, what happens to this toil — and what happens to it if you automate it instead?",
+     "id": "sre-practices-sc5",
+     "mins": 8,
+     "objectives": [
+      "toil",
+      "automation",
+      "SRE principles"
+     ],
+     "prompt": "What is the correct SRE response before hiring?",
+     "situation": "The SRE team spends 60% of its time on manual toil: hand-running database migrations, manually rotating certs, clicking through cloud consoles to provision. They ask for headcount.",
+     "title": "Toil Audit",
+     "why": "Toil is the work that is manual, repetitive, automatable, and devoid of enduring value — and it scales with service growth, so hiring into it is a treadmill. The SRE discipline: measure toil, cap it, and spend the freed engineering time automating it away. Each automation permanently reduces the toil fraction; each hire without automation just adds capacity for more toil."
+    },
+    {
+     "answer": 0,
+     "choices": [
+      "Use multi-window, multi-burn-rate alerts (e.g., Google's SRE workbook pattern: fast-burn 1h/5m windows for paging, slow-burn 6h/30m for tickets) tied to the error budget — fast burns page, slow burns ticket, and both reset correctly",
+      "Lower the threshold to 0.1% so the slow burn would have paged",
+      "Raise the `for:` duration to 1 hour to stop the noisy pages",
+      "Alert on total error count instead of ratio; ratios hide slow burns"
+     ],
+     "difficulty": 3,
+     "evidence": [
+      [
+       "current alert",
+       "expr: error_ratio > 0.01\nfor: 5m"
+      ],
+      [
+       "missed incident",
+       "0.4% errors for 6h = budget exhausted, never paged"
+      ]
+     ],
+     "hint": "You need two different urgencies: 'budget burning fast, wake someone' and 'budget leaking slowly, file a ticket'. How many thresholds does that need?",
+     "id": "sre-practices-sc6",
+     "mins": 9,
+     "objectives": [
+      "burn-rate alerting",
+      "multi-window alerts",
+      "error budgets"
+     ],
+     "prompt": "What alerting design fixes both failure modes?",
+     "situation": "The team pages on 'error rate > 1% for 5 minutes'. They get paged for brief spikes that self-resolve, and once missed a slow burn that exhausted the budget over 6 hours without ever tripping the alert.",
+     "title": "Multi-Window Burn Alerts",
+     "why": "Single-threshold alerts can't distinguish a 5-minute spike from a 6-hour bleed. Burn-rate alerting ties directly to the SLO: the fast-burn alert catches budget consumption at 14.4x+ (page-worthy), the slow-burn catches 6x+ over long windows (ticket-worthy). Both use paired long/short windows so alerts reset promptly when the burn stops, avoiding flapping."
+    }
+   ],
+   "summary": "Site reliability engineering fundamentals: SLIs, SLOs and error budgets, incident response discipline, and systematically eliminating toil. Independent training content; this course confers no certificate."
+  }
+ ],
+ "lessons": [
+  {
+   "domain_id": "sre-platform",
+   "title": "SRE Practices — Core concepts",
+   "concepts": [
+    "SLIs measure what users experience: success rate, latency percentiles, freshness. SLOs set the target (e.g., 99.9% of requests succeed). Resource metrics inform capacity; they are not SLIs.",
+    "The error budget is the allowed unreliability (100% − SLO) over a window. Budget remaining → ship fast; budget exhausted → reliability work takes priority. The trade-off is negotiated in advance, not during incidents.",
+    "Burn-rate alerting ties pages to the budget: fast-burn (e.g., 14.4× over 1h/5m windows) pages a human; slow-burn (6× over 6h/30m) files a ticket. Multi-window pairs reset promptly when burning stops.",
+    "Incident response is a coordination discipline first: declare, assign roles (commander, comms, ops), run a rhythm, communicate outward. Blameless postmortems fix systems, not people — human error is the starting point, never the root cause.",
+    "Toil is manual, repetitive, automatable work with no enduring value. Cap it, then automate it away — hiring into toil just scales the toil."
+   ],
+   "example": {
+    "lang": "shell",
+    "code": "rate(http_requests_total{status=~\"5..\"}[1h]) / rate(http_requests_total[1h])\n# fast-burn alert: 14.4x budget burn over 1h long / 5m short windows\n# slow-burn alert: 6x budget burn over 6h long / 30m short windows",
+    "walkthrough": "The error-ratio expression underlying burn-rate alerts: divide the 5xx rate by the total rate. Compare against the burn-rate thresholds derived from your SLO — fast burn pages, slow burn tickets."
+   },
+   "pitfalls": [
+    "Common trap: SLIs on CPU/memory — green dashboards while users see errors.",
+    "Common trap: single-threshold alerts — they page on spikes and miss slow bleeds; use multi-window burn rates.",
+    "Common trap: 'be more careful' as a postmortem action item — it fixes nothing; fix the system that allowed the mistake.",
+    "Common trap: hiring to absorb toil instead of automating it — toil scales with growth, automation compounds."
+   ],
+   "try_it": "Work through this in the Labs tab."
+  }
+ ],
+ "labs": [
+  {
+   "id": "sre-practices-lab1",
+   "domain_id": "sre-platform",
+   "title": "Define an SLO and Burn-Rate Alerts",
+   "objective": "Write an SLI/SLO pair for a sample service and implement fast-burn and slow-burn alerts from the error budget.",
+   "steps": [
+    "Pick the SLI: `1 - (5xx rate / total request rate)` over a 30-day window; set the SLO at 99.9%.",
+    "Compute the budget: 0.1% of requests, and derive burn-rate thresholds (14.4× fast, 6× slow).",
+    "Write the fast-burn alert: 1h long window + 5m short window, severity page.",
+    "Write the slow-burn alert: 6h long window + 30m short window, severity ticket.",
+    "Validate both rules load in Prometheus (`promtool check rules`) and explain when each fires."
+   ],
+   "checks": [
+    {
+     "command_pattern": "^promtool\\s+check\\s+rules",
+     "expect_contains": "SUCCESS",
+     "hint": "Validate the rule file with promtool."
+    },
+    {
+     "command_pattern": "^cat\\s+.*rules",
+     "expect_contains": "burn",
+     "hint": "The rules should reference burn-rate windows."
+    }
+   ]
   },
-  "disclaimer": "Independent interview-prep material by Interstitium Labs. Not affiliated with, endorsed by, or sponsored by ThreatLocker or any vendor mentioned. Confers no certificate. All scenarios are original practice content; no exam or vendor-training content is reproduced.",
-  "accent": "#e5484d",
-  "domains": [
+  {
+   "id": "sre-practices-lab2",
+   "domain_id": "sre-platform",
+   "title": "Run a Blameless Postmortem",
+   "objective": "Facilitate a postmortem for a simulated outage that produces systemic action items, not blame.",
+   "steps": [
+    "Build the timeline: detection, response actions, mitigation, recovery — from logs and chat history.",
+    "Write the 'what happened' as a systems narrative: which guardrails were missing that allowed the failure?",
+    "Draft 3 action items, each systemic (automation, guardrail, detection) with an owner and due date.",
+    "Review: strike any action item that amounts to 'be more careful' and replace it with a system change.",
+    "Publish the postmortem where the whole org can read it — transparency is the point."
+   ],
+   "checks": [
     {
-      "id": "sre-practices",
-      "name": "SRE Practices",
-      "scenarios": [
-        {
-          "answer": 0,
-          "choices": [
-            "CPU utilization measures resource usage, not user experience — a good SLI quantifies what users feel (request success rate, latency percentiles), because the SLO exists to protect users, not servers",
-            "70% is too high; the SLO should be < 50% to be safe",
-            "Average is wrong; they should use the maximum CPU across the fleet",
-            "SLIs must be defined by the infrastructure team, not the service team"
-          ],
-          "difficulty": 1,
-          "evidence": [],
-          "hint": "If this SLI is green but every user request fails, what has the SLO actually protected?",
-          "id": "sre-practices-sc1",
-          "mins": 5,
-          "objectives": [
-            "SLIs",
-            "user-centric metrics"
-          ],
-          "prompt": "What is wrong with this SLI?",
-          "situation": "A team defines their SLI as 'average CPU utilization across the fleet' with an SLO of '< 70%'.",
-          "title": "Picking a Good SLI",
-          "why": "SLIs must reflect the user's experience of the service: proportion of successful requests, latency of successful requests, freshness of data. Resource metrics are useful for capacity planning and alerting internals, but a service can be at 40% CPU and completely broken (or 95% CPU and perfectly healthy). SLOs on the wrong signal drive the wrong behavior."
-        },
-        {
-          "answer": 0,
-          "choices": [
-            "Freeze non-urgent feature releases and focus on reliability work until the budget recovers — the error budget is the agreed trade-off mechanism: budget spent means reliability work takes priority over features",
-            "Ship anyway; SLOs are aspirational and budgets reset monthly",
-            "Lower the SLO to 99% so the budget is no longer exhausted",
-            "Exclude the bad deploy's errors from the SLI retroactively"
-          ],
-          "difficulty": 1,
-          "evidence": [
-            [
-              "burn",
-              "Error budget: 43.2 min/month\nConsumed by day 10: 43.2 min (100%)"
-            ]
-          ],
-          "hint": "The budget is a deal made in advance between product and engineering. What was the deal?",
-          "id": "sre-practices-sc2",
-          "mins": 6,
-          "objectives": [
-            "error budgets",
-            "SLOs",
-            "release policy"
-          ],
-          "prompt": "What does the error-budget policy dictate?",
-          "situation": "The checkout service has a 99.9% SLO (43 min/month error budget). It's the 10th and the budget is fully burned after a bad deploy. Product wants to ship a big feature on the 12th.",
-          "title": "Error Budget Exhausted",
-          "why": "The error budget makes the reliability/feature trade-off explicit and pre-negotiated: as long as budget remains, ship fast; when it's gone, reliability work wins. That's the entire point — decisions during calm times, not arguments during incidents. Retroactively editing the SLI or lowering the SLO to dodge the policy destroys trust in the system."
-        },
-        {
-          "answer": 0,
-          "choices": [
-            "Establish command: declare the incident, assign roles (commander, communications, ops), set a coordination rhythm — parallel uncoordinated debugging wastes the critical first minutes and leaves stakeholders blind",
-            "Let the most senior engineer debug alone; too many cooks spoil the incident",
-            "Immediately roll back the last deploy; action beats process",
-            "Wait 15 minutes to see if monitoring self-resolves before declaring"
-          ],
-          "difficulty": 2,
-          "evidence": [],
-          "hint": "Five people debugging five theories with no updates — what role is missing?",
-          "id": "sre-practices-sc3",
-          "mins": 6,
-          "objectives": [
-            "incident management",
-            "incident commander"
-          ],
-          "prompt": "What is the incident commander's first move?",
-          "situation": "The payments API is down. Five engineers are in the incident channel, all debugging different theories, and nobody is updating the status page.",
-          "title": "Incident Commander First Move",
-          "why": "The first minutes of an incident are a coordination problem, not a technical one. Declaring the incident and assigning roles (who debugs, who communicates, who tracks time) converts chaos into parallel productive work and ensures stakeholders get updates. Blind rollback without diagnosis can worsen things; waiting wastes the golden window."
-        },
-        {
-          "answer": 0,
-          "choices": [
-            "Blame fixes nothing: the system allowed a single command to cause an outage, so the action items must address systemic causes (guardrails, confirmations, dry-run modes, blast-radius limits) — blameless postmortems keep people honest, and honesty is what finds real root causes",
-            "The engineer should be named so others learn from the example",
-            "'Be more careful' is sufficient; most outages are human error",
-            "Skip the postmortem; the cause is obvious"
-          ],
-          "difficulty": 2,
-          "evidence": [],
-          "hint": "If a careful, well-rested engineer could still make this mistake tomorrow, what have you actually fixed by naming them?",
-          "id": "sre-practices-sc4",
-          "mins": 7,
-          "objectives": [
-            "blameless postmortems",
-            "root cause analysis"
-          ],
-          "prompt": "Why is this the wrong response, and what should replace it?",
-          "situation": "After an outage caused by an engineer running a destructive command, a manager wants the postmortem to name the engineer and add 'be more careful' as the action item.",
-          "title": "Blameless Postmortem Pushback",
-          "why": "Human error is never the root cause — it's the starting point. If one mistyped command can take down production, the system is fragile by design: missing confirmations, no dry-run, excessive privileges, no canary. Blame drives incidents underground (people hide mistakes), while blameless analysis surfaces the systemic fixes that prevent entire classes of failure."
-        },
-        {
-          "answer": 0,
-          "choices": [
-            "Cap toil (Google's SRE book sets the bar at 50% max, aiming lower), then systematically automate the toil away — adding headcount to a toil-heavy team just scales the toil linearly instead of eliminating it",
-            "Hire two more SREs; toil is normal operations work",
-            "Outsource the toil to a managed services vendor and keep headcount flat",
-            "Accept 60% toil; SRE is mostly operations anyway"
-          ],
-          "difficulty": 3,
-          "evidence": [
-            [
-              "time split",
-              "Toil: 60%  Project work: 25%  Interrupts: 15%"
-            ]
-          ],
-          "hint": "If traffic doubles, what happens to this toil — and what happens to it if you automate it instead?",
-          "id": "sre-practices-sc5",
-          "mins": 8,
-          "objectives": [
-            "toil",
-            "automation",
-            "SRE principles"
-          ],
-          "prompt": "What is the correct SRE response before hiring?",
-          "situation": "The SRE team spends 60% of its time on manual toil: hand-running database migrations, manually rotating certs, clicking through cloud consoles to provision. They ask for headcount.",
-          "title": "Toil Audit",
-          "why": "Toil is the work that is manual, repetitive, automatable, and devoid of enduring value — and it scales with service growth, so hiring into it is a treadmill. The SRE discipline: measure toil, cap it, and spend the freed engineering time automating it away. Each automation permanently reduces the toil fraction; each hire without automation just adds capacity for more toil."
-        },
-        {
-          "answer": 0,
-          "choices": [
-            "Use multi-window, multi-burn-rate alerts (e.g., Google's SRE workbook pattern: fast-burn 1h/5m windows for paging, slow-burn 6h/30m for tickets) tied to the error budget — fast burns page, slow burns ticket, and both reset correctly",
-            "Lower the threshold to 0.1% so the slow burn would have paged",
-            "Raise the `for:` duration to 1 hour to stop the noisy pages",
-            "Alert on total error count instead of ratio; ratios hide slow burns"
-          ],
-          "difficulty": 3,
-          "evidence": [
-            [
-              "current alert",
-              "expr: error_ratio > 0.01\nfor: 5m"
-            ],
-            [
-              "missed incident",
-              "0.4% errors for 6h = budget exhausted, never paged"
-            ]
-          ],
-          "hint": "You need two different urgencies: 'budget burning fast, wake someone' and 'budget leaking slowly, file a ticket'. How many thresholds does that need?",
-          "id": "sre-practices-sc6",
-          "mins": 9,
-          "objectives": [
-            "burn-rate alerting",
-            "multi-window alerts",
-            "error budgets"
-          ],
-          "prompt": "What alerting design fixes both failure modes?",
-          "situation": "The team pages on 'error rate > 1% for 5 minutes'. They get paged for brief spikes that self-resolve, and once missed a slow burn that exhausted the budget over 6 hours without ever tripping the alert.",
-          "title": "Multi-Window Burn Alerts",
-          "why": "Single-threshold alerts can't distinguish a 5-minute spike from a 6-hour bleed. Burn-rate alerting ties directly to the SLO: the fast-burn alert catches budget consumption at 14.4x+ (page-worthy), the slow-burn catches 6x+ over long windows (ticket-worthy). Both use paired long/short windows so alerts reset promptly when the burn stops, avoiding flapping."
-        }
-      ],
-      "summary": "Site reliability engineering fundamentals: SLIs, SLOs and error budgets, incident response discipline, and systematically eliminating toil. Independent training content; this course confers no certificate."
+     "command_pattern": "^cat\\s+.*postmortem",
+     "expect_contains": "Timeline",
+     "hint": "The postmortem should contain a timeline section."
+    },
+    {
+     "command_pattern": "^cat\\s+.*postmortem",
+     "expect_contains": "Action",
+     "hint": "The postmortem should list action items with owners."
     }
-  ],
-  "lessons": [
+   ]
+  }
+ ],
+ "simulations": [
+  {
+   "id": "srep-sim-1",
+   "title": "The 14x burn",
+   "kind": "troubleshoot",
+   "domain_id": "sre-platform",
+   "difficulty": 3,
+   "points": 18,
+   "brief": "The checkout SLO is 99.9% over 30 days. The burn-rate alert fired: 2% of the error budget consumed in 1 hour. Work the response.",
+   "steps": [
     {
-      "domain_id": "sre-platform",
-      "title": "SRE Practices — Core concepts",
-      "concepts": [
-        "SLIs measure what users experience: success rate, latency percentiles, freshness. SLOs set the target (e.g., 99.9% of requests succeed). Resource metrics inform capacity; they are not SLIs.",
-        "The error budget is the allowed unreliability (100% − SLO) over a window. Budget remaining → ship fast; budget exhausted → reliability work takes priority. The trade-off is negotiated in advance, not during incidents.",
-        "Burn-rate alerting ties pages to the budget: fast-burn (e.g., 14.4× over 1h/5m windows) pages a human; slow-burn (6× over 6h/30m) files a ticket. Multi-window pairs reset promptly when burning stops.",
-        "Incident response is a coordination discipline first: declare, assign roles (commander, comms, ops), run a rhythm, communicate outward. Blameless postmortems fix systems, not people — human error is the starting point, never the root cause.",
-        "Toil is manual, repetitive, automatable work with no enduring value. Cap it, then automate it away — hiring into toil just scales the toil."
+     "symptom": "Fast-burn alert: 2% of the monthly error budget gone in one hour. Burn rate 14.4x.",
+     "evidence": [
+      [
+       "slo-dashboard.txt",
+       "SLO: checkout 99.9% / 30d. Error budget: 43.2 min/month. Consumed in last 1h: 2%. Burn rate: 14.4x (fast burn)."
       ],
-      "example": {
-        "lang": "shell",
-        "code": "rate(http_requests_total{status=~\"5..\"}[1h]) / rate(http_requests_total[1h])\n# fast-burn alert: 14.4x budget burn over 1h long / 5m short windows\n# slow-burn alert: 6x budget burn over 6h long / 30m short windows",
-        "walkthrough": "The error-ratio expression underlying burn-rate alerts: divide the 5xx rate by the total rate. Compare against the burn-rate thresholds derived from your SLO — fast burn pages, slow burn tickets."
-      },
-      "pitfalls": [
-        "Common trap: SLIs on CPU/memory — green dashboards while users see errors.",
-        "Common trap: single-threshold alerts — they page on spikes and miss slow bleeds; use multi-window burn rates.",
-        "Common trap: 'be more careful' as a postmortem action item — it fixes nothing; fix the system that allowed the mistake.",
-        "Common trap: hiring to absorb toil instead of automating it — toil scales with growth, automation compounds."
-      ],
-      "try_it": "Work through this in the Labs tab."
+      [
+       "deploy-log.txt",
+       "14:02 deploy checkout v2.14.1 (config change: timeout 30s -> 5s)."
+      ]
+     ],
+     "options": [
+      "The deploy at 14:02 correlates exactly with the burn — roll back the timeout change first",
+      "Add more checkout pods",
+      "The SLO window is misconfigured",
+      "Increase the error budget"
+     ],
+     "correct": 0,
+     "explain": "A 14x burn rate starting right after a config change is a smoking gun. The 5s timeout is likely too aggressive; the correct move is rollback first, then investigate."
+    },
+    {
+     "symptom": "Burn confirmed tied to the deploy. What is the immediate action?",
+     "evidence": [
+      [
+       "rollback-log.txt",
+       "14:21 rollback to v2.14.0 complete. Burn rate falling: 14.4x -> 1.2x."
+      ]
+     ],
+     "options": [
+      "Roll back to v2.14.0 and watch the burn rate",
+      "Page the whole org immediately",
+      "Delete the SLO to stop the alert",
+      "Wait for the budget to exhaust"
+     ],
+     "correct": 0,
+     "explain": "Rollback stops the bleeding because it reverses the suspected cause. Postmortems come after the budget stops burning, never during."
+    },
+    {
+     "symptom": "Rollback worked. How do you protect the recovery?",
+     "evidence": [
+      [
+       "policy.txt",
+       "While error budget burn > 2x: freeze non-urgent deploys to the affected service."
+      ]
+     ],
+     "options": [
+      "Freeze non-urgent checkout deploys until burn normalizes, then postmortem",
+      "Immediately redeploy v2.14.1 with a fix",
+      "Blame the deploy author in the incident channel",
+      "Lower the SLO to 99% so the alert clears"
+     ],
+     "correct": 0,
+     "explain": "Error budgets are policy, not just math: while burning fast, freeze risky changes so the recovery is not undone by the next deploy."
     }
-  ],
-  "labs": [
+   ],
+   "debrief": "Burn rate turns an SLO into an operational signal: fast burn pages, slow burn tickets. Respond proportional to the burn, and freeze risky changes while the budget bleeds."
+  },
+  {
+   "id": "srep-sim-2",
+   "title": "CPU is not an SLI",
+   "kind": "troubleshoot",
+   "domain_id": "sre-platform",
+   "difficulty": 2,
+   "points": 15,
+   "brief": "The team's 'reliability dashboard' tracks CPU, memory, and disk across the fleet — all green. Meanwhile the checkout SLO burned 30% of budget last week unnoticed. Rebuild the measurement.",
+   "steps": [
     {
-      "id": "sre-practices-lab1",
-      "domain_id": "sre-platform",
-      "title": "Define an SLO and Burn-Rate Alerts",
-      "objective": "Write an SLI/SLO pair for a sample service and implement fast-burn and slow-burn alerts from the error budget.",
-      "steps": [
-        "Pick the SLI: `1 - (5xx rate / total request rate)` over a 30-day window; set the SLO at 99.9%.",
-        "Compute the budget: 0.1% of requests, and derive burn-rate thresholds (14.4× fast, 6× slow).",
-        "Write the fast-burn alert: 1h long window + 5m short window, severity page.",
-        "Write the slow-burn alert: 6h long window + 30m short window, severity ticket.",
-        "Validate both rules load in Prometheus (`promtool check rules`) and explain when each fires."
+     "symptom": "Fleet dashboard all green. Checkout error budget: 30% consumed in a week. Nobody noticed.",
+     "evidence": [
+      [
+       "dashboard.txt",
+       "CPU avg 45%, memory 60%, disk 50% — all green thresholds."
       ],
-      "checks": [
-        {
-          "command_pattern": "^promtool\\s+check\\s+rules",
-          "expect_contains": "SUCCESS",
-          "hint": "Validate the rule file with promtool."
-        },
-        {
-          "command_pattern": "^cat\\s+.*rules",
-          "expect_contains": "burn",
-          "hint": "The rules should reference burn-rate windows."
-        }
+      [
+       "slo.txt",
+       "Checkout: 99.9% target, actual 99.62% this week. Budget consumed: 30%. No alert fired."
       ]
+     ],
+     "options": [
+      "Define SLIs on what users experience — success rate and latency percentiles — and alert on budget burn, not resource thresholds",
+      "Lower the CPU thresholds so the dashboard turns red more often",
+      "The SLO must be wrong — 99.62% is basically 99.9%",
+      "Add more resource metrics to the dashboard"
+     ],
+     "correct": 0,
+     "explain": "SLIs measure what users experience: success rate, latency percentiles, freshness. Resource metrics inform capacity; they are not SLIs. A green fleet dashboard with a burning error budget is measuring the wrong thing."
     },
     {
-      "id": "sre-practices-lab2",
-      "domain_id": "sre-platform",
-      "title": "Run a Blameless Postmortem",
-      "objective": "Facilitate a postmortem for a simulated outage that produces systemic action items, not blame.",
-      "steps": [
-        "Build the timeline: detection, response actions, mitigation, recovery — from logs and chat history.",
-        "Write the 'what happened' as a systems narrative: which guardrails were missing that allowed the failure?",
-        "Draft 3 action items, each systemic (automation, guardrail, detection) with an owner and due date.",
-        "Review: strike any action item that amounts to 'be more careful' and replace it with a system change.",
-        "Publish the postmortem where the whole org can read it — transparency is the point."
+     "symptom": "The team defines a checkout success-rate SLI. Debate: should it include 4xx errors?",
+     "evidence": [
+      [
+       "traffic.txt",
+       "Checkout requests: 2% 4xx (user errors: bad cards, bad addresses), 0.4% 5xx (our failures)."
       ],
-      "checks": [
-        {
-          "command_pattern": "^cat\\s+.*postmortem",
-          "expect_contains": "Timeline",
-          "hint": "The postmortem should contain a timeline section."
-        },
-        {
-          "command_pattern": "^cat\\s+.*postmortem",
-          "expect_contains": "Action",
-          "hint": "The postmortem should list action items with owners."
-        }
+      [
+       "arg.txt",
+       "'All errors are errors — count everything.'"
       ]
+     ],
+     "options": [
+      "Exclude user-caused 4xx from the SLI: the SLI measures the system's reliability, not user mistakes — but track 4xx separately for product insight",
+      "Count everything — simpler and stricter",
+      "Exclude all 4xx and 5xx — only count timeouts",
+      "SLIs shouldn't use error rates at all"
+     ],
+     "correct": 0,
+     "explain": "The SLI should reflect what the system owes the user: successful handling of valid requests. User errors (bad cards) are product signal, not reliability signal — mixing them punishes the SLI for user behavior and hides real regressions."
+    },
+    {
+     "symptom": "SLI defined and burning properly. Now: what does the team do when the budget is exhausted?",
+     "evidence": [
+      [
+       "budget.txt",
+       "Budget exhausted with 9 days left in the window. Feature freeze proposed."
+      ],
+      [
+       "pushback.txt",
+       "'We can't stop shipping — the roadmap is committed.'"
+      ]
+     ],
+     "options": [
+      "Honor the budget contract: reliability work takes priority until the budget recovers — the trade-off was negotiated in advance",
+      "Keep shipping — roadmaps outrank budgets",
+      "Lower the SLO to restore budget instantly",
+      "Borrow budget from next month"
+     ],
+     "correct": 0,
+     "explain": "The error budget is the allowed unreliability, and the trade-off is negotiated in advance, not during the incident: budget remaining ships fast, budget exhausted means reliability work first. Overriding it 'just this once' teaches the org the budget is decorative."
     }
-  ],
-  "simulations": [],
-  "consoleSims": [],
-  "terminalMissions": [],
-  "sections": [
+   ],
+   "debrief": "Measure what users feel, alert on budget burn, and honor the budget contract. Resource dashboards inform capacity planning — they are not reliability instrumentation."
+  },
+  {
+   "id": "srep-sim-3",
+   "title": "Who runs the incident",
+   "kind": "troubleshoot",
+   "domain_id": "sre-platform",
+   "difficulty": 1,
+   "points": 10,
+   "brief": "Checkout is down. Seven engineers are in the channel, all debugging different theories, nobody talking to customers. The incident has no structure. Impose it.",
+   "steps": [
     {
-      "id": "sec-full-spectrum",
-      "title": "Full Spectrum Dominance — core path",
-      "kind": "core",
-      "lectures": [],
-      "lab_ids": [
-        "fsd-tl-lab-1",
-        "fsd-tl-lab-2",
-        "fsd-tl-lab-3",
-        "fsd-sg-lab-1",
-        "fsd-sg-lab-2",
-        "fsd-sg-lab-3",
-        "fsd-ai-lab-1",
-        "fsd-ai-lab-2",
-        "fsd-ai-lab-3"
+     "symptom": "7 engineers debugging in parallel, 0 coordination, 0 customer communication. 25 minutes in.",
+     "evidence": [
+      [
+       "channel.txt",
+       "7 threads: DNS theory, deploy theory, DB theory, 'works for me', ... No decisions."
       ],
-      "drill_domain_ids": [
-        "tl-interview",
-        "tl-endpoint-ops",
-        "sec-graphs",
-        "graph-defense",
-        "ml-defense",
-        "ai-agent-sec"
+      [
+       "status.txt",
+       "Status page: last updated 3 days ago. Support: 'Customers are asking us.'"
       ]
+     ],
+     "options": [
+      "Declare the incident and assign roles: commander, comms, ops — coordination first, debugging second",
+      "Let the 7 theories race — the fastest debugger wins",
+      "Everyone stop and wait for the most senior engineer",
+      "The incident will resolve itself once someone finds it"
+     ],
+     "correct": 0,
+     "explain": "Incident response is a coordination discipline first: declare, assign roles (commander, comms, ops), run a rhythm, communicate outward. Seven parallel theories with no coordination is slower than one coordinated investigation."
+    },
+    {
+     "symptom": "Roles assigned. The commander is also deep in the database logs.",
+     "evidence": [
+      [
+       "roles.txt",
+       "Commander: also running queries. Comms: silent. Ops: waiting for direction."
+      ],
+      [
+       "time.txt",
+       "40 minutes in. No customer update yet."
+      ]
+     ],
+     "options": [
+      "The commander commands: step out of the logs, run the rhythm, and get the comms role publishing updates",
+      "The commander should debug — they're the best engineer",
+      "Disband the roles — they slow things down",
+      "Comms can wait until the fix is found"
+     ],
+     "correct": 0,
+     "explain": "The commander's job is the incident, not the bug: maintaining the rhythm, tracking theories, and ensuring comms publishes outward. A commander with their head in logs is an incident with no one flying the plane."
+    },
+    {
+     "symptom": "Incident resolved. The proposed postmortem title: 'Engineer error: wrong config deployed.'",
+     "evidence": [
+      [
+       "draft.txt",
+       "Root cause: 'Engineer deployed wrong config.' Action: 'Be more careful.'"
+      ],
+      [
+       "history.txt",
+       "Same config path caused 2 prior incidents. No guardrails added either time."
+      ]
+     ],
+     "options": [
+      "Rewrite it blameless: the human error is the starting point — the system allowed the wrong config to deploy unchecked",
+      "The title is accurate — accountability matters",
+      "Skip the postmortem — the fix is deployed",
+      "Punish the engineer to set an example"
+     ],
+     "correct": 0,
+     "explain": "Blameless postmortems fix systems, not people — human error is the starting point, never the root cause. Twice before, the same path burned; 'be more careful' fixed nothing. The action item is the guardrail that makes the error impossible."
     }
-  ],
-  "behavioral": [
+   ],
+   "debrief": "Incidents need declared roles and a commander who coordinates instead of debugging; postmortems need blameless system fixes. Structure is what turns chaos into learning."
+  },
+  {
+   "id": "srep-sim-4",
+   "title": "The toil trap",
+   "kind": "troubleshoot",
+   "domain_id": "sre-platform",
+   "difficulty": 2,
+   "points": 15,
+   "brief": "The SRE team spends 70% of its time on manual ticket-driven ops work: password resets, manual deploys, hand-run reports. Reliability projects never start. Break the cycle.",
+   "steps": [
     {
-      "prompt": "Tell me about the most technically difficult problem you have run into — a homelab, a broken environment, anything — and how you solved it.",
-      "framework": "STAR",
-      "points": [
-        "Pick ONE problem with a real evidence trail: the symptom, what you measured, the hypothesis you tested",
-        "Show the loop: scope, observe, hypothesize, smallest safe change, validate — interviewers score the method, not just the fix",
-        "Name the tools (VM build, networking, logs) and the lesson it taught you",
-        "Close with the result in concrete terms: what works now that did not before"
+     "symptom": "SRE time audit: 70% manual ops tickets, 20% meetings, 10% project work. Toil is the job.",
+     "evidence": [
+      [
+       "tickets.txt",
+       "Top tickets: password resets (manual), deploy approvals (manual), weekly reports (hand-built)."
       ],
-      "pitfalls": [
-        "Choosing a story with no real obstacle (“I Googled it” is not a story)",
-        "Skipping validation — saying it worked without proving it",
-        "Rambling past two minutes without reaching the result"
+      [
+       "projects.txt",
+       "Reliability roadmap: 0 items started in 2 quarters."
       ]
+     ],
+     "options": [
+      "Cap the toil and automate it away in priority order — toil is manual, repetitive, automatable work with no enduring value",
+      "Hire 3 more SREs to handle the ticket load",
+      "Toil is the job — SRE means ops",
+      "Stop measuring — the numbers are demoralizing"
+     ],
+     "correct": 0,
+     "explain": "Toil is manual, repetitive, automatable work with no enduring value. Cap it, then automate it away — hiring into toil just scales the toil. Every hire should reduce toil, not absorb it."
     },
     {
-      "prompt": "Tell me about a time you dealt with a frustrated customer or user while something was broken.",
-      "framework": "STAR",
-      "points": [
-        "Lead with empathy and ownership: acknowledge the impact before the technical detail",
-        "Show translation: what you told them, in their language, plus the timeline you committed to",
-        "Show judgment: the narrow fix you chose and what you refused to do (e.g., disabling the control to clear the symptom)",
-        "Close with the relationship outcome, not just the technical one"
+     "symptom": "The team automates password resets. Now deploy approvals: 'too risky to automate.'",
+     "evidence": [
+      [
+       "approvals.txt",
+       "Manual deploy approvals: 40/week, ~2 min each, rubber-stamped 99% of the time."
       ],
-      "pitfalls": [
-        "Badmouthing the customer to sound decisive",
-        "Promising a timeline you could not keep",
-        "Framing the user as the problem rather than the situation"
+      [
+       "risk.txt",
+       "'What if the automation approves a bad deploy?'"
       ]
+     ],
+     "options": [
+      "Automate the checks the humans actually perform, keep the human gate for genuine judgment calls — rubber-stamping is toil wearing a gate costume",
+      "Keep manual approvals — the risk is real",
+      "Remove approvals entirely — velocity first",
+      "Make approvals require two humans for safety"
+     ],
+     "correct": 0,
+     "explain": "A 99%-rubber-stamped approval is toil, not safety: automate the verifiable checks (tests green, scans clean, canary healthy) and reserve human judgment for the ambiguous cases. The gate should check things, not perform diligence theater."
     },
     {
-      "prompt": "Why ThreatLocker, and why cybersecurity?",
-      "framework": "STAR",
-      "points": [
-        "Connect prevention to something concrete: a moment you saw detection arrive too late, or a system you hardened",
-        "Tie their model to your instincts: deny-by-default matches how you already think about trust",
-        "Show service orientation: the Cyber Hero culture rewards the 2 a.m. helper — give an example of being one",
-        "Name one forward-looking reason: Zero Trust, the MSP mission, or the bootcamp community investment"
+     "symptom": "Toil down to 30%. Leadership asks the team to absorb another service's on-call 'since you have capacity now.'",
+     "evidence": [
+      [
+       "ask.txt",
+       "'You've automated so well — take the payments on-call too.'"
       ],
-      "pitfalls": [
-        "Generic flattery with no specifics about the company",
-        "Leading with compensation, title, or location convenience",
-        "Claiming expertise in products you have only read about — frame it as studied, not mastered"
+      [
+       "math.txt",
+       "New on-call load would return toil+interrupt time to 65%."
       ]
-    },
-    {
-      "framework": "STAR",
-      "pitfalls": [
-        "Staying vague ('I analyzed the data') instead of naming what you connected.",
-        "Skipping your own role: what did YOU see that others missed?",
-        "No outcome: what changed because you joined the dots?"
-      ],
-      "points": [
-        "The scattered signals and why nobody had connected them yet",
-        "The specific links you drew between them (shared host, time, infrastructure)",
-        "What the bigger picture turned out to be and what action it drove",
-        "What the experience taught you about investigating"
-      ],
-      "prompt": "Tell me about a time you connected scattered clues into a bigger picture that others had missed."
-    },
-    {
-      "framework": "STAR",
-      "pitfalls": [
-        "Claiming you fixed everything: credibility comes from trade-offs, not heroics.",
-        "Hiding the constraint: the limitation is what makes the prioritization story real.",
-        "No metric: 'better' needs a before-and-after."
-      ],
-      "points": [
-        "The constraint (time, budget, staff) and the size of the backlog",
-        "How you decided what mattered most (what was reachable, what was critical)",
-        "What you did first and what you deliberately deferred",
-        "The measurable result of the prioritization"
-      ],
-      "prompt": "Describe a time you had to prioritize risks or fixes with limited time or resources. How did you decide what came first?"
-    },
-    {
-      "framework": "STAR",
-      "pitfalls": [
-        "Reciting jargon to a non-technical audience and calling it communication.",
-        "Skipping the audience's reaction: did they actually understand and act?",
-        "Making yourself the hero instead of the translator."
-      ],
-      "points": [
-        "The technical finding and why it mattered",
-        "Who the audience was and what they cared about",
-        "How you reframed it (a picture, an analogy, a story)",
-        "What decision or action the audience took because they understood"
-      ],
-      "prompt": "Tell me about a time you explained a complex technical finding to a non-technical audience and it changed a decision."
-    },
-    {
-      "prompt": "Tell me about a time you used automation or AI to solve a security problem.",
-      "framework": "STAR",
-      "points": [
-        "The repetitive security task and what it cost in analyst time",
-        "The automation or AI approach you built and how you validated it",
-        "Measured outcome: time saved, detection gained, false positives changed"
-      ],
-      "pitfalls": [
-        "Describing the tool but never the validation",
-        "No measurable outcome"
-      ]
-    },
-    {
-      "prompt": "Describe a time you had to decide whether to trust an automated security decision.",
-      "framework": "STAR",
-      "points": [
-        "The stakes of the automated action and its blast radius",
-        "How you verified before acting (or the gate you built)",
-        "What happened and what you would automate differently next time"
-      ],
-      "pitfalls": [
-        "Saying you always trust the tool",
-        "No mention of blast radius or reversibility"
-      ]
+     ],
+     "options": [
+      "Defend the reclaimed capacity for reliability work — the automation dividend funds the roadmap, not new toil",
+      "Accept — the team proved it can handle load",
+      "Accept but hire one more person",
+      "Refuse all new work forever"
+     ],
+     "correct": 0,
+     "explain": "The automation dividend belongs to reliability work — that's the entire point of eliminating toil. Absorbing new operational load with it just refills the toil bucket. Sustainable teams convert toil reduction into engineering time, visibly."
     }
-  ],
-  "resources": {
-    "cheatsheet": {
-      "title": "Full Spectrum Dominance — field reference",
-      "sections": [
-        {
-          "heading": "Company facts (verified)",
-          "items": [
-            "Founded 2017 in Orlando, FL — Danny Jenkins (CEO), Sami Jenkins (COO), John Carolan (QA)",
-            "Philosophy: deny-by-default / default-deny — approve known-good, deny the rest",
-            "Customers: 70,000+ organizations, sold heavily through the MSP channel",
-            "Funding: $190M Series F, July 2026 (Elephant-led); ~730 employees",
-            "Interview address: 1901 Summit Tower Blvd, Orlando, FL 32810",
-            "Culture: in-office 5 days/week; free lunch; post-offer background + drug screening"
-          ]
-        },
-        {
-          "heading": "Product stack",
-          "items": [
-            "Allowlisting — default-deny execution control for apps, DLLs, scripts, installers",
-            "Ringfencing — constrains allowed apps: app-to-app, file, registry, network",
-            "Storage Control — USB/device policy by serial, user, file type, encryption",
-            "Elevation Control — just-in-time per-app admin, no standing rights",
-            "Network Control — host firewall; port/IP/dynamic-ACL rules; ZTNA foundation",
-            "Web Control — agent-based DNS/URL category filtering, works off-network",
-            "Cyber Hero MDR — 24/7/365 US-based response, ~60-second average",
-            "Testing Environment — one-button VDI sandbox; checks AV flags, canary files, registry changes"
-          ]
-        },
-        {
-          "heading": "Rule strength (strongest to weakest)",
-          "items": [
-            "Certificate/publisher rules — survive version updates",
-            "Hash rules — precise but break on every new version",
-            "Path rules — weakest; never in user-writable locations",
-            "Learning Mode catalogs before enforcement; Installation Mode pauses blocking — scope and time-box both"
-          ]
-        },
-        {
-          "heading": "Terminal evidence commands",
-          "items": [
-            "nmap <host> — which ports answer (22/80/443 open)",
-            "dig <name> — ANSWER SECTION with the A record",
-            "ss — listening sockets",
-            "systemctl status <svc> — unit state",
-            "journalctl -u <svc> — service logs",
-            "sha256sum <file> — real SHA-256 identity",
-            "grep <pattern> <file> — search the record",
-            "ps — what is actually running"
-          ]
-        },
-        {
-          "heading": "Graph vocabulary",
-          "items": [
-            "node — any entity tracked in the model (user, host, IP, domain, file hash, vulnerability)",
-            "edge — a labeled relationship between two nodes (logged into, resolved to, downloaded)",
-            "degree — number of edges on a node; high-degree nodes are attacker highways",
-            "centrality — how much traffic or how many paths flow through a node",
-            "directed edge — a relationship with a direction (A downloaded FROM B)",
-            "security graph — the living model of your whole environment as nodes and edges",
-            "attack graph — the subgraph of exploitable paths to your targets",
-            "knowledge graph — threat-intel indicators linked to campaigns and actors"
-          ]
-        },
-        {
-          "heading": "Attack-graph playbook",
-          "items": [
-            "inventory first — you cannot graph what you have not discovered",
-            "model flaws AND misconfigs as exploit edges",
-            "compute shortest paths to the crown jewels",
-            "find the choke point (highest betweenness on those paths)",
-            "break the path: patch, segment, or remove the edge",
-            "re-scan and re-run the graph to prove the path is gone",
-            "never trust yesterday's graph — redeployments redraw the map"
-          ]
-        },
-        {
-          "heading": "Zero Trust + graphs",
-          "items": [
-            "never trust, always verify — re-evaluate every access decision",
-            "assume breach — treat unexpected edges as hostile until proven otherwise",
-            "microsegmentation — allow-list approved edges, alert on new ones",
-            "ReBAC — policies are path queries on the identity graph",
-            "continuous verification — device/location/behavior edges change, trust follows",
-            "anomalous edge — a first-seen connection between strangers is the classic signal"
-          ]
-        },
-        {
-          "heading": "ML detection vocabulary",
-          "items": [
-            "Supervised learning — learns from labeled examples; strong on known threats, blind to novel ones",
-            "Unsupervised learning — finds structure without labels; clustering and dimensionality reduction",
-            "Anomaly detection — models 'normal' and flags deviations; the workhorse for novel threats",
-            "UEBA — user and entity behavior analytics: per-user baselines plus peer-group comparison",
-            "Feature engineering — encoding raw logs into model inputs (login velocity, rare processes, domain entropy)",
-            "Concept drift — model decay as attacker behavior and legitimate traffic shift over time"
-          ]
-        },
-        {
-          "heading": "Detection metrics",
-          "items": [
-            "Precision — of all flagged alerts, how many were real",
-            "Recall — of all real attacks, how many were flagged",
-            "Threshold tuning — sliding the decision cutoff trades precision against recall",
-            "Alert fatigue — when false positives train analysts to ignore the queue",
-            "DGA — domain generation algorithm; detected via character entropy of domain names"
-          ]
-        },
-        {
-          "heading": "Agent and LLM security",
-          "items": [
-            "Direct prompt injection — attacker input overrides app instructions (OWASP LLM01:2025, the #1 LLM risk)",
-            "Indirect prompt injection — hidden instructions inside retrieved data (email, web, docs)",
-            "Jailbreak — defeating the model's own safety policy; distinct from hijacking app behavior",
-            "Tool poisoning — malicious tool descriptions or metadata steer an agent to misuse its tools (MCP ecosystem risk)",
-            "Insecure output handling — executing or trusting model output without validation",
-            "Least-privilege tools — grant each tool only the scope its task requires"
-          ]
-        },
-        {
-          "heading": "Adversarial ML and governance",
-          "items": [
-            "Evasion — perturbing inputs at inference time to dodge a classifier",
-            "Poisoning — corrupting training data to corrupt the model",
-            "Extraction — querying a model to steal its behavior or parameters",
-            "MITRE ATLAS — knowledge base of adversarial ML tactics and techniques",
-            "Red-teaming and evals — adversarial testing of AI systems before deployment",
-            "Human-in-the-loop — required approval for high-impact or irreversible agent actions",
-            "SOAR — security orchestration, automation and response; automate enrichment, gate containment"
-          ]
-        }
+   ],
+   "debrief": "Toil is the enemy of reliability work: cap it, automate the automatable, keep humans for judgment — and defend the freed capacity for the roadmap. Hiring into toil scales the toil."
+  },
+  {
+   "id": "srep-sim-5",
+   "title": "The slow burn nobody ticketed",
+   "kind": "troubleshoot",
+   "domain_id": "sre-platform",
+   "difficulty": 2,
+   "points": 15,
+   "brief": "The fast-burn page works. But the slow-burn alert fires tickets that sit for weeks — the search API has been at 6x burn for a month, and the budget will exhaust quietly. Make slow burn actionable.",
+   "steps": [
+    {
+     "symptom": "Slow-burn alert (6x over 6h/30m windows) has filed 11 tickets in a month. All still open. Budget 70% consumed.",
+     "evidence": [
+      [
+       "tickets2.txt",
+       "11 slow-burn tickets, 0 closed, oldest 28 days. Assignees: various, none active."
+      ],
+      [
+       "burn.txt",
+       "Search API burn: steady 6x for 30 days. Projection: budget exhausted in 12 days."
       ]
+     ],
+     "options": [
+      "Treat slow-burn tickets as real work: triage them into the sprint with the burn data attached — slow burn is still burn",
+      "Slow burn isn't urgent — that's why it's a ticket",
+      "Close the tickets — the fast-burn alert will catch real problems",
+      "Raise the slow-burn threshold so fewer tickets file"
+     ],
+     "correct": 0,
+     "explain": "Burn-rate alerting ties pages to the budget: fast-burn pages a human; slow-burn files a ticket — but the ticket must be worked. A month of ignored 6x burn is the budget exhausting in slow motion while everyone watches the fast-burn pager."
     },
-    "glossary": [
-      {
-        "term": "Allowlisting",
-        "def": "Default-deny execution control: only explicitly approved applications, scripts, and installers may run."
-      },
-      {
-        "term": "Blocklisting",
-        "def": "Default-allow model: everything runs except recognized-bad items — the window zero-days live in."
-      },
-      {
-        "term": "Default-deny",
-        "def": "Deny-by-default posture: unknown code, devices, or connections are refused unless explicitly approved."
-      },
-      {
-        "term": "Ringfencing",
-        "def": "Containment applied on top of allowlisting; restricts what a permitted app may do across app-to-app, file, registry, and network dimensions."
-      },
-      {
-        "term": "Learning Mode",
-        "def": "Agent mode that catalogs applications and dependencies and auto-builds policies before enforcement; temporarily disables file blocking."
-      },
-      {
-        "term": "Installation Mode",
-        "def": "Temporary mode that pauses file blocking for installs — must be tightly scoped and time-boxed."
-      },
-      {
-        "term": "Elevation Control",
-        "def": "Grants specific approved applications admin rights for standard users — just-in-time, per-app, time-boxed — without standing admin rights."
-      },
-      {
-        "term": "Application hopping",
-        "def": "An elevated or trusted process spawning another tool (e.g., PowerShell) to inherit its privileges — countered by ringfencing the elevated process."
-      },
-      {
-        "term": "Storage Control",
-        "def": "Device and path policy: USB approved by serial, user, file type, time, and encryption; unapproved devices do not connect."
-      },
-      {
-        "term": "Network Control",
-        "def": "Centrally managed host firewall; rules by port, source IP, and dynamic ACLs; egress allowlisting pins apps to approved destinations."
-      },
-      {
-        "term": "ZTNA",
-        "def": "Zero Trust Network Access: per-session, per-application brokered connections (commonly over port 443) with no open inbound ports — deny-by-default for network access."
-      },
-      {
-        "term": "Approval Center",
-        "def": "Portal queue where end-user software requests arrive for admin review and decision."
-      },
-      {
-        "term": "Unified Audit",
-        "def": "Real-time audit showing what was allowed or denied across endpoints — and why; the evidence layer for triage."
-      },
-      {
-        "term": "Testing Environment",
-        "def": "One-button cloud VDI sandbox launched from an approval request; logs AV flags, canary-file access, and registry/system changes."
-      },
-      {
-        "term": "Cyber Hero MDR",
-        "def": "24/7/365 US-based managed detection and response team; validates alerts, isolates hosts, acts on customer runbooks; ~60-second average response."
-      },
-      {
-        "term": "Assume breach",
-        "def": "Design and operate as if the attacker already has a foothold — least privilege, containment, and monitoring everywhere."
-      },
-      {
-        "term": "Living off the land",
-        "def": "Attacks that hijack trusted built-in tools (Word, PowerShell) instead of dropping malware — defeated by behavior containment, not signatures."
-      },
-      {
-        "term": "Change control",
-        "def": "Scoped, ticketed, tested changes with validation and rollback — emergency speed never cancels the process."
-      },
-      {
-        "def": "A node in an attack graph representing a system or weakness, connected by edges that represent steps an attacker could take between them.",
-        "term": "attack graph"
-      },
-      {
-        "def": "How central a node is to paths through the graph (for example, betweenness: how many shortest paths cross it).",
-        "term": "centrality"
-      },
-      {
-        "def": "The most valuable assets in the environment (customer data, finance systems, source code): what attack paths are measured against.",
-        "term": "crown jewels"
-      },
-      {
-        "def": "A labeled connection between two nodes, representing a relationship such as 'logged into' or 'resolved to'.",
-        "term": "edge"
-      },
-      {
-        "def": "A graph of threat indicators (IPs, domains, hashes) linked to campaigns, actors, and each other through shared infrastructure.",
-        "term": "knowledge graph"
-      },
-      {
-        "def": "The practice of mapping relationships in data to reveal hidden associations; rooted in Euler's 1736 graph theory, 1970s paper link charts, and post-2001 intelligence work.",
-        "term": "link analysis"
-      },
-      {
-        "def": "A segment of the network so small that its allowed communications can be enumerated as a graph of approved edges.",
-        "term": "microsegmentation"
-      },
-      {
-        "def": "An entity in the graph: a user, host, IP address, domain, file, or vulnerability.",
-        "term": "node"
-      },
-      {
-        "def": "Access control where policy is evaluated by traversing relationships on a graph (for example: user reports_to manager who owns the resource's project).",
-        "term": "ReBAC"
-      },
-      {
-        "def": "A machine-learning model that operates directly on graph structure to classify nodes or subgraphs, for example labeling attack vs normal behavior.",
-        "term": "graph neural network (GNN)"
-      },
-      {
-        "def": "Monitoring user and entity behavior by modeling their normal relationship patterns and flagging structural anomalies.",
-        "term": "UEBA"
-      },
-      {
-        "term": "Supervised learning",
-        "def": "ML trained on labeled examples; classifies new inputs into known categories."
-      },
-      {
-        "term": "Anomaly detection",
-        "def": "ML approach that models normal behavior and flags statistically rare deviations."
-      },
-      {
-        "term": "Feature engineering",
-        "def": "Turning raw telemetry into numeric model inputs, e.g. login velocity or domain entropy."
-      },
-      {
-        "term": "Precision",
-        "def": "Share of flagged alerts that were real; the false-positive economics of the queue."
-      },
-      {
-        "term": "Recall",
-        "def": "Share of real attacks the detector flagged; the miss rate's complement."
-      },
-      {
-        "term": "Concept drift",
-        "def": "Decay of model performance as the data distribution shifts over time."
-      },
-      {
-        "term": "Prompt injection",
-        "def": "Attacker-crafted instructions that override an LLM application's intended behavior; direct (user input) or indirect (retrieved data)."
-      },
-      {
-        "term": "Jailbreak",
-        "def": "Crafted input that defeats an LLM's own safety policy or refusal behavior."
-      },
-      {
-        "term": "Tool poisoning",
-        "def": "Malicious tool descriptions or metadata that manipulate an AI agent into misusing its tools."
-      },
-      {
-        "term": "Insecure output handling",
-        "def": "Failing to validate LLM output before acting on it, e.g. executing generated commands."
-      },
-      {
-        "term": "Evasion attack",
-        "def": "Adversarial ML technique: perturbing inputs to cross a classifier's decision boundary."
-      },
-      {
-        "term": "MITRE ATLAS",
-        "def": "Adversarial Threat Landscape for AI Systems; MITRE's knowledge base of AI attack tactics."
-      },
-      {
-        "term": "SOAR",
-        "def": "Security orchestration, automation and response; playbooks that enrich automatically and gate containment on humans."
-      },
-      {
-        "term": "Human-in-the-loop",
-        "def": "Required human approval before high-impact or irreversible automated actions."
+    {
+     "symptom": "The team triages the tickets: the search degradation comes from an unindexed query pattern growing with data volume.",
+     "evidence": [
+      [
+       "query2.txt",
+       "Slow queries: full-scan on the events table, growing linearly with data."
+      ],
+      [
+       "growth.txt",
+       "Data volume: +8%/month. Query cost: +8%/month. Budget burn: accelerating."
+      ]
+     ],
+     "options": [
+      "Fix the query pattern (index, pagination, caching) — slow burn from growth compounds, so the fix pays monthly dividends",
+      "It's only slow burn — monitor it",
+      "Add database capacity to absorb the growth",
+      "The burn will stabilize on its own"
+     ],
+     "correct": 0,
+     "explain": "Slow-burn causes are often growth-coupled: the unindexed query gets 8% more expensive every month, so the burn accelerates. Fixing the pattern pays compounding dividends; adding capacity just moves the exhaustion date."
+    },
+    {
+     "symptom": "Fixed. Now the team debates whether slow-burn alerts are worth keeping at all.",
+     "evidence": [
+      [
+       "debate.txt",
+       "'Fast burn caught every real incident. Slow burn just made tickets.'"
+      ],
+      [
+       "counter.txt",
+       "This incident: caught only by slow burn, 30 days before exhaustion."
+      ]
+     ],
+     "options": [
+      "Keep both: fast burn pages for urgency, slow burn tickets for the important-but-not-urgent — this incident proves the pair",
+      "Drop slow burn — fast burn is sufficient",
+      "Make slow burn page too — everything urgent",
+      "Alerting is overhead — rely on dashboards"
+     ],
+     "correct": 0,
+     "explain": "Multiwindow burn-rate alerting distinguishes urgency: fast burn (14.4x over 1h/5m) pages now; slow burn (6x over 6h/30m) tickets the important-but-not-urgent. This incident existed only in the slow window — dropping it blinds you to the quiet exhaustions."
+    }
+   ],
+   "debrief": "Slow burn is still burn: ticket it, work it, fix the growth-coupled causes — and keep the multiwindow pair. Fast burn saves the night; slow burn saves the quarter."
+  }
+ ],
+ "consoleSims": [
+  {
+   "id": "srep-console-1",
+   "title": "Declare the incident",
+   "console": "ticketing",
+   "domain_id": "sre-platform",
+   "difficulty": 2,
+   "brief": "Checkout is in fast burn. Declare the incident the disciplined way: ticket it P1, name the commander, set it in motion.",
+   "tasks": [
+    {
+     "id": "t1",
+     "instruction": "Create a P1 ticket titled 'Checkout fast-burn: 14x error budget'.",
+     "validate": {
+      "action": "create-ticket",
+      "params": {
+       "title": "Checkout fast-burn: 14x error budget",
+       "priority": "P1"
       }
-    ],
-    "links": [
-      {
-        "label": "ThreatLocker Zero Trust platform explainer (official)",
-        "url": "https://www.threatlocker.com/blog/edr-xdr-vs-zero-trust-prevention",
-        "note": "EDR/XDR vs Zero Trust prevention — the deny-by-default argument in their own words."
-      },
-      {
-        "label": "ThreatLocker Bootcamp page (official)",
-        "url": "https://www.threatlocker.com/bootcamp",
-        "note": "Free six-week program: phases, format, and what completion leads to."
-      },
-      {
-        "label": "ThreatLocker Careers (official)",
-        "url": "https://www.threatlocker.com/company/careers",
-        "note": "Open roles and the hiring-event listing; roles are in-office in Orlando."
-      },
-      {
-        "label": "Elevation Control (official)",
-        "url": "https://www.threatlocker.com/secure-privileges-without-sacrificing-agility",
-        "note": "Just-in-time privilege without standing admin."
-      },
-      {
-        "label": "Storage Control (official)",
-        "url": "https://www.threatlocker.com/capabilities/external-storage-device-control",
-        "note": "USB/device policy by serial, user, file type, encryption."
-      },
-      {
-        "label": "Web Control (official)",
-        "url": "https://www.threatlocker.com/capabilities/web-content-control",
-        "note": "Agent-based DNS/URL filtering, including off-network."
-      },
-      {
-        "label": "Cyber Hero MDR (official)",
-        "url": "https://www.threatlocker.com/get-threat-response-in-minutes",
-        "note": "24/7/365 managed response positioning."
-      },
-      {
-        "label": "MDR capabilities (official)",
-        "url": "https://www.threatlocker.com/capabilities/managed-detection-and-response",
-        "note": "Detection and response capability detail."
-      },
-      {
-        "label": "NIST SP 800-207 — Zero Trust Architecture",
-        "url": "https://csrc.nist.gov/pubs/sp/800/207/final",
-        "note": "The canonical Zero Trust reference: tenets, deployment models, policy engine trust algorithm."
-      },
-      {
-        "label": "CISA Zero Trust Maturity Model",
-        "url": "https://www.cisa.gov/zero-trust-maturity-model",
-        "note": "Federal maturity steps across identity, devices, networks, applications, and data."
-      },
-      {
-        "label": "MITRE ATT&CK",
-        "note": "The adversary-tactics framework; codify its tactic chains as subgraphs to hunt for in your security graph.",
-        "url": "https://attack.mitre.org/"
-      },
-      {
-        "label": "CISA — Cybersecurity and Infrastructure Security Agency",
-        "note": "US government advisories, alerts, and guidance frequently referenced in threat-intel work.",
-        "url": "https://www.cisa.gov/"
-      },
-      {
-        "label": "Neo4j getting started",
-        "note": "A widely used graph database; the book's call to action suggests piloting graph queries on exported security data with tools like this.",
-        "url": "https://neo4j.com/docs/getting-started/"
-      },
-      {
-        "label": "OWASP GenAI Security Project",
-        "url": "https://genai.owasp.org/",
-        "note": "Home of the LLM Top 10 and GenAI security guidance"
-      },
-      {
-        "label": "OWASP Top 10 for LLM Applications",
-        "url": "https://genai.owasp.org/llm-top-10/",
-        "note": "The ranked LLM risk list — prompt injection is #1"
-      },
-      {
-        "label": "NIST AI Risk Management Framework",
-        "url": "https://www.nist.gov/itl/ai-risk-management-framework",
-        "note": "The standard governance framework for managing AI risk"
-      },
-      {
-        "label": "MITRE ATLAS",
-        "url": "https://atlas.mitre.org/",
-        "note": "Adversarial Threat Landscape for AI Systems — tactics and techniques"
-      },
-      {
-        "label": "CISA AI guidance",
-        "url": "https://www.cisa.gov/ai",
-        "note": "CISA's AI security resources and guidance"
+     },
+     "hint": "New ticket section: exact title, priority P1."
+    },
+    {
+     "id": "t2",
+     "instruction": "Assign INC-9001 to the incident commander: assignee 'incident-commander'.",
+     "validate": {
+      "action": "assign-ticket",
+      "params": {
+       "id": "INC-9001",
+       "assignee": "incident-commander"
       }
-    ],
-    "checklist": [
-      "Sixty-second company brief rehearsed out loud: year, city, philosophy, three products, one milestone",
-      "Two STAR stories ready: hardest technical problem; a frustrated customer or user",
-      "“Why ThreatLocker / why cybersecurity” answer tied to prevention and service, not slogans",
-      "Ringfencing explained in one plain-English sentence (the Word-on-a-leash version)",
-      "Elevation Control answer ready: just-in-time, per-app, time-boxed, ringfenced, logged",
-      "Triage loop memorized: scope → observe → hypothesize → smallest safe change → validate → explain",
-      "Three questions to ask them: team on-call shape, approval SLA expectations, what “most helpful” looks like on the team",
-      "Logistics: 1901 Summit Tower Blvd, Orlando FL; in-office role; ID and references ready",
-      "Define your crown jewels before you model anything.",
-      "Build the asset-and-access graph from live sources (scans, configs, identity), not from the CMDB alone.",
-      "Model vulnerabilities AND misconfigurations as exploit edges.",
-      "Compute shortest attack paths to each crown jewel; name the choke points.",
-      "Prioritize remediation by path risk, not by raw severity score.",
-      "Express at least one access policy as a relationship path (ReBAC pilot).",
-      "Baseline approved communication edges per segment; alert on first-seen edges.",
-      "Brief the next incident or risk review with the graph, not a spreadsheet.",
-      "Can you explain supervised vs unsupervised vs anomaly detection with a security example for each?",
-      "Can you name three log features you would engineer for a C2 detector and why?",
-      "Can you walk through a UEBA alert (baseline, deviation, verification) end to end?",
-      "Can you explain the precision/recall tradeoff and how you would set a threshold for a fatigued SOC?",
-      "Can you define concept drift and describe a retraining process?",
-      "Can you distinguish direct vs indirect prompt injection and jailbreaking?",
-      "Can you explain tool poisoning in the MCP ecosystem and three controls against it?",
-      "Can you describe insecure output handling and how you would validate agent output?",
-      "Can you name the three adversarial ML attack classes and one defense for evasion?",
-      "Can you design a SOAR playbook gate: what automates freely, what needs human approval?"
-    ]
-  },
-  "chat": {
-    "persona": "You are a rigorous but encouraging interviewer preparing a candidate for a Zero Trust endpoint security role. Probe with 'why' and 'how would you explain that' follow-ups. Stay on topic: ThreatLocker-style endpoint defense, security graphs, and AI-powered security. All practice is original; never reproduce vendor material.",
-    "topics": [
-      {
-        "id": "tl-interview",
-        "name": "ThreatLocker Interview Prep",
-        "key_points": [
-          "allowlisting",
-          "ringfencing",
-          "default-deny",
-          "cyber hero",
-          "zero trust tenets",
-          "STAR stories"
-        ],
-        "followups": [
-          "Can you give an example?",
-          "How would you explain that to a CFO?"
-        ]
-      },
-      {
-        "id": "tl-endpoint-ops",
-        "name": "Zero Trust Endpoint Operations",
-        "key_points": [
-          "default-deny",
-          "ringfencing dimensions",
-          "elevation control",
-          "storage control",
-          "network control",
-          "change control"
-        ],
-        "followups": [
-          "Walk me through the triage order.",
-          "When would you deny outright?"
-        ]
-      },
-      {
-        "followups": [
-          "Can you walk through an example?",
-          "How does this change patch prioritization?",
-          "What is the difference between a security graph and an attack graph?"
-        ],
-        "id": "sec-graphs",
-        "key_points": [
-          "nodes",
-          "edges",
-          "attack graphs",
-          "kill chain",
-          "link analysis",
-          "threat intel graphs"
-        ],
-        "name": "Security Graphs: Think Like an Attacker"
-      },
-      {
-        "followups": [
-          "How do graphs change patch prioritization?",
-          "What is ReBAC and how is it different from RBAC?",
-          "How would a small team start with graphs?"
-        ],
-        "id": "graph-defense",
-        "key_points": [
-          "attack-path analysis",
-          "insider threat",
-          "vulnerability graphs",
-          "Zero Trust",
-          "microsegmentation",
-          "blast radius"
-        ],
-        "name": "Graph-Powered Defense Operations"
-      },
-      {
-        "id": "ml-defense",
-        "name": "ML-Powered Threat Defense",
-        "key_points": [
-          "anomaly detection",
-          "UEBA",
-          "alert fatigue",
-          "concept drift",
-          "threat hunting",
-          "precision recall"
-        ],
-        "followups": [
-          "Walk me through an example.",
-          "How do you handle false positives?"
-        ]
-      },
-      {
-        "id": "ai-agent-sec",
-        "name": "Securing AI Systems & Agents",
-        "key_points": [
-          "prompt injection",
-          "tool poisoning",
-          "MCP risks",
-          "insecure output handling",
-          "SOAR gates",
-          "adversarial ML"
-        ],
-        "followups": [
-          "Walk me through an example.",
-          "How do you secure an AI agent end to end?"
-        ]
+     },
+     "hint": "Queue section Assign form: id INC-9001, assignee incident-commander."
+    },
+    {
+     "id": "t3",
+     "instruction": "Move INC-9001 to in-progress.",
+     "validate": {
+      "action": "update-status",
+      "params": {
+       "id": "INC-9001",
+       "status": "in-progress"
       }
-    ]
-  },
-  "simulation": {
-    "items": 12,
-    "minutes": 180,
-    "evidence_cost_mins": 2
-  },
-  "media": [
-    {
-      "id": "tl-allowlist-vs-blocklist",
-      "kind": "diagram",
-      "title": "Allowlisting vs blocklisting: default-deny vs default-allow",
-      "svg": "assets/diagrams/tl-allowlist-vs-blocklist.svg",
-      "lesson_ref": "c-tl-endpoint-ops",
-      "caption": "Default-deny stops unknown code without a signature; default-allow runs it until one exists.",
-      "alt": "Side-by-side comparison: on the left, a default-deny gate runs known-good payroll software and denies unknown ransomware with no signature needed; on the right, a default-allow gate runs both until the ransomware is recognized as bad."
-    },
-    {
-      "id": "tl-ringfencing",
-      "kind": "diagram",
-      "title": "Ringfencing: four leashes on an allowed application",
-      "svg": "assets/diagrams/tl-ringfencing.svg",
-      "lesson_ref": "c-tl-endpoint-ops",
-      "caption": "Word stays approved, but it cannot spawn PowerShell, read the credential store, or reach the internet — while opening its document is allowed.",
-      "alt": "An approved Word application inside a dashed containment ring: arrows show PowerShell launch denied, credential-store registry access denied, external network denied, and document file access allowed."
-    },
-    {
-      "id": "tl-zero-trust-stack",
-      "kind": "diagram",
-      "title": "The Zero Trust endpoint stack",
-      "svg": "assets/diagrams/tl-zero-trust-stack.svg",
-      "lesson_ref": "c-tl-interview",
-      "caption": "Five deny-by-default layers — Allowlisting, Ringfencing, Elevation, Storage, Network — watched by Web Control, the Testing Environment, Unified Audit, and the Cyber Hero MDR team.",
-      "alt": "A vertical stack of five layers from Allowlisting at the foundation up through Ringfencing, Elevation Control, Storage Control, and Network Control, with side boxes for Web Control, Testing Environment, Unified Audit, and Cyber Hero MDR."
-    },
-    {
-      "id": "tl-triage-flow",
-      "kind": "diagram",
-      "title": "Application-request triage flow",
-      "svg": "assets/diagrams/tl-triage-flow.svg",
-      "lesson_ref": "c-tl-endpoint-ops",
-      "caption": "Gather evidence first, then branch: trusted gets a scoped rule, unknown goes to the sandbox, malicious gets a documented deny.",
-      "alt": "Flowchart from request arrival through evidence gathering to a decision diamond branching into three outcomes: approve with a scoped rule, detonate in the Testing Environment then ringfence, or deny with documented evidence."
-    },
-    {
-      "alt": "Diagram of four labeled nodes (user, host, file, domain, IP) joined by labeled directed edges such as logged into, downloaded, and resolved to, illustrating graph vocabulary.",
-      "caption": "Nodes are the things; edges are the relationships. Attackers move along the edges.",
-      "id": "sg-graph-vocabulary",
-      "kind": "diagram",
-      "lesson_ref": "c-sec-graphs",
-      "svg": "assets/diagrams/sg-graph-vocabulary.svg",
-      "title": "Graph vocabulary: nodes and edges"
-    },
-    {
-      "alt": "Attack graph with four nodes in a chain: external attacker to VPN gateway to file server to customer database, with a dead-end branch to a printer, showing the shortest path to the crown jewel.",
-      "caption": "The shortest path to the crown jewel is length 3. Break the choke point and the campaign dies.",
-      "id": "sg-attack-path",
-      "kind": "diagram",
-      "lesson_ref": "c-sec-graphs",
-      "svg": "assets/diagrams/sg-attack-path.svg",
-      "title": "Attack graph: shortest path to the crown jewels"
-    },
-    {
-      "alt": "Seven kill-chain stages as connected graph nodes: reconnaissance, weaponization, delivery, exploitation, installation, command and control, actions. Three alerts are annotated at delivery, installation, and command and control.",
-      "caption": "Three 'unrelated' alerts, one kill-chain subgraph. Correlate by shared entities, not by severity.",
-      "id": "sg-kill-chain",
-      "kind": "diagram",
-      "lesson_ref": "c-sec-graphs",
-      "svg": "assets/diagrams/sg-kill-chain.svg",
-      "title": "Kill chain as a graph"
-    },
-    {
-      "alt": "A policy engine at the center of a small graph evaluates an access request from a finance user on an untrusted laptop to an R and D code server. The request is denied because there is no prior relationship edge and the device is untrusted.",
-      "caption": "Valid credentials are not enough. The graph checks device trust, history, and relationships on every request.",
-      "id": "sg-zero-trust",
-      "kind": "diagram",
-      "lesson_ref": "c-graph-defense",
-      "svg": "assets/diagrams/sg-zero-trust.svg",
-      "title": "Zero Trust runs on relationships"
-    },
-    {
-      "id": "ai-ml-pipeline",
-      "kind": "diagram",
-      "title": "ML detection pipeline: telemetry to triage",
-      "svg": "assets/diagrams/ai-ml-pipeline.svg",
-      "lesson_ref": "c-ml-defense",
-      "caption": "How raw telemetry becomes scored alerts: features feed the model, the model scores, analysts triage top-down — and analyst verdicts feed retraining.",
-      "alt": "Flow diagram: telemetry sources feed feature extraction, which feeds an ML model, which outputs scored alerts into an analyst triage queue, with a feedback arrow for retraining."
-    },
-    {
-      "id": "ai-ueba-baseline-diagram",
-      "kind": "diagram",
-      "title": "UEBA: baseline vs deviation",
-      "svg": "assets/diagrams/ai-ueba-baseline.svg",
-      "lesson_ref": "c-ml-defense",
-      "caption": "UEBA learns each user's normal hours, locations, and volumes, then scores deviations from that baseline.",
-      "alt": "24-hour timeline showing a shaded normal login window from 8 AM to 6 PM with normal logins inside it, and a red anomaly marker at 2:47 AM for a foreign login scoring 97 out of 100."
-    },
-    {
-      "id": "ai-injection-flow",
-      "kind": "diagram",
-      "title": "Indirect prompt injection attack flow",
-      "svg": "assets/diagrams/ai-injection-flow.svg",
-      "lesson_ref": "c-ai-agent-sec",
-      "caption": "An attacker hides instructions in data the agent retrieves; the agent mistakes data for instructions and misuses its tools.",
-      "alt": "Attack flow diagram: hidden instruction in an email is read by an AI agent, which mistakes it for a command and calls a privileged tool, causing fraud; three defense boxes below: sanitize content, least-privilege tools, human approval."
+     },
+     "hint": "Queue section Update status form: id INC-9001, status in-progress."
     }
-  ],
-  "foundations": [
+   ],
+   "debrief": "Declaration is the first incident action: the ticket exists, the commander is named, the state is tracked. Everything after this is coordinated instead of chaotic."
+  },
+  {
+   "id": "srep-console-2",
+   "title": "Close out the postmortem",
+   "console": "ticketing",
+   "domain_id": "sre-platform",
+   "difficulty": 1,
+   "brief": "The incident is resolved and the blameless postmortem is filed. Close the loop: note the action items and resolve the ticket.",
+   "tasks": [
     {
-      "track": "linux-cli",
-      "why_needed": "Terminal labs and missions run in a simulated Linux shell; command-line fluency is required to complete them."
+     "id": "t1",
+     "instruction": "Add a note to INC-9001: 'Postmortem filed; action items: timeout guardrail, deploy freeze policy.'",
+     "validate": {
+      "action": "add-note",
+      "params": {
+       "id": "INC-9001"
+      }
+     },
+     "hint": "Queue section Add note form: id INC-9001, note the postmortem action items."
     },
     {
-      "track": "security-basics",
-      "why_needed": "Security-graph and ML-detection lessons assume baseline vocabulary (CIA triad, malware types, incident response phases)."
+     "id": "t2",
+     "instruction": "Resolve INC-9001 with resolution 'Rollback completed; postmortem action items filed'.",
+     "validate": {
+      "action": "resolve-ticket",
+      "params": {
+       "id": "INC-9001",
+       "resolution": "Rollback completed; postmortem action items filed"
+      }
+     },
+     "hint": "Queue section: click Resolve on INC-9001 with the exact resolution text."
     }
+   ],
+   "debrief": "Incidents end with learning recorded: the note carries the action items, the resolution states what happened. The next incident starts from this ticket's lessons."
+  },
+  {
+   "id": "srep-console-3",
+   "title": "Page on the burn",
+   "console": "siem-dashboard",
+   "domain_id": "sre-platform",
+   "difficulty": 2,
+   "brief": "The burn-rate signal fired as a SIEM-style alert. Work it: acknowledge, assign to the SRE on-call, escalate to incident response.",
+   "tasks": [
+    {
+     "id": "t1",
+     "instruction": "Acknowledge alert ALT-101.",
+     "validate": {
+      "action": "acknowledge-alert",
+      "params": {
+       "id": "ALT-101"
+      }
+     },
+     "hint": "Alerts section: click Ack on ALT-101."
+    },
+    {
+     "id": "t2",
+     "instruction": "Assign ALT-101 to analyst sre-oncall.",
+     "validate": {
+      "action": "assign-alert",
+      "params": {
+       "id": "ALT-101",
+       "analyst": "sre-oncall"
+      }
+     },
+     "hint": "Assign form: id ALT-101, analyst sre-oncall."
+    },
+    {
+     "id": "t3",
+     "instruction": "Escalate ALT-101 to incident response.",
+     "validate": {
+      "action": "escalate",
+      "params": {
+       "id": "ALT-101"
+      }
+     },
+     "hint": "Alerts section: click Escalate on ALT-101."
+    }
+   ],
+   "debrief": "Fast burn pages a human: acknowledge so it's owned, assign so it's tracked, escalate so it becomes an incident. The alert is the start of the response, not the response."
+  },
+  {
+   "id": "srep-console-4",
+   "title": "Freeze deploys during burn",
+   "console": "cicd-pipeline",
+   "domain_id": "sre-platform",
+   "difficulty": 2,
+   "brief": "Burn is above 2x: freeze non-urgent deploys per policy. Set the freeze flag, verify the pipeline still builds, and confirm the gate holds.",
+   "tasks": [
+    {
+     "id": "t1",
+     "instruction": "Set the pipeline variable DEPLOY_FREEZE to checkout.",
+     "validate": {
+      "action": "set-variable",
+      "params": {
+       "key": "DEPLOY_FREEZE",
+       "value": "checkout"
+      }
+     },
+     "hint": "Variables section: key DEPLOY_FREEZE, value checkout."
+    },
+    {
+     "id": "t2",
+     "instruction": "Trigger a new build to verify the pipeline still runs under freeze.",
+     "validate": {
+      "action": "trigger-build",
+      "params": {}
+     },
+     "hint": "Pipeline section: click Trigger new build."
+    },
+    {
+     "id": "t3",
+     "instruction": "Approve the gated deploy stage (the freeze policy still requires human approval).",
+     "validate": {
+      "action": "approve-stage",
+      "params": {
+       "stage": "deploy"
+      }
+     },
+     "hint": "Pipeline section: click Approve on the deploy stage."
+    }
+   ],
+   "debrief": "Error budgets are policy: while the budget burns, the freeze flag is set and every promotion still passes through the human gate. The recovery is protected by process, not hope."
+  }
+ ],
+ "terminalMissions": [
+  {
+   "id": "srep-m1",
+   "title": "Survey the reliability workstation",
+   "domain_id": "sre-platform",
+   "difficulty": 1,
+   "brief": "Reliability work starts with orientation: list the workstation contents.",
+   "objectives": [
+    "List the directory contents"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^ls\\s*$",
+     "expect_contains": "notes.txt",
+     "hint": "Type: ls"
+    }
+   ],
+   "success_message": "Workstation surveyed. Orientation before operation."
+  },
+  {
+   "id": "srep-m2",
+   "title": "Confirm the on-call identity",
+   "domain_id": "sre-platform",
+   "difficulty": 1,
+   "brief": "Pages go to people. Confirm which user this session represents.",
+   "objectives": [
+    "Print the current username"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^whoami\\s*$",
+     "expect_contains": "candidate",
+     "hint": "Type: whoami"
+    }
+   ],
+   "success_message": "On-call identity confirmed: candidate."
+  },
+  {
+   "id": "srep-m3",
+   "title": "Anchor the runbook directory",
+   "domain_id": "sre-platform",
+   "difficulty": 1,
+   "brief": "Runbooks live at relative paths. Print the working directory to anchor them.",
+   "objectives": [
+    "Print the working directory"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^pwd\\s*$",
+     "expect_contains": "/home/candidate",
+     "hint": "Type: pwd"
+    }
+   ],
+   "success_message": "Runbook directory anchored: /home/candidate."
+  },
+  {
+   "id": "srep-m4",
+   "title": "Record the host kernel",
+   "domain_id": "sre-platform",
+   "difficulty": 2,
+   "brief": "Incident records include host facts. Record the full kernel string.",
+   "objectives": [
+    "Print full kernel and machine information"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^uname\\s+-a",
+     "expect_contains": "6.8.0-ilb",
+     "hint": "Type: uname -a"
+    }
+   ],
+   "success_message": "Host kernel recorded: Linux 6.8.0-ilb x86_64."
+  },
+  {
+   "id": "srep-m5",
+   "title": "Name the host",
+   "domain_id": "sre-platform",
+   "difficulty": 1,
+   "brief": "Which host is burning budget? Print the hostname.",
+   "objectives": [
+    "Print the hostname"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^hostname\\s*$",
+     "expect_contains": "interstitium",
+     "hint": "Type: hostname"
+    }
+   ],
+   "success_message": "Host named: interstitium."
+  },
+  {
+   "id": "srep-m6",
+   "title": "Check the responder context",
+   "domain_id": "sre-platform",
+   "difficulty": 2,
+   "brief": "Know your access context before diagnosing — it bounds what you can observe.",
+   "objectives": [
+    "Print user and group identity details"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^id\\s*$",
+     "expect_contains": "uid=1000",
+     "hint": "Type: id"
+    }
+   ],
+   "success_message": "Responder context confirmed: uid=1000(candidate)."
+  },
+  {
+   "id": "srep-m7",
+   "title": "Log the remaining budget",
+   "domain_id": "sre-platform",
+   "difficulty": 1,
+   "brief": "Close the drill: echo the remaining error budget for the record.",
+   "objectives": [
+    "Echo the budget phrase"
+   ],
+   "checks": [
+    {
+     "command_pattern": "^echo\\s+budget\\s+43\\.2m\\s+remaining",
+     "expect_contains": "budget 43.2m remaining",
+     "hint": "Type: echo budget 43.2m remaining"
+    }
+   ],
+   "success_message": "Budget logged: 43.2m remaining. The budget is policy — track it."
+  }
+ ],
+ "sections": [
+  {
+   "id": "sec-full-spectrum",
+   "title": "Full Spectrum Dominance — core path",
+   "kind": "core",
+   "lectures": [],
+   "lab_ids": [
+    "fsd-tl-lab-1",
+    "fsd-tl-lab-2",
+    "fsd-tl-lab-3",
+    "fsd-sg-lab-1",
+    "fsd-sg-lab-2",
+    "fsd-sg-lab-3",
+    "fsd-ai-lab-1",
+    "fsd-ai-lab-2",
+    "fsd-ai-lab-3"
+   ],
+   "drill_domain_ids": [
+    "tl-interview",
+    "tl-endpoint-ops",
+    "sec-graphs",
+    "graph-defense",
+    "ml-defense",
+    "ai-agent-sec"
+   ]
+  }
+ ],
+ "behavioral": [
+  {
+   "prompt": "Tell me about the most technically difficult problem you have run into — a homelab, a broken environment, anything — and how you solved it.",
+   "framework": "STAR",
+   "points": [
+    "Pick ONE problem with a real evidence trail: the symptom, what you measured, the hypothesis you tested",
+    "Show the loop: scope, observe, hypothesize, smallest safe change, validate — interviewers score the method, not just the fix",
+    "Name the tools (VM build, networking, logs) and the lesson it taught you",
+    "Close with the result in concrete terms: what works now that did not before"
+   ],
+   "pitfalls": [
+    "Choosing a story with no real obstacle (“I Googled it” is not a story)",
+    "Skipping validation — saying it worked without proving it",
+    "Rambling past two minutes without reaching the result"
+   ]
+  },
+  {
+   "prompt": "Tell me about a time you dealt with a frustrated customer or user while something was broken.",
+   "framework": "STAR",
+   "points": [
+    "Lead with empathy and ownership: acknowledge the impact before the technical detail",
+    "Show translation: what you told them, in their language, plus the timeline you committed to",
+    "Show judgment: the narrow fix you chose and what you refused to do (e.g., disabling the control to clear the symptom)",
+    "Close with the relationship outcome, not just the technical one"
+   ],
+   "pitfalls": [
+    "Badmouthing the customer to sound decisive",
+    "Promising a timeline you could not keep",
+    "Framing the user as the problem rather than the situation"
+   ]
+  },
+  {
+   "prompt": "Why ThreatLocker, and why cybersecurity?",
+   "framework": "STAR",
+   "points": [
+    "Connect prevention to something concrete: a moment you saw detection arrive too late, or a system you hardened",
+    "Tie their model to your instincts: deny-by-default matches how you already think about trust",
+    "Show service orientation: the Cyber Hero culture rewards the 2 a.m. helper — give an example of being one",
+    "Name one forward-looking reason: Zero Trust, the MSP mission, or the bootcamp community investment"
+   ],
+   "pitfalls": [
+    "Generic flattery with no specifics about the company",
+    "Leading with compensation, title, or location convenience",
+    "Claiming expertise in products you have only read about — frame it as studied, not mastered"
+   ]
+  },
+  {
+   "framework": "STAR",
+   "pitfalls": [
+    "Staying vague ('I analyzed the data') instead of naming what you connected.",
+    "Skipping your own role: what did YOU see that others missed?",
+    "No outcome: what changed because you joined the dots?"
+   ],
+   "points": [
+    "The scattered signals and why nobody had connected them yet",
+    "The specific links you drew between them (shared host, time, infrastructure)",
+    "What the bigger picture turned out to be and what action it drove",
+    "What the experience taught you about investigating"
+   ],
+   "prompt": "Tell me about a time you connected scattered clues into a bigger picture that others had missed."
+  },
+  {
+   "framework": "STAR",
+   "pitfalls": [
+    "Claiming you fixed everything: credibility comes from trade-offs, not heroics.",
+    "Hiding the constraint: the limitation is what makes the prioritization story real.",
+    "No metric: 'better' needs a before-and-after."
+   ],
+   "points": [
+    "The constraint (time, budget, staff) and the size of the backlog",
+    "How you decided what mattered most (what was reachable, what was critical)",
+    "What you did first and what you deliberately deferred",
+    "The measurable result of the prioritization"
+   ],
+   "prompt": "Describe a time you had to prioritize risks or fixes with limited time or resources. How did you decide what came first?"
+  },
+  {
+   "framework": "STAR",
+   "pitfalls": [
+    "Reciting jargon to a non-technical audience and calling it communication.",
+    "Skipping the audience's reaction: did they actually understand and act?",
+    "Making yourself the hero instead of the translator."
+   ],
+   "points": [
+    "The technical finding and why it mattered",
+    "Who the audience was and what they cared about",
+    "How you reframed it (a picture, an analogy, a story)",
+    "What decision or action the audience took because they understood"
+   ],
+   "prompt": "Tell me about a time you explained a complex technical finding to a non-technical audience and it changed a decision."
+  },
+  {
+   "prompt": "Tell me about a time you used automation or AI to solve a security problem.",
+   "framework": "STAR",
+   "points": [
+    "The repetitive security task and what it cost in analyst time",
+    "The automation or AI approach you built and how you validated it",
+    "Measured outcome: time saved, detection gained, false positives changed"
+   ],
+   "pitfalls": [
+    "Describing the tool but never the validation",
+    "No measurable outcome"
+   ]
+  },
+  {
+   "prompt": "Describe a time you had to decide whether to trust an automated security decision.",
+   "framework": "STAR",
+   "points": [
+    "The stakes of the automated action and its blast radius",
+    "How you verified before acting (or the gate you built)",
+    "What happened and what you would automate differently next time"
+   ],
+   "pitfalls": [
+    "Saying you always trust the tool",
+    "No mention of blast radius or reversibility"
+   ]
+  }
+ ],
+ "resources": {
+  "cheatsheet": {
+   "title": "Full Spectrum Dominance — field reference",
+   "sections": [
+    {
+     "heading": "Company facts (verified)",
+     "items": [
+      "Founded 2017 in Orlando, FL — Danny Jenkins (CEO), Sami Jenkins (COO), John Carolan (QA)",
+      "Philosophy: deny-by-default / default-deny — approve known-good, deny the rest",
+      "Customers: 70,000+ organizations, sold heavily through the MSP channel",
+      "Funding: $190M Series F, July 2026 (Elephant-led); ~730 employees",
+      "Interview address: 1901 Summit Tower Blvd, Orlando, FL 32810",
+      "Culture: in-office 5 days/week; free lunch; post-offer background + drug screening"
+     ]
+    },
+    {
+     "heading": "Product stack",
+     "items": [
+      "Allowlisting — default-deny execution control for apps, DLLs, scripts, installers",
+      "Ringfencing — constrains allowed apps: app-to-app, file, registry, network",
+      "Storage Control — USB/device policy by serial, user, file type, encryption",
+      "Elevation Control — just-in-time per-app admin, no standing rights",
+      "Network Control — host firewall; port/IP/dynamic-ACL rules; ZTNA foundation",
+      "Web Control — agent-based DNS/URL category filtering, works off-network",
+      "Cyber Hero MDR — 24/7/365 US-based response, ~60-second average",
+      "Testing Environment — one-button VDI sandbox; checks AV flags, canary files, registry changes"
+     ]
+    },
+    {
+     "heading": "Rule strength (strongest to weakest)",
+     "items": [
+      "Certificate/publisher rules — survive version updates",
+      "Hash rules — precise but break on every new version",
+      "Path rules — weakest; never in user-writable locations",
+      "Learning Mode catalogs before enforcement; Installation Mode pauses blocking — scope and time-box both"
+     ]
+    },
+    {
+     "heading": "Terminal evidence commands",
+     "items": [
+      "nmap <host> — which ports answer (22/80/443 open)",
+      "dig <name> — ANSWER SECTION with the A record",
+      "ss — listening sockets",
+      "systemctl status <svc> — unit state",
+      "journalctl -u <svc> — service logs",
+      "sha256sum <file> — real SHA-256 identity",
+      "grep <pattern> <file> — search the record",
+      "ps — what is actually running"
+     ]
+    },
+    {
+     "heading": "Graph vocabulary",
+     "items": [
+      "node — any entity tracked in the model (user, host, IP, domain, file hash, vulnerability)",
+      "edge — a labeled relationship between two nodes (logged into, resolved to, downloaded)",
+      "degree — number of edges on a node; high-degree nodes are attacker highways",
+      "centrality — how much traffic or how many paths flow through a node",
+      "directed edge — a relationship with a direction (A downloaded FROM B)",
+      "security graph — the living model of your whole environment as nodes and edges",
+      "attack graph — the subgraph of exploitable paths to your targets",
+      "knowledge graph — threat-intel indicators linked to campaigns and actors"
+     ]
+    },
+    {
+     "heading": "Attack-graph playbook",
+     "items": [
+      "inventory first — you cannot graph what you have not discovered",
+      "model flaws AND misconfigs as exploit edges",
+      "compute shortest paths to the crown jewels",
+      "find the choke point (highest betweenness on those paths)",
+      "break the path: patch, segment, or remove the edge",
+      "re-scan and re-run the graph to prove the path is gone",
+      "never trust yesterday's graph — redeployments redraw the map"
+     ]
+    },
+    {
+     "heading": "Zero Trust + graphs",
+     "items": [
+      "never trust, always verify — re-evaluate every access decision",
+      "assume breach — treat unexpected edges as hostile until proven otherwise",
+      "microsegmentation — allow-list approved edges, alert on new ones",
+      "ReBAC — policies are path queries on the identity graph",
+      "continuous verification — device/location/behavior edges change, trust follows",
+      "anomalous edge — a first-seen connection between strangers is the classic signal"
+     ]
+    },
+    {
+     "heading": "ML detection vocabulary",
+     "items": [
+      "Supervised learning — learns from labeled examples; strong on known threats, blind to novel ones",
+      "Unsupervised learning — finds structure without labels; clustering and dimensionality reduction",
+      "Anomaly detection — models 'normal' and flags deviations; the workhorse for novel threats",
+      "UEBA — user and entity behavior analytics: per-user baselines plus peer-group comparison",
+      "Feature engineering — encoding raw logs into model inputs (login velocity, rare processes, domain entropy)",
+      "Concept drift — model decay as attacker behavior and legitimate traffic shift over time"
+     ]
+    },
+    {
+     "heading": "Detection metrics",
+     "items": [
+      "Precision — of all flagged alerts, how many were real",
+      "Recall — of all real attacks, how many were flagged",
+      "Threshold tuning — sliding the decision cutoff trades precision against recall",
+      "Alert fatigue — when false positives train analysts to ignore the queue",
+      "DGA — domain generation algorithm; detected via character entropy of domain names"
+     ]
+    },
+    {
+     "heading": "Agent and LLM security",
+     "items": [
+      "Direct prompt injection — attacker input overrides app instructions (OWASP LLM01:2025, the #1 LLM risk)",
+      "Indirect prompt injection — hidden instructions inside retrieved data (email, web, docs)",
+      "Jailbreak — defeating the model's own safety policy; distinct from hijacking app behavior",
+      "Tool poisoning — malicious tool descriptions or metadata steer an agent to misuse its tools (MCP ecosystem risk)",
+      "Insecure output handling — executing or trusting model output without validation",
+      "Least-privilege tools — grant each tool only the scope its task requires"
+     ]
+    },
+    {
+     "heading": "Adversarial ML and governance",
+     "items": [
+      "Evasion — perturbing inputs at inference time to dodge a classifier",
+      "Poisoning — corrupting training data to corrupt the model",
+      "Extraction — querying a model to steal its behavior or parameters",
+      "MITRE ATLAS — knowledge base of adversarial ML tactics and techniques",
+      "Red-teaming and evals — adversarial testing of AI systems before deployment",
+      "Human-in-the-loop — required approval for high-impact or irreversible agent actions",
+      "SOAR — security orchestration, automation and response; automate enrichment, gate containment"
+     ]
+    }
+   ]
+  },
+  "glossary": [
+   {
+    "term": "Allowlisting",
+    "def": "Default-deny execution control: only explicitly approved applications, scripts, and installers may run."
+   },
+   {
+    "term": "Blocklisting",
+    "def": "Default-allow model: everything runs except recognized-bad items — the window zero-days live in."
+   },
+   {
+    "term": "Default-deny",
+    "def": "Deny-by-default posture: unknown code, devices, or connections are refused unless explicitly approved."
+   },
+   {
+    "term": "Ringfencing",
+    "def": "Containment applied on top of allowlisting; restricts what a permitted app may do across app-to-app, file, registry, and network dimensions."
+   },
+   {
+    "term": "Learning Mode",
+    "def": "Agent mode that catalogs applications and dependencies and auto-builds policies before enforcement; temporarily disables file blocking."
+   },
+   {
+    "term": "Installation Mode",
+    "def": "Temporary mode that pauses file blocking for installs — must be tightly scoped and time-boxed."
+   },
+   {
+    "term": "Elevation Control",
+    "def": "Grants specific approved applications admin rights for standard users — just-in-time, per-app, time-boxed — without standing admin rights."
+   },
+   {
+    "term": "Application hopping",
+    "def": "An elevated or trusted process spawning another tool (e.g., PowerShell) to inherit its privileges — countered by ringfencing the elevated process."
+   },
+   {
+    "term": "Storage Control",
+    "def": "Device and path policy: USB approved by serial, user, file type, time, and encryption; unapproved devices do not connect."
+   },
+   {
+    "term": "Network Control",
+    "def": "Centrally managed host firewall; rules by port, source IP, and dynamic ACLs; egress allowlisting pins apps to approved destinations."
+   },
+   {
+    "term": "ZTNA",
+    "def": "Zero Trust Network Access: per-session, per-application brokered connections (commonly over port 443) with no open inbound ports — deny-by-default for network access."
+   },
+   {
+    "term": "Approval Center",
+    "def": "Portal queue where end-user software requests arrive for admin review and decision."
+   },
+   {
+    "term": "Unified Audit",
+    "def": "Real-time audit showing what was allowed or denied across endpoints — and why; the evidence layer for triage."
+   },
+   {
+    "term": "Testing Environment",
+    "def": "One-button cloud VDI sandbox launched from an approval request; logs AV flags, canary-file access, and registry/system changes."
+   },
+   {
+    "term": "Cyber Hero MDR",
+    "def": "24/7/365 US-based managed detection and response team; validates alerts, isolates hosts, acts on customer runbooks; ~60-second average response."
+   },
+   {
+    "term": "Assume breach",
+    "def": "Design and operate as if the attacker already has a foothold — least privilege, containment, and monitoring everywhere."
+   },
+   {
+    "term": "Living off the land",
+    "def": "Attacks that hijack trusted built-in tools (Word, PowerShell) instead of dropping malware — defeated by behavior containment, not signatures."
+   },
+   {
+    "term": "Change control",
+    "def": "Scoped, ticketed, tested changes with validation and rollback — emergency speed never cancels the process."
+   },
+   {
+    "def": "A node in an attack graph representing a system or weakness, connected by edges that represent steps an attacker could take between them.",
+    "term": "attack graph"
+   },
+   {
+    "def": "How central a node is to paths through the graph (for example, betweenness: how many shortest paths cross it).",
+    "term": "centrality"
+   },
+   {
+    "def": "The most valuable assets in the environment (customer data, finance systems, source code): what attack paths are measured against.",
+    "term": "crown jewels"
+   },
+   {
+    "def": "A labeled connection between two nodes, representing a relationship such as 'logged into' or 'resolved to'.",
+    "term": "edge"
+   },
+   {
+    "def": "A graph of threat indicators (IPs, domains, hashes) linked to campaigns, actors, and each other through shared infrastructure.",
+    "term": "knowledge graph"
+   },
+   {
+    "def": "The practice of mapping relationships in data to reveal hidden associations; rooted in Euler's 1736 graph theory, 1970s paper link charts, and post-2001 intelligence work.",
+    "term": "link analysis"
+   },
+   {
+    "def": "A segment of the network so small that its allowed communications can be enumerated as a graph of approved edges.",
+    "term": "microsegmentation"
+   },
+   {
+    "def": "An entity in the graph: a user, host, IP address, domain, file, or vulnerability.",
+    "term": "node"
+   },
+   {
+    "def": "Access control where policy is evaluated by traversing relationships on a graph (for example: user reports_to manager who owns the resource's project).",
+    "term": "ReBAC"
+   },
+   {
+    "def": "A machine-learning model that operates directly on graph structure to classify nodes or subgraphs, for example labeling attack vs normal behavior.",
+    "term": "graph neural network (GNN)"
+   },
+   {
+    "def": "Monitoring user and entity behavior by modeling their normal relationship patterns and flagging structural anomalies.",
+    "term": "UEBA"
+   },
+   {
+    "term": "Supervised learning",
+    "def": "ML trained on labeled examples; classifies new inputs into known categories."
+   },
+   {
+    "term": "Anomaly detection",
+    "def": "ML approach that models normal behavior and flags statistically rare deviations."
+   },
+   {
+    "term": "Feature engineering",
+    "def": "Turning raw telemetry into numeric model inputs, e.g. login velocity or domain entropy."
+   },
+   {
+    "term": "Precision",
+    "def": "Share of flagged alerts that were real; the false-positive economics of the queue."
+   },
+   {
+    "term": "Recall",
+    "def": "Share of real attacks the detector flagged; the miss rate's complement."
+   },
+   {
+    "term": "Concept drift",
+    "def": "Decay of model performance as the data distribution shifts over time."
+   },
+   {
+    "term": "Prompt injection",
+    "def": "Attacker-crafted instructions that override an LLM application's intended behavior; direct (user input) or indirect (retrieved data)."
+   },
+   {
+    "term": "Jailbreak",
+    "def": "Crafted input that defeats an LLM's own safety policy or refusal behavior."
+   },
+   {
+    "term": "Tool poisoning",
+    "def": "Malicious tool descriptions or metadata that manipulate an AI agent into misusing its tools."
+   },
+   {
+    "term": "Insecure output handling",
+    "def": "Failing to validate LLM output before acting on it, e.g. executing generated commands."
+   },
+   {
+    "term": "Evasion attack",
+    "def": "Adversarial ML technique: perturbing inputs to cross a classifier's decision boundary."
+   },
+   {
+    "term": "MITRE ATLAS",
+    "def": "Adversarial Threat Landscape for AI Systems; MITRE's knowledge base of AI attack tactics."
+   },
+   {
+    "term": "SOAR",
+    "def": "Security orchestration, automation and response; playbooks that enrich automatically and gate containment on humans."
+   },
+   {
+    "term": "Human-in-the-loop",
+    "def": "Required human approval before high-impact or irreversible automated actions."
+   }
   ],
-  "math": [
-    "stats",
-    "probability"
+  "links": [
+   {
+    "label": "ThreatLocker Zero Trust platform explainer (official)",
+    "url": "https://www.threatlocker.com/blog/edr-xdr-vs-zero-trust-prevention",
+    "note": "EDR/XDR vs Zero Trust prevention — the deny-by-default argument in their own words."
+   },
+   {
+    "label": "ThreatLocker Bootcamp page (official)",
+    "url": "https://www.threatlocker.com/bootcamp",
+    "note": "Free six-week program: phases, format, and what completion leads to."
+   },
+   {
+    "label": "ThreatLocker Careers (official)",
+    "url": "https://www.threatlocker.com/company/careers",
+    "note": "Open roles and the hiring-event listing; roles are in-office in Orlando."
+   },
+   {
+    "label": "Elevation Control (official)",
+    "url": "https://www.threatlocker.com/secure-privileges-without-sacrificing-agility",
+    "note": "Just-in-time privilege without standing admin."
+   },
+   {
+    "label": "Storage Control (official)",
+    "url": "https://www.threatlocker.com/capabilities/external-storage-device-control",
+    "note": "USB/device policy by serial, user, file type, encryption."
+   },
+   {
+    "label": "Web Control (official)",
+    "url": "https://www.threatlocker.com/capabilities/web-content-control",
+    "note": "Agent-based DNS/URL filtering, including off-network."
+   },
+   {
+    "label": "Cyber Hero MDR (official)",
+    "url": "https://www.threatlocker.com/get-threat-response-in-minutes",
+    "note": "24/7/365 managed response positioning."
+   },
+   {
+    "label": "MDR capabilities (official)",
+    "url": "https://www.threatlocker.com/capabilities/managed-detection-and-response",
+    "note": "Detection and response capability detail."
+   },
+   {
+    "label": "NIST SP 800-207 — Zero Trust Architecture",
+    "url": "https://csrc.nist.gov/pubs/sp/800/207/final",
+    "note": "The canonical Zero Trust reference: tenets, deployment models, policy engine trust algorithm."
+   },
+   {
+    "label": "CISA Zero Trust Maturity Model",
+    "url": "https://www.cisa.gov/zero-trust-maturity-model",
+    "note": "Federal maturity steps across identity, devices, networks, applications, and data."
+   },
+   {
+    "label": "MITRE ATT&CK",
+    "note": "The adversary-tactics framework; codify its tactic chains as subgraphs to hunt for in your security graph.",
+    "url": "https://attack.mitre.org/"
+   },
+   {
+    "label": "CISA — Cybersecurity and Infrastructure Security Agency",
+    "note": "US government advisories, alerts, and guidance frequently referenced in threat-intel work.",
+    "url": "https://www.cisa.gov/"
+   },
+   {
+    "label": "Neo4j getting started",
+    "note": "A widely used graph database; the book's call to action suggests piloting graph queries on exported security data with tools like this.",
+    "url": "https://neo4j.com/docs/getting-started/"
+   },
+   {
+    "label": "OWASP GenAI Security Project",
+    "url": "https://genai.owasp.org/",
+    "note": "Home of the LLM Top 10 and GenAI security guidance"
+   },
+   {
+    "label": "OWASP Top 10 for LLM Applications",
+    "url": "https://genai.owasp.org/llm-top-10/",
+    "note": "The ranked LLM risk list — prompt injection is #1"
+   },
+   {
+    "label": "NIST AI Risk Management Framework",
+    "url": "https://www.nist.gov/itl/ai-risk-management-framework",
+    "note": "The standard governance framework for managing AI risk"
+   },
+   {
+    "label": "MITRE ATLAS",
+    "url": "https://atlas.mitre.org/",
+    "note": "Adversarial Threat Landscape for AI Systems — tactics and techniques"
+   },
+   {
+    "label": "CISA AI guidance",
+    "url": "https://www.cisa.gov/ai",
+    "note": "CISA's AI security resources and guidance"
+   }
+  ],
+  "checklist": [
+   "Sixty-second company brief rehearsed out loud: year, city, philosophy, three products, one milestone",
+   "Two STAR stories ready: hardest technical problem; a frustrated customer or user",
+   "“Why ThreatLocker / why cybersecurity” answer tied to prevention and service, not slogans",
+   "Ringfencing explained in one plain-English sentence (the Word-on-a-leash version)",
+   "Elevation Control answer ready: just-in-time, per-app, time-boxed, ringfenced, logged",
+   "Triage loop memorized: scope → observe → hypothesize → smallest safe change → validate → explain",
+   "Three questions to ask them: team on-call shape, approval SLA expectations, what “most helpful” looks like on the team",
+   "Logistics: 1901 Summit Tower Blvd, Orlando FL; in-office role; ID and references ready",
+   "Define your crown jewels before you model anything.",
+   "Build the asset-and-access graph from live sources (scans, configs, identity), not from the CMDB alone.",
+   "Model vulnerabilities AND misconfigurations as exploit edges.",
+   "Compute shortest attack paths to each crown jewel; name the choke points.",
+   "Prioritize remediation by path risk, not by raw severity score.",
+   "Express at least one access policy as a relationship path (ReBAC pilot).",
+   "Baseline approved communication edges per segment; alert on first-seen edges.",
+   "Brief the next incident or risk review with the graph, not a spreadsheet.",
+   "Can you explain supervised vs unsupervised vs anomaly detection with a security example for each?",
+   "Can you name three log features you would engineer for a C2 detector and why?",
+   "Can you walk through a UEBA alert (baseline, deviation, verification) end to end?",
+   "Can you explain the precision/recall tradeoff and how you would set a threshold for a fatigued SOC?",
+   "Can you define concept drift and describe a retraining process?",
+   "Can you distinguish direct vs indirect prompt injection and jailbreaking?",
+   "Can you explain tool poisoning in the MCP ecosystem and three controls against it?",
+   "Can you describe insecure output handling and how you would validate agent output?",
+   "Can you name the three adversarial ML attack classes and one defense for evasion?",
+   "Can you design a SOAR playbook gate: what automates freely, what needs human approval?"
   ]
+ },
+ "chat": {
+  "persona": "You are a rigorous but encouraging interviewer preparing a candidate for a Zero Trust endpoint security role. Probe with 'why' and 'how would you explain that' follow-ups. Stay on topic: ThreatLocker-style endpoint defense, security graphs, and AI-powered security. All practice is original; never reproduce vendor material.",
+  "topics": [
+   {
+    "id": "tl-interview",
+    "name": "ThreatLocker Interview Prep",
+    "key_points": [
+     "allowlisting",
+     "ringfencing",
+     "default-deny",
+     "cyber hero",
+     "zero trust tenets",
+     "STAR stories"
+    ],
+    "followups": [
+     "Can you give an example?",
+     "How would you explain that to a CFO?"
+    ]
+   },
+   {
+    "id": "tl-endpoint-ops",
+    "name": "Zero Trust Endpoint Operations",
+    "key_points": [
+     "default-deny",
+     "ringfencing dimensions",
+     "elevation control",
+     "storage control",
+     "network control",
+     "change control"
+    ],
+    "followups": [
+     "Walk me through the triage order.",
+     "When would you deny outright?"
+    ]
+   },
+   {
+    "followups": [
+     "Can you walk through an example?",
+     "How does this change patch prioritization?",
+     "What is the difference between a security graph and an attack graph?"
+    ],
+    "id": "sec-graphs",
+    "key_points": [
+     "nodes",
+     "edges",
+     "attack graphs",
+     "kill chain",
+     "link analysis",
+     "threat intel graphs"
+    ],
+    "name": "Security Graphs: Think Like an Attacker"
+   },
+   {
+    "followups": [
+     "How do graphs change patch prioritization?",
+     "What is ReBAC and how is it different from RBAC?",
+     "How would a small team start with graphs?"
+    ],
+    "id": "graph-defense",
+    "key_points": [
+     "attack-path analysis",
+     "insider threat",
+     "vulnerability graphs",
+     "Zero Trust",
+     "microsegmentation",
+     "blast radius"
+    ],
+    "name": "Graph-Powered Defense Operations"
+   },
+   {
+    "id": "ml-defense",
+    "name": "ML-Powered Threat Defense",
+    "key_points": [
+     "anomaly detection",
+     "UEBA",
+     "alert fatigue",
+     "concept drift",
+     "threat hunting",
+     "precision recall"
+    ],
+    "followups": [
+     "Walk me through an example.",
+     "How do you handle false positives?"
+    ]
+   },
+   {
+    "id": "ai-agent-sec",
+    "name": "Securing AI Systems & Agents",
+    "key_points": [
+     "prompt injection",
+     "tool poisoning",
+     "MCP risks",
+     "insecure output handling",
+     "SOAR gates",
+     "adversarial ML"
+    ],
+    "followups": [
+     "Walk me through an example.",
+     "How do you secure an AI agent end to end?"
+    ]
+   }
+  ]
+ },
+ "simulation": {
+  "items": 12,
+  "minutes": 180,
+  "evidence_cost_mins": 2
+ },
+ "media": [
+  {
+   "id": "tl-allowlist-vs-blocklist",
+   "kind": "diagram",
+   "title": "Allowlisting vs blocklisting: default-deny vs default-allow",
+   "svg": "assets/diagrams/tl-allowlist-vs-blocklist.svg",
+   "lesson_ref": "c-tl-endpoint-ops",
+   "caption": "Default-deny stops unknown code without a signature; default-allow runs it until one exists.",
+   "alt": "Side-by-side comparison: on the left, a default-deny gate runs known-good payroll software and denies unknown ransomware with no signature needed; on the right, a default-allow gate runs both until the ransomware is recognized as bad."
+  },
+  {
+   "id": "tl-ringfencing",
+   "kind": "diagram",
+   "title": "Ringfencing: four leashes on an allowed application",
+   "svg": "assets/diagrams/tl-ringfencing.svg",
+   "lesson_ref": "c-tl-endpoint-ops",
+   "caption": "Word stays approved, but it cannot spawn PowerShell, read the credential store, or reach the internet — while opening its document is allowed.",
+   "alt": "An approved Word application inside a dashed containment ring: arrows show PowerShell launch denied, credential-store registry access denied, external network denied, and document file access allowed."
+  },
+  {
+   "id": "tl-zero-trust-stack",
+   "kind": "diagram",
+   "title": "The Zero Trust endpoint stack",
+   "svg": "assets/diagrams/tl-zero-trust-stack.svg",
+   "lesson_ref": "c-tl-interview",
+   "caption": "Five deny-by-default layers — Allowlisting, Ringfencing, Elevation, Storage, Network — watched by Web Control, the Testing Environment, Unified Audit, and the Cyber Hero MDR team.",
+   "alt": "A vertical stack of five layers from Allowlisting at the foundation up through Ringfencing, Elevation Control, Storage Control, and Network Control, with side boxes for Web Control, Testing Environment, Unified Audit, and Cyber Hero MDR."
+  },
+  {
+   "id": "tl-triage-flow",
+   "kind": "diagram",
+   "title": "Application-request triage flow",
+   "svg": "assets/diagrams/tl-triage-flow.svg",
+   "lesson_ref": "c-tl-endpoint-ops",
+   "caption": "Gather evidence first, then branch: trusted gets a scoped rule, unknown goes to the sandbox, malicious gets a documented deny.",
+   "alt": "Flowchart from request arrival through evidence gathering to a decision diamond branching into three outcomes: approve with a scoped rule, detonate in the Testing Environment then ringfence, or deny with documented evidence."
+  },
+  {
+   "alt": "Diagram of four labeled nodes (user, host, file, domain, IP) joined by labeled directed edges such as logged into, downloaded, and resolved to, illustrating graph vocabulary.",
+   "caption": "Nodes are the things; edges are the relationships. Attackers move along the edges.",
+   "id": "sg-graph-vocabulary",
+   "kind": "diagram",
+   "lesson_ref": "c-sec-graphs",
+   "svg": "assets/diagrams/sg-graph-vocabulary.svg",
+   "title": "Graph vocabulary: nodes and edges"
+  },
+  {
+   "alt": "Attack graph with four nodes in a chain: external attacker to VPN gateway to file server to customer database, with a dead-end branch to a printer, showing the shortest path to the crown jewel.",
+   "caption": "The shortest path to the crown jewel is length 3. Break the choke point and the campaign dies.",
+   "id": "sg-attack-path",
+   "kind": "diagram",
+   "lesson_ref": "c-sec-graphs",
+   "svg": "assets/diagrams/sg-attack-path.svg",
+   "title": "Attack graph: shortest path to the crown jewels"
+  },
+  {
+   "alt": "Seven kill-chain stages as connected graph nodes: reconnaissance, weaponization, delivery, exploitation, installation, command and control, actions. Three alerts are annotated at delivery, installation, and command and control.",
+   "caption": "Three 'unrelated' alerts, one kill-chain subgraph. Correlate by shared entities, not by severity.",
+   "id": "sg-kill-chain",
+   "kind": "diagram",
+   "lesson_ref": "c-sec-graphs",
+   "svg": "assets/diagrams/sg-kill-chain.svg",
+   "title": "Kill chain as a graph"
+  },
+  {
+   "alt": "A policy engine at the center of a small graph evaluates an access request from a finance user on an untrusted laptop to an R and D code server. The request is denied because there is no prior relationship edge and the device is untrusted.",
+   "caption": "Valid credentials are not enough. The graph checks device trust, history, and relationships on every request.",
+   "id": "sg-zero-trust",
+   "kind": "diagram",
+   "lesson_ref": "c-graph-defense",
+   "svg": "assets/diagrams/sg-zero-trust.svg",
+   "title": "Zero Trust runs on relationships"
+  },
+  {
+   "id": "ai-ml-pipeline",
+   "kind": "diagram",
+   "title": "ML detection pipeline: telemetry to triage",
+   "svg": "assets/diagrams/ai-ml-pipeline.svg",
+   "lesson_ref": "c-ml-defense",
+   "caption": "How raw telemetry becomes scored alerts: features feed the model, the model scores, analysts triage top-down — and analyst verdicts feed retraining.",
+   "alt": "Flow diagram: telemetry sources feed feature extraction, which feeds an ML model, which outputs scored alerts into an analyst triage queue, with a feedback arrow for retraining."
+  },
+  {
+   "id": "ai-ueba-baseline-diagram",
+   "kind": "diagram",
+   "title": "UEBA: baseline vs deviation",
+   "svg": "assets/diagrams/ai-ueba-baseline.svg",
+   "lesson_ref": "c-ml-defense",
+   "caption": "UEBA learns each user's normal hours, locations, and volumes, then scores deviations from that baseline.",
+   "alt": "24-hour timeline showing a shaded normal login window from 8 AM to 6 PM with normal logins inside it, and a red anomaly marker at 2:47 AM for a foreign login scoring 97 out of 100."
+  },
+  {
+   "id": "ai-injection-flow",
+   "kind": "diagram",
+   "title": "Indirect prompt injection attack flow",
+   "svg": "assets/diagrams/ai-injection-flow.svg",
+   "lesson_ref": "c-ai-agent-sec",
+   "caption": "An attacker hides instructions in data the agent retrieves; the agent mistakes data for instructions and misuses its tools.",
+   "alt": "Attack flow diagram: hidden instruction in an email is read by an AI agent, which mistakes it for a command and calls a privileged tool, causing fraud; three defense boxes below: sanitize content, least-privilege tools, human approval."
+  }
+ ],
+ "foundations": [
+  {
+   "track": "linux-cli",
+   "why_needed": "Terminal labs and missions run in a simulated Linux shell; command-line fluency is required to complete them."
+  },
+  {
+   "track": "security-basics",
+   "why_needed": "Security-graph and ML-detection lessons assume baseline vocabulary (CIA triad, malware types, incident response phases)."
+  }
+ ],
+ "math": [
+  "stats",
+  "probability"
+ ],
+ "pdfGuides": [
+  {
+   "title": "CI/CD Pipelines — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-cicd-pipeline.pdf",
+   "source": "Interstitium Labs",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:27:58Z"
+  },
+  {
+   "title": "Kubernetes Architecture — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-kubernetes.pdf",
+   "source": "Interstitium Labs",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:27:58Z"
+  },
+  {
+   "title": "Cloud Architecture Patterns — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-cloud-patterns.pdf",
+   "source": "Interstitium Labs",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:27:58Z"
+  }
+ ]
 }

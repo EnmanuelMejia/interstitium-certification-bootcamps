@@ -1688,6 +1688,173 @@
    "points": 30
   }
  ],
+ "consoleSims": [
+  {
+   "id": "cc-csim-1",
+   "title": "Triage the impossible-travel alert",
+   "console": "siem-dashboard",
+   "domain_id": "isc2-cc",
+   "difficulty": 1,
+   "brief": "ALT-101: a user logged in from two countries an hour apart — classic impossible travel, severity high. As the on-call analyst, acknowledge it and assign it to j.chen for review.",
+   "tasks": [
+    {
+     "id": "t1",
+     "instruction": "Acknowledge alert ALT-101.",
+     "validate": {
+      "action": "acknowledge-alert",
+      "params": {
+       "id": "ALT-101"
+      }
+     },
+     "hint": "Alerts tab → click Ack on the ALT-101 row."
+    },
+    {
+     "id": "t2",
+     "instruction": "Assign ALT-101 to analyst j.chen.",
+     "validate": {
+      "action": "assign-alert",
+      "params": {
+       "id": "ALT-101",
+       "analyst": "j.chen"
+      }
+     },
+     "hint": "Assign alert form: ALERT ID=ALT-101, ANALYST=j.chen"
+    }
+   ],
+   "debrief": "Impossible travel is a textbook account-compromise indicator. Acknowledging takes ownership; assigning routes it to a human — the first two steps of the incident-response lifecycle."
+  },
+  {
+   "id": "cc-csim-2",
+   "title": "Report the lost access badge",
+   "console": "ticketing",
+   "domain_id": "isc2-cc",
+   "difficulty": 1,
+   "brief": "You lost your Building B access badge in the parking lot. Physical security is cybersecurity: file a P3 ticket, note that the badge was deactivated, and resolve it once the reissue is scheduled.",
+   "tasks": [
+    {
+     "id": "t1",
+     "instruction": "Create a P3 ticket titled exactly: Lost access badge — Building B",
+     "validate": {
+      "action": "create-ticket",
+      "params": {
+       "title": "Lost access badge — Building B",
+       "priority": "P3"
+      }
+     },
+     "hint": "New ticket tab — copy the title exactly, it becomes INC-9002."
+    },
+    {
+     "id": "t2",
+     "instruction": "Add the note: Badge deactivated in access system; reissue scheduled.",
+     "validate": {
+      "action": "add-note",
+      "params": {
+       "id": "INC-9002",
+       "text": "Badge deactivated in access system; reissue scheduled."
+      }
+     },
+     "hint": "Add note form with the exact text."
+    },
+    {
+     "id": "t3",
+     "instruction": "Resolve INC-9002.",
+     "validate": {
+      "action": "resolve-ticket",
+      "params": {
+       "id": "INC-9002"
+      }
+     },
+     "hint": "Click the Resolve button on the INC-9002 row."
+    }
+   ],
+   "debrief": "Access control isn't just passwords — badges are physical credentials. Reporting a lost one fast and deactivating it is the same instinct as rotating a compromised password."
+  },
+  {
+   "id": "cc-csim-3",
+   "title": "Contain the exfiltrating backup server",
+   "console": "siem-dashboard",
+   "domain_id": "isc2-cc",
+   "difficulty": 2,
+   "brief": "ALT-103: unusual outbound volume from srv-backup-02, severity medium. Backup servers shouldn't phone home to strangers. Acknowledge the alert, isolate the host to stop any exfiltration, then escalate.",
+   "tasks": [
+    {
+     "id": "t1",
+     "instruction": "Acknowledge alert ALT-103.",
+     "validate": {
+      "action": "acknowledge-alert",
+      "params": {
+       "id": "ALT-103"
+      }
+     },
+     "hint": "Alerts tab → click Ack on the ALT-103 row."
+    },
+    {
+     "id": "t2",
+     "instruction": "Isolate host srv-backup-02.",
+     "validate": {
+      "action": "isolate-host",
+      "params": {
+       "host": "srv-backup-02"
+      }
+     },
+     "hint": "Click 'Isolate host' on the ALT-103 row."
+    },
+    {
+     "id": "t3",
+     "instruction": "Escalate alert ALT-103.",
+     "validate": {
+      "action": "escalate",
+      "params": {
+       "id": "ALT-103"
+      }
+     },
+     "hint": "Click Escalate on the ALT-103 row."
+    }
+   ],
+   "debrief": "Data exfiltration is one of the two things attackers want (the other is persistence). Isolating first contains the damage; the escalated alert carries the evidence trail to the IR team."
+  },
+  {
+   "id": "cc-csim-4",
+   "title": "Blocklist the SSH scanner",
+   "console": "firewall",
+   "domain_id": "isc2-cc",
+   "difficulty": 2,
+   "brief": "A scanner at 203.0.113.77 is probing SSH (TCP 22) on this host. Drop SSH from that source — but keep the web management portal (TCP 443) reachable from the corporate network 10.0.0.0/8.",
+   "tasks": [
+    {
+     "id": "t1",
+     "instruction": "DROP TCP 22 from 203.0.113.77.",
+     "validate": {
+      "action": "add-rule",
+      "params": {
+       "chain": "INPUT",
+       "protocol": "tcp",
+       "port": "22",
+       "source": "203.0.113.77",
+       "action": "DROP"
+      }
+     },
+     "hint": "CHAIN=INPUT, PROTOCOL=tcp, PORT=22, SOURCE=203.0.113.77, ACTION=DROP"
+    },
+    {
+     "id": "t2",
+     "instruction": "ACCEPT TCP 443 from 10.0.0.0/8.",
+     "validate": {
+      "action": "add-rule",
+      "params": {
+       "chain": "INPUT",
+       "protocol": "tcp",
+       "port": "443",
+       "source": "10.0.0.0/8",
+       "action": "ACCEPT"
+      }
+     },
+     "hint": "Same form with PORT=443, SOURCE=10.0.0.0/8, ACTION=ACCEPT — legitimate management stays up."
+    }
+   ],
+   "debrief": "Network-layer controls are the cheapest win in defense-in-depth: one rule stops the scanner, another keeps legitimate management working. Precision beats blanket blocking."
+  }
+ ],
  "foundations": [
   {
    "track": "principles",
@@ -1706,6 +1873,65 @@
   {
    "label": "ISC2 Certified in Cybersecurity certification page",
    "url": "https://www.isc2.org/certifications/cc"
+  }
+ ],
+ "videos": [
+  {
+   "title": "The Five Pillars of CC",
+   "url": "/assets/videos/bc-bbg-isc2-five-pillars.mp4",
+   "source": "Interstitium Labs",
+   "blurb": "The five CC domains as pillars: security principles, business continuity, access control, network security, security operations. (Preview — narration coming; voiceover pending TTS restore.)",
+   "durationMin": 1,
+   "order": 1,
+   "preview": true,
+   "captionsUrl": "/assets/videos/bc-bbg-isc2-five-pillars.vtt",
+   "narrationUrl": "/assets/videos/bc-bbg-isc2-five-pillars.narration.md",
+   "verifiedUtc": "2026-10-09T04:44:39Z",
+   "httpStatus": 200
+  },
+  {
+   "title": "The CIA Triad in 100 Seconds",
+   "url": "/assets/videos/bc-fireship-isc2-cia-triad.mp4",
+   "source": "Interstitium Labs",
+   "blurb": "The CIA triad in sixty seconds: confidentiality, integrity, availability — every control maps to a corner. The CC skeleton key. (Preview — narration coming; voiceover pending TTS restore.)",
+   "durationMin": 1,
+   "order": 2,
+   "preview": true,
+   "captionsUrl": "/assets/videos/bc-fireship-isc2-cia-triad.vtt",
+   "narrationUrl": "/assets/videos/bc-fireship-isc2-cia-triad.narration.md",
+   "verifiedUtc": "2026-10-09T04:44:39Z",
+   "httpStatus": 200
+  },
+  {
+   "title": "Who Gets In? An Access Sim",
+   "url": "/assets/videos/bc-primer-isc2-access-sim.mp4",
+   "source": "Interstitium Labs",
+   "blurb": "A living access-control simulation: six subjects request six objects — the policy engine grants the roles and denies the rest. (Preview — narration coming; voiceover pending TTS restore.)",
+   "durationMin": 1,
+   "order": 3,
+   "preview": true,
+   "captionsUrl": "/assets/videos/bc-primer-isc2-access-sim.vtt",
+   "narrationUrl": "/assets/videos/bc-primer-isc2-access-sim.narration.md",
+   "verifiedUtc": "2026-10-09T04:44:39Z",
+   "httpStatus": 200
+  }
+ ],
+ "pdfGuides": [
+  {
+   "title": "Cloud Architecture Patterns — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-cloud-patterns.pdf",
+   "source": "Interstitium Labs",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:27:58Z"
+  },
+  {
+   "title": "TLS Handshake — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-tls-handshake.pdf",
+   "source": "Interstitium Labs",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:27:58Z"
   }
  ]
 }
