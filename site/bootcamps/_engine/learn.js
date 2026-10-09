@@ -488,12 +488,23 @@ function slideHTML(slide) {
       '<p class="learn-walkthrough">' + esc(slide.walkthrough || '') + '</p>' +
       transcriptHTML(slide.narration) + '</div>';
   } else if (slide.kind === 'figure') {
-    /* enterprise CBT: embedded media[] diagram (SVG <img> + caption) */
+    /* enterprise CBT: embedded media[] diagram (SVG <img> + caption) or
+       original animation video (<video> + preview label) */
     var m = slide.media || {};
+    var mediaInner = '';
+    if (m.video) {
+      mediaInner = '<video controls preload="metadata" style="width:100%;max-width:720px;border-radius:8px;background:#000" ' +
+        'aria-label="' + esc(m.alt || slide.heading) + '">' +
+        '<source src="' + esc(m.video) + '" type="video/mp4">' +
+        'Your browser does not support the video tag.</video>' +
+        '<p class="small muted"><span class="il-badge il-badge-preview">Preview</span> ' +
+        'Original Interstitium Labs animation — narration coming soon.</p>';
+    } else {
+      mediaInner = '<img src="./' + esc(m.svg) + '" alt="' + esc(m.alt || slide.heading) + '" loading="lazy" />';
+    }
     h = '<div class="learn-slide"><p class="eyebrow">DIAGRAM</p>' +
       '<h3>' + esc(slide.heading) + '</h3>' +
-      '<figure class="learn-media-figure">' +
-      '<img src="./' + esc(m.svg) + '" alt="' + esc(m.alt || slide.heading) + '" loading="lazy" />' +
+      '<figure class="learn-media-figure">' + mediaInner +
       (m.caption ? '<figcaption>' + esc(m.caption) + '</figcaption>' : '') +
       '</figure>' + transcriptHTML(slide.narration || '') + '</div>';
   } else if (slide.kind === 'tryit') {
@@ -758,10 +769,25 @@ function showResourcesSection() {
 }
 function resourcesHTML() {
   var r = (S.content && S.content.resources) || null;
-  if (!r) {
+  var h = '<div class="learn-resources">', i, j;
+  /* ---- visual PDF guides (byte-byte-go style, wired as pdfGuides) ---- */
+  var pg = (S.content && S.content.pdfGuides) || [];
+  if (pg.length) {
+    h += '<div class="panel"><p class="eyebrow">VISUAL GUIDES</p>' +
+      '<h3 style="margin:0 0 10px">Step-by-step PDF guides</h3><ul class="learn-links">';
+    for (i = 0; i < pg.length; i++) {
+      var g = pg[i];
+      h += '<li><a href="' + esc(g.url || '#') + '" target="_blank" rel="noopener noreferrer">' +
+        esc(g.title || 'Guide') + '</a>' +
+        '<br><span style="color:var(--muted);font-size:13px">' +
+        esc(g.pages || '?') + ' pages' + (g.animated ? ' · animated' : '') +
+        (g.blurb ? ' — ' + esc(g.blurb) : '') + '</span></li>';
+    }
+    h += '</ul></div>';
+  }
+  if (!r && !pg.length) {
     return brandedEmpty('Reference resources for this path are still being written.');
   }
-  var h = '<div class="learn-resources">', i, j;
   var cs = r.cheatsheet;
   if (cs && cs.sections && cs.sections.length) {
     h += '<div class="panel"><p class="eyebrow">CHEAT SHEET</p><h3 style="margin:0 0 10px">' +
