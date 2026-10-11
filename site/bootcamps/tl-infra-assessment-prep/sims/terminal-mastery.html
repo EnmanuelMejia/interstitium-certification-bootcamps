@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>Linux Terminal Mastery — IT Infrastructure Assessment Prep | Interstitium Labs</title>
+<meta name="description" content="Interactive Linux terminal simulator: navigation, files, permissions math, and timed drills — from absolute zero.">
+<style>
+:root{
+  --bg:#0d1117; --panel:#161b22; --panel2:#1c2128; --panel3:#0a0d12;
+  --border:#30363d; --blue:#2f81f7; --blue-dim:#1f6feb;
+  --text:#e6edf3; --muted:#8b949e; --green:#3fb950; --red:#f85149;
+  --amber:#d29922; --purple:#bc8cff; --cyan:#39c5cf;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;line-height:1.55;min-height:100vh}
+header{background:linear-gradient(180deg,#0d1117,#10151d);border-bottom:1px solid var(--border);padding:14px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.brandmark{width:46px;height:46px;flex:0 0 auto;border-radius:12px;background:radial-gradient(circle at 30% 25%,#1f6feb,#0d1117 70%);border:1px solid var(--blue);display:flex;align-items:center;justify-content:center;font-size:24px;color:#fff}
+header h1{font-size:1.08rem;font-weight:700;line-height:1.25}
+header h1 .brand{color:var(--blue);display:block;font-size:.68rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase}
+header .sub{font-size:.78rem;color:var(--muted);margin-left:auto;text-align:right}
+nav.tabs{position:sticky;top:0;z-index:30;background:rgba(13,17,23,.96);border-bottom:1px solid var(--border);display:flex;gap:4px;overflow-x:auto;padding:8px 12px;-webkit-overflow-scrolling:touch}
+nav.tabs button{flex:0 0 auto;background:transparent;border:1px solid transparent;color:var(--muted);padding:10px 14px;border-radius:8px;font-size:.85rem;font-weight:600;cursor:pointer;white-space:nowrap;min-height:44px}
+nav.tabs button.active{background:var(--panel);border-color:var(--border);color:var(--blue)}
+nav.tabs button:hover{color:var(--text)}
+main{max-width:1000px;margin:0 auto;padding:16px 12px 90px}
+.panel{display:none}.panel.active{display:block}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:18px;margin:12px 0}
+.card h2{font-size:1.02rem;margin-bottom:6px}
+.card h3{font-size:.95rem;margin:14px 0 6px;color:var(--blue)}
+.card p,.card li{font-size:.9rem}
+.hint{color:var(--muted);font-size:.82rem;margin-bottom:10px}
+.btn{background:var(--blue-dim);border:none;color:#fff;font-weight:700;font-size:.88rem;padding:11px 18px;border-radius:8px;cursor:pointer;min-height:44px}
+.btn:hover{background:var(--blue)}
+.btn.ghost{background:transparent;border:1px solid var(--border);color:var(--text)}
+.btn.ghost:hover{border-color:var(--blue);color:var(--blue)}
+.btn.green{background:#1a7f37}.btn.green:hover{background:#2ea043}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
+code{font-family:var(--mono);font-size:.85em;background:#010409;border:1px solid var(--border);border-radius:6px;padding:1px 7px;color:#79c0ff}
+pre.code{background:#010409;border:1px solid var(--border);border-radius:10px;padding:14px;font-family:var(--mono);font-size:.84rem;overflow-x:auto;white-space:pre-wrap;word-break:break-word;line-height:1.6;margin:10px 0}
+pre.code .c{color:var(--muted)}pre.code .g{color:var(--green)}pre.code .b{color:#79c0ff}pre.code .a{color:var(--amber)}
+.logic{border:1px solid rgba(210,153,34,.45);background:rgba(210,153,34,.07);border-radius:10px;padding:12px 14px;margin:12px 0;font-size:.87rem}
+.logic .tag{display:inline-block;background:var(--amber);color:#111;font-weight:800;font-size:.68rem;letter-spacing:.08em;border-radius:5px;padding:2px 8px;margin-bottom:6px}
+.why{border-left:3px solid var(--blue);background:rgba(47,129,247,.07);border-radius:0 10px 10px 0;padding:10px 14px;margin:10px 0;font-size:.87rem}
+.why .tag{color:var(--blue);font-weight:800;font-size:.72rem;letter-spacing:.08em;display:block;margin-bottom:4px}
+/* terminal */
+.term{background:#010409;border:1px solid var(--border);border-radius:12px;padding:12px;font-family:var(--mono);font-size:.87rem;margin:10px 0}
+.term .out{max-height:420px;overflow-y:auto;white-space:pre-wrap;word-break:break-word;line-height:1.65}
+.term .in{color:#79c0ff}.term .ok{color:var(--green)}.term .er{color:var(--red)}.term .dim{color:var(--muted)}.term .yl{color:var(--amber)}.term .b{color:#79c0ff}.term .pu{color:var(--purple)}
+.cmdline{display:flex;gap:8px;margin-top:8px;align-items:center}
+.cmdline .ps{color:var(--green);font-weight:700;white-space:nowrap;font-size:.82rem}
+.cmdline input{flex:1;background:#0d1117;border:1px solid var(--blue);border-radius:8px;color:var(--text);font-family:var(--mono);font-size:16px;padding:12px;min-width:0}
+.cmdline input:focus{outline:none;box-shadow:0 0 0 3px rgba(47,129,247,.25)}
+/* permission lab */
+.permgrid{display:grid;grid-template-columns:90px repeat(3,1fr);gap:6px;align-items:center;margin:12px 0;font-size:.85rem}
+.permgrid .hd{color:var(--muted);font-weight:700;font-size:.75rem;text-transform:uppercase;letter-spacing:.06em}
+.pbox{display:flex;gap:6px;grid-column:span 3}
+.pbtn{flex:1;min-height:48px;border-radius:8px;border:1px solid var(--border);background:var(--panel3);color:var(--muted);font-family:var(--mono);font-weight:800;font-size:1rem;cursor:pointer}
+.pbtn.on{background:rgba(47,129,247,.2);border-color:var(--blue);color:#79c0ff}
+.octal{font-family:var(--mono);font-size:2rem;color:var(--blue);font-weight:800}
+.math{font-family:var(--mono);font-size:.85rem;color:var(--muted);margin:6px 0}
+/* challenges */
+.chal{background:var(--panel3);border:1px solid var(--border);border-radius:10px;padding:14px;margin:10px 0}
+.chal.done{border-color:var(--green)}
+.chal h4{font-size:.92rem;margin-bottom:4px}
+.chal .obj{font-size:.85rem;color:var(--muted);margin-bottom:8px}
+.timer{font-family:var(--mono);font-size:1.4rem;color:var(--amber);font-weight:800}
+table.ref{width:100%;border-collapse:collapse;font-size:.82rem;margin:10px 0}
+table.ref th,table.ref td{border:1px solid var(--border);padding:9px 8px;text-align:left;vertical-align:top}
+table.ref th{background:var(--panel2);color:var(--blue);font-size:.78rem}
+table.ref td.cmd{font-family:var(--mono);color:#79c0ff;white-space:nowrap}
+.fsmap{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin:12px 0}
+.fscard{background:var(--panel3);border:1px solid var(--border);border-radius:10px;padding:12px;font-size:.83rem}
+.fscard .p{font-family:var(--mono);color:var(--blue);font-weight:800;font-size:.92rem;margin-bottom:4px}
+footer{border-top:1px solid var(--border);padding:22px 16px;text-align:center;color:var(--muted);font-size:.78rem}
+footer .fbrand{color:var(--blue);font-weight:700;letter-spacing:.1em;font-size:.72rem;text-transform:uppercase}
+.progbar{height:8px;background:var(--panel3);border-radius:6px;overflow:hidden;margin:8px 0}
+.progbar i{display:block;height:100%;background:var(--blue);border-radius:6px;transition:width .3s}
+.kbd{font-family:var(--mono);background:var(--panel2);border:1px solid var(--border);border-bottom-width:2px;border-radius:6px;padding:1px 8px;font-size:.8rem}
+</style>
+</head>
+<body>
+<header>
+  <div class="brandmark" aria-hidden="true">⬡</div>
+  <h1><span class="brand">Interstitium Labs · Bootcamps</span>Linux Terminal Mastery</h1>
+  <div class="sub">IT Infrastructure Assessment Prep<br>Platform Skills · From Zero</div>
+</header>
+<nav class="tabs" aria-label="Terminal sections">
+  <button data-tab="term" class="active">⌨️ Terminal</button>
+  <button data-tab="fs">🗂️ Filesystem</button>
+  <button data-tab="perm">🔐 Permission Lab</button>
+  <button data-tab="chal">🏁 Challenges</button>
+  <button data-tab="ref">📖 Command Reference</button>
+</nav>
+<main>
+
+<!-- ================= TERMINAL ================= -->
+<section class="panel active" id="tab-term">
+  <div class="card">
+    <h2>Interactive Linux Terminal</h2>
+    <p class="hint">A real-feeling shell with a simulated server filesystem. Type <code>help</code> for commands, <code>man &lt;command&gt;</code> for the what/how/why/when of any command. Start: <code>pwd</code> → <code>ls</code> → <code>cd /var/log</code>.</p>
+    <div class="term">
+      <div class="out" id="t-out" aria-live="polite"></div>
+      <div class="cmdline">
+        <span class="ps" id="t-ps">admin@srv01:~$</span>
+        <input id="t-in" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Terminal input" placeholder="type a command, e.g. ls -la">
+      </div>
+    </div>
+    <div class="why"><span class="tag">FIRST 60 SECONDS</span><code>pwd</code> = "where am I?" · <code>ls</code> = "what's here?" · <code>cd /var/log</code> = "go to the logs". That loop — <b>orient → list → move</b> — is 80% of terminal navigation. Everything else is built on it.</div>
+  </div>
+</section>
+
+<!-- ================= FILESYSTEM ================= -->
+<section class="panel" id="tab-fs">
+  <div class="card">
+    <h2>🗂️ The Linux Filesystem — what lives where, and why</h2>
+    <p class="hint">Linux has <b>one</b> tree starting at <code>/</code> (root). No C: drives. Every directory has a job — learn the jobs and you can walk into any server and find things.</p>
+    <div class="fsmap">
+      <div class="fscard"><div class="p">/</div><b>The root.</b> Everything hangs off this. You rarely put files here directly.</div>
+      <div class="fscard"><div class="p">/etc</div><b>Configuration.</b> Pronounced "etsy". Service configs live here: <code>/etc/ssh/sshd_config</code>, <code>/etc/nginx/</code>, <code>/etc/hosts</code>. <b>Why here:</b> one predictable place for every program's settings — editable text files, version-controllable.</div>
+      <div class="fscard"><div class="p">/var</div><b>Variable data.</b> Stuff that <i>grows and changes</i>: logs (<code>/var/log/</code>), mail spools, web roots (<code>/var/www/</code>). <b>Why separate:</b> a runaway log can fill a disk — admins often mount <code>/var</code> on its own partition so it can't take down <code>/</code>.</div>
+      <div class="fscard"><div class="p">/home</div><b>People.</b> Each user's personal directory: <code>/home/admin/</code>. Your dotfiles (<code>.bashrc</code>), scripts, notes. Root's home is the exception: <code>/root/</code>.</div>
+      <div class="fscard"><div class="p">/opt</div><b>Optional add-on software.</b> Third-party apps that don't come from the package manager — e.g. <code>/opt/myapp/</code>. Keeps vendor software out of system paths.</div>
+      <div class="fscard"><div class="p">/bin · /sbin</div><b>Essential commands.</b> <code>/bin</code> = everyone (<code>ls</code>, <code>cat</code>); <code>/sbin</code> = admin tools (<code>iptables</code>, <code>reboot</code>). Needed early at boot, before other filesystems mount.</div>
+      <div class="fscard"><div class="p">/usr</div><b>User programs.</b> The bulk of installed software: <code>/usr/bin/</code>, libraries in <code>/usr/lib/</code>. Read-only-ish in normal operation.</div>
+      <div class="fscard"><div class="p">/tmp</div><b>Scratch space.</b> Temporary files; typically wiped on reboot. Anyone can write here — which is exactly why you never trust files in it blindly.</div>
+      <div class="fscard"><div class="p">/dev</div><b>Devices as files.</b> Disks (<code>/dev/sda</code>), terminals, <code>/dev/null</code> (the void). Linux's big idea: <i>everything is a file</i>.</div>
+      <div class="fscard"><div class="p">/proc · /sys</div><b>Fake files, real kernel.</b> Not on disk — generated live. <code>/proc/cpuinfo</code>, <code>/proc/meminfo</code>: read system state by catting files.</div>
+    </div>
+    <div class="logic"><span class="tag">🔍 LOGIC CHECK</span><br>A web app is crashing and you need its error log. Where do you look <b>first</b>? <code>/var/log/</code> — because logs are variable data, and that is the one address every Linux admin memorizes. Config problem instead? <code>/etc/&lt;appname&gt;/</code>. Two directories solve half of all "where is it?" questions.</div>
+    <div class="why"><span class="tag">TRY IT NOW</span>In the Terminal tab: <code>ls /</code> → <code>ls /etc</code> → <code>cat /etc/hosts</code> → <code>ls -lt /var/log</code>. The <code>-t</code> flag sorts by time — newest first — which is how you find <i>today's</i> log.</div>
+  </div>
+</section>
+
+<!-- ================= PERMISSION LAB ================= -->
+<section class="panel" id="tab-perm">
+  <div class="card">
+    <h2>🔐 Permission Math — rwx → octal, step by step</h2>
+    <p class="hint">Every file has <b>three audiences</b> (owner, group, others) and <b>three powers</b> (read, write, execute). Click the boxes — watch the octal number update live.</p>
+    <div class="permgrid" id="perm-grid" role="group" aria-label="Interactive permission builder">
+      <div></div><div class="hd">Read (4)</div><div class="hd">Write (2)</div><div class="hd">Execute (1)</div>
+    </div>
+    <p style="margin-top:10px">Octal: <span class="octal" id="perm-oct">644</span> <span class="mono" id="perm-str" style="color:var(--muted)">rw-r--r--</span></p>
+    <div class="math" id="perm-math"></div>
+    <div class="why"><span class="tag">THE MATH</span><b>r = 4, w = 2, x = 1.</b> Add them per audience: <code>rwx</code> = 4+2+1 = <b>7</b>, <code>rw-</code> = 4+2 = <b>6</b>, <code>r--</code> = <b>4</b>, <code>--x</code> = <b>1</b>, <code>---</code> = <b>0</b>. Three audiences → three digits. <code>755</code> = owner <code>rwx</code> (7), group <code>r-x</code> (5), others <code>r-x</code> (5).</div>
+    <div class="logic"><span class="tag">🔍 LOGIC CHECK</span><br><b>Files vs directories:</b> on a <i>file</i>, <code>x</code> = "allowed to run as a program". On a <i>directory</i>, <code>x</code> = "allowed to enter / list through it". That's why directories are usually <code>755</code> and data files <code>644</code>: everyone may <i>read</i> and <i>pass through</i>, but only the owner may <i>change</i> or <i>execute</i>.</div>
+    <h3>Practice: match the target</h3>
+    <p class="hint" id="perm-target-hint">Press "New target" — then click the boxes above until the octal matches, and hit Check.</p>
+    <div class="row">
+      <button class="btn ghost" id="perm-new">🎲 New target</button>
+      <button class="btn" id="perm-check">Check</button>
+      <span id="perm-score" class="mono" style="color:var(--muted)">score 0 / 0</span>
+    </div>
+    <p id="perm-feedback" style="margin-top:8px;font-weight:700"></p>
+    <h3>Common modes to memorize</h3>
+    <table class="ref">
+      <tr><th>Octal</th><th>String</th><th>Meaning</th><th>Used for</th></tr>
+      <tr><td class="cmd">755</td><td class="cmd">rwxr-xr-x</td><td>Owner full; everyone read+enter</td><td>Scripts you run, directories</td></tr>
+      <tr><td class="cmd">644</td><td class="cmd">rw-r--r--</td><td>Owner write; everyone read</td><td>Config &amp; data files (default)</td></tr>
+      <tr><td class="cmd">700</td><td class="cmd">rwx------</td><td>Owner only, everything</td><td><code>~/.ssh</code> directory</td></tr>
+      <tr><td class="cmd">600</td><td class="cmd">rw-------</td><td>Owner read/write only</td><td>Private keys, <code>~/.ssh/id_rsa</code></td></tr>
+      <tr><td class="cmd">640</td><td class="cmd">rw-r-----</td><td>Owner write; group read</td><td>Log files (admins' group reads)</td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- ================= CHALLENGES ================= -->
+<section class="panel" id="tab-chal">
+  <div class="card">
+    <h2>🏁 Challenges</h2>
+    <p class="hint">Prove the skills in the live terminal. Each challenge verifies your actual commands — no multiple choice.</p>
+    <div class="progbar"><i id="chal-prog" style="width:0%"></i></div>
+    <p class="hint" id="chal-count">0 of 3 complete</p>
+
+    <div class="chal" id="chal-1">
+      <h4>① Find the log file</h4>
+      <p class="obj"><b>Objective:</b> in <code>/var/log</code>, find the most recently modified log and show its last 3 lines.<br><b>Tools:</b> <code>ls -lt</code> (sort by time), <code>tail -3</code>.<br><b>Why:</b> "something broke at 2am" → newest log first is the universal triage move.</p>
+      <div class="row"><button class="btn" data-chal="1">Verify my work</button><span class="mono" data-chalmsg="1" style="font-size:.82rem"></span></div>
+    </div>
+
+    <div class="chal" id="chal-2">
+      <h4>② Fix the script permissions</h4>
+      <p class="obj"><b>Objective:</b> <code>/home/admin/deploy.sh</code> won't execute (<code>permission denied</code>). Make it executable for the owner — and no more permissive than needed.<br><b>Tools:</b> <code>ls -l</code>, <code>chmod</code>.<br><b>Why:</b> the single most common "why won't my script run" fix in infrastructure work.</p>
+      <div class="row"><button class="btn" data-chal="2">Verify my work</button><span class="mono" data-chalmsg="2" style="font-size:.82rem"></span></div>
+    </div>
+
+    <div class="chal" id="chal-3">
+      <h4>③ Timed navigation drill</h4>
+      <p class="obj"><b>Objective:</b> beat the clock. Press Start, then in the terminal complete this route:<br><code>cd /etc</code> → <code>cd /var/log</code> → <code>cd /home/admin</code> → <code>cd /opt</code><br><b>Why:</b> assessments are timed. Navigation must be reflex, not recall.</p>
+      <div class="row">
+        <button class="btn" id="drill-start">▶ Start drill</button>
+        <span class="timer" id="drill-timer">--.-s</span>
+        <span class="mono" id="drill-status" style="font-size:.82rem;color:var(--muted)">route: /etc → /var/log → /home/admin → /opt</span>
+      </div>
+    </div>
+    <div class="why"><span class="tag">ASSESSMENT TIP</span>Narrate while you type: <i>"Checking the newest log in /var/log…"</i> Assessors score confidence and method, not just the answer. The drill builds the muscle; the narration sells it.</div>
+  </div>
+</section>
+
+<!-- ================= REFERENCE ================= -->
+<section class="panel" id="tab-ref">
+  <div class="card">
+    <h2>📖 Command Reference — what / how / why / when</h2>
+    <p class="hint">Every command in the simulator, taught properly. In the terminal, <code>man &lt;cmd&gt;</code> shows the same card.</p>
+    <table class="ref" id="ref-table">
+      <tr><th>Command</th><th>What</th><th>How (example)</th><th>Why / When</th></tr>
+    </table>
+  </div>
+</section>
+
+</main>
+<footer>
+  <div class="fbrand">⬡ Interstitium Labs</div>
+  <p>Created by Interstitium Labs · IT Infrastructure Assessment Prep · All simulation runs locally in your browser — fully offline.</p>
+</footer>
+
+<script>
+"use strict";
+function el(id){return document.getElementById(id);}
+function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+
+/* ---------- tabs ---------- */
+var tabBtns=document.querySelectorAll("nav.tabs button");
+function switchTab(n){
+  tabBtns.forEach(function(b){b.classList.toggle("active",b.dataset.tab===n);});
+  document.querySelectorAll("main .panel").forEach(function(p){p.classList.toggle("active",p.id==="tab-"+n);});
+  window.scrollTo(0,0);
+}
+tabBtns.forEach(function(b){b.addEventListener("click",function(){switchTab(b.dataset.tab);});});
+
+/* ---------- virtual filesystem ---------- */
+function F(content,mode,owner,mt){return {t:"f",c:content,m:mode||0o644,o:owner||"root",g:(owner||"root")==="admin"?"admin":"root",mt:mt||0};}
+function D(ch,mode){return {t:"d",ch:ch,m:mode||0o755,o:"root",g:"root",mt:0};}
+var T0=Date.parse("2026-10-10T08:00:00");
+var FS=D({
+  "etc":D({
+    "hosts":F("127.0.0.1\tlocalhost\n192.168.1.50\tsrv01\n",0o644,"root",T0-86400000*40),
+    "hostname":F("srv01\n",0o644,"root",T0-86400000*40),
+    "passwd":F("root:x:0:0:root:/root:/bin/bash\nadmin:x:1000:1000:Admin:/home/admin:/bin/bash\nwww-data:x:33:33:www-data:/var/www:/usr/sbin/nologin\n",0o644,"root",T0-86400000*40),
+    "nginx":D({"nginx.conf":F("user www-data;\nworker_processes auto;\nevents { worker_connections 1024; }\nhttp {\n    include /etc/nginx/sites-enabled/*;\n}\n",0o644,"root",T0-86400000*3)},0o755),
+    "ssh":D({"sshd_config":F("# OpenSSH server configuration\nPort 22\nPermitRootLogin no\nPasswordAuthentication no\n",0o600,"root",T0-86400000*10)},0o755)
+  },0o755),
+  "var":D({
+    "log":D({
+      "syslog":F("Oct 10 09:14:02 srv01 kernel: [  12.4] eth0: link up (1000 Mb/s)\nOct 10 09:31:44 srv01 nginx[812]: worker process started\nOct 10 09:58:11 srv01 CRON[1204]: (admin) CMD (/home/admin/backup.sh)\nOct 10 10:02:37 srv01 nginx[812]: *1 upstream timed out (db:5432)\n",0o640,"root",T0+2*3600000),
+      "auth.log":F("Oct 10 08:02:11 srv01 sshd[441]: Accepted publickey for admin from 192.168.1.20\nOct 10 08:02:11 srv01 sshd[441]: Failed password for root from 203.0.113.7\nOct 10 08:02:13 srv01 sshd[441]: Failed password for root from 203.0.113.7\n",0o640,"root",T0+3600000),
+      "kern.log":F("Oct  9 22:14:55 srv01 kernel: [86400.1] EXT4-fs (sda1): mounted filesystem\n",0o640,"root",T0-86400000)
+    },0o755),
+    "www":D({"html":D({"index.html":F("<html><body><h1>srv01</h1></body></html>\n",0o644,"root",T0-86400000*5)},0o755)},0o755)
+  },0o755),
+  "home":D({
+    "admin":D({
+      "notes.txt":F("TODO:\n- rotate nginx logs\n- patch db01 Sunday 02:00\n- renew TLS cert (expires Nov 30)\n",0o644,"admin",T0-86400000*2),
+      ".bashrc":F("# ~/.bashrc\nalias ll='ls -la'\nexport EDITOR=vim\n",0o644,"admin",T0-86400000*30),
+      "deploy.sh":F("#!/bin/bash\n# deploys the web app\nset -e\nrsync -av /opt/myapp/ /var/www/html/\nsystemctl reload nginx\necho \"deployed $(date)\"\n",0o644,"admin",T0-86400000)
+    },0o755)
+  },0o755),
+  "opt":D({"myapp":D({"app.py":F("print('hello from myapp')\n",0o644,"root",T0-86400000*6)},0o755)},0o755),
+  "root":D({},0o700),
+  "tmp":D({},0o777)
+},0o755);
+var T={cwd:"/home/admin",user:"admin",hist:[],drill:null};
+
+function splitPath(p){return p.split("/").filter(function(x){return x.length>0;});}
+function resolvePath(p){
+  var abs = p.charAt(0)==="/" ? p : (T.cwd==="/" ? "/"+p : T.cwd+"/"+p);
+  var parts=[],segs=splitPath(abs);
+  for(var i=0;i<segs.length;i++){
+    if(segs[i]===".")continue;
+    if(segs[i]===".."){parts.pop();continue;}
+    parts.push(segs[i]);
+  }
+  return "/"+parts.join("/");
+}
+function getNode(abs){
+  if(abs==="/")return {node:FS,parent:null,name:"/"};
+  var segs=splitPath(abs),cur=FS,par=null,nm="";
+  for(var i=0;i<segs.length;i++){
+    if(!cur.ch||!cur.ch[segs[i]])return null;
+    par=cur;cur=cur.ch[segs[i]];nm=segs[i];
+  }
+  return {node:cur,parent:par,name:nm};
+}
+function modeStr(m,isDir){
+  var s=isDir?"d":"-";
+  var bits=[[0o400,"r"],[0o200,"w"],[0o100,"x"],[0o40,"r"],[0o20,"w"],[0o10,"x"],[0o4,"r"],[0o2,"w"],[0o1,"x"]];
+  for(var i=0;i<bits.length;i++)s+=(m&bits[i][0])?bits[i][1]:"-";
+  return s;
+}
+function fmtDate(mt){var d=new Date(mt||T0);var M=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];return M[d.getMonth()]+" "+String(d.getDate()).padStart(2," ")+" "+String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");}
+function sizeOf(n){return n.t==="d"?4096:(n.c?n.c.length:0);}
+
+/* ---------- output plumbing ---------- */
+function tPrint(html){var o=el("t-out");o.innerHTML+=html+"\n";o.scrollTop=o.scrollHeight;}
+function tPrompt(){return '<span class="in">'+T.user+'@srv01</span><span class="dim">:</span><span class="b">'+(T.cwd==="/home/admin"?"~":T.cwd)+'</span><span class="dim">$</span>';}
+function updatePs(){el("t-ps").textContent=T.user+"@srv01:"+(T.cwd==="/home/admin"?"~":T.cwd)+"$";}
+
+/* command implementations: each returns a string (stdout) or {err:msg} */
+var CMDS={};
+function defCmd(name,fn){CMDS[name]=fn;}
+
+defCmd("pwd",function(a){return T.cwd;});
+defCmd("whoami",function(a){return T.user;});
+defCmd("hostname",function(a){return "srv01";});
+defCmd("uname",function(a){return "Linux srv01 6.8.0-52-generic x86_64 GNU/Linux";});
+defCmd("id",function(a){return "uid=1000(admin) gid=1000(admin) groups=1000(admin),27(sudo)";});
+defCmd("uptime",function(a){return " 10:41:22 up 2 days,  1:12,  1 user,  load average: 0.08, 0.12, 0.10";});
+defCmd("clear",function(a){return "__CLEAR__";});
+defCmd("exit",function(a){return "logout\n(session continues — this is a simulator)";});
+defCmd("history",function(a){
+  return T.hist.map(function(h,i){return "  "+(i+1)+"  "+h;}).join("\n");
+});
+
+defCmd("ls",function(a,stdin){
+  var flags="",paths=[];
+  a.forEach(function(x){if(x.charAt(0)==="-")flags+=x.slice(1);else paths.push(x);});
+  if(paths.length===0)paths=["."];
+  var out=[];
+  paths.forEach(function(p){
+    var n=getNode(resolvePath(p));
+    if(!n)return "__ERR__ls: cannot access '"+p+"': No such file or directory";
+    var dir=n.node.t==="d"?n.node:(getNode(resolvePath(p.split("/").slice(0,-1).join("/")||"/"))||{}).node;
+    var list=n.node.t==="d"?Object.keys(n.node.ch):[n.name];
+    var nodes=list.map(function(k){return {k:k,node:n.node.t==="d"?n.node.ch[k]:n.node};});
+    if(flags.indexOf("a")<0)nodes=nodes.filter(function(x){return x.k.charAt(0)!==".";});
+    if(flags.indexOf("t")>=0)nodes.sort(function(x,y){return (y.node.mt||0)-(x.node.mt||0);});
+    else nodes.sort(function(x,y){return x.k<y.k?-1:1;});
+    if(flags.indexOf("l")>=0){
+      nodes.forEach(function(x){
+        out.push(modeStr(x.node.m,x.node.t==="d")+" 1 "+x.node.o+" "+x.node.g+" "+String(sizeOf(x.node)).padStart(6)+" "+fmtDate(x.node.mt)+" "+x.k+(x.node.t==="d"?"/":""));
+      });
+    }else{
+      nodes.forEach(function(x){out.push(x.k+(x.node.t==="d"?"/":""));});
+    }
+  });
+  return out.join("\n");
+});
+
+defCmd("cd",function(a){
+  var p=a[0]||"/home/admin";
+  if(p==="~")p="/home/admin";
+  var abs=resolvePath(p),n=getNode(abs);
+  if(!n)return "__ERR__bash: cd: "+p+": No such file or directory";
+  if(n.node.t!=="d")return "__ERR__bash: cd: "+p+": Not a directory";
+  T.cwd=abs;updatePs();drillCheck(abs);
+  return "";
+});
+
+defCmd("mkdir",function(a){
+  if(!a[0])return "__ERR__mkdir: missing operand";
+  var abs=resolvePath(a[0]),par=getNode(abs.split("/").slice(0,-1).join("/")||"/");
+  if(!par||par.node.t!=="d")return "__ERR__mkdir: cannot create directory '"+a[0]+"': No such file or directory";
+  var nm=abs.split("/").pop();
+  if(par.node.ch[nm])return "__ERR__mkdir: cannot create directory '"+a[0]+"': File exists";
+  par.node.ch[nm]=D({},0o755);par.node.ch[nm].o=T.user;par.node.ch[nm].g=T.user;par.node.ch[nm].mt=Date.now();
+  return "";
+});
+defCmd("rmdir",function(a){
+  if(!a[0])return "__ERR__rmdir: missing operand";
+  var n=getNode(resolvePath(a[0]));
+  if(!n)return "__ERR__rmdir: failed to remove '"+a[0]+"': No such file or directory";
+  if(n.node.t!=="d")return "__ERR__rmdir: failed to remove '"+a[0]+"': Not a directory";
+  if(Object.keys(n.node.ch).length)return "__ERR__rmdir: failed to remove '"+a[0]+"': Directory not empty";
+  delete n.parent.ch[n.name];return "";
+});
+defCmd("touch",function(a){
+  if(!a[0])return "__ERR__touch: missing file operand";
+  var abs=resolvePath(a[0]),n=getNode(abs);
+  if(n){n.node.mt=Date.now();return "";}
+  var par=getNode(abs.split("/").slice(0,-1).join("/")||"/");
+  if(!par)return "__ERR__touch: cannot touch '"+a[0]+"': No such file or directory";
+  par.node.ch[abs.split("/").pop()]=F("",0o644,T.user,Date.now());return "";
+});
+defCmd("rm",function(a){
+  var rec=false,paths=[];
+  a.forEach(function(x){if(x==="-r"||x==="-rf"||x==="-fr")rec=true;else if(x.charAt(0)!=="-")paths.push(x);});
+  if(!paths.length)return "__ERR__rm: missing operand";
+  var msgs=[];
+  paths.forEach(function(p){
+    var n=getNode(resolvePath(p));
+    if(!n){msgs.push("__ERR__rm: cannot remove '"+p+"': No such file or directory");return;}
+    if(n.node.t==="d"&&!rec){msgs.push("__ERR__rm: cannot remove '"+p+"': Is a directory");return;}
+    delete n.parent.ch[n.name];
+  });
+  return msgs.join("\n");
+});
+defCmd("cp",function(a){
+  var paths=a.filter(function(x){return x.charAt(0)!=="-";});
+  if(paths.length<2)return "__ERR__cp: missing destination file operand";
+  var src=getNode(resolvePath(paths[0]));
+  if(!src)return "__ERR__cp: cannot stat '"+paths[0]+"': No such file or directory";
+  if(src.node.t!=="f")return "__ERR__cp: -r not specified; omitting directory '"+paths[0]+"'";
+  var dAbs=resolvePath(paths[1]),dn=getNode(dAbs),destPar,destNm;
+  if(dn&&dn.node.t==="d"){destPar=dn.node;destNm=src.name;}
+  else{var dp=getNode(dAbs.split("/").slice(0,-1).join("/")||"/");if(!dp)return "__ERR__cp: cannot create '"+paths[1]+"'";destPar=dp.node;destNm=dAbs.split("/").pop();}
+  destPar.ch[destNm]={t:"f",c:src.node.c,m:src.node.m,o:T.user,g:T.user,mt:Date.now()};
+  return "";
+});
+defCmd("mv",function(a){
+  var paths=a.filter(function(x){return x.charAt(0)!=="-";});
+  if(paths.length<2)return "__ERR__mv: missing destination file operand";
+  var src=getNode(resolvePath(paths[0]));
+  if(!src)return "__ERR__mv: cannot stat '"+paths[0]+"': No such file or directory";
+  var dAbs=resolvePath(paths[1]),dn=getNode(dAbs);
+  var destPar,destNm;
+  if(dn&&dn.node.t==="d"){destPar=dn.node;destNm=src.name;}
+  else{var dp=getNode(dAbs.split("/").slice(0,-1).join("/")||"/");if(!dp)return "__ERR__mv: cannot move to '"+paths[1]+"'";destPar=dp.node;destNm=dAbs.split("/").pop();}
+  destPar.ch[destNm]=src.node;delete src.parent.ch[src.name];
+  return "";
+});
+defCmd("cat",function(a,stdin){
+  if(!a.length)return stdin||"";
+  var out=[];
+  for(var i=0;i<a.length;i++){
+    var n=getNode(resolvePath(a[i]));
+    if(!n){out.push("__ERR__cat: "+a[i]+": No such file or directory");continue;}
+    if(n.node.t!=="f"){out.push("__ERR__cat: "+a[i]+": Is a directory");continue;}
+    out.push(n.node.c);
+  }
+  return out.join("");
+});
+defCmd("head",function(a,stdin){
+  var n=10,files=[];
+  for(var i=0;i<a.length;i++){if(a[i]==="-n"&&a[i+1]){n=parseInt(a[i+1],10);i++;}else if(/^-(\d+)$/.test(a[i])){n=parseInt(a[i].slice(1),10);}else if(a[i].charAt(0)!=="-")files.push(a[i]);}
+  var src=files.length?CMDS.cat(files):(stdin||"");
+  return src.split("\n").slice(0,n).join("\n");
+});
+defCmd("tail",function(a,stdin){
+  var n=10,files=[],follow=false;
+  for(var i=0;i<a.length;i++){
+    if(a[i]==="-n"&&a[i+1]){n=parseInt(a[i+1],10);i++;}
+    else if(a[i]==="-f")follow=true;
+    else if(/^-(\d+)$/.test(a[i])){n=parseInt(a[i].slice(1),10);}
+    else if(a[i].charAt(0)!=="-")files.push(a[i]);
+  }
+  var src=files.length?CMDS.cat(files):(stdin||"");
+  if(src.indexOf("__ERR__")===0)return src;
+  var lines=src.replace(/\n$/,"").split("\n");
+  var r=lines.slice(Math.max(0,lines.length-n)).join("\n");
+  if(follow)r+="\n(tail -f: following… simulated — new lines would appear here)";
+  return r;
+});
+defCmd("less",function(a,stdin){
+  var r=CMDS.cat(a,stdin);
+  return r+"(── less: pager simulated — full file shown ──)";
+});
+defCmd("echo",function(a){return a.join(" ");});
+
+defCmd("grep",function(a,stdin){
+  var ign=false,ln=false,rec=false,pat=null,files=[];
+  for(var i=0;i<a.length;i++){
+    var x=a[i];
+    if(x==="-i")ign=true;else if(x==="-n")ln=true;else if(x==="-r")rec=true;
+    else if(/^-/.test(x)&&x.length>1&&/^[inr]+$/.test(x.slice(1))){if(x.indexOf("i")>=0)ign=true;if(x.indexOf("n")>=0)ln=true;if(x.indexOf("r")>=0)rec=true;}
+    else if(pat===null)pat=x;else files.push(x);
+  }
+  if(pat===null)return "__ERR__grep: missing pattern";
+  var rx=new RegExp(pat,ign?"gi":"g");
+  var lines=[];
+  function scanFile(n,path){
+    if(n.node.t!=="f")return;
+    n.node.c.split("\n").forEach(function(l,idx){
+      if(rx.test(l)){lines.push((rec?path+":":"")+(ln?(idx+1)+":":"")+l);}
+      rx.lastIndex=0;
+    });
+  }
+  function walk(n,path){
+    Object.keys(n.node.ch).forEach(function(k){
+      var c={node:n.node.ch[k],name:k};
+      if(c.node.t==="d")walk(c,path+"/"+k);else scanFile(c,path+"/"+k);
+    });
+  }
+  if(!files.length){
+    (stdin||"").split("\n").forEach(function(l,idx){if(rx.test(l)){lines.push((ln?(idx+1)+":":"")+l);}rx.lastIndex=0;});
+  }else{
+    files.forEach(function(f){
+      var n=getNode(resolvePath(f));
+      if(!n){lines.push("__ERR__grep: "+f+": No such file or directory");return;}
+      if(n.node.t==="d"){if(rec)walk(n,resolvePath(f));else lines.push("__ERR__grep: "+f+": Is a directory");return;}
+      scanFile(n,resolvePath(f));
+    });
+  }
+  return lines.join("\n");
+});
+defCmd("find",function(a){
+  var start=a[0]&&a[0].charAt(0)!=="-"?a[0]:".";
+  var namePat=null,typeF=null;
+  for(var i=0;i<a.length;i++){
+    if(a[i]==="-name"&&a[i+1]){namePat=a[i+1];i++;}
+    if(a[i]==="-type"&&a[i+1]){typeF=a[i+1];i++;}
+  }
+  var rx=namePat?new RegExp("^"+namePat.replace(/\./g,"\\.").replace(/\*/g,".*").replace(/\?/g,".")+"$"):null;
+  var base=getNode(resolvePath(start));
+  if(!base)return "__ERR__find: '"+start+"': No such file or directory";
+  var out=[];
+  (function walk(n,path){
+    Object.keys(n.node.ch).forEach(function(k){
+      var c=n.node.ch[k],p=path+"/"+k;
+      var okType=!typeF||(typeF==="d"&&c.t==="d")||(typeF==="f"&&c.t==="f");
+      if(okType&&(!rx||rx.test(k)))out.push(p);
+      if(c.t==="d")walk({node:c},p);
+    });
+  })({node:base.node.t==="d"?base.node:{ch:{}}},resolvePath(start));
+  return out.join("\n");
+});
+defCmd("chmod",function(a){
+  if(a.length<2)return "__ERR__chmod: missing operand";
+  var mode=a[0],targets=a.slice(1),msgs=[];
+  targets.forEach(function(t){
+    var n=getNode(resolvePath(t));
+    if(!n){msgs.push("__ERR__chmod: cannot access '"+t+"': No such file or directory");return;}
+    if(/^[0-7]{3,4}$/.test(mode)){n.node.m=parseInt(mode.slice(-3),8);}
+    else{
+      var m=/^([ugoa]*)([+=-])([rwx]*)$/.exec(mode);
+      if(!m){msgs.push("__ERR__chmod: invalid mode '"+mode+"'");return;}
+      var who=m[1]||"a",op=m[2],perms=m[3];
+      var mask=0;
+      if(perms.indexOf("r")>=0)mask|=0o444;
+      if(perms.indexOf("w")>=0)mask|=0o222;
+      if(perms.indexOf("x")>=0)mask|=0o111;
+      var wmask=0;
+      if(who.indexOf("u")>=0||who==="a")wmask|=0o700;
+      if(who.indexOf("g")>=0||who==="a")wmask|=0o070;
+      if(who.indexOf("o")>=0||who==="a")wmask|=0o007;
+      if(op==="+")n.node.m|=(mask&wmask);
+      else if(op==="-")n.node.m&=~(mask&wmask);
+      else n.node.m=(n.node.m&~wmask)|(mask&wmask);
+    }
+  });
+  return msgs.join("\n");
+});
+defCmd("chown",function(a){
+  if(a.length<2)return "__ERR__chown: missing operand";
+  var owner=a[0],msgs=[];
+  a.slice(1).forEach(function(t){
+    var n=getNode(resolvePath(t));
+    if(!n){msgs.push("__ERR__chown: cannot access '"+t+"': No such file or directory");return;}
+    var parts=owner.split(":");
+    n.node.o=parts[0];if(parts[1])n.node.g=parts[1];
+  });
+  msgs.push("(simulated: ownership updated)");
+  return msgs.join("\n");
+});
+defCmd("ps",function(a){
+  return "USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND\n"
+    +"root         1  0.0  0.2 225360  9136 ?        Ss   08:00   0:02 /sbin/init\n"
+    +"root       441  0.0  0.1  14880  6400 ?        Ss   08:02   0:00 sshd: /usr/sbin/sshd\n"
+    +"root       812  0.1  0.4  76544 18200 ?        Ss   09:31   0:04 nginx: master process\n"
+    +"www-data   813  0.0  0.2  76900  9400 ?        S    09:31   0:01 nginx: worker process\n"
+    +"admin     1204  0.0  0.1  22000  5400 pts/0    Ss   10:40   0:00 -bash\n"
+    +"admin     1288  0.0  0.0  12100  1100 pts/0    R+   10:41   0:00 ps aux";
+});
+defCmd("df",function(a){
+  return "Filesystem      Size  Used Avail Use% Mounted on\n"
+    +"/dev/sda1        98G   34G   59G  37% /\n"
+    +"tmpfs           3.9G     0  3.9G   0% /dev/shm\n"
+    +"/dev/sdb1       200G  120G   80G  60% /var";
+});
+defCmd("du",function(a){
+  var p=a.filter(function(x){return x.charAt(0)!=="-";})[0]||".";
+  var n=getNode(resolvePath(p));
+  if(!n)return "__ERR__du: cannot access '"+p+"': No such file or directory";
+  function sz(nd){if(nd.t==="f")return nd.c.length;var s=0;Object.keys(nd.ch).forEach(function(k){s+=sz(nd.ch[k]);});return s;}
+  var kb=Math.max(4,Math.round(sz(n.node)/1024));
+  return kb+"\t"+p;
+});
+defCmd("free",function(a){
+  return "               total        used        free      shared  buff/cache   available\n"
+    +"Mem:         7982MB       2140MB       3210MB        180MB       2632MB       5400MB\n"
+    +"Swap:        2048MB          0MB       2048MB";
+});
+defCmd("systemctl",function(a){
+  var sub=a[0],svc=a[1]||"";
+  if(sub==="status"){
+    if(!svc)return "__ERR__systemctl status: missing service name";
+    var on=["nginx","ssh","cron"].indexOf(svc)>=0;
+    return "● "+svc+".service - "+(on?"active (running)":"inactive (dead)")+"\n"
+      +(on?"   Active: active (running) since Fri 2026-10-10 09:31:44 UTC; 1h 10min ago\n   Main PID: 812":"   Active: inactive (dead)")
+      +(svc==="nginx"?"\n   Docs: config at /etc/nginx/nginx.conf — logs at /var/log/syslog":"");
+  }
+  if(sub==="start"||sub==="stop"||sub==="restart"||sub==="reload"||sub==="enable"){
+    if(!svc)return "__ERR__systemctl "+sub+": missing service name";
+    return "(simulated) "+svc+".service: "+sub+" completed.";
+  }
+  if(sub==="list-units")return "nginx.service   loaded active running\nssh.service     loaded active running\ncron.service    loaded active running";
+  return "__ERR__systemctl: try: status|start|stop|restart|reload|enable <service>";
+});
+defCmd("journalctl",function(a){
+  var u=null,n=20;
+  for(var i=0;i<a.length;i++){if(a[i]==="-u"&&a[i+1]){u=a[i+1];i++;}if(a[i]==="-n"&&a[i+1]){n=parseInt(a[i+1],10);i++;}}
+  var lines=[
+    "Oct 10 09:31:44 srv01 systemd[1]: Started nginx.service - A high performance web server.",
+    "Oct 10 09:31:44 srv01 nginx[812]: worker process started",
+    "Oct 10 09:58:11 srv01 CRON[1204]: (admin) CMD (/home/admin/backup.sh)",
+    "Oct 10 10:02:37 srv01 nginx[812]: *1 upstream timed out (110: Connection timed out) while connecting to db:5432",
+    "Oct 10 10:15:03 srv01 sshd[441]: Accepted publickey for admin from 192.168.1.20"
+  ];
+  if(u)lines=lines.filter(function(l){return l.indexOf(u)>=0;});
+  return "-- Logs begin at Fri 2026-10-10 08:00:01 UTC --\n"+lines.slice(-n).join("\n");
+});
+defCmd("ip",function(a){
+  if(a[0]==="addr"||a[0]==="a")
+    return "1: lo: <LOOPBACK,UP> mtu 65536\n    inet 127.0.0.1/8 scope host lo\n"
+      +"2: eth0: <BROADCAST,MULTICAST,UP> mtu 1500\n    inet 192.168.1.50/24 brd 192.168.1.255 scope global eth0\n    inet6 fe80::a00:27ff:fe4e:12ab/64 scope link";
+  if(a[0]==="route"||a[0]==="r")
+    return "default via 192.168.1.1 dev eth0 proto dhcp\n192.168.1.0/24 dev eth0 proto kernel scope link src 192.168.1.50";
+  return "__ERR__ip: try 'ip addr' or 'ip route'";
+});
+defCmd("ss",function(a){
+  return "Netid State  Recv-Q Send-Q Local Address:Port  Process\n"
+    +"tcp   LISTEN 0      128    0.0.0.0:22           sshd\n"
+    +"tcp   LISTEN 0      511    0.0.0.0:80           nginx\n"
+    +"tcp   LISTEN 0      511    0.0.0.0:443          nginx\n"
+    +"tcp   ESTAB  0      0      192.168.1.50:22      sshd: admin@pts/0";
+});
+defCmd("ping",function(a){
+  var c=4,host=null;
+  for(var i=0;i<a.length;i++){if(a[i]==="-c"&&a[i+1]){c=parseInt(a[i+1],10);i++;}else if(a[i].charAt(0)!=="-")host=a[i];}
+  if(!host)return "__ERR__ping: usage: ping [-c count] <host>";
+  c=Math.min(c,4);
+  var out=["PING "+host+" ("+(host==="8.8.8.8"?"8.8.8.8":"93.184.216.34")+") 56(84) bytes of data."];
+  for(var k=1;k<=c;k++)out.push("64 bytes from "+host+": icmp_seq="+k+" ttl=117 time="+(12+k*3)+"."+(k*7)+" ms");
+  out.push("--- "+host+" ping statistics ---",c+" packets transmitted, "+c+" received, 0% packet loss");
+  return out.join("\n");
+});
+defCmd("curl",function(a){
+  var head=a.indexOf("-I")>=0,url=null;
+  a.forEach(function(x){if(x.charAt(0)!=="-")url=x;});
+  if(!url)return "__ERR__curl: no URL specified";
+  if(head)return "HTTP/1.1 200 OK\nServer: nginx/1.24.0\nContent-Type: text/html\nContent-Length: 612";
+  return "<!doctype html><html><head><title>Example Domain</title></head><body>(simulated response from "+url+")</body></html>";
+});
+defCmd("sudo",function(a){
+  if(!a.length)return "__ERR__usage: sudo <command>";
+  var r=execTokens(a,"");
+  return r+"(simulated: ran as root via sudo)";
+});
+
+/* ---------- man pages: what / how / why / when ---------- */
+var MAN={
+pwd:{w:"Print Working Directory — shows the full path of where you are.",h:"pwd",y:"You always need to know 'where am I?' before acting. Scripts and humans both get lost without it.",n:"First command in any unfamiliar shell, before cd/ls."},
+ls:{w:"List directory contents.",h:"ls · ls -l (long: permissions, owner, size, date) · ls -la (include hidden dotfiles) · ls -lt (newest first)",y:"The 'what's here?' command. -l reveals permissions and owners; -t finds today's files.",n:"After every cd. Before editing, deploying, or deleting anything."},
+cd:{w:"Change Directory — move through the filesystem.",h:"cd /var/log (absolute) · cd .. (up one) · cd ~ (home) · cd - (back)",y:"Navigation itself. Absolute paths start at /; relative paths start where you stand.",n:"Constantly — it's how you travel."},
+mkdir:{w:"Create a new directory.",h:"mkdir /opt/myapp",y:"Organizing: one directory per project/service keeps systems manageable.",n:"Setting up new apps, staging areas, script output folders."},
+rm:{w:"Remove files or directories. No trash can — deletion is permanent.",h:"rm file.txt · rm -r dirname/ (recursive)",y:"Cleanup. The -r flag means 'and everything inside'. Double-check the path — there is no undo.",n:"Removing temp files, old logs, failed deploys. Never rm -rf / — it erases the system."},
+cp:{w:"Copy files.",h:"cp notes.txt notes.bak · cp -r dir/ dir2/",y:"Backups before edits: cp nginx.conf nginx.conf.bak is a 2-second insurance policy.",n:"Before changing any config file."},
+mv:{w:"Move or rename files.",h:"mv old.txt new.txt · mv file.txt /tmp/",y:"One tool for rename + relocate — same operation underneath.",n:"Renaming, organizing, rotating logs."},
+cat:{w:"Print a whole file to the screen.",h:"cat /etc/hosts",y:"Fastest way to read small files (configs, notes).",n:"Small files. For big files use less; for the end of logs use tail."},
+less:{w:"Page through a file (scroll, search with /, quit with q).",h:"less /var/log/syslog",y:"Reading big files without flooding the screen.",n:"Large logs and configs."},
+grep:{w:"Search text inside files — the most-used diagnostic tool.",h:"grep -i error /var/log/syslog · grep -rn 'password' /etc/",y:"Finds needles in haystacks: errors in logs, settings in configs. -r = recursive, -i = ignore case, -n = line numbers.",n:"Every troubleshooting session, usually within the first 5 commands."},
+find:{w:"Find files by name, type, or age across directories.",h:"find /var/log -name '*.log' · find / -name nginx.conf 2>/dev/null",y:"When you know what it's called but not where it lives.",n:"Locating configs, hunting large/old files."},
+chmod:{w:"Change file permissions (who can read/write/execute).",h:"chmod 755 deploy.sh · chmod u+x script.sh",y:"'Permission denied' is fixed here. Octal (755) or symbolic (u+x) — same result.",n:"After creating scripts, fixing deploys, locking down keys (600)."},
+chown:{w:"Change file owner (and group).",h:"sudo chown admin:admin file.txt",y:"Files created by the wrong user break services (e.g. root-owned files in a user's app).",n:"After copying files as root, fixing web-root ownership."},
+ps:{w:"List running processes.",h:"ps aux · ps aux | grep nginx",y:"'Is it running?' — the first question about any service.",n:"Verifying services, finding runaway processes."},
+systemctl:{w:"Control system services (start/stop/status/enable).",h:"systemctl status nginx · sudo systemctl restart nginx",y:"Services are how servers run software persistently. status tells the truth; restart fixes most ills.",n:"Deploying, troubleshooting, enabling services at boot."},
+journalctl:{w:"Read the system journal (service logs).",h:"journalctl -u nginx · journalctl -n 50",y:"When a service fails, its story is here — start with -u <service>.",n:"Right after 'systemctl status' shows a failure."},
+"ip addr":{w:"Show network interfaces and IP addresses.",h:"ip addr · ip route",y:"'Do I have an IP? On which network?' — networking triage step one.",n:"New server bring-up, 'can't reach the network' tickets."},
+ss:{w:"Show listening ports and connections (modern netstat).",h:"ss -tulpn",y:"'Is anything listening on port 80?' Proves a service is actually reachable.",n:"Verifying web/db services, finding port conflicts."},
+ping:{w:"Test basic network reachability to a host.",h:"ping -c 3 8.8.8.8",y:"Separates 'network is down' from 'the app is down'.",n:"First step of any connectivity complaint."},
+curl:{w:"Make HTTP requests from the shell.",h:"curl -I https://example.com",y:"Tests web services without a browser — status codes don't lie.",n:"Checking APIs, verifying deploys, debugging webhooks."},
+df:{w:"Disk Free — space per filesystem.",h:"df -h",y:"'Disk full' breaks everything silently. -h = human-readable.",n:"When writes fail, before big copies, weekly health checks."},
+du:{w:"Disk Usage — how big is this directory?",h:"du -sh /var/log",y:"Finds WHAT is eating the disk that df says is full.",n:"Right after df shows a full filesystem."}
+};
+
+/* man command (needs MAN, defined above) */
+defCmd("man",function(a){
+  var k=(a[0]||"").toLowerCase();
+  var m=MAN[k]||MAN[k.replace(/^ip$/,"ip addr")];
+  if(!m)return "__ERR__No manual entry for "+(a[0]||"(empty)")+" — try: man ls";
+  var name=a[0].toUpperCase();
+  return "MANUAL — "+name+"\n\nWHAT: "+m.w+"\nHOW:  "+m.h+"\nWHY:  "+m.y+"\nWHEN: "+m.n;
+});
+
+/* ---------- command runner: pipes + redirection ---------- */
+function tokenize(line){
+  var toks=[],cur="",q=null;
+  for(var i=0;i<line.length;i++){
+    var ch=line[i];
+    if(q){if(ch===q)q=null;else cur+=ch;}
+    else if(ch==='"'||ch==="'")q=ch;
+    else if(ch===" "||ch==="\t"){if(cur){toks.push(cur);cur="";}}
+    else cur+=ch;
+  }
+  if(cur)toks.push(cur);
+  return toks;
+}
+function execTokens(toks,stdin){
+  if(!toks.length)return "";
+  var fn=CMDS[toks[0]];
+  if(!fn)return "__ERR__bash: "+toks[0]+": command not found (try 'help')";
+  return fn(toks.slice(1),stdin);
+}
+function runLine(line){
+  line=line.trim();if(!line)return;
+  T.hist.push(line);
+  tPrint(tPrompt()+" "+esc(line));
+  /* redirection: cmd > file / cmd >> file */
+  var redir=null,append=false,body=line;
+  var m=line.match(/^(.*?)\s*(>>|>)\s*(\S+)\s*$/);
+  if(m&&m[1].trim()!==""){redir=m[3];append=(m[2]===">>");body=m[1];}
+  /* pipes */
+  var stages=body.split("|").map(function(s){return s.trim();}).filter(function(s){return s;});
+  var out="",err=null;
+  for(var i=0;i<stages.length;i++){
+    var r=execTokens(tokenize(stages[i]),out);
+    if(typeof r==="string"&&r.indexOf("__ERR__")===0){err=r.slice(7);break;}
+    out=r;
+  }
+  if(err){tPrint('<span class="er">'+esc(err)+'</span>');return;}
+  if(out==="__CLEAR__"){el("t-out").innerHTML="";return;}
+  if(redir){
+    var abs=resolvePath(redir),par=getNode(abs.split("/").slice(0,-1).join("/")||"/");
+    if(!par){tPrint('<span class="er">bash: '+esc(redir)+': No such file or directory</span>');return;}
+    var nm=abs.split("/").pop(),ex=getNode(abs);
+    var content=append&&ex?ex.node.c+out:out;
+    par.node.ch[nm]=F(content,0o644,T.user,Date.now());
+    return;
+  }
+  if(out)tPrint(esc(out));
+}
+defCmd("help",function(a){
+  return "Commands in this simulator (try 'man <cmd>' for what/how/why/when):\n"
+    +"  NAVIGATE   pwd  ls  cd\n"
+    +"  FILES      mkdir  rmdir  touch  rm  cp  mv  cat  head  tail  less  echo\n"
+    +"  SEARCH     grep  find\n"
+    +"  PERMS      chmod  chown  (see the Permission Lab tab)\n"
+    +"  SYSTEM     ps  df  du  free  uptime  systemctl  journalctl  whoami  id  hostname\n"
+    +"  NETWORK    ip addr  ip route  ss  ping  curl\n"
+    +"  SHELL      history  clear  sudo  exit  · pipes (|) and > / >> work";
+});
+el("t-in").addEventListener("keydown",function(ev){
+  if(ev.key==="Enter"){var v=el("t-in").value;el("t-in").value="";runLine(v);}
+});
+
+/* ---------- permission lab ---------- */
+var PERM={u:{r:1,w:1,x:0},g:{r:1,w:0,x:0},o:{r:1,w:0,x:0}};
+var PTARGET=null,PSCORE={ok:0,n:0};
+function permOctal(){
+  function d(o){return (o.r?4:0)+(o.w?2:0)+(o.x?1:0);}
+  return ""+d(PERM.u)+d(PERM.g)+d(PERM.o);
+}
+function permStr(){
+  function s(o){return (o.r?"r":"-")+(o.w?"w":"-")+(o.x?"x":"-");}
+  return s(PERM.u)+s(PERM.g)+s(PERM.o);
+}
+function renderPerm(){
+  var g=el("perm-grid");
+  g.querySelectorAll(".pbox").forEach(function(b){b.remove();});
+  g.querySelectorAll(".who").forEach(function(b){b.remove();});
+  [["u","Owner"],["g","Group"],["o","Others"]].forEach(function(w){
+    var lab=document.createElement("div");lab.className="who";lab.style.cssText="font-weight:700;font-size:.82rem";lab.textContent=w[1];
+    var box=document.createElement("div");box.className="pbox";
+    ["r","w","x"].forEach(function(p){
+      var b=document.createElement("button");b.className="pbtn"+(PERM[w[0]][p]?" on":"");b.textContent=p;b.setAttribute("aria-pressed",PERM[w[0]][p]?"true":"false");
+      b.addEventListener("click",function(){PERM[w[0]][p]=PERM[w[0]][p]?0:1;renderPerm();});
+      box.appendChild(b);
+    });
+    g.appendChild(lab);g.appendChild(box);
+  });
+  el("perm-oct").textContent=permOctal();
+  el("perm-str").textContent=permStr();
+  function d(o){return (o.r?4:0)+(o.w?2:0)+(o.x?1:0);}
+  el("perm-math").innerHTML=
+    "owner: "+(PERM.u.r?"4":"0")+"+"+(PERM.u.w?"2":"0")+"+"+(PERM.u.x?"1":"0")+" = <b style='color:var(--text)'>"+d(PERM.u)+"</b> &nbsp;·&nbsp; "+
+    "group: "+(PERM.g.r?"4":"0")+"+"+(PERM.g.w?"2":"0")+"+"+(PERM.g.x?"1":"0")+" = <b style='color:var(--text)'>"+d(PERM.g)+"</b> &nbsp;·&nbsp; "+
+    "others: "+(PERM.o.r?"4":"0")+"+"+(PERM.o.w?"2":"0")+"+"+(PERM.o.x?"1":"0")+" = <b style='color:var(--text)'>"+d(PERM.o)+"</b>";
+  if(PTARGET)el("perm-target-hint").innerHTML="Target: <span class='octal' style='font-size:1.3rem'>"+PTARGET+"</span> — set the boxes to match, then Check.";
+}
+el("perm-new").addEventListener("click",function(){
+  var pool=["755","644","700","600","640","750","775","664","711"];
+  PTARGET=pool[Math.floor(Math.random()*pool.length)];
+  el("perm-feedback").textContent="";
+  renderPerm();
+  el("perm-feedback").style.color="var(--muted)";
+  el("perm-feedback").textContent="Target set — go.";
+});
+el("perm-check").addEventListener("click",function(){
+  if(!PTARGET){el("perm-feedback").textContent="Hit 'New target' first.";return;}
+  PSCORE.n++;
+  var fb=el("perm-feedback");
+  if(permOctal()===PTARGET){
+    PSCORE.ok++;fb.style.color="var(--green)";
+    fb.textContent="✓ Correct! "+PTARGET+" = "+permStr()+". New target? Hit the dice.";
+    PTARGET=null;
+  }else{
+    fb.style.color="var(--red)";
+    fb.textContent="✗ That's "+permOctal()+" ("+permStr()+"), not "+PTARGET+". Remember r=4 w=2 x=1 — adjust and retry.";
+  }
+  el("perm-score").textContent="score "+PSCORE.ok+" / "+PSCORE.n;
+  renderPerm();
+});
+
+/* ---------- challenges ---------- */
+var CHAL={done:{}};
+function chalDone(n,msg){
+  CHAL.done[n]=true;
+  var box=el("chal-"+n);box.classList.add("done");
+  var m=document.querySelector('[data-chalmsg="'+n+'"]');
+  if(m){m.style.color="var(--green)";m.textContent="✓ "+msg;}
+  var c=Object.keys(CHAL.done).length;
+  el("chal-prog").style.width=(c/3*100)+"%";
+  el("chal-count").textContent=c+" of 3 complete";
+}
+document.querySelectorAll("[data-chal]").forEach(function(b){
+  b.addEventListener("click",function(){
+    var n=b.dataset.chal,msg=document.querySelector('[data-chalmsg="'+n+'"]');
+    msg.style.color="var(--red)";
+    if(n==="1"){
+      var hasLs=T.hist.some(function(l){return /ls/.test(l)&&/var\/log/.test(l)&&/\s-[a-zA-Z]*t/.test(l);});
+      var hasTail=T.hist.some(function(l){return /^tail\b/.test(l.trim())&&/syslog/.test(l);});
+      if(hasLs&&hasTail)chalDone(1,"newest log found (syslog) and tailed");
+      else msg.textContent="Not yet — run: ls -lt /var/log  then  tail -3 /var/log/syslog";
+    }
+    if(n==="2"){
+      var node=getNode("/home/admin/deploy.sh");
+      var mode=node?node.node.m:0;
+      if(mode===0o755)chalDone(2,"deploy.sh is now 755 (rwxr-xr-x)");
+      else if(mode&0o100)msg.textContent="Executable, but "+mode.toString(8)+" is more permissive than needed — aim for exactly 755.";
+      else msg.textContent="Not yet — check with ls -l /home/admin/deploy.sh, then chmod 755 it.";
+    }
+  });
+});
+/* timed drill */
+var DRILL_ROUTE=["/etc","/var/log","/home/admin","/opt"];
+var drillTimer=null;
+function drillCheck(cwd){
+  if(!T.drill||!T.drill.active)return;
+  if(cwd===DRILL_ROUTE[T.drill.idx]){
+    T.drill.idx++;
+    el("drill-status").textContent="✓ "+T.drill.idx+" of 4 — next: "+(DRILL_ROUTE[T.drill.idx]||"done!");
+    el("drill-status").style.color="var(--green)";
+    if(T.drill.idx>=DRILL_ROUTE.length){
+      T.drill.active=false;clearInterval(drillTimer);
+      var t=((Date.now()-T.drill.t0)/1000).toFixed(1);
+      el("drill-timer").textContent=t+"s";
+      var verdict=t<20?"blazing — assessment ready":(t<45?"solid — keep drilling":"done — run it again to build speed");
+      el("drill-status").textContent="Finished in "+t+"s — "+verdict;
+      el("drill-status").style.color="var(--green)";
+      chalDone(3,"navigation drill finished in "+t+"s");
+    }
+  }
+}
+el("drill-start").addEventListener("click",function(){
+  T.drill={active:true,idx:0,t0:Date.now()};
+  T.cwd="/home/admin";updatePs();
+  el("drill-status").style.color="var(--muted)";
+  el("drill-status").textContent="GO — cd /etc  (0 of 4)";
+  switchTab("term");
+  tPrint('<span class="yl">⏱ Drill started! Route: /etc → /var/log → /home/admin → /opt — go!</span>');
+  setTimeout(function(){el("t-in").focus();},200);
+  clearInterval(drillTimer);
+  drillTimer=setInterval(function(){
+    if(!T.drill||!T.drill.active){clearInterval(drillTimer);return;}
+    el("drill-timer").textContent=((Date.now()-T.drill.t0)/1000).toFixed(1)+"s";
+  },100);
+});
+
+/* ---------- reference table ---------- */
+(function(){
+  var rows=[["pwd"],["ls"],["cd"],["mkdir"],["rm"],["cp"],["mv"],["cat"],["less"],["grep"],["find"],["chmod"],["chown"],["ps"],["systemctl"],["journalctl"],["ip addr"],["ss"],["ping"],["curl"],["df"],["du"]];
+  var h="<tr><th>Command</th><th>What</th><th>How (example)</th><th>Why / When</th></tr>";
+  rows.forEach(function(r){
+    var m=MAN[r[0]];
+    h+="<tr><td class='cmd'>"+r[0]+"</td><td>"+m.w+"</td><td class='cmd'>"+esc(m.h)+"</td><td>"+m.y+" "+m.n+"</td></tr>";
+  });
+  el("ref-table").innerHTML=h;
+})();
+
+/* ---------- init ---------- */
+renderPerm();
+updatePs();
+tPrint('<span class="dim">srv01 — Ubuntu 24.04 simulated shell. Type </span><span class="b">help</span><span class="dim">, or </span><span class="b">man ls</span><span class="dim"> to learn a command.</span>');
+tPrint('<span class="dim">You are </span><span class="b">admin</span><span class="dim"> in </span><span class="b">/home/admin</span><span class="dim">. Try: </span><span class="in">ls -la</span>');
+</script>
+</body>
+</html>

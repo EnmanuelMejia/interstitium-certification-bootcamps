@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Assemble the top-level "sections" array for every content/<slug>.json.
 
-Learning path per bootcamp (KodeKloud-style, zero-knowledge assumption):
+Learning path per bootcamp (hands-on, zero-knowledge assumption):
 
     Foundations -> Core -> Advanced -> Exam Prep
 

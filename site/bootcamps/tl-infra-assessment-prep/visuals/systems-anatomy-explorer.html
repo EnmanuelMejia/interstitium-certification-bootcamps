@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Systems Anatomy Explorer — See Infrastructure as Living Systems</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a14; color: #e0e0e0; padding: 20px; }
+  .container { max-width: 900px; margin: 0 auto; }
+  h1 { font-size: 1.6em; margin-bottom: 8px; color: #ffd700; }
+  .subtitle { color: #888; margin-bottom: 24px; font-size: 0.95em; }
+  .concept { background: #1a1a2e; border-left: 4px solid #ffd700; padding: 16px; margin-bottom: 24px; border-radius: 0 8px 8px 0; }
+  .concept p { line-height: 1.6; }
+  .system-selector { display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+  .sys-btn { background: #1a1a2e; border: 2px solid #333; color: #e0e0e0; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-size: 0.95em; transition: all 0.2s; }
+  .sys-btn:hover { border-color: #ffd700; }
+  .sys-btn.active { background: #ffd700; color: #0a0a14; border-color: #ffd700; font-weight: bold; }
+  .stage { background: #1a1a2e; border-radius: 12px; padding: 24px; margin-bottom: 20px; min-height: 400px; }
+  .stage-title { font-size: 1.2em; margin-bottom: 16px; color: #ffd700; }
+  .flow-step { background: #0a0a14; border: 2px solid #333; border-radius: 8px; padding: 16px; margin-bottom: 12px; opacity: 0.3; transition: all 0.3s; position: relative; }
+  .flow-step.active { opacity: 1; border-color: #ffd700; box-shadow: 0 0 20px rgba(255,215,0,0.2); }
+  .flow-step.done { opacity: 0.7; border-color: #4a4a6a; }
+  .flow-step .step-num { position: absolute; top: -12px; left: 16px; background: #ffd700; color: #0a0a14; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.85em; }
+  .flow-step h4 { margin-bottom: 8px; margin-top: 4px; }
+  .flow-step p { color: #aaa; font-size: 0.9em; line-height: 1.5; }
+  .flow-step .detail { background: #000; padding: 10px; border-radius: 6px; margin-top: 10px; font-family: monospace; font-size: 0.85em; color: #7fff7f; display: none; }
+  .flow-step.active .detail { display: block; }
+  .controls { display: flex; gap: 12px; margin-top: 20px; }
+  .btn { background: #ffd700; color: #0a0a14; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 1em; }
+  .btn:disabled { background: #333; color: #666; cursor: not-allowed; }
+  .btn.ghost { background: transparent; border: 2px solid #ffd700; color: #ffd700; }
+  .progress { text-align: center; color: #888; margin-top: 12px; font-size: 0.9em; }
+  .insight { background: #0d2818; border: 1px solid #2d5a3d; border-radius: 8px; padding: 16px; margin-top: 20px; display: none; }
+  .insight.show { display: block; }
+  .insight h4 { color: #7fff7f; margin-bottom: 8px; }
+  .insight p { line-height: 1.6; font-size: 0.92em; }
+  @media (max-width: 600px) { .system-selector { flex-direction: column; } .sys-btn { width: 100%; } }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🔬 Systems Anatomy Explorer</h1>
+  <p class="subtitle">Inspired by interactive 3D engineering visualizations — see infrastructure as living systems, not static diagrams.</p>
+  
+  <div class="concept">
+    <p><strong>The method:</strong> (1) See the whole system in context → (2) Cut it open to reveal layers → (3) Walk through the process step-by-step → (4) Pull apart into labeled pieces. Click through each system below to watch it move.</p>
+  </div>
+
+  <div class="system-selector">
+    <button class="sys-btn active" data-system="kerberos">🎫 Kerberos Auth</button>
+    <button class="sys-btn" data-system="dns">🌐 DNS Resolution</button>
+    <button class="sys-btn" data-system="vpn">🔒 VPN Tunnel</button>
+    <button class="sys-btn" data-system="packet">📦 Packet Journey</button>
+  </div>
+
+  <div class="stage">
+    <div class="stage-title" id="systemTitle">Kerberos Authentication — The Three-Act Ticket Exchange</div>
+    <div id="flowSteps"></div>
+    <div class="controls">
+      <button class="btn" id="prevBtn" disabled>← Previous</button>
+      <button class="btn" id="nextBtn">Next Step →</button>
+      <button class="btn ghost" id="resetBtn">Restart</button>
+    </div>
+    <div class="progress" id="progress">Step 0 of 0</div>
+  </div>
+
+  <div class="insight" id="insight">
+    <h4>💡 Interview Insight</h4>
+    <p id="insightText"></p>
+  </div>
+</div>
+
+<script>
+const systems = {
+  kerberos: {
+    title: "Kerberos Authentication — The Three-Act Ticket Exchange",
+    insight: "In the interview, don't say 'Kerberos authenticates users.' Say: 'The client proves identity to the KDC and gets a TGT, then exchanges that for a service ticket, then presents it to the resource. Each ticket is time-bound, which is why clock sync is critical.' This shows systems thinking.",
+    steps: [
+      { title: "Act 1: AS-REQ — Prove Who You Are", desc: "The client contacts the Key Distribution Center (KDC) and proves identity with a pre-authentication timestamp encrypted with the user's key.", detail: "Client → KDC: AS-REQ { username: alice, pre-auth: [timestamp encrypted with alice's key] }\nPort: 88 (UDP/TCP) | Depends on: Time sync (±5 min), KDC online" },
+      { title: "Act 1: AS-REP — Receive the TGT", desc: "The KDC validates the timestamp, then issues a Ticket Granting Ticket (TGT) — proof of identity valid for ~10 hours.", detail: "KDC → Client: AS-REP { TGT (encrypted with KDC key), session key (encrypted with alice's key) }\nThe TGT is a sealed envelope only the KDC can open." },
+      { title: "Act 2: TGS-REQ — Request Service Access", desc: "The client wants to access FILESERVER. It presents the TGT to the KDC and requests a service-specific ticket.", detail: "Client → KDC: TGS-REQ { TGT, authenticator, target: 'cifs/fileserver.corp.local' }\nThe KDC validates the TGT without needing the user's password again." },
+      { title: "Act 2: TGS-REP — Receive Service Ticket", desc: "The KDC issues a service ticket — proof that alice is authorized to access FILESERVER.", detail: "KDC → Client: TGS-REP { service ticket (encrypted with fileserver's key) }\nThis ticket says: 'alice is authenticated, allow file access per ACLs.'" },
+      { title: "Act 3: AP-REQ — Present Ticket to Service", desc: "The client connects directly to FILESERVER and presents the service ticket. No KDC involvement needed.", detail: "Client → FILESERVER: AP-REQ { service ticket, authenticator }\nFILESERVER decrypts ticket with its own key, validates, grants access." },
+      { title: "Access Granted — The System Complete", desc: "Three acts, three handoffs, zero password retransmission. The living system: identity proven once, tickets carry trust forward.", detail: "Total KDC interactions: 2 (AS + TGS)\nDirect service access: unlimited (until tickets expire)\nThreatLocker tie-in: Elevation Control checks WHO — Kerberos answers that." }
+    ]
+  },
+  dns: {
+    title: "DNS Resolution — Walking the Hierarchy",
+    insight: "Interview power move: trace a DNS query live. 'The stub resolver asks the recursive resolver, which walks from root → TLD → authoritative, caching at each level. That's why the first lookup is slow and the second is instant.'",
+    steps: [
+      { title: "Step 1: Application Asks", desc: "The user types 'threatlocker.com' in a browser. The application calls the stub resolver.", detail: "App → Stub Resolver: gethostbyname('threatlocker.com')\nCheck: local hosts file → DNS client cache" },
+      { title: "Step 2: Recursive Resolver Takes Over", desc: "The stub resolver forwards to the configured recursive resolver (e.g., 8.8.8.8 or corporate DNS).", detail: "Stub → Recursive: 'What is threatlocker.com?'\nIf cached and TTL valid → immediate answer. If not → walk the hierarchy." },
+      { title: "Step 3: Ask the Root", desc: "The recursive resolver asks a root server (.) where to find .com.", detail: "Recursive → Root (.): 'Where is .com?'\nRoot → Recursive: 'Ask the .com TLD servers at [IPs]'\n13 root server clusters worldwide (anycast)" },
+      { title: "Step 4: Ask the TLD", desc: "The resolver asks the .com TLD servers where to find threatlocker.com.", detail: "Recursive → .com TLD: 'Where is threatlocker.com?'\nTLD → Recursive: 'Ask ns1.threatlocker.com at [IP]'\nTLD servers know every domain under .com" },
+      { title: "Step 5: Ask Authoritative", desc: "The resolver asks threatlocker.com's authoritative name servers for the actual record.", detail: "Recursive → ns1.threatlocker.com: 'What is the A record?'\nAuthoritative → Recursive: 'threatlocker.com = 93.184.216.34, TTL 300'" },
+      { title: "Step 6: Return and Cache", desc: "The recursive resolver caches the answer and returns it. Every level cached for next time.", detail: "Recursive → Stub → App: '93.184.216.34'\nCached at: browser, OS, recursive resolver\nNext query for threatlocker.com: instant (no hierarchy walk)" }
+    ]
+  },
+  vpn: {
+    title: "VPN Tunnel — Two Planes, One Secure Path",
+    insight: "When troubleshooting 'VPN connected but no traffic,' separate the planes: IKE (control — builds the tunnel) vs ESP (data — carries packets). 'Connected' means IKE worked. No traffic means ESP or inner routing failed.",
+    steps: [
+      { title: "Phase 1: IKE_SA_INIT — Agree on Encryption", desc: "Client and VPN gateway negotiate encryption algorithms and exchange Diffie-Hellman keys.", detail: "Client → Gateway: IKE_SA_INIT { crypto proposals, DH public key }\nGateway → Client: IKE_SA_INIT { chosen crypto, DH public key }\nResult: Encrypted control channel established (UDP 500)" },
+      { title: "Phase 2: IKE_AUTH — Prove Identity", desc: "Both sides authenticate. The client proves who they are (certificate, EAP, PSK).", detail: "Client → Gateway: IKE_AUTH { identity, auth payload }\nGateway → Client: IKE_AUTH { identity, auth payload, virtual IP }\nResult: Client gets virtual IP (e.g., 10.10.50.23)" },
+      { title: "Child SA: ESP Tunnel Established", desc: "Encryption keys derived for data. The ESP (Encapsulating Security Payload) tunnel is ready.", detail: "ESP in tunnel mode: [New IP hdr][ESP hdr][Original IP pkt][ESP trailer]\nEntire original packet encrypted inside a new packet\nPorts: UDP 4500 (NAT-T) or IP protocol 50" },
+      { title: "Data Flows: Encapsulation", desc: "User traffic is encrypted and wrapped. Each packet gets a new outer IP header.", detail: "Inner: [IP 10.10.50.23 → 10.0.1.10][TCP][HTTP]\nOuter: [IP home-router → vpn-gateway][ESP][encrypted inner packet]\nAn observer sees only: home → VPN gateway, encrypted blob" },
+      { title: "Gateway Decrypts and Routes", desc: "The VPN gateway strips the outer header, decrypts, and routes the inner packet to the corporate network.", detail: "Gateway: decrypt ESP → reveal inner packet\nRoute: 10.10.50.23 → 10.0.1.10 via internal interface\nFirewall check: Does VPN subnet have access to 10.0.1.0/24?" },
+      { title: "Return Path: Symmetric Journey", desc: "Response packets take the reverse path through the tunnel back to the client.", detail: "Server → Gateway → encrypt → Internet → Client decrypt\nClient's virtual IP is the source for all corporate-bound traffic\nSplit tunnel vs full tunnel: which traffic goes through VPN?" }
+    ]
+  },
+  packet: {
+    title: "Packet Journey — The Layered Onion",
+    insight: "Draw this as a stack in the interview and peel each layer as you explain. 'The application creates data, TCP adds ports, IP adds addresses, Ethernet adds MACs. Each layer asks: is this for me? What do I add or remove?'",
+    steps: [
+      { title: "Layer 7-5: Application Creates Data", desc: "The user action becomes data. HTTP, DNS, SMB — the actual payload.", detail: "Example: HTTP GET /index.html HTTP/1.1\nHost: threatlocker.com\nThis is what the user cares about. Everything below is delivery." },
+      { title: "Layer 4: Transport Adds Ports", desc: "TCP (or UDP) adds source/destination ports and sequencing. This is the 'conversation' layer.", detail: "[TCP: src port 49152 → dst port 443]\n[SEQ 1000, ACK 0, SYN flag]\nPorts identify the application. SEQ numbers order the bytes." },
+      { title: "Layer 3: Network Adds Addresses", desc: "IP adds source/destination IP addresses. This is the 'postal system' layer.", detail: "[IP: src 192.168.1.50 → dst 93.184.216.34]\n[TTL 64, Protocol TCP]\nRouters read ONLY this header to forward packets." },
+      { title: "Layer 2: Data Link Adds MACs", desc: "Ethernet adds source/destination MAC addresses for the local network segment.", detail: "[ETH: src AA:BB:CC:DD:EE:FF → dst 11:22:33:44:55:66]\n[EtherType: IPv4]\nSwitches read ONLY this header. MACs change at every hop." },
+      { title: "Layer 1: Bits on Wire", desc: "The frame becomes electrical/optical/radio signals. The physical journey begins.", detail: "Preamble + Frame → bits → voltage/light/radio\nNIC → Cable → Switch → Router → ... → Destination\nEach hop: L2 stripped and re-added, L3+ preserved." },
+      { title: "Destination: Peel the Onion", desc: "The receiving host strips each layer in reverse. Each layer validates: 'Is this for me?'", detail: "Physical: bits → frame\nData Link: Is dst MAC mine? Strip ETH header.\nNetwork: Is dst IP mine? Strip IP header.\nTransport: Which port? Deliver to application.\nApplication: Render the HTTP response." }
+    ]
+  }
+};
+
+let currentSystem = 'kerberos';
+let currentStep = 0;
+
+function renderSteps() {
+  const sys = systems[currentSystem];
+  document.getElementById('systemTitle').textContent = sys.title;
+  const container = document.getElementById('flowSteps');
+  container.innerHTML = '';
+  
+  sys.steps.forEach((step, i) => {
+    const div = document.createElement('div');
+    div.className = 'flow-step' + (i === currentStep ? ' active' : '') + (i < currentStep ? ' done' : '');
+    div.innerHTML = `<div class="step-num">${i+1}</div><h4>${step.title}</h4><p>${step.desc}</p><div class="detail">${step.detail.replace(/\n/g, '<br>')}</div>`;
+    container.appendChild(div);
+  });
+  
+  document.getElementById('progress').textContent = `Step ${currentStep + 1} of ${sys.steps.length}`;
+  document.getElementById('prevBtn').disabled = currentStep === 0;
+  document.getElementById('nextBtn').disabled = currentStep === sys.steps.length - 1;
+  document.getElementById('nextBtn').textContent = currentStep === sys.steps.length - 1 ? '✓ Complete' : 'Next Step →';
+  
+  const insight = document.getElementById('insight');
+  if (currentStep === sys.steps.length - 1) {
+    document.getElementById('insightText').textContent = sys.insight;
+    insight.classList.add('show');
+  } else {
+    insight.classList.remove('show');
+  }
+}
+
+document.querySelectorAll('.sys-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.sys-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentSystem = btn.dataset.system;
+    currentStep = 0;
+    renderSteps();
+  });
+});
+
+document.getElementById('nextBtn').addEventListener('click', () => {
+  if (currentStep < systems[currentSystem].steps.length - 1) {
+    currentStep++;
+    renderSteps();
+  }
+});
+
+document.getElementById('prevBtn').addEventListener('click', () => {
+  if (currentStep > 0) {
+    currentStep--;
+    renderSteps();
+  }
+});
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+  currentStep = 0;
+  renderSteps();
+});
+
+renderSteps();
+</script>
+</body>
+</html>

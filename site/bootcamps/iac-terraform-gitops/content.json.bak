@@ -1,0 +1,2215 @@
+{
+  "slug": "iac-terraform-gitops",
+  "title": "GitOps with Terraform and Kubernetes",
+  "tagline": "GitOps principles \u2014 declarative desired state, drift detection, app-of-apps \u2014 applied with ArgoCD/Flux and Terraform-managed infrastructure. Taught independently; this course confers no certificate.",
+  "vendor": {
+    "name": "Independent interview prep (not affiliated with ThreatLocker)",
+    "certs": "",
+    "docs": "https://www.threatlocker.com"
+  },
+  "disclaimer": "Independent interview-prep material by Interstitium Labs. Not affiliated with, endorsed by, or sponsored by ThreatLocker or any vendor mentioned. Confers no certificate. All scenarios are original practice content; no exam or vendor-training content is reproduced.",
+  "accent": "#e5484d",
+  "domains": [
+    {
+      "id": "iac-terraform-gitops",
+      "name": "GitOps with Terraform and Kubernetes",
+      "summary": "GitOps principles \u2014 declarative desired state, drift detection, app-of-apps \u2014 applied with ArgoCD/Flux and Terraform-managed infrastructure. Taught independently; this course confers no certificate.",
+      "scenarios": [
+        {
+          "id": "iac-terraform-gitops-sc1",
+          "title": "kubectl apply from a laptop",
+          "situation": "Your team deploys Kubernetes apps by running 'kubectl apply' from engineers' laptops. Last Tuesday two engineers applied different versions within minutes; nobody knows which version is actually running, and there's no record of who changed what.",
+          "prompt": "What GitOps change fixes the auditability problem?",
+          "evidence": [
+            [
+              "terminal",
+              "kubectl get deploy web -o jsonpath='{.spec.template.spec.containers[0].image}'\nregistry/app:1.4.2\n# git history shows 1.4.1 as latest merged; someone applied 1.4.2 by hand"
+            ]
+          ],
+          "choices": [
+            "Make git the single source of truth: all manifests live in a repo, and an agent (ArgoCD/Flux) continuously reconciles the cluster toward the git state \u2014 every change is a reviewed commit.",
+            "Have engineers announce their kubectl applies in chat so there's a record.",
+            "Give only one engineer kubectl access so applies are serialized.",
+            "Run 'kubectl apply' from a shared jump host instead of laptops."
+          ],
+          "answer": 0,
+          "why": "GitOps replaces imperative, untracked applies with declarative desired state in git plus continuous reconciliation \u2014 the cluster converges to what's committed, and every change has an author, review, and timestamp. Chat announcements and access restrictions don't create a verifiable record; the jump host just moves the problem.",
+          "hint": "The cluster and git disagree, and there's no log of the change. What if the cluster could only ever match what's committed?",
+          "objectives": [
+            "GitOps",
+            "declarative state"
+          ],
+          "mins": 5,
+          "difficulty": 1
+        },
+        {
+          "id": "iac-terraform-gitops-sc2",
+          "title": "Drift that nobody noticed",
+          "situation": "Someone scaled a deployment to 10 replicas via kubectl during an incident and never scaled back. Cloud bills rose for a month before anyone noticed the git manifests still said 3.",
+          "prompt": "How does a GitOps agent handle this drift?",
+          "evidence": [
+            [
+              "terminal",
+              "kubectl get deploy web -o jsonpath='{.spec.replicas}'\n10\ngrep replicas gitops/apps/web/deploy.yaml\n  replicas: 3"
+            ]
+          ],
+          "choices": [
+            "The agent detects the difference between live state and git and automatically syncs the cluster back to 3 replicas (or alerts, depending on sync policy), closing the loop without human intervention.",
+            "The agent updates the git repo to say 10 replicas so they match.",
+            "The agent ignores replica counts because they change at runtime.",
+            "You must delete the deployment and let the agent recreate it."
+          ],
+          "answer": 0,
+          "why": "Continuous reconciliation is the core GitOps loop: detect drift, then converge live state toward desired state (auto-sync) or surface it (manual sync with diff). Git is the source of truth, so the agent corrects the cluster, not the repo. Replica count is exactly the kind of field reconciliation watches.",
+          "hint": "In GitOps, git is the desired state and the cluster is actual state. When they differ, which one changes?",
+          "objectives": [
+            "drift detection",
+            "reconciliation"
+          ],
+          "mins": 5,
+          "difficulty": 1
+        },
+        {
+          "id": "iac-terraform-gitops-sc3",
+          "title": "Fifty apps, one repo, total chaos",
+          "situation": "All 50 microservices' manifests live in one flat GitOps repo directory. Every team's PR touches shared files, merge conflicts are constant, and one bad commit took down twelve apps because the sync applied everything at once.",
+          "prompt": "What is the best structural fix?",
+          "evidence": [
+            [
+              "terminal",
+              "ls gitops/\napp1.yaml app2.yaml ... app50.yaml   # flat, 2000+ lines each team edits\nargocd app list | wc -l\n1   # one Application syncing everything"
+            ]
+          ],
+          "choices": [
+            "Adopt the app-of-apps pattern: a parent Application per team/environment that composes child Applications, with per-app directories, so teams own their sync scope and a bad commit is blast-radius-limited.",
+            "Put all 50 apps in one giant Helm chart so there's only one file to review.",
+            "Give each app its own cluster so they can't affect each other.",
+            "Stop using GitOps and go back to kubectl apply per team."
+          ],
+          "answer": 0,
+          "why": "App-of-apps hierarchically composes Applications: teams get their own Applications (own sync waves, policies, rollback scope) while a parent bootstraps the set. Blast radius shrinks to the broken app. A mega-chart couples all 50 apps' lifecycles; separate clusters are wildly expensive.",
+          "hint": "The failure mode is one sync scope covering everything. How can you nest scopes so each team owns its own?",
+          "objectives": [
+            "app-of-apps",
+            "structure"
+          ],
+          "mins": 6,
+          "difficulty": 2
+        },
+        {
+          "id": "iac-terraform-gitops-sc4",
+          "title": "Secrets in the GitOps repo",
+          "situation": "The GitOps repo contains base64-encoded database passwords in Kubernetes Secrets. A new engineer cloned the repo on their first day and now has every credential \u2014 base64 is just encoding, not encryption.",
+          "prompt": "What is the correct approach for secrets in GitOps?",
+          "evidence": [
+            [
+              "yaml",
+              "apiVersion: v1\nkind: Secret\ndata:\n  password: U3VwZXJTZWNyZXQxMjM=   # decodes trivially"
+            ]
+          ],
+          "choices": [
+            "Keep only references in git (e.g. ExternalSecrets or Vault Agent) so the cluster fetches real secrets from Vault at runtime \u2014 git holds a pointer, never the value.",
+            "Encrypt the whole repo with git-crypt so the base64 values are protected.",
+            "Use stronger base64 by encoding twice.",
+            "Move the Secrets to a private repo that only senior engineers can clone."
+          ],
+          "answer": 0,
+          "why": "GitOps demands everything in git be safe to share \u2014 so secrets must not be in git at all, only references that a cluster-side operator resolves from a real secrets manager (Vault via External Secrets Operator or Vault Agent injector). git-crypt breaks the pull-based model (the agent can't decrypt without keys); a private repo still spreads plaintext secrets to everyone with access.",
+          "hint": "Git history is forever and broadly readable. What belongs in git: the secret, or instructions for fetching it?",
+          "objectives": [
+            "secrets",
+            "ExternalSecrets",
+            "GitOps"
+          ],
+          "mins": 6,
+          "difficulty": 2
+        },
+        {
+          "id": "iac-terraform-gitops-sc5",
+          "title": "ArgoCD vs Flux for a regulated bank",
+          "situation": "A bank needs GitOps on Kubernetes with strict requirements: every sync must be explicitly approved by a second engineer (four-eyes), full audit of who approved what, and no automatic changes to production \u2014 ever.",
+          "prompt": "Which design fits best?",
+          "evidence": [
+            [
+              "requirements",
+              "- four-eyes approval on every production change\n- immutable audit trail of approvals\n- zero automatic mutation of prod"
+            ]
+          ],
+          "choices": [
+            "Use manual sync mode (ArgoCD manual sync or Flux with suspended automation): git PRs provide review and the audit trail, and a second engineer triggers each sync explicitly \u2014 automation proposes, humans dispose.",
+            "Enable auto-sync with self-heal on everything for maximum consistency; approvals slow things down.",
+            "Run both ArgoCD and Flux simultaneously so they check each other's work.",
+            "Deploy with CI pushing images directly and skip GitOps to keep a human in the loop."
+          ],
+          "answer": 0,
+          "why": "GitOps tools support manual sync precisely for regulated flows: the PR is the proposal and four-eyes review, the sync is the approved execution, and the tool records who synced what when. Auto-sync would violate the no-automatic-changes rule. CI-push reintroduces the untracked-mutation problem GitOps solves.",
+          "hint": "The requirement is human approval before any production mutation. Which sync mode makes the tool wait for a human?",
+          "objectives": [
+            "ArgoCD",
+            "Flux",
+            "sync policy",
+            "compliance"
+          ],
+          "mins": 7,
+          "difficulty": 3
+        },
+        {
+          "id": "iac-terraform-gitops-sc6",
+          "title": "Image tags: latest strikes again",
+          "situation": "The GitOps repo pins deployments to image tag 'latest'. ArgoCD shows everything synced and healthy, but production is running a three-week-old image while the registry's 'latest' moved on \u2014 and rollbacks are impossible because no one knows which digest ran when.",
+          "prompt": "What is the correct image strategy for GitOps?",
+          "evidence": [
+            [
+              "yaml",
+              "image: registry/app:latest   # in git\n# registry/app:latest now points to a different digest than what's running"
+            ]
+          ],
+          "choices": [
+            "Pin immutable digests (or semantic version tags) in git and update them via automated image-update PRs (Flux image automation / ArgoCD Image Updater) \u2014 every running version is a commit, and rollback is 'git revert'.",
+            "Keep 'latest' but make ArgoCD poll the registry continuously so it always deploys the newest.",
+            "Tag every build 'latest' and also 'stable' and switch between them manually.",
+            "Stop pinning versions and let Kubernetes pull whatever is newest at pod restart."
+          ],
+          "answer": 0,
+          "why": "Mutable tags break GitOps' core promise: git no longer describes what's running, so diffs lie and rollbacks are guesswork. Immutable references (digests or version tags) updated by automation PRs keep every deployment a reviewed commit \u2014 rollback is just reverting the commit. Polling 'latest' makes deployments non-reproducible.",
+          "hint": "The tag moved but git didn't change, so GitOps saw nothing to do. What kind of reference can't move out from under git?",
+          "objectives": [
+            "image pinning",
+            "immutability",
+            "rollbacks"
+          ],
+          "mins": 7,
+          "difficulty": 3
+        }
+      ]
+    },
+    {
+      "id": "iac-terraform-gitops-d2",
+      "name": "GitOps with ArgoCD",
+      "summary": "Operating GitOps with ArgoCD: install and architecture, Applications and Projects, sync policies and strategies, App of Apps, and progressive delivery hooks. Independent training content; this course confers no certificate.",
+      "scenarios": [
+        {
+          "id": "iac-terraform-gitops-d2-sc1",
+          "title": "Git as the Source of Truth",
+          "situation": "Leadership asks what makes the new deployment process 'GitOps' rather than 'CI with extra steps'. The pipeline currently builds images and runs `kubectl apply` from Jenkins.",
+          "prompt": "What is the GitOps correction?",
+          "evidence": [
+            [
+              "current",
+              "Jenkins builds image \u2192 kubectl apply \u2192 cluster (push-based)"
+            ],
+            [
+              "repo",
+              "k8s YAML committed after the fact"
+            ]
+          ],
+          "choices": [
+            "Declare the entire desired state in Git and let an in-cluster agent (ArgoCD) continuously pull and reconcile toward it \u2014 Git becomes the single source of truth, changes are PR-reviewed, and the cluster converges automatically including drift correction",
+            "Keep the Jenkins push but commit YAML first; order is what matters",
+            "GitOps just means storing YAML in Git; the Jenkins flow already qualifies",
+            "Replace Jenkins with a bigger Jenkins"
+          ],
+          "answer": 0,
+          "why": "GitOps = declarative desired state in Git + pull-based reconciliation by an agent + continuous convergence. Push-from-CI leaves the cluster writable from outside and can't self-heal drift. The agent pattern is what makes the repo authoritative.",
+          "hint": "If someone hand-edits the cluster, who puts it back?",
+          "objectives": [
+            "GitOps principles",
+            "pull vs push",
+            "reconciliation"
+          ],
+          "mins": 6,
+          "difficulty": 1
+        },
+        {
+          "id": "iac-terraform-gitops-d2-sc2",
+          "title": "First Contact with ArgoCD",
+          "situation": "ArgoCD is installed but the team can't log in: the docs mention an initial admin password in a Secret, and nobody knows which namespace or secret name.",
+          "prompt": "What is the correct bootstrap?",
+          "evidence": [
+            [
+              "install",
+              "kubectl create namespace argocd; kubectl apply -n argocd -f install.yaml"
+            ],
+            [
+              "symptom",
+              "argocd-server pod running; login fails with generated guesses"
+            ]
+          ],
+          "choices": [
+            "Read the auto-generated password from `argocd-initial-admin-secret` in the `argocd` namespace (`kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d`), log in as `admin`, then immediately rotate it and set up SSO/RBAC",
+            "Reinstall ArgoCD with a custom admin password flag",
+            "Exec into the argocd-server pod and reset the password in its local config",
+            "Delete the secret; ArgoCD falls back to no-auth mode"
+          ],
+          "answer": 0,
+          "why": "The official install creates `argocd-initial-admin-secret` holding the bootstrap password \u2014 it's the documented entry point. Deleting it doesn't disable auth; exec-hacking the server bypasses the intended flow. Rotation + SSO is the day-2 hardening.",
+          "hint": "What did the install manifest create for bootstrapping?",
+          "objectives": [
+            "ArgoCD install",
+            "bootstrap",
+            "admin secret"
+          ],
+          "mins": 6,
+          "difficulty": 1
+        },
+        {
+          "id": "iac-terraform-gitops-d2-sc3",
+          "title": "The App That Won't Stay Synced",
+          "situation": "An ArgoCD Application shows OutOfSync forever: every manual sync is reverted within minutes by an autoscaler changing replica counts.",
+          "prompt": "What is the correct sync configuration?",
+          "evidence": [
+            [
+              "app",
+              "syncPolicy: automated: {prune: false, selfHeal: false}"
+            ],
+            [
+              "diff",
+              "replicas: 3 (git) vs 8 (cluster, set by HPA)"
+            ]
+          ],
+          "choices": [
+            "Enable `selfHeal: true` so ArgoCD reverts drift \u2014 but add an `ignoreDifferences` rule for `replicas` (or sync only the fields you own): the HPA legitimately owns replica count, Git owns the rest",
+            "Disable the HPA; GitOps means Git controls everything including replicas",
+            "Set sync to manual and have someone click Sync after every HPA change",
+            "Delete the Application; HPA and ArgoCD are incompatible"
+          ],
+          "answer": 0,
+          "why": "selfHeal makes the agent the enforcer, but fields owned by other controllers (HPA replicas, autoscaler annotations) must be excluded via ignoreDifferences \u2014 otherwise you get a permanent sync war. Manual sync doesn't scale; deleting the app abandons GitOps.",
+          "hint": "Which controller legitimately owns the replica count here?",
+          "objectives": [
+            "sync policy",
+            "selfHeal",
+            "ignoreDifferences"
+          ],
+          "mins": 7,
+          "difficulty": 2
+        },
+        {
+          "id": "iac-terraform-gitops-d2-sc4",
+          "title": "Fifty Apps, One Cluster, No Guardrails",
+          "situation": "Every team can now create ArgoCD Applications pointing at any repo and deploying to any namespace \u2014 including `kube-system`. Audit flags it.",
+          "prompt": "What is the correct governance construct?",
+          "evidence": [
+            [
+              "current",
+              "all Applications in the default project"
+            ],
+            [
+              "finding",
+              "team-a app deployed a DaemonSet into kube-system"
+            ]
+          ],
+          "choices": [
+            "Create an ArgoCD Project per team with `sourceRepos` restricted to their Git repos and `destinations` restricted to their namespaces/clusters, and require Applications to reference their project",
+            "Tell teams to be careful; trust but verify",
+            "Run one ArgoCD instance per team to isolate them",
+            "Disable Application creation; only admins deploy"
+          ],
+          "answer": 0,
+          "why": "Projects are ArgoCD's tenancy boundary: they scope which repos and destinations an Application may use, plus RBAC roles per project. Per-team instances multiply operational cost; 'be careful' isn't a control.",
+          "hint": "What scopes an Application's allowed sources and destinations?",
+          "objectives": [
+            "Projects",
+            "multi-tenancy",
+            "RBAC"
+          ],
+          "mins": 7,
+          "difficulty": 2
+        },
+        {
+          "id": "iac-terraform-gitops-d2-sc5",
+          "title": "Bootstrapping the Bootstrap",
+          "situation": "The platform team manages 40 Applications via YAML in Git but still creates each Application object by hand with `argocd app create`. New services take days to onboard.",
+          "prompt": "What is the correct pattern?",
+          "evidence": [
+            [
+              "current",
+              "40 hand-created Applications; onboarding = ticket + manual CLI"
+            ],
+            [
+              "repo",
+              "gitops/apps/*.yaml already holds per-app definitions"
+            ]
+          ],
+          "choices": [
+            "Adopt the App of Apps pattern: one parent Application syncs a directory of child Application manifests \u2014 onboarding becomes a PR adding a YAML file, fully GitOps",
+            "Write a shell script looping `argocd app create`; automation is automation",
+            "Use ApplicationSets with a git-directory generator to template the 40 apps from the repo layout",
+            "Both the App of Apps pattern and ApplicationSets solve this; pick one and standardize"
+          ],
+          "answer": 0,
+          "why": "Both answers converge: manage Applications declaratively (App of Apps parent, or ApplicationSets generators) so onboarding is a Git PR, not a ticket. A shell loop keeps the imperative step. (Accepting either pattern \u2014 the key insight is declarative app management.)",
+          "hint": "How do you create an Application the GitOps way?",
+          "objectives": [
+            "App of Apps",
+            "ApplicationSets",
+            "declarative"
+          ],
+          "mins": 8,
+          "difficulty": 3
+        },
+        {
+          "id": "iac-terraform-gitops-d2-sc6",
+          "title": "Migrations Before the New Version",
+          "situation": "A release needs a database migration Job to run exactly once *before* the new app version rolls out, and roll back if the migration fails.",
+          "prompt": "How do you order this in ArgoCD?",
+          "evidence": [
+            [
+              "constraint",
+              "plain `kubectl apply` ordering is alphabetical and unreliable"
+            ],
+            [
+              "app",
+              "Deployment + migration Job in one Application"
+            ]
+          ],
+          "choices": [
+            "Use ArgoCD sync waves (`argocd.argoproj.io/sync-wave`) to run the migration Job in an earlier wave, plus a `PreSync` hook with `hook.delete.policy` so the Job is cleaned up; failed hooks block the sync \u2014 giving you ordering plus rollback gating",
+            "Put the migration in a separate Application and sync it by hand first",
+            "Use initContainers for the migration; they always run first",
+            "Rely on Helm chart hook annotations; ArgoCD ignores sync waves"
+          ],
+          "answer": 0,
+          "why": "Sync waves give deterministic ordering within one sync operation, and PreSync hooks gate the rollout on the migration's success. initContainers run per-pod-start (wrong lifecycle for one-shot migrations); separate apps reintroduce manual sequencing.",
+          "hint": "What runs before the sync completes, and what happens if it fails?",
+          "objectives": [
+            "sync waves",
+            "hooks",
+            "migrations"
+          ],
+          "mins": 8,
+          "difficulty": 3
+        }
+      ]
+    },
+    {
+      "id": "systems-anatomy",
+      "name": "Systems Anatomy: Seeing Systems as Living Flows",
+      "description": "Learn to see Iac Terraform Gitops as living systems \u2014 not static diagrams, but moving sequences where every part connects. Master systems thinking for exams and interviews.",
+      "icon": "\ud83d\udd2c",
+      "lessons": [],
+      "scenarios": [
+        {
+          "id": "sysanat-gitops-with-terraform-and-kube",
+          "title": "The GitOps with Terraform and Kubernetes Mystery",
+          "domain_id": "systems-anatomy",
+          "situation": "Users report that GitOps with Terraform and Kubernetes is not working correctly. The obvious checks pass \u2014 the components are online, basic connectivity works. You need to think in systems, not symptoms.",
+          "prompt": "Using the systems anatomy method (whole \u2192 cut open \u2192 step through \u2192 pull apart), how would you systematically trace a failure in GitOps with Terraform and Kubernetes?",
+          "choices": [
+            "Walk the full journey: start from the trigger, verify each handoff in sequence, check dependencies at every step, and isolate where the flow breaks \u2014 then examine that specific layer",
+            "Restart all components \u2014 GitOps with Terraform and Kubernetes issues are always fixed by restarting",
+            "Check the most common cause from memory and apply that fix immediately",
+            "Escalate to senior support \u2014 GitOps with Terraform and Kubernetes is too complex to troubleshoot systematically"
+          ],
+          "answer": 0,
+          "why": "The correct answer is A. Systems thinking means tracing the living flow: (1) Whole: what is GitOps with Terraform and Kubernetes supposed to do end-to-end? (2) Cut open: what are the layers/stages? (3) Step through: verify each handoff \u2014 where does the expected output diverge from actual? (4) Pull apart: isolate the broken layer and examine it in detail. This method works for any GitOps with Terraform and Kubernetes failure in Iac Terraform Gitops.",
+          "hint": "Don't jump to the fix. First map the journey, then find where it breaks.",
+          "objectives": [
+            "Apply systems anatomy to GitOps with Terraform and Kubernetes",
+            "Trace failures through layered dependencies",
+            "Distinguish symptoms from root causes"
+          ],
+          "mins": 15,
+          "evidence": [
+            [
+              "System Status",
+              "All GitOps with Terraform and Kubernetes components report 'online'. Basic health checks pass."
+            ],
+            [
+              "User Report",
+              "Functionality is broken despite green status indicators. The failure is in the flow, not the components."
+            ]
+          ]
+        },
+        {
+          "id": "sysanat-gitops-with-argocd",
+          "title": "The GitOps with ArgoCD Mystery",
+          "domain_id": "systems-anatomy",
+          "situation": "Users report that GitOps with ArgoCD is not working correctly. The obvious checks pass \u2014 the components are online, basic connectivity works. You need to think in systems, not symptoms.",
+          "prompt": "Using the systems anatomy method (whole \u2192 cut open \u2192 step through \u2192 pull apart), how would you systematically trace a failure in GitOps with ArgoCD?",
+          "choices": [
+            "Walk the full journey: start from the trigger, verify each handoff in sequence, check dependencies at every step, and isolate where the flow breaks \u2014 then examine that specific layer",
+            "Restart all components \u2014 GitOps with ArgoCD issues are always fixed by restarting",
+            "Check the most common cause from memory and apply that fix immediately",
+            "Escalate to senior support \u2014 GitOps with ArgoCD is too complex to troubleshoot systematically"
+          ],
+          "answer": 0,
+          "why": "The correct answer is A. Systems thinking means tracing the living flow: (1) Whole: what is GitOps with ArgoCD supposed to do end-to-end? (2) Cut open: what are the layers/stages? (3) Step through: verify each handoff \u2014 where does the expected output diverge from actual? (4) Pull apart: isolate the broken layer and examine it in detail. This method works for any GitOps with ArgoCD failure in Iac Terraform Gitops.",
+          "hint": "Don't jump to the fix. First map the journey, then find where it breaks.",
+          "objectives": [
+            "Apply systems anatomy to GitOps with ArgoCD",
+            "Trace failures through layered dependencies",
+            "Distinguish symptoms from root causes"
+          ],
+          "mins": 15,
+          "evidence": [
+            [
+              "System Status",
+              "All GitOps with ArgoCD components report 'online'. Basic health checks pass."
+            ],
+            [
+              "User Report",
+              "Functionality is broken despite green status indicators. The failure is in the flow, not the components."
+            ]
+          ]
+        }
+      ]
+    }
+  ],
+  "lessons": [
+    {
+      "domain_id": "iac-terraform-gitops",
+      "title": "GitOps \u2014 Core concepts",
+      "concepts": [
+        "GitOps makes git the single source of truth: desired state is declared in version control, and an in-cluster agent (ArgoCD, Flux) continuously reconciles live state toward it.",
+        "Reconciliation is a loop \u2014 observe, diff, sync: drift between git and cluster is detected automatically and either corrected (auto-sync) or surfaced for approval (manual sync).",
+        "Pull-based delivery beats push-based: the agent inside the cluster pulls changes, so CI never needs cluster credentials \u2014 a major reduction in secret sprawl.",
+        "The app-of-apps pattern composes Applications hierarchically, giving each team its own sync scope, policies, and blast radius instead of one giant sync.",
+        "Secrets don't belong in git \u2014 store references (ExternalSecrets, Vault Agent) and let the cluster resolve real values from a secrets manager at runtime.",
+        "Immutable image references (digests or version tags) keep git honest: with mutable tags like 'latest', the repo stops describing what's actually running."
+      ],
+      "example": {
+        "lang": "yaml",
+        "code": "apiVersion: argoproj.io/v1alpha1\nkind: Application\nmetadata:\n  name: web\n  namespace: argocd\nspec:\n  source:\n    repoURL: https://git.example.com/gitops.git\n    path: apps/web\n    targetRevision: main\n  destination:\n    server: https://kubernetes.default.svc\n    namespace: web",
+        "walkthrough": "This ArgoCD Application points at the apps/web directory of the gitops repo on main and the web namespace in-cluster. The agent continuously compares the two and syncs differences according to the sync policy."
+      },
+      "pitfalls": [
+        "Common trap: committing Secrets with base64 'encryption' \u2014 base64 is encoding; use external secret references.",
+        "Common trap: using ':latest' image tags \u2014 the repo stops describing reality and rollbacks become impossible.",
+        "Common trap: one Application syncing everything \u2014 a bad commit has unlimited blast radius; use app-of-apps.",
+        "Common trap: CI pushing directly to the cluster alongside GitOps \u2014 two writers fight; let the agent be the only writer."
+      ],
+      "try_it": "Work through this in the Labs tab."
+    },
+    {
+      "title": "From Static Diagrams to Living Systems",
+      "domain_id": "systems-anatomy",
+      "concepts": [
+        "A textbook diagram shows you one part in isolation \u2014 a living systems view shows you how all parts of Iac Terraform Gitops move together in sequence",
+        "The four-step systems anatomy method: (1) See the whole in context, (2) Cut it open to reveal layers, (3) Walk through the process step-by-step, (4) Pull apart into labeled pieces",
+        "Apply this to any system in this course: start with the trigger action, trace through every component it touches, watch the data flow",
+        "Interview/exam power: when asked 'how does X work?', narrate the journey \u2014 'it starts here, then...'. This demonstrates senior-level systems thinking"
+      ],
+      "example": {
+        "lang": "text",
+        "code": "TRIGGER event occurs\n  \u2192 First system receives it (see the handoff)\n  \u2192 Processing happens in sequence (watch each step)\n  \u2192 State changes propagate (follow the ripple)\n  \u2192 Final outcome delivered\n\nEach arrow is a living handoff, not a static box.",
+        "walkthrough": "This is the 'jet engine cutaway' for your field: instead of memorizing isolated facts, you see the entire flow as a moving sequence. Practice narrating this journey out loud."
+      },
+      "pitfalls": [
+        "Memorizing terms without understanding the processes they participate in",
+        "Drawing architecture diagrams as boxes without showing the data flow between them",
+        "Answering 'how does X work?' with a definition instead of walking through the sequence"
+      ],
+      "try_it": "Pick any process in this course. Write out the full journey from trigger to outcome, naming every system touched."
+    },
+    {
+      "title": "Anatomy of GitOps with Terraform and Kubernetes",
+      "domain_id": "systems-anatomy",
+      "concepts": [
+        "GitOps with Terraform and Kubernetes is a multi-step process within GitOps with Terraform and Kubernetes: trace the full sequence from initiation to completion",
+        "See it as a journey: identify the trigger, follow each handoff, watch state change at every step",
+        "Every step depends on the previous \u2014 a failure at any point breaks the chain. Map these dependencies",
+        "Connect GitOps with Terraform and Kubernetes to the broader GitOps with Terraform and Kubernetes ecosystem \u2014 nothing operates in isolation"
+      ],
+      "example": {
+        "lang": "text",
+        "code": "Step 1: Initiation\n  GitOps with Terraform and Kubernetes begins \u2014 what triggers it?\n\nStep 2: Processing\n  Data flows through \u2014 what transforms it?\n\nStep 3: Handoff\n  Result passes to next system \u2014 what is the interface?\n\nStep 4: Completion\n  Final state reached \u2014 how do you verify?",
+        "walkthrough": "Apply the four-step anatomy method to GitOps with Terraform and Kubernetes. Draw it as a flowing sequence, not a static diagram."
+      },
+      "pitfalls": [
+        "Treating GitOps with Terraform and Kubernetes as an isolated component instead of part of a living flow",
+        "Skipping the dependency mapping \u2014 not asking 'what does this step need from the previous?'",
+        "Memorizing the steps without understanding WHY each one exists"
+      ],
+      "try_it": "Whiteboard the full GitOps with Terraform and Kubernetes flow from memory. Label every handoff and dependency."
+    },
+    {
+      "title": "Anatomy of GitOps with ArgoCD",
+      "domain_id": "systems-anatomy",
+      "concepts": [
+        "GitOps with ArgoCD is a multi-step process within GitOps with ArgoCD: trace the full sequence from initiation to completion",
+        "See it as a journey: identify the trigger, follow each handoff, watch state change at every step",
+        "Every step depends on the previous \u2014 a failure at any point breaks the chain. Map these dependencies",
+        "Connect GitOps with ArgoCD to the broader GitOps with ArgoCD ecosystem \u2014 nothing operates in isolation"
+      ],
+      "example": {
+        "lang": "text",
+        "code": "Step 1: Initiation\n  GitOps with ArgoCD begins \u2014 what triggers it?\n\nStep 2: Processing\n  Data flows through \u2014 what transforms it?\n\nStep 3: Handoff\n  Result passes to next system \u2014 what is the interface?\n\nStep 4: Completion\n  Final state reached \u2014 how do you verify?",
+        "walkthrough": "Apply the four-step anatomy method to GitOps with ArgoCD. Draw it as a flowing sequence, not a static diagram."
+      },
+      "pitfalls": [
+        "Treating GitOps with ArgoCD as an isolated component instead of part of a living flow",
+        "Skipping the dependency mapping \u2014 not asking 'what does this step need from the previous?'",
+        "Memorizing the steps without understanding WHY each one exists"
+      ],
+      "try_it": "Whiteboard the full GitOps with ArgoCD flow from memory. Label every handoff and dependency."
+    }
+  ],
+  "labs": [
+    {
+      "id": "iac-terraform-gitops-lab1",
+      "domain_id": "iac-terraform-gitops",
+      "title": "Stand up a GitOps reconciliation loop",
+      "objective": "Deploy an app via ArgoCD or Flux from git and observe automatic drift correction.",
+      "steps": [
+        "Install ArgoCD (or Flux) on a test cluster and point an Application at a repo directory you control.",
+        "Commit a Deployment manifest with replicas: 3 and confirm the app syncs.",
+        "Introduce drift manually: 'kubectl scale deploy web --replicas=10'.",
+        "Watch the agent detect drift (OutOfSync) and sync back to 3 (or trigger manual sync).",
+        "Change replicas to 5 via a git commit and observe the cluster converge without kubectl."
+      ],
+      "checks": [
+        {
+          "command_pattern": "^kubectl\\s",
+          "expect_contains": "5",
+          "hint": "Verify the replica count converged to the git value."
+        }
+      ]
+    },
+    {
+      "id": "iac-terraform-gitops-lab2",
+      "domain_id": "iac-terraform-gitops",
+      "title": "Externalize a secret from the GitOps repo",
+      "objective": "Replace a committed Secret with an ExternalSecret referencing Vault.",
+      "steps": [
+        "Install the External Secrets Operator and configure a Vault-backed SecretStore.",
+        "Write the real credential into Vault (KV) \u2014 never into git.",
+        "Replace the in-repo Secret manifest with an ExternalSecret referencing the Vault path.",
+        "Sync and verify the resulting Kubernetes Secret exists with the correct value.",
+        "Confirm 'git log' shows no commit ever contained the plaintext credential."
+      ],
+      "checks": [
+        {
+          "command_pattern": "^kubectl\\s",
+          "expect_contains": "Opaque",
+          "hint": "Describe the synced Secret and check its type."
+        }
+      ]
+    }
+  ],
+  "simulations": [
+    {
+      "id": "itg-sim-1",
+      "title": "Drift nobody committed",
+      "kind": "troubleshoot",
+      "domain_id": "iac-terraform-gitops",
+      "difficulty": 2,
+      "points": 15,
+      "brief": "The GitOps agent reports the payments namespace as 'OutOfSync' \u2014 but git is clean and nobody merged today. Someone changed the cluster by hand. Work the drift.",
+      "steps": [
+        {
+          "symptom": "ArgoCD-style status: payments app OutOfSync. Git log: no merges in 48 hours.",
+          "evidence": [
+            [
+              "sync-status.txt",
+              "App: payments. Sync: OutOfSync. Diff: Deployment/payments-api replicas 3 (git) vs 5 (live)."
+            ],
+            [
+              "audit.txt",
+              "kubectl scale deployment/payments-api --replicas=5 by on-call, 14:12, 'to handle the sale'."
+            ]
+          ],
+          "options": [
+            "The drift is a manual scale \u2014 reconcile by updating the git manifest to the intended replica count, not by clicking sync blindly",
+            "Click 'Sync' immediately to force the cluster back to 3",
+            "Delete the app and let GitOps recreate it",
+            "The drift will resolve itself on the next sync cycle"
+          ],
+          "correct": 0,
+          "explain": "Reconciliation is observe-diff-sync: the diff tells you a human scaled for a real reason (the sale). Update git to declare the intended state \u2014 syncing blindly would undo a deliberate, load-driven change and re-create the incident."
+        },
+        {
+          "symptom": "The sale ends tonight. The replica count should return to 3 tomorrow.",
+          "evidence": [
+            [
+              "runbook.txt",
+              "Post-sale: scale back to 3. Owner: on-call. Method: currently 'remember to do it'."
+            ],
+            [
+              "git.txt",
+              "payments-api replicas in git: still 3 (never updated for the sale)."
+            ]
+          ],
+          "options": [
+            "Make the temporary change explicit in git (or a scheduled override) with a revert plan \u2014 'remember to do it' is how drift becomes permanent",
+            "Leave it at 5 \u2014 extra capacity is harmless",
+            "Scale it back by hand tomorrow and tell no one",
+            "Delete the deployment and recreate it at 3"
+          ],
+          "correct": 0,
+          "explain": "Git is the single source of truth, including for temporary changes: declare the override in git with its expiry, or schedule the revert. Manual changes with memory-based follow-through are exactly how OutOfSync becomes the permanent state."
+        },
+        {
+          "symptom": "Leadership asks how to stop hand-edits to the cluster entirely.",
+          "evidence": [
+            [
+              "rbac.txt",
+              "47 engineers hold cluster-admin. 'Everyone needs it for emergencies.'"
+            ],
+            [
+              "policy.txt",
+              "No policy blocks manual mutation of GitOps-managed namespaces."
+            ]
+          ],
+          "options": [
+            "Remove standing cluster-admin, scope emergency access with expiry, and let the GitOps agent own managed namespaces",
+            "Keep cluster-admin for everyone \u2014 emergencies need speed",
+            "Add a wiki page asking people not to hand-edit",
+            "Move the GitOps agent to a different cluster"
+          ],
+          "correct": 0,
+          "explain": "Pull-based GitOps plus scoped RBAC is the structural fix: the in-cluster agent reconciles, humans propose changes via git, and emergency access is temporary and audited. Forty-seven permanent cluster-admins is not an emergency plan \u2014 it's the drift factory."
+        }
+      ],
+      "debrief": "Drift is detected automatically by the reconcile loop \u2014 but resolved deliberately: understand why the live state diverged, declare the intended state in git, and remove the standing access that lets drift happen."
+    },
+    {
+      "id": "itg-sim-2",
+      "title": "The mutable latest tag",
+      "kind": "troubleshoot",
+      "domain_id": "iac-terraform-gitops",
+      "difficulty": 2,
+      "points": 15,
+      "brief": "Two clusters run 'the same' manifest from git, but behave differently. Both deploy image api:latest. The tag moved between their sync times. Fix the reference.",
+      "steps": [
+        {
+          "symptom": "Staging and prod both sync api:latest from the same commit \u2014 but run different code.",
+          "evidence": [
+            [
+              "staging.txt",
+              "api:latest resolved at sync: sha256:aaa1 (built Monday)."
+            ],
+            [
+              "prod.txt",
+              "api:latest resolved at sync: sha256:bbb2 (built Wednesday). Same git commit."
+            ]
+          ],
+          "options": [
+            "Pin immutable references \u2014 digests or version tags \u2014 so the manifest describes exactly what each cluster runs",
+            "Sync both clusters at the same time so latest resolves identically",
+            "This is fine \u2014 latest is always the newest code",
+            "Stop using staging \u2014 it causes confusion"
+          ],
+          "correct": 0,
+          "explain": "With mutable tags like 'latest', the repo stops describing what's actually running \u2014 two syncs of the same commit resolve to different artifacts. Immutable references make the manifest a true statement about the cluster."
+        },
+        {
+          "symptom": "The team pins versions but CI still pushes api:2.4.1 twice \u2014 the second build overwrote the first.",
+          "evidence": [
+            [
+              "registry.txt",
+              "api:2.4.1 pushed Monday (sha256:aaa1), pushed again Wednesday (sha256:bbb2). Tag reassigned."
+            ],
+            [
+              "deploy.txt",
+              "Rollback to '2.4.1' restored Wednesday's code, not Monday's."
+            ]
+          ],
+          "options": [
+            "Make tags immutable in the registry (or deploy by digest) \u2014 a version tag must name one artifact forever",
+            "Version tags are just labels \u2014 overwriting is normal",
+            "Never roll back \u2014 always roll forward",
+            "Use timestamps in tags so they never collide"
+          ],
+          "correct": 0,
+          "explain": "A version tag that gets reassigned is a mutable tag wearing a version costume \u2014 rollback to '2.4.1' must mean Monday's artifact, deterministically. Immutable tags or digest references make the version a promise, not a suggestion."
+        },
+        {
+          "symptom": "GitOps is configured with auto-sync, and a bad image just auto-deployed to production.",
+          "evidence": [
+            [
+              "sync-policy.txt",
+              "Automated sync: enabled, prune: true. No health gates."
+            ],
+            [
+              "incident.txt",
+              "Bad image (crash loop) synced to prod at 03:12. Auto-sync faithfully deployed the declared state."
+            ]
+          ],
+          "options": [
+            "The declared state was wrong, not the sync: gate what gets declared (CI promotion, image verification) \u2014 auto-sync only deploys what's in git",
+            "Disable auto-sync \u2014 manual sync is safer",
+            "Auto-sync is broken \u2014 replace the GitOps tool",
+            "The bad image is CI's fault, not GitOps' \u2014 no action needed"
+          ],
+          "correct": 0,
+          "explain": "Auto-sync deploys the declared state faithfully \u2014 that's its job. The control point is what gets declared: CI promotion gates, image verification, and progressive delivery decide which artifact git may reference. Blaming the sync loop misses the actual gate."
+        }
+      ],
+      "debrief": "Immutable image references keep git honest: digests or pinned version tags, registry immutability, and promotion gates controlling what git may declare. The manifest must be a true statement about the cluster."
+    },
+    {
+      "id": "itg-sim-3",
+      "title": "Secret committed to git",
+      "kind": "troubleshoot",
+      "domain_id": "iac-terraform-gitops",
+      "difficulty": 3,
+      "points": 18,
+      "brief": "The GitOps repo contains a base64'd database password in a manifest. 'It's encoded, not encrypted,' the audit notes. The whole repo is cloned to every engineer's laptop. Fix the secret handling.",
+      "steps": [
+        {
+          "symptom": "Secret manifest in git: password stored base64-encoded. 40+ clones of the repo exist.",
+          "evidence": [
+            [
+              "secret.yaml",
+              "data:\n  password: c3VwZXJzZWNyZXQ=  # 'encoded for safety'"
+            ],
+            [
+              "clones.txt",
+              "Repo clones: 43 (engineers, CI runners, backups)."
+            ]
+          ],
+          "options": [
+            "Rotate the password immediately, then replace the manifest with a reference resolved at runtime from a secrets manager",
+            "It's base64 \u2014 that's basically encrypted. Leave it.",
+            "Delete the manifest from git history \u2014 the clones don't matter",
+            "Restrict who can clone the repo"
+          ],
+          "correct": 0,
+          "explain": "Base64 is encoding, not encryption \u2014 every clone holder can decode it in one command. Secrets don't belong in git in any form: rotate now, then store references (ExternalSecrets, Vault Agent) and let the cluster resolve real values at runtime."
+        },
+        {
+          "symptom": "The team proposes SealedSecrets-style encryption: encrypted values committed, decrypted in-cluster.",
+          "evidence": [
+            [
+              "proposal.txt",
+              "'We encrypt with the cluster key and commit the ciphertext. Git stays the source of truth.'"
+            ],
+            [
+              "concern.txt",
+              "Key rotation story: unclear. Multi-cluster story: unclear. Audit of who decrypted what: none."
+            ]
+          ],
+          "options": [
+            "Encrypted-in-git is acceptable only with a real key-management and rotation story; otherwise prefer manager references resolved at runtime",
+            "Encrypted in git is always wrong \u2014 never do it",
+            "Encrypted in git is always fine \u2014 encryption solves everything",
+            "Just use base64 \u2014 simpler"
+          ],
+          "correct": 0,
+          "explain": "Encrypted secrets in git can work, but the security moves to key management: rotation, scope, audit, multi-cluster. Without answers there, it's obfuscation with extra steps. Manager references keep the secret out of git entirely \u2014 the simpler invariant to defend."
+        },
+        {
+          "symptom": "CI needs cloud credentials to run Terraform \u2014 currently a long-lived key in CI variables.",
+          "evidence": [
+            [
+              "ci-vars.txt",
+              "AWS_ACCESS_KEY_ID: AKIA... (created 2023, never rotated). Scope: admin."
+            ],
+            [
+              "gitops.txt",
+              "The GitOps agent runs in-cluster with its own scoped service account."
+            ]
+          ],
+          "options": [
+            "Move to pull-based delivery and short-lived workload identity \u2014 CI never holds cluster or cloud credentials",
+            "Rotate the CI key yearly \u2014 that's sufficient",
+            "Scope the key down but keep it long-lived",
+            "Put the key in the GitOps repo so it's versioned"
+          ],
+          "correct": 0,
+          "explain": "Pull-based delivery beats push-based precisely here: the in-cluster agent pulls changes, so CI never needs cluster credentials \u2014 a major reduction in secret sprawl. Pair with short-lived workload identity and the 2023 admin key retires permanently."
+        }
+      ],
+      "debrief": "Secrets don't belong in git \u2014 encoded, encrypted, or otherwise. Store references, resolve at runtime from a manager, and let pull-based delivery eliminate the credentials CI used to need."
+    },
+    {
+      "id": "itg-sim-4",
+      "title": "CI holds the cluster keys",
+      "kind": "troubleshoot",
+      "domain_id": "iac-terraform-gitops",
+      "difficulty": 2,
+      "points": 15,
+      "brief": "The deploy pipeline pushes to the cluster with a kubeconfig stored in CI variables. The kubeconfig is cluster-admin, 2 years old, and shared across 5 pipelines. Redesign the delivery.",
+      "steps": [
+        {
+          "symptom": "CI pushes manifests with a 2-year-old cluster-admin kubeconfig shared by 5 pipelines.",
+          "evidence": [
+            [
+              "kubeconfig.txt",
+              "Age: 2 years. Scope: cluster-admin. Shared across: 5 pipelines, 3 teams."
+            ],
+            [
+              "blast.txt",
+              "Any of the 5 pipelines can delete any namespace. No audit per pipeline."
+            ]
+          ],
+          "options": [
+            "Switch to pull-based GitOps: the in-cluster agent syncs from git; CI only commits manifests and never touches the cluster",
+            "Rotate the kubeconfig \u2014 a fresh cluster-admin key fixes it",
+            "Give each pipeline its own cluster-admin kubeconfig",
+            "Shorten the key's name so it's harder to guess"
+          ],
+          "correct": 0,
+          "explain": "Pull-based delivery removes the entire credential class: CI writes to git, the agent inside the cluster pulls. No kubeconfig in CI means no 2-year-old cluster-admin key to rotate, scope, or leak \u2014 the secret sprawl disappears structurally."
+        },
+        {
+          "symptom": "One pipeline still needs to run database migrations \u2014 it genuinely must reach the cluster.",
+          "evidence": [
+            [
+              "migration.txt",
+              "Job: run migrations pre-deploy. Needs: db access, not cluster-admin."
+            ],
+            [
+              "current.txt",
+              "Today it uses the shared cluster-admin kubeconfig 'because it's there'."
+            ]
+          ],
+          "options": [
+            "Give the migration job its own scoped, short-lived credential limited to what migrations need",
+            "Keep using the shared kubeconfig \u2014 migrations are trusted",
+            "Run migrations by hand from a laptop instead",
+            "Skip migrations \u2014 the app handles schema drift"
+          ],
+          "correct": 0,
+          "explain": "The exception proves the pattern: the one job that must reach the cluster gets its own scoped, short-lived credential \u2014 not the shared skeleton key. Least privilege applies to automation exactly as it does to humans."
+        },
+        {
+          "symptom": "After the migration to pull-based, deploys feel slower \u2014 'push was instant.'",
+          "evidence": [
+            [
+              "timing.txt",
+              "Push deploy: 40s. GitOps sync interval: 3min poll. 'It feels broken.'"
+            ],
+            [
+              "webhook.txt",
+              "Webhook from git host to the agent: not configured."
+            ]
+          ],
+          "options": [
+            "Configure the git webhook so pushes trigger near-instant syncs \u2014 pull-based with webhooks is as fast as push",
+            "Go back to push \u2014 speed matters more than security",
+            "Reduce the poll interval to 5 seconds",
+            "Deploys don't need to be fast"
+          ],
+          "correct": 0,
+          "explain": "Pull-based doesn't mean slow: a webhook from the git host notifies the agent on push, giving push-like speed with pull-based security. The 3-minute poll is the default, not the design \u2014 wire the webhook."
+        }
+      ],
+      "debrief": "Pull-based delivery: the agent inside the cluster pulls from git, CI never holds cluster credentials, and webhooks keep it fast. Exceptions get scoped, short-lived credentials \u2014 never the shared skeleton key."
+    },
+    {
+      "id": "itg-sim-5",
+      "title": "One giant app-of-apps",
+      "kind": "troubleshoot",
+      "domain_id": "iac-terraform-gitops",
+      "difficulty": 1,
+      "points": 10,
+      "brief": "The platform team manages all 60 services with a single GitOps application. Every sync touches everything, one team's bad commit blocks all deploys, and nobody can tell who owns what. Decompose it.",
+      "steps": [
+        {
+          "symptom": "Single GitOps app, 60 services, one sync scope. A bad commit in team A's manifests blocks team B's urgent deploy.",
+          "evidence": [
+            [
+              "app.txt",
+              "Applications: 1 ('everything'). Sources: 1 repo, 60 service dirs. Sync failures: block all 60."
+            ],
+            [
+              "incident.txt",
+              "Team B's hotfix waited 6 hours for team A's broken manifest to be reverted."
+            ]
+          ],
+          "options": [
+            "Decompose into app-of-apps: a parent app per team/scope, each with its own sync policy and blast radius",
+            "Keep one app \u2014 the coupling encourages careful commits",
+            "Split into 60 separate GitOps installations",
+            "Let team B edit team A's manifests to unblock themselves"
+          ],
+          "correct": 0,
+          "explain": "The app-of-apps pattern composes Applications hierarchically: each team gets its own sync scope, policies, and blast radius under a parent. One giant sync couples 60 teams' fates; hierarchy decouples them while keeping one pane of glass."
+        },
+        {
+          "symptom": "After decomposition, team C's app syncs fine but its service can't reach team D's database.",
+          "evidence": [
+            [
+              "netpol.txt",
+              "NetworkPolicies: none. 'The old monolith app handled networking implicitly.'"
+            ],
+            [
+              "request.txt",
+              "Team C: 'It worked when everything was one app!'"
+            ]
+          ],
+          "options": [
+            "The decomposition surfaced implicit coupling \u2014 define the cross-team contract explicitly (service endpoints, network policy, ownership)",
+            "Merge C and D back into one app",
+            "Give every app cluster-wide network access",
+            "It worked before, so the decomposition is wrong"
+          ],
+          "correct": 0,
+          "explain": "Decomposition surfaces hidden coupling \u2014 that's a feature. The old giant app masked cross-team dependencies; now they become explicit contracts: endpoints, policies, owners. Implicit coupling that 'just worked' is tech debt with a good disguise."
+        },
+        {
+          "symptom": "Each team now wants its own repo, its own sync schedule, its own tool version.",
+          "evidence": [
+            [
+              "requests.txt",
+              "Team A: own repo. Team B: hourly sync. Team C: different GitOps version."
+            ],
+            [
+              "platform.txt",
+              "Platform team: 4 people supporting 60 services."
+            ]
+          ],
+          "options": [
+            "Standardize the platform contract (repo layout, sync policy, versions) and let teams vary inside it \u2014 paved road, not 60 snowflakes",
+            "Let every team do exactly what it wants \u2014 autonomy above all",
+            "Force everything identical \u2014 no variation allowed",
+            "One repo for everyone, no exceptions"
+          ],
+          "correct": 0,
+          "explain": "App-of-apps gives each team its own scope \u2014 inside a platform contract. Total freedom recreates 60 snowflakes a 4-person platform team can't support; total rigidity recreates the monolith. The paved road standardizes the how and frees the what."
+        }
+      ],
+      "debrief": "App-of-apps decomposes the giant sync into hierarchical scopes: each team owns its sync policy and blast radius, hidden coupling becomes explicit contracts, and the platform contract keeps 60 services supportable."
+    }
+  ],
+  "consoleSims": [
+    {
+      "id": "itg-console-1",
+      "title": "Infra change by pull request",
+      "console": "git-host",
+      "domain_id": "iac-terraform-gitops",
+      "difficulty": 2,
+      "brief": "GitOps starts with git: propose the Redis cache addition on a branch and open the pull request that the pipeline will plan.",
+      "tasks": [
+        {
+          "id": "t1",
+          "instruction": "Create a branch named infra/add-cache.",
+          "validate": {
+            "action": "create-branch",
+            "params": {
+              "name": "infra/add-cache"
+            }
+          },
+          "hint": "Branches section: create branch infra/add-cache."
+        },
+        {
+          "id": "t2",
+          "instruction": "Open a PR titled 'Add Redis cache to staging' from infra/add-cache into main.",
+          "validate": {
+            "action": "open-pr",
+            "params": {
+              "title": "Add Redis cache to staging",
+              "base": "main",
+              "head": "infra/add-cache"
+            }
+          },
+          "hint": "Pull requests section: title, base main, head infra/add-cache."
+        },
+        {
+          "id": "t3",
+          "instruction": "Approve PR #2 so the plan stage can run.",
+          "validate": {
+            "action": "approve-pr",
+            "params": {
+              "pr": 2
+            }
+          },
+          "hint": "Pull requests section: click Approve on PR #2 (your new PR)."
+        }
+      ],
+      "debrief": "Every infrastructure change is a pull request: the branch holds the proposal, the PR is the review gate, and approval is what lets automation plan it. Git is the source of truth because git is where changes are debated."
+    },
+    {
+      "id": "itg-console-2",
+      "title": "Plan on PR, apply on main",
+      "console": "cicd-pipeline",
+      "domain_id": "iac-terraform-gitops",
+      "difficulty": 2,
+      "brief": "Wire the safe Terraform flow: select the staging workspace, rebuild, and approve the gated apply.",
+      "tasks": [
+        {
+          "id": "t1",
+          "instruction": "Set the pipeline variable TF_WORKSPACE to staging.",
+          "validate": {
+            "action": "set-variable",
+            "params": {
+              "key": "TF_WORKSPACE",
+              "value": "staging"
+            }
+          },
+          "hint": "Variables section: key TF_WORKSPACE, value staging."
+        },
+        {
+          "id": "t2",
+          "instruction": "Trigger a new build to run the plan.",
+          "validate": {
+            "action": "trigger-build",
+            "params": {}
+          },
+          "hint": "Pipeline section: click Trigger new build."
+        },
+        {
+          "id": "t3",
+          "instruction": "Approve the gated deploy stage to apply.",
+          "validate": {
+            "action": "approve-stage",
+            "params": {
+              "stage": "deploy"
+            }
+          },
+          "hint": "Pipeline section: click Approve on the deploy stage."
+        }
+      ],
+      "debrief": "Safe GitOps for infrastructure: the workspace is explicit, every build plans, and apply only happens on the gated promotion. The plan output is the change's documentation."
+    },
+    {
+      "id": "itg-console-3",
+      "title": "Register the GitOps-managed app",
+      "console": "k8s-dashboard",
+      "domain_id": "iac-terraform-gitops",
+      "difficulty": 2,
+      "brief": "Onboard the payments API to the cluster the GitOps way: isolated namespace, pinned immutable image, exposed service.",
+      "tasks": [
+        {
+          "id": "t1",
+          "instruction": "Create a namespace named payments.",
+          "validate": {
+            "action": "create-namespace",
+            "params": {
+              "name": "payments"
+            }
+          },
+          "hint": "Namespaces section: create namespace payments."
+        },
+        {
+          "id": "t2",
+          "instruction": "Deploy payments-api (image registry.internal/payments-api:2.4.1, 3 replicas) into payments.",
+          "validate": {
+            "action": "deploy",
+            "params": {
+              "name": "payments-api",
+              "namespace": "payments",
+              "image": "registry.internal/payments-api:2.4.1",
+              "replicas": 3
+            }
+          },
+          "hint": "Deployments section: name, namespace payments, pinned image, 3 replicas."
+        },
+        {
+          "id": "t3",
+          "instruction": "Expose payments-api on port 80 as a ClusterIP service.",
+          "validate": {
+            "action": "expose-service",
+            "params": {
+              "deployment": "payments-api",
+              "port": 80,
+              "type": "ClusterIP"
+            }
+          },
+          "hint": "Services section: deployment payments-api, port 80, type ClusterIP."
+        }
+      ],
+      "debrief": "GitOps-managed workloads are explicit: their own namespace, immutable image references, declared services. The cluster state reads like the git repo because it is the git repo, reconciled."
+    },
+    {
+      "id": "itg-console-4",
+      "title": "Review the drift-fix PR",
+      "console": "git-host",
+      "domain_id": "iac-terraform-gitops",
+      "difficulty": 1,
+      "brief": "Someone opened PR #1 to fix the replica drift. Review it properly: comment, approve, merge.",
+      "tasks": [
+        {
+          "id": "t1",
+          "instruction": "Add a review comment to PR #1 noting the drift cause.",
+          "validate": {
+            "action": "add-comment",
+            "params": {
+              "pr": 1
+            }
+          },
+          "hint": "Pull requests section: Add comment on PR #1, describe the manual-scale drift."
+        },
+        {
+          "id": "t2",
+          "instruction": "Approve PR #1.",
+          "validate": {
+            "action": "approve-pr",
+            "params": {
+              "pr": 1
+            }
+          },
+          "hint": "Pull requests section: click Approve on PR #1."
+        },
+        {
+          "id": "t3",
+          "instruction": "Merge PR #1.",
+          "validate": {
+            "action": "merge-pr",
+            "params": {
+              "pr": 1
+            }
+          },
+          "hint": "Pull requests section: click Merge on PR #1."
+        }
+      ],
+      "debrief": "Drift fixes go through the same gate as features: reviewed, approved, merged. The reconcile loop then converges the cluster \u2014 git stays the single source of truth."
+    }
+  ],
+  "terminalMissions": [
+    {
+      "id": "itg-m1",
+      "title": "List the repo workspace",
+      "domain_id": "iac-terraform-gitops",
+      "difficulty": 1,
+      "brief": "GitOps starts with the repo. List the workspace to confirm the manifests are where you expect.",
+      "objectives": [
+        "List the directory contents"
+      ],
+      "checks": [
+        {
+          "command_pattern": "^ls\\s*$",
+          "expect_contains": "app.py",
+          "hint": "Type: ls"
+        }
+      ],
+      "success_message": "Repo workspace listed. The source of truth is present."
+    },
+    {
+      "id": "itg-m2",
+      "title": "Confirm the operator identity",
+      "domain_id": "iac-terraform-gitops",
+      "difficulty": 1,
+      "brief": "Every git commit has an author; every shell session has a user. Confirm yours.",
+      "objectives": [
+        "Print the current username"
+      ],
+      "checks": [
+        {
+          "command_pattern": "^whoami\\s*$",
+          "expect_contains": "candidate",
+          "hint": "Type: whoami"
+        }
+      ],
+      "success_message": "Operator identity confirmed: candidate."
+    },
+    {
+      "id": "itg-m3",
+      "title": "Anchor the repo path",
+      "domain_id": "iac-terraform-gitops",
+      "difficulty": 1,
+      "brief": "Manifest paths are relative to the repo root. Print the working directory to anchor yourself.",
+      "objectives": [
+        "Print the working directory"
+      ],
+      "checks": [
+        {
+          "command_pattern": "^pwd\\s*$",
+          "expect_contains": "/home/candidate",
+          "hint": "Type: pwd"
+        }
+      ],
+      "success_message": "Repo path anchored: /home/candidate."
+    },
+    {
+      "id": "itg-m4",
+      "title": "Record the agent node kernel",
+      "domain_id": "iac-terraform-gitops",
+      "difficulty": 2,
+      "brief": "The GitOps agent runs on a node; record the node's kernel as part of the environment baseline.",
+      "objectives": [
+        "Print full kernel and machine information"
+      ],
+      "checks": [
+        {
+          "command_pattern": "^uname\\s+-a",
+          "expect_contains": "6.8.0-ilb",
+          "hint": "Type: uname -a"
+        }
+      ],
+      "success_message": "Agent node recorded: Linux 6.8.0-ilb x86_64."
+    },
+    {
+      "id": "itg-m5",
+      "title": "Name the sync target",
+      "domain_id": "iac-terraform-gitops",
+      "difficulty": 1,
+      "brief": "The agent reconciles a specific cluster. Print the hostname to confirm which one you're looking at.",
+      "objectives": [
+        "Print the hostname"
+      ],
+      "checks": [
+        {
+          "command_pattern": "^hostname\\s*$",
+          "expect_contains": "interstitium",
+          "hint": "Type: hostname"
+        }
+      ],
+      "success_message": "Sync target named: interstitium."
+    },
+    {
+      "id": "itg-m6",
+      "title": "Verify the sync identity context",
+      "domain_id": "iac-terraform-gitops",
+      "difficulty": 2,
+      "brief": "Pull-based agents run with scoped identities. Check your own identity context as the model.",
+      "objectives": [
+        "Print user and group identity details"
+      ],
+      "checks": [
+        {
+          "command_pattern": "^id\\s*$",
+          "expect_contains": "uid=1000",
+          "hint": "Type: id"
+        }
+      ],
+      "success_message": "Identity context verified: uid=1000(candidate). Scoped identities, everywhere."
+    },
+    {
+      "id": "itg-m7",
+      "title": "Declare the desired state",
+      "domain_id": "iac-terraform-gitops",
+      "difficulty": 1,
+      "brief": "GitOps in one command: declare what should be, and let the loop converge. Echo the desired state.",
+      "objectives": [
+        "Echo the desired-state phrase"
+      ],
+      "checks": [
+        {
+          "command_pattern": "^echo\\s+desired-state\\s+v2\\.4\\.1",
+          "expect_contains": "desired-state v2.4.1",
+          "hint": "Type: echo desired-state v2.4.1"
+        }
+      ],
+      "success_message": "Desired state declared: v2.4.1. The loop will converge."
+    }
+  ],
+  "sections": [
+    {
+      "id": "sec-full-spectrum",
+      "title": "Full Spectrum Dominance \u2014 core path",
+      "kind": "core",
+      "lectures": [],
+      "lab_ids": [
+        "fsd-tl-lab-1",
+        "fsd-tl-lab-2",
+        "fsd-tl-lab-3",
+        "fsd-sg-lab-1",
+        "fsd-sg-lab-2",
+        "fsd-sg-lab-3",
+        "fsd-ai-lab-1",
+        "fsd-ai-lab-2",
+        "fsd-ai-lab-3"
+      ],
+      "drill_domain_ids": [
+        "tl-interview",
+        "tl-endpoint-ops",
+        "sec-graphs",
+        "graph-defense",
+        "ml-defense",
+        "ai-agent-sec"
+      ]
+    }
+  ],
+  "behavioral": [
+    {
+      "prompt": "Tell me about the most technically difficult problem you have run into \u2014 a homelab, a broken environment, anything \u2014 and how you solved it.",
+      "framework": "STAR",
+      "points": [
+        "Pick ONE problem with a real evidence trail: the symptom, what you measured, the hypothesis you tested",
+        "Show the loop: scope, observe, hypothesize, smallest safe change, validate \u2014 interviewers score the method, not just the fix",
+        "Name the tools (VM build, networking, logs) and the lesson it taught you",
+        "Close with the result in concrete terms: what works now that did not before"
+      ],
+      "pitfalls": [
+        "Choosing a story with no real obstacle (\u201cI Googled it\u201d is not a story)",
+        "Skipping validation \u2014 saying it worked without proving it",
+        "Rambling past two minutes without reaching the result"
+      ]
+    },
+    {
+      "prompt": "Tell me about a time you dealt with a frustrated customer or user while something was broken.",
+      "framework": "STAR",
+      "points": [
+        "Lead with empathy and ownership: acknowledge the impact before the technical detail",
+        "Show translation: what you told them, in their language, plus the timeline you committed to",
+        "Show judgment: the narrow fix you chose and what you refused to do (e.g., disabling the control to clear the symptom)",
+        "Close with the relationship outcome, not just the technical one"
+      ],
+      "pitfalls": [
+        "Badmouthing the customer to sound decisive",
+        "Promising a timeline you could not keep",
+        "Framing the user as the problem rather than the situation"
+      ]
+    },
+    {
+      "prompt": "Why ThreatLocker, and why cybersecurity?",
+      "framework": "STAR",
+      "points": [
+        "Connect prevention to something concrete: a moment you saw detection arrive too late, or a system you hardened",
+        "Tie their model to your instincts: deny-by-default matches how you already think about trust",
+        "Show service orientation: the Cyber Hero culture rewards the 2 a.m. helper \u2014 give an example of being one",
+        "Name one forward-looking reason: Zero Trust, the MSP mission, or the bootcamp community investment"
+      ],
+      "pitfalls": [
+        "Generic flattery with no specifics about the company",
+        "Leading with compensation, title, or location convenience",
+        "Claiming expertise in products you have only read about \u2014 frame it as studied, not mastered"
+      ]
+    },
+    {
+      "framework": "STAR",
+      "pitfalls": [
+        "Staying vague ('I analyzed the data') instead of naming what you connected.",
+        "Skipping your own role: what did YOU see that others missed?",
+        "No outcome: what changed because you joined the dots?"
+      ],
+      "points": [
+        "The scattered signals and why nobody had connected them yet",
+        "The specific links you drew between them (shared host, time, infrastructure)",
+        "What the bigger picture turned out to be and what action it drove",
+        "What the experience taught you about investigating"
+      ],
+      "prompt": "Tell me about a time you connected scattered clues into a bigger picture that others had missed."
+    },
+    {
+      "framework": "STAR",
+      "pitfalls": [
+        "Claiming you fixed everything: credibility comes from trade-offs, not heroics.",
+        "Hiding the constraint: the limitation is what makes the prioritization story real.",
+        "No metric: 'better' needs a before-and-after."
+      ],
+      "points": [
+        "The constraint (time, budget, staff) and the size of the backlog",
+        "How you decided what mattered most (what was reachable, what was critical)",
+        "What you did first and what you deliberately deferred",
+        "The measurable result of the prioritization"
+      ],
+      "prompt": "Describe a time you had to prioritize risks or fixes with limited time or resources. How did you decide what came first?"
+    },
+    {
+      "framework": "STAR",
+      "pitfalls": [
+        "Reciting jargon to a non-technical audience and calling it communication.",
+        "Skipping the audience's reaction: did they actually understand and act?",
+        "Making yourself the hero instead of the translator."
+      ],
+      "points": [
+        "The technical finding and why it mattered",
+        "Who the audience was and what they cared about",
+        "How you reframed it (a picture, an analogy, a story)",
+        "What decision or action the audience took because they understood"
+      ],
+      "prompt": "Tell me about a time you explained a complex technical finding to a non-technical audience and it changed a decision."
+    },
+    {
+      "prompt": "Tell me about a time you used automation or AI to solve a security problem.",
+      "framework": "STAR",
+      "points": [
+        "The repetitive security task and what it cost in analyst time",
+        "The automation or AI approach you built and how you validated it",
+        "Measured outcome: time saved, detection gained, false positives changed"
+      ],
+      "pitfalls": [
+        "Describing the tool but never the validation",
+        "No measurable outcome"
+      ]
+    },
+    {
+      "prompt": "Describe a time you had to decide whether to trust an automated security decision.",
+      "framework": "STAR",
+      "points": [
+        "The stakes of the automated action and its blast radius",
+        "How you verified before acting (or the gate you built)",
+        "What happened and what you would automate differently next time"
+      ],
+      "pitfalls": [
+        "Saying you always trust the tool",
+        "No mention of blast radius or reversibility"
+      ]
+    }
+  ],
+  "resources": {
+    "cheatsheet": {
+      "title": "Full Spectrum Dominance \u2014 field reference",
+      "sections": [
+        {
+          "heading": "Company facts (verified)",
+          "items": [
+            "Founded 2017 in Orlando, FL \u2014 Danny Jenkins (CEO), Sami Jenkins (COO), John Carolan (QA)",
+            "Philosophy: deny-by-default / default-deny \u2014 approve known-good, deny the rest",
+            "Customers: 70,000+ organizations, sold heavily through the MSP channel",
+            "Funding: $190M Series F, July 2026 (Elephant-led); ~730 employees",
+            "Interview address: 1901 Summit Tower Blvd, Orlando, FL 32810",
+            "Culture: in-office 5 days/week; free lunch; post-offer background + drug screening"
+          ]
+        },
+        {
+          "heading": "Product stack",
+          "items": [
+            "Allowlisting \u2014 default-deny execution control for apps, DLLs, scripts, installers",
+            "Ringfencing \u2014 constrains allowed apps: app-to-app, file, registry, network",
+            "Storage Control \u2014 USB/device policy by serial, user, file type, encryption",
+            "Elevation Control \u2014 just-in-time per-app admin, no standing rights",
+            "Network Control \u2014 host firewall; port/IP/dynamic-ACL rules; ZTNA foundation",
+            "Web Control \u2014 agent-based DNS/URL category filtering, works off-network",
+            "Cyber Hero MDR \u2014 24/7/365 US-based response, ~60-second average",
+            "Testing Environment \u2014 one-button VDI sandbox; checks AV flags, canary files, registry changes"
+          ]
+        },
+        {
+          "heading": "Rule strength (strongest to weakest)",
+          "items": [
+            "Certificate/publisher rules \u2014 survive version updates",
+            "Hash rules \u2014 precise but break on every new version",
+            "Path rules \u2014 weakest; never in user-writable locations",
+            "Learning Mode catalogs before enforcement; Installation Mode pauses blocking \u2014 scope and time-box both"
+          ]
+        },
+        {
+          "heading": "Terminal evidence commands",
+          "items": [
+            "nmap <host> \u2014 which ports answer (22/80/443 open)",
+            "dig <name> \u2014 ANSWER SECTION with the A record",
+            "ss \u2014 listening sockets",
+            "systemctl status <svc> \u2014 unit state",
+            "journalctl -u <svc> \u2014 service logs",
+            "sha256sum <file> \u2014 real SHA-256 identity",
+            "grep <pattern> <file> \u2014 search the record",
+            "ps \u2014 what is actually running"
+          ]
+        },
+        {
+          "heading": "Graph vocabulary",
+          "items": [
+            "node \u2014 any entity tracked in the model (user, host, IP, domain, file hash, vulnerability)",
+            "edge \u2014 a labeled relationship between two nodes (logged into, resolved to, downloaded)",
+            "degree \u2014 number of edges on a node; high-degree nodes are attacker highways",
+            "centrality \u2014 how much traffic or how many paths flow through a node",
+            "directed edge \u2014 a relationship with a direction (A downloaded FROM B)",
+            "security graph \u2014 the living model of your whole environment as nodes and edges",
+            "attack graph \u2014 the subgraph of exploitable paths to your targets",
+            "knowledge graph \u2014 threat-intel indicators linked to campaigns and actors"
+          ]
+        },
+        {
+          "heading": "Attack-graph playbook",
+          "items": [
+            "inventory first \u2014 you cannot graph what you have not discovered",
+            "model flaws AND misconfigs as exploit edges",
+            "compute shortest paths to the crown jewels",
+            "find the choke point (highest betweenness on those paths)",
+            "break the path: patch, segment, or remove the edge",
+            "re-scan and re-run the graph to prove the path is gone",
+            "never trust yesterday's graph \u2014 redeployments redraw the map"
+          ]
+        },
+        {
+          "heading": "Zero Trust + graphs",
+          "items": [
+            "never trust, always verify \u2014 re-evaluate every access decision",
+            "assume breach \u2014 treat unexpected edges as hostile until proven otherwise",
+            "microsegmentation \u2014 allow-list approved edges, alert on new ones",
+            "ReBAC \u2014 policies are path queries on the identity graph",
+            "continuous verification \u2014 device/location/behavior edges change, trust follows",
+            "anomalous edge \u2014 a first-seen connection between strangers is the classic signal"
+          ]
+        },
+        {
+          "heading": "ML detection vocabulary",
+          "items": [
+            "Supervised learning \u2014 learns from labeled examples; strong on known threats, blind to novel ones",
+            "Unsupervised learning \u2014 finds structure without labels; clustering and dimensionality reduction",
+            "Anomaly detection \u2014 models 'normal' and flags deviations; the workhorse for novel threats",
+            "UEBA \u2014 user and entity behavior analytics: per-user baselines plus peer-group comparison",
+            "Feature engineering \u2014 encoding raw logs into model inputs (login velocity, rare processes, domain entropy)",
+            "Concept drift \u2014 model decay as attacker behavior and legitimate traffic shift over time"
+          ]
+        },
+        {
+          "heading": "Detection metrics",
+          "items": [
+            "Precision \u2014 of all flagged alerts, how many were real",
+            "Recall \u2014 of all real attacks, how many were flagged",
+            "Threshold tuning \u2014 sliding the decision cutoff trades precision against recall",
+            "Alert fatigue \u2014 when false positives train analysts to ignore the queue",
+            "DGA \u2014 domain generation algorithm; detected via character entropy of domain names"
+          ]
+        },
+        {
+          "heading": "Agent and LLM security",
+          "items": [
+            "Direct prompt injection \u2014 attacker input overrides app instructions (OWASP LLM01:2025, the #1 LLM risk)",
+            "Indirect prompt injection \u2014 hidden instructions inside retrieved data (email, web, docs)",
+            "Jailbreak \u2014 defeating the model's own safety policy; distinct from hijacking app behavior",
+            "Tool poisoning \u2014 malicious tool descriptions or metadata steer an agent to misuse its tools (MCP ecosystem risk)",
+            "Insecure output handling \u2014 executing or trusting model output without validation",
+            "Least-privilege tools \u2014 grant each tool only the scope its task requires"
+          ]
+        },
+        {
+          "heading": "Adversarial ML and governance",
+          "items": [
+            "Evasion \u2014 perturbing inputs at inference time to dodge a classifier",
+            "Poisoning \u2014 corrupting training data to corrupt the model",
+            "Extraction \u2014 querying a model to steal its behavior or parameters",
+            "MITRE ATLAS \u2014 knowledge base of adversarial ML tactics and techniques",
+            "Red-teaming and evals \u2014 adversarial testing of AI systems before deployment",
+            "Human-in-the-loop \u2014 required approval for high-impact or irreversible agent actions",
+            "SOAR \u2014 security orchestration, automation and response; automate enrichment, gate containment"
+          ]
+        }
+      ]
+    },
+    "glossary": [
+      {
+        "term": "Allowlisting",
+        "def": "Default-deny execution control: only explicitly approved applications, scripts, and installers may run."
+      },
+      {
+        "term": "Blocklisting",
+        "def": "Default-allow model: everything runs except recognized-bad items \u2014 the window zero-days live in."
+      },
+      {
+        "term": "Default-deny",
+        "def": "Deny-by-default posture: unknown code, devices, or connections are refused unless explicitly approved."
+      },
+      {
+        "term": "Ringfencing",
+        "def": "Containment applied on top of allowlisting; restricts what a permitted app may do across app-to-app, file, registry, and network dimensions."
+      },
+      {
+        "term": "Learning Mode",
+        "def": "Agent mode that catalogs applications and dependencies and auto-builds policies before enforcement; temporarily disables file blocking."
+      },
+      {
+        "term": "Installation Mode",
+        "def": "Temporary mode that pauses file blocking for installs \u2014 must be tightly scoped and time-boxed."
+      },
+      {
+        "term": "Elevation Control",
+        "def": "Grants specific approved applications admin rights for standard users \u2014 just-in-time, per-app, time-boxed \u2014 without standing admin rights."
+      },
+      {
+        "term": "Application hopping",
+        "def": "An elevated or trusted process spawning another tool (e.g., PowerShell) to inherit its privileges \u2014 countered by ringfencing the elevated process."
+      },
+      {
+        "term": "Storage Control",
+        "def": "Device and path policy: USB approved by serial, user, file type, time, and encryption; unapproved devices do not connect."
+      },
+      {
+        "term": "Network Control",
+        "def": "Centrally managed host firewall; rules by port, source IP, and dynamic ACLs; egress allowlisting pins apps to approved destinations."
+      },
+      {
+        "term": "ZTNA",
+        "def": "Zero Trust Network Access: per-session, per-application brokered connections (commonly over port 443) with no open inbound ports \u2014 deny-by-default for network access."
+      },
+      {
+        "term": "Approval Center",
+        "def": "Portal queue where end-user software requests arrive for admin review and decision."
+      },
+      {
+        "term": "Unified Audit",
+        "def": "Real-time audit showing what was allowed or denied across endpoints \u2014 and why; the evidence layer for triage."
+      },
+      {
+        "term": "Testing Environment",
+        "def": "One-button cloud VDI sandbox launched from an approval request; logs AV flags, canary-file access, and registry/system changes."
+      },
+      {
+        "term": "Cyber Hero MDR",
+        "def": "24/7/365 US-based managed detection and response team; validates alerts, isolates hosts, acts on customer runbooks; ~60-second average response."
+      },
+      {
+        "term": "Assume breach",
+        "def": "Design and operate as if the attacker already has a foothold \u2014 least privilege, containment, and monitoring everywhere."
+      },
+      {
+        "term": "Living off the land",
+        "def": "Attacks that hijack trusted built-in tools (Word, PowerShell) instead of dropping malware \u2014 defeated by behavior containment, not signatures."
+      },
+      {
+        "term": "Change control",
+        "def": "Scoped, ticketed, tested changes with validation and rollback \u2014 emergency speed never cancels the process."
+      },
+      {
+        "def": "A node in an attack graph representing a system or weakness, connected by edges that represent steps an attacker could take between them.",
+        "term": "attack graph"
+      },
+      {
+        "def": "How central a node is to paths through the graph (for example, betweenness: how many shortest paths cross it).",
+        "term": "centrality"
+      },
+      {
+        "def": "The most valuable assets in the environment (customer data, finance systems, source code): what attack paths are measured against.",
+        "term": "crown jewels"
+      },
+      {
+        "def": "A labeled connection between two nodes, representing a relationship such as 'logged into' or 'resolved to'.",
+        "term": "edge"
+      },
+      {
+        "def": "A graph of threat indicators (IPs, domains, hashes) linked to campaigns, actors, and each other through shared infrastructure.",
+        "term": "knowledge graph"
+      },
+      {
+        "def": "The practice of mapping relationships in data to reveal hidden associations; rooted in Euler's 1736 graph theory, 1970s paper link charts, and post-2001 intelligence work.",
+        "term": "link analysis"
+      },
+      {
+        "def": "A segment of the network so small that its allowed communications can be enumerated as a graph of approved edges.",
+        "term": "microsegmentation"
+      },
+      {
+        "def": "An entity in the graph: a user, host, IP address, domain, file, or vulnerability.",
+        "term": "node"
+      },
+      {
+        "def": "Access control where policy is evaluated by traversing relationships on a graph (for example: user reports_to manager who owns the resource's project).",
+        "term": "ReBAC"
+      },
+      {
+        "def": "A machine-learning model that operates directly on graph structure to classify nodes or subgraphs, for example labeling attack vs normal behavior.",
+        "term": "graph neural network (GNN)"
+      },
+      {
+        "def": "Monitoring user and entity behavior by modeling their normal relationship patterns and flagging structural anomalies.",
+        "term": "UEBA"
+      },
+      {
+        "term": "Supervised learning",
+        "def": "ML trained on labeled examples; classifies new inputs into known categories."
+      },
+      {
+        "term": "Anomaly detection",
+        "def": "ML approach that models normal behavior and flags statistically rare deviations."
+      },
+      {
+        "term": "Feature engineering",
+        "def": "Turning raw telemetry into numeric model inputs, e.g. login velocity or domain entropy."
+      },
+      {
+        "term": "Precision",
+        "def": "Share of flagged alerts that were real; the false-positive economics of the queue."
+      },
+      {
+        "term": "Recall",
+        "def": "Share of real attacks the detector flagged; the miss rate's complement."
+      },
+      {
+        "term": "Concept drift",
+        "def": "Decay of model performance as the data distribution shifts over time."
+      },
+      {
+        "term": "Prompt injection",
+        "def": "Attacker-crafted instructions that override an LLM application's intended behavior; direct (user input) or indirect (retrieved data)."
+      },
+      {
+        "term": "Jailbreak",
+        "def": "Crafted input that defeats an LLM's own safety policy or refusal behavior."
+      },
+      {
+        "term": "Tool poisoning",
+        "def": "Malicious tool descriptions or metadata that manipulate an AI agent into misusing its tools."
+      },
+      {
+        "term": "Insecure output handling",
+        "def": "Failing to validate LLM output before acting on it, e.g. executing generated commands."
+      },
+      {
+        "term": "Evasion attack",
+        "def": "Adversarial ML technique: perturbing inputs to cross a classifier's decision boundary."
+      },
+      {
+        "term": "MITRE ATLAS",
+        "def": "Adversarial Threat Landscape for AI Systems; MITRE's knowledge base of AI attack tactics."
+      },
+      {
+        "term": "SOAR",
+        "def": "Security orchestration, automation and response; playbooks that enrich automatically and gate containment on humans."
+      },
+      {
+        "term": "Human-in-the-loop",
+        "def": "Required human approval before high-impact or irreversible automated actions."
+      }
+    ],
+    "links": [
+      {
+        "label": "ThreatLocker Zero Trust platform explainer (official)",
+        "url": "https://www.threatlocker.com/blog/edr-xdr-vs-zero-trust-prevention",
+        "note": "EDR/XDR vs Zero Trust prevention \u2014 the deny-by-default argument in their own words."
+      },
+      {
+        "label": "ThreatLocker Bootcamp page (official)",
+        "url": "https://www.threatlocker.com/bootcamp",
+        "note": "Free six-week program: phases, format, and what completion leads to."
+      },
+      {
+        "label": "ThreatLocker Careers (official)",
+        "url": "https://www.threatlocker.com/company/careers",
+        "note": "Open roles and the hiring-event listing; roles are in-office in Orlando."
+      },
+      {
+        "label": "Elevation Control (official)",
+        "url": "https://www.threatlocker.com/secure-privileges-without-sacrificing-agility",
+        "note": "Just-in-time privilege without standing admin."
+      },
+      {
+        "label": "Storage Control (official)",
+        "url": "https://www.threatlocker.com/capabilities/external-storage-device-control",
+        "note": "USB/device policy by serial, user, file type, encryption."
+      },
+      {
+        "label": "Web Control (official)",
+        "url": "https://www.threatlocker.com/capabilities/web-content-control",
+        "note": "Agent-based DNS/URL filtering, including off-network."
+      },
+      {
+        "label": "Cyber Hero MDR (official)",
+        "url": "https://www.threatlocker.com/get-threat-response-in-minutes",
+        "note": "24/7/365 managed response positioning."
+      },
+      {
+        "label": "MDR capabilities (official)",
+        "url": "https://www.threatlocker.com/capabilities/managed-detection-and-response",
+        "note": "Detection and response capability detail."
+      },
+      {
+        "label": "NIST SP 800-207 \u2014 Zero Trust Architecture",
+        "url": "https://csrc.nist.gov/pubs/sp/800/207/final",
+        "note": "The canonical Zero Trust reference: tenets, deployment models, policy engine trust algorithm."
+      },
+      {
+        "label": "CISA Zero Trust Maturity Model",
+        "url": "https://www.cisa.gov/zero-trust-maturity-model",
+        "note": "Federal maturity steps across identity, devices, networks, applications, and data."
+      },
+      {
+        "label": "MITRE ATT&CK",
+        "note": "The adversary-tactics framework; codify its tactic chains as subgraphs to hunt for in your security graph.",
+        "url": "https://attack.mitre.org/"
+      },
+      {
+        "label": "CISA \u2014 Cybersecurity and Infrastructure Security Agency",
+        "note": "US government advisories, alerts, and guidance frequently referenced in threat-intel work.",
+        "url": "https://www.cisa.gov/"
+      },
+      {
+        "label": "Neo4j getting started",
+        "note": "A widely used graph database; the book's call to action suggests piloting graph queries on exported security data with tools like this.",
+        "url": "https://neo4j.com/docs/getting-started/"
+      },
+      {
+        "label": "OWASP GenAI Security Project",
+        "url": "https://genai.owasp.org/",
+        "note": "Home of the LLM Top 10 and GenAI security guidance"
+      },
+      {
+        "label": "OWASP Top 10 for LLM Applications",
+        "url": "https://genai.owasp.org/llm-top-10/",
+        "note": "The ranked LLM risk list \u2014 prompt injection is #1"
+      },
+      {
+        "label": "NIST AI Risk Management Framework",
+        "url": "https://www.nist.gov/itl/ai-risk-management-framework",
+        "note": "The standard governance framework for managing AI risk"
+      },
+      {
+        "label": "MITRE ATLAS",
+        "url": "https://atlas.mitre.org/",
+        "note": "Adversarial Threat Landscape for AI Systems \u2014 tactics and techniques"
+      },
+      {
+        "label": "CISA AI guidance",
+        "url": "https://www.cisa.gov/ai",
+        "note": "CISA's AI security resources and guidance"
+      }
+    ],
+    "checklist": [
+      "Sixty-second company brief rehearsed out loud: year, city, philosophy, three products, one milestone",
+      "Two STAR stories ready: hardest technical problem; a frustrated customer or user",
+      "\u201cWhy ThreatLocker / why cybersecurity\u201d answer tied to prevention and service, not slogans",
+      "Ringfencing explained in one plain-English sentence (the Word-on-a-leash version)",
+      "Elevation Control answer ready: just-in-time, per-app, time-boxed, ringfenced, logged",
+      "Triage loop memorized: scope \u2192 observe \u2192 hypothesize \u2192 smallest safe change \u2192 validate \u2192 explain",
+      "Three questions to ask them: team on-call shape, approval SLA expectations, what \u201cmost helpful\u201d looks like on the team",
+      "Logistics: 1901 Summit Tower Blvd, Orlando FL; in-office role; ID and references ready",
+      "Define your crown jewels before you model anything.",
+      "Build the asset-and-access graph from live sources (scans, configs, identity), not from the CMDB alone.",
+      "Model vulnerabilities AND misconfigurations as exploit edges.",
+      "Compute shortest attack paths to each crown jewel; name the choke points.",
+      "Prioritize remediation by path risk, not by raw severity score.",
+      "Express at least one access policy as a relationship path (ReBAC pilot).",
+      "Baseline approved communication edges per segment; alert on first-seen edges.",
+      "Brief the next incident or risk review with the graph, not a spreadsheet.",
+      "Can you explain supervised vs unsupervised vs anomaly detection with a security example for each?",
+      "Can you name three log features you would engineer for a C2 detector and why?",
+      "Can you walk through a UEBA alert (baseline, deviation, verification) end to end?",
+      "Can you explain the precision/recall tradeoff and how you would set a threshold for a fatigued SOC?",
+      "Can you define concept drift and describe a retraining process?",
+      "Can you distinguish direct vs indirect prompt injection and jailbreaking?",
+      "Can you explain tool poisoning in the MCP ecosystem and three controls against it?",
+      "Can you describe insecure output handling and how you would validate agent output?",
+      "Can you name the three adversarial ML attack classes and one defense for evasion?",
+      "Can you design a SOAR playbook gate: what automates freely, what needs human approval?"
+    ]
+  },
+  "chat": {
+    "persona": "You are a rigorous but encouraging interviewer preparing a candidate for a Zero Trust endpoint security role. Probe with 'why' and 'how would you explain that' follow-ups. Stay on topic: ThreatLocker-style endpoint defense, security graphs, and AI-powered security. All practice is original; never reproduce vendor material.",
+    "topics": [
+      {
+        "id": "tl-interview",
+        "name": "ThreatLocker Interview Prep",
+        "key_points": [
+          "allowlisting",
+          "ringfencing",
+          "default-deny",
+          "cyber hero",
+          "zero trust tenets",
+          "STAR stories"
+        ],
+        "followups": [
+          "Can you give an example?",
+          "How would you explain that to a CFO?"
+        ]
+      },
+      {
+        "id": "tl-endpoint-ops",
+        "name": "Zero Trust Endpoint Operations",
+        "key_points": [
+          "default-deny",
+          "ringfencing dimensions",
+          "elevation control",
+          "storage control",
+          "network control",
+          "change control"
+        ],
+        "followups": [
+          "Walk me through the triage order.",
+          "When would you deny outright?"
+        ]
+      },
+      {
+        "followups": [
+          "Can you walk through an example?",
+          "How does this change patch prioritization?",
+          "What is the difference between a security graph and an attack graph?"
+        ],
+        "id": "sec-graphs",
+        "key_points": [
+          "nodes",
+          "edges",
+          "attack graphs",
+          "kill chain",
+          "link analysis",
+          "threat intel graphs"
+        ],
+        "name": "Security Graphs: Think Like an Attacker"
+      },
+      {
+        "followups": [
+          "How do graphs change patch prioritization?",
+          "What is ReBAC and how is it different from RBAC?",
+          "How would a small team start with graphs?"
+        ],
+        "id": "graph-defense",
+        "key_points": [
+          "attack-path analysis",
+          "insider threat",
+          "vulnerability graphs",
+          "Zero Trust",
+          "microsegmentation",
+          "blast radius"
+        ],
+        "name": "Graph-Powered Defense Operations"
+      },
+      {
+        "id": "ml-defense",
+        "name": "ML-Powered Threat Defense",
+        "key_points": [
+          "anomaly detection",
+          "UEBA",
+          "alert fatigue",
+          "concept drift",
+          "threat hunting",
+          "precision recall"
+        ],
+        "followups": [
+          "Walk me through an example.",
+          "How do you handle false positives?"
+        ]
+      },
+      {
+        "id": "ai-agent-sec",
+        "name": "Securing AI Systems & Agents",
+        "key_points": [
+          "prompt injection",
+          "tool poisoning",
+          "MCP risks",
+          "insecure output handling",
+          "SOAR gates",
+          "adversarial ML"
+        ],
+        "followups": [
+          "Walk me through an example.",
+          "How do you secure an AI agent end to end?"
+        ]
+      }
+    ]
+  },
+  "simulation": {
+    "items": 12,
+    "minutes": 180,
+    "evidence_cost_mins": 2
+  },
+  "media": [
+    {
+      "id": "tl-allowlist-vs-blocklist",
+      "kind": "diagram",
+      "title": "Allowlisting vs blocklisting: default-deny vs default-allow",
+      "svg": "assets/diagrams/tl-allowlist-vs-blocklist.svg",
+      "lesson_ref": "c-tl-endpoint-ops",
+      "caption": "Default-deny stops unknown code without a signature; default-allow runs it until one exists.",
+      "alt": "Side-by-side comparison: on the left, a default-deny gate runs known-good payroll software and denies unknown ransomware with no signature needed; on the right, a default-allow gate runs both until the ransomware is recognized as bad."
+    },
+    {
+      "id": "tl-ringfencing",
+      "kind": "diagram",
+      "title": "Ringfencing: four leashes on an allowed application",
+      "svg": "assets/diagrams/tl-ringfencing.svg",
+      "lesson_ref": "c-tl-endpoint-ops",
+      "caption": "Word stays approved, but it cannot spawn PowerShell, read the credential store, or reach the internet \u2014 while opening its document is allowed.",
+      "alt": "An approved Word application inside a dashed containment ring: arrows show PowerShell launch denied, credential-store registry access denied, external network denied, and document file access allowed."
+    },
+    {
+      "id": "tl-zero-trust-stack",
+      "kind": "diagram",
+      "title": "The Zero Trust endpoint stack",
+      "svg": "assets/diagrams/tl-zero-trust-stack.svg",
+      "lesson_ref": "c-tl-interview",
+      "caption": "Five deny-by-default layers \u2014 Allowlisting, Ringfencing, Elevation, Storage, Network \u2014 watched by Web Control, the Testing Environment, Unified Audit, and the Cyber Hero MDR team.",
+      "alt": "A vertical stack of five layers from Allowlisting at the foundation up through Ringfencing, Elevation Control, Storage Control, and Network Control, with side boxes for Web Control, Testing Environment, Unified Audit, and Cyber Hero MDR."
+    },
+    {
+      "id": "tl-triage-flow",
+      "kind": "diagram",
+      "title": "Application-request triage flow",
+      "svg": "assets/diagrams/tl-triage-flow.svg",
+      "lesson_ref": "c-tl-endpoint-ops",
+      "caption": "Gather evidence first, then branch: trusted gets a scoped rule, unknown goes to the sandbox, malicious gets a documented deny.",
+      "alt": "Flowchart from request arrival through evidence gathering to a decision diamond branching into three outcomes: approve with a scoped rule, detonate in the Testing Environment then ringfence, or deny with documented evidence."
+    },
+    {
+      "alt": "Diagram of four labeled nodes (user, host, file, domain, IP) joined by labeled directed edges such as logged into, downloaded, and resolved to, illustrating graph vocabulary.",
+      "caption": "Nodes are the things; edges are the relationships. Attackers move along the edges.",
+      "id": "sg-graph-vocabulary",
+      "kind": "diagram",
+      "lesson_ref": "c-sec-graphs",
+      "svg": "assets/diagrams/sg-graph-vocabulary.svg",
+      "title": "Graph vocabulary: nodes and edges"
+    },
+    {
+      "alt": "Attack graph with four nodes in a chain: external attacker to VPN gateway to file server to customer database, with a dead-end branch to a printer, showing the shortest path to the crown jewel.",
+      "caption": "The shortest path to the crown jewel is length 3. Break the choke point and the campaign dies.",
+      "id": "sg-attack-path",
+      "kind": "diagram",
+      "lesson_ref": "c-sec-graphs",
+      "svg": "assets/diagrams/sg-attack-path.svg",
+      "title": "Attack graph: shortest path to the crown jewels"
+    },
+    {
+      "alt": "Seven kill-chain stages as connected graph nodes: reconnaissance, weaponization, delivery, exploitation, installation, command and control, actions. Three alerts are annotated at delivery, installation, and command and control.",
+      "caption": "Three 'unrelated' alerts, one kill-chain subgraph. Correlate by shared entities, not by severity.",
+      "id": "sg-kill-chain",
+      "kind": "diagram",
+      "lesson_ref": "c-sec-graphs",
+      "svg": "assets/diagrams/sg-kill-chain.svg",
+      "title": "Kill chain as a graph"
+    },
+    {
+      "alt": "A policy engine at the center of a small graph evaluates an access request from a finance user on an untrusted laptop to an R and D code server. The request is denied because there is no prior relationship edge and the device is untrusted.",
+      "caption": "Valid credentials are not enough. The graph checks device trust, history, and relationships on every request.",
+      "id": "sg-zero-trust",
+      "kind": "diagram",
+      "lesson_ref": "c-graph-defense",
+      "svg": "assets/diagrams/sg-zero-trust.svg",
+      "title": "Zero Trust runs on relationships"
+    },
+    {
+      "id": "ai-ml-pipeline",
+      "kind": "diagram",
+      "title": "ML detection pipeline: telemetry to triage",
+      "svg": "assets/diagrams/ai-ml-pipeline.svg",
+      "lesson_ref": "c-ml-defense",
+      "caption": "How raw telemetry becomes scored alerts: features feed the model, the model scores, analysts triage top-down \u2014 and analyst verdicts feed retraining.",
+      "alt": "Flow diagram: telemetry sources feed feature extraction, which feeds an ML model, which outputs scored alerts into an analyst triage queue, with a feedback arrow for retraining."
+    },
+    {
+      "id": "ai-ueba-baseline-diagram",
+      "kind": "diagram",
+      "title": "UEBA: baseline vs deviation",
+      "svg": "assets/diagrams/ai-ueba-baseline.svg",
+      "lesson_ref": "c-ml-defense",
+      "caption": "UEBA learns each user's normal hours, locations, and volumes, then scores deviations from that baseline.",
+      "alt": "24-hour timeline showing a shaded normal login window from 8 AM to 6 PM with normal logins inside it, and a red anomaly marker at 2:47 AM for a foreign login scoring 97 out of 100."
+    },
+    {
+      "id": "ai-injection-flow",
+      "kind": "diagram",
+      "title": "Indirect prompt injection attack flow",
+      "svg": "assets/diagrams/ai-injection-flow.svg",
+      "lesson_ref": "c-ai-agent-sec",
+      "caption": "An attacker hides instructions in data the agent retrieves; the agent mistakes data for instructions and misuses its tools.",
+      "alt": "Attack flow diagram: hidden instruction in an email is read by an AI agent, which mistakes it for a command and calls a privileged tool, causing fraud; three defense boxes below: sanitize content, least-privilege tools, human approval."
+    },
+    {
+      "id": "iac-terraform-gitops",
+      "kind": "diagram",
+      "title": "Terraform GitOps: PR to applied",
+      "svg": "assets/diagrams/iac-terraform-gitops.svg",
+      "lesson_ref": "c-iac-terraform-gitops",
+      "caption": "GitOps for infra: code the change, open a PR, plan shows the diff, apply converges, state records truth, drift detection watches.",
+      "alt": "Terraform GitOps: PR to applied. Diagram."
+    },
+    {
+      "id": "iac-terraform-gitops-d2",
+      "kind": "diagram",
+      "title": "ArgoCD GitOps: push to healthy",
+      "svg": "assets/diagrams/iac-terraform-gitops-d2.svg",
+      "lesson_ref": "c-iac-terraform-gitops-d2",
+      "caption": "Push to git, ArgoCD syncs, Kubernetes reconciles, health checks gate, rollback is a revert.",
+      "alt": "Animated diagram: ArgoCD GitOps: push to healthy."
+    },
+    {
+      "id": "iac-terraform-gitops-iac-terraform-gitops-d1",
+      "kind": "diagram",
+      "title": "GitOps \u2014 traps vs moves",
+      "svg": "assets/diagrams/iac-terraform-gitops-iac-terraform-gitops-d1.svg",
+      "lesson_ref": "c-iac-terraform-gitops",
+      "caption": "Traps on the left, winning moves on the right \u2014 watch each pair land and keep the contrast in mind. GitOps makes git the single source of truth: desired state is declared in version control, and an in-cluster agent (ArgoCD, Flux) continuou\u2026",
+      "alt": "Animated diagram: GitOps \u2014 traps vs moves."
+    },
+    {
+      "id": "iac-terraform-gitops-iac-terraform-gitops-d2",
+      "kind": "diagram",
+      "title": "GitOps \u2014 concept contract",
+      "svg": "assets/diagrams/iac-terraform-gitops-iac-terraform-gitops-d2.svg",
+      "lesson_ref": "c-iac-terraform-gitops",
+      "caption": "The concept contract for GitOps \u2014 each key idea, what it means, and where it pays off. GitOps makes git the single source of truth: desired state is declared in version control, and an in-cluster agent (ArgoCD, Flux) continuou\u2026",
+      "alt": "Animated diagram: GitOps \u2014 concept contract."
+    },
+    {
+      "id": "iac-terraform-gitops-iac-terraform-gitops-d3",
+      "kind": "diagram",
+      "title": "GitOps \u2014 build order",
+      "svg": "assets/diagrams/iac-terraform-gitops-iac-terraform-gitops-d3.svg",
+      "lesson_ref": "c-iac-terraform-gitops",
+      "caption": "Watch GitOps assemble stage by stage \u2014 nodes pop in sequence so the progression reads as a build order. GitOps makes git the single source of truth: desired state is declared in version control, and an in-cluster agent (ArgoCD, Flux) continuou\u2026",
+      "alt": "Animated diagram: GitOps \u2014 build order."
+    }
+  ],
+  "foundations": [
+    {
+      "track": "linux-cli",
+      "why_needed": "Terminal labs and missions run in a simulated Linux shell; command-line fluency is required to complete them."
+    },
+    {
+      "track": "security-basics",
+      "why_needed": "Security-graph and ML-detection lessons assume baseline vocabulary (CIA triad, malware types, incident response phases)."
+    }
+  ],
+  "math": [
+    "stats",
+    "probability"
+  ],
+  "videos": [
+    {
+      "title": "The State File Is the Truth",
+      "url": "/assets/videos/bc-bbg-iac-state-truth.mp4",
+      "source": "Interstitium Labs",
+      "blurb": "Terraform's state file is the source of truth: someone launches a server by hand and 'terraform plan' tattles \u2014 click-ops is drift. (Preview \u2014 narration coming; voiceover pending TTS restore.)",
+      "durationMin": 1,
+      "order": 1,
+      "preview": true,
+      "captionsUrl": "/assets/videos/bc-bbg-iac-state-truth.vtt",
+      "narrationUrl": "/assets/videos/bc-bbg-iac-state-truth.narration.md",
+      "verifiedUtc": "2026-10-09T04:44:39Z",
+      "httpStatus": 200
+    },
+    {
+      "title": "Terraform Apply in 100 Seconds",
+      "url": "/assets/videos/bc-fireship-iac-apply.mp4",
+      "source": "Interstitium Labs",
+      "blurb": "Declare an EC2 in HCL, run plan to preview, apply to create \u2014 declare the end state and let Terraform compute the diff. (Preview \u2014 narration coming; voiceover pending TTS restore.)",
+      "durationMin": 1,
+      "order": 2,
+      "preview": true,
+      "captionsUrl": "/assets/videos/bc-fireship-iac-apply.vtt",
+      "narrationUrl": "/assets/videos/bc-fireship-iac-apply.narration.md",
+      "verifiedUtc": "2026-10-09T04:44:39Z",
+      "httpStatus": 200
+    },
+    {
+      "title": "Drift: The Config That Wandered",
+      "url": "/assets/videos/bc-primer-iac-drift-sim.mp4",
+      "source": "Interstitium Labs",
+      "blurb": "A living drift simulation: services wander out of sync with git \u2014 ArgoCD syncs and the repo becomes truth again. (Preview \u2014 narration coming; voiceover pending TTS restore.)",
+      "durationMin": 1,
+      "order": 3,
+      "preview": true,
+      "captionsUrl": "/assets/videos/bc-primer-iac-drift-sim.vtt",
+      "narrationUrl": "/assets/videos/bc-primer-iac-drift-sim.narration.md",
+      "verifiedUtc": "2026-10-09T04:44:39Z",
+      "httpStatus": 200
+    }
+  ],
+  "pdfGuides": [
+    {
+      "title": "CI/CD Pipelines \u2014 Visual Guide",
+      "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-cicd-pipeline.pdf",
+      "source": "Interstitium Labs",
+      "pages": 8,
+      "animated": true,
+      "verifiedUtc": "2026-10-09T05:27:58Z"
+    },
+    {
+      "title": "Kubernetes Architecture \u2014 Visual Guide",
+      "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-kubernetes.pdf",
+      "source": "Interstitium Labs",
+      "pages": 8,
+      "animated": true,
+      "verifiedUtc": "2026-10-09T05:27:58Z"
+    },
+    {
+      "title": "Cloud Architecture Patterns \u2014 Visual Guide",
+      "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-cloud-patterns.pdf",
+      "source": "Interstitium Labs",
+      "pages": 8,
+      "animated": true,
+      "verifiedUtc": "2026-10-09T05:27:58Z"
+    },
+    {
+      "title": "Terraform \u2014 Visual Guide",
+      "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-terraform.pdf",
+      "source": "Interstitium Labs",
+      "blurb": "Infrastructure as code \u2014 HCL, state, plans, modules, and declarative cloud provisioning.",
+      "pages": 8,
+      "animated": true,
+      "verifiedUtc": "2026-10-09T05:56:41Z"
+    },
+    {
+      "title": "Docker, In Depth \u2014 Visual Guide",
+      "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-docker-deep.pdf",
+      "source": "Interstitium Labs",
+      "blurb": "Images, layers, and runtimes \u2014 Dockerfile best practices, build cache, multi-stage builds, and the OCI standard.",
+      "pages": 8,
+      "animated": true,
+      "verifiedUtc": "2026-10-09T05:56:41Z"
+    },
+    {
+      "title": "GitOps \u2014 Visual Guide",
+      "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-gitops.pdf",
+      "source": "Interstitium Labs",
+      "blurb": "Git as the source of truth \u2014 declarative infra, pull-based deploys, drift detection, and the operator pattern.",
+      "pages": 8,
+      "animated": true,
+      "verifiedUtc": "2026-10-09T05:56:41Z"
+    }
+  ],
+  "topicTheme": "steampunk",
+  "topic": "cloud-devops"
+}

@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VLAN Explorer — Broadcast Domains &amp; Trunks | Interstitium Labs</title>
+<style>
+  :root{--bg:#0d1117;--card:#161b22;--border:#30363d;--text:#e6edf3;--dim:#8b949e;--blue:#2f81f7;
+        --v10:#58a6ff;--v20:#3fb950;--v30:#d29922;--red:#f85149}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,'Segoe UI',sans-serif;padding:24px 16px;max-width:1000px;margin:0 auto}
+  header{text-align:center;margin-bottom:22px}
+  .brand{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:14px}
+  .sigil{width:36px;height:36px;border:2px solid var(--blue);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--blue);font-size:15px}
+  .brand-name{font-size:14px;letter-spacing:2px;text-transform:uppercase;color:var(--dim)}
+  h1{font-size:24px;margin-bottom:6px}
+  .sub{color:var(--dim);font-size:14px;max-width:640px;margin:0 auto}
+  .legend{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:18px}
+  .chip{background:var(--card);border:2px solid var(--border);border-radius:20px;padding:8px 18px;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:8px}
+  .chip .dot{width:12px;height:12px;border-radius:50%}
+  .chip[data-v="10"] .dot{background:var(--v10)} .chip[data-v="20"] .dot{background:var(--v20)} .chip[data-v="30"] .dot{background:var(--v30)}
+  .chip.active{border-color:#fff;transform:scale(1.05)}
+  .chip small{color:var(--dim);font-weight:400}
+  .stage{display:flex;align-items:stretch;gap:0;margin-bottom:18px}
+  .switch{flex:1;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;min-width:0}
+  .switch h3{text-align:center;font-size:15px;margin-bottom:4px}
+  .switch .sub2{text-align:center;color:var(--dim);font-size:11px;margin-bottom:14px}
+  .host{margin-bottom:12px}
+  .host .row{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+  .host .pc{font-size:20px}
+  .host .lbl{font-size:12px;font-weight:600}
+  .host .lbl small{display:block;color:var(--dim);font-weight:400;font-family:monospace}
+  .access{height:10px;border-radius:5px;transition:opacity .25s}
+  .access[data-vlan="10"]{background:var(--v10)} .access[data-vlan="20"]{background:var(--v20)} .access[data-vlan="30"]{background:var(--v30)}
+  .trunkzone{width:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:0 6px}
+  .trunk{width:100%;height:26px;border-radius:6px;background:repeating-linear-gradient(45deg,var(--v10) 0 8px,var(--v20) 8px 16px,var(--v30) 16px 24px);border:2px solid var(--border);position:relative;transition:all .3s}
+  .trunk .tag{position:absolute;top:-24px;left:50%;transform:translateX(-50%);font-size:11px;font-weight:700;color:var(--text);white-space:nowrap}
+  .trunk .x{display:none;position:absolute;inset:0;align-items:center;justify-content:center;font-size:22px;color:var(--red);font-weight:700}
+  .trunk.down{background:var(--card);border:2px dashed var(--red)}
+  .trunk.down .x{display:flex}
+  .trunk.down .tag{color:var(--red)}
+  .cutnote{display:none;color:var(--red);font-size:11px;font-weight:700;text-align:center}
+  .cutnote.show{display:block}
+  /* dimming */
+  body[data-vlan] .path{opacity:.14}
+  body[data-vlan="10"] .path[data-vlan="10"],body[data-vlan="20"] .path[data-vlan="20"],body[data-vlan="30"] .path[data-vlan="30"]{opacity:1;box-shadow:0 0 12px currentColor}
+  body[data-vlan] .trunk{opacity:1}
+  body[data-vlan] .host{opacity:.35}
+  body[data-vlan="10"] .host[data-vlan="10"],body[data-vlan="20"] .host[data-vlan="20"],body[data-vlan="30"] .host[data-vlan="30"]{opacity:1}
+  .path{transition:opacity .25s}
+  .path.flash{animation:flash .45s ease 4}
+  @keyframes flash{0%,100%{filter:brightness(1)}50%{filter:brightness(2.2)}}
+  .panel{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin-bottom:16px}
+  .panel .rowline{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:center}
+  .domains{text-align:center;font-size:15px;margin-bottom:6px}
+  .domains b{color:var(--blue);font-size:20px}
+  .domains small{display:block;color:var(--dim);font-size:12px;margin-top:4px}
+  button{background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:9px 16px;font-size:13px;cursor:pointer}
+  button:hover{border-color:var(--blue)}
+  button.toggle-on{border-color:var(--green,#3fb950);color:#3fb950;font-weight:600}
+  .bcast{margin-top:10px;text-align:center}
+  .bcast button{margin:4px}
+  .explain{font-size:13px;color:var(--dim);line-height:1.7}
+  .explain b{color:var(--text)}
+  footer{text-align:center;margin-top:28px;color:var(--dim);font-size:12px}
+  @media(max-width:700px){.stage{flex-direction:column}.trunkzone{width:100%;padding:26px 0 10px}.trunk{height:22px}.trunk .tag{top:-22px}}
+
+/* accessibility: disable decorative CSS animations for reduced-motion users */
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+}
+</style>
+</head>
+<body data-vlan="">
+<header>
+  <div class="brand"><div class="sigil">IL</div><div class="brand-name">Interstitium Labs</div></div>
+  <h1>VLAN Explorer</h1>
+  <p class="sub">Hover a VLAN to trace its traffic across the trunk. Kill the trunk to watch every broadcast domain split in two.</p>
+</header>
+
+<div class="legend" id="legend">
+  <div class="chip" data-v="10"><span class="dot"></span>VLAN 10 <small>servers</small></div>
+  <div class="chip" data-v="20"><span class="dot"></span>VLAN 20 <small>clients</small></div>
+  <div class="chip" data-v="30"><span class="dot"></span>VLAN 30 <small>voice</small></div>
+</div>
+
+<div class="stage">
+  <div class="switch">
+    <h3>SW-A</h3><div class="sub2">access ports → hosts</div>
+    <div class="host" data-vlan="10"><div class="row"><span class="pc">🖥️</span><span class="lbl">SRV-01<small>10.0.10.11 · VLAN 10</small></span></div><div class="access path" data-vlan="10" style="color:#58a6ff"></div></div>
+    <div class="host" data-vlan="20"><div class="row"><span class="pc">💻</span><span class="lbl">WS-01<small>10.0.20.21 · VLAN 20</small></span></div><div class="access path" data-vlan="20" style="color:#3fb950"></div></div>
+    <div class="host" data-vlan="30"><div class="row"><span class="pc">📞</span><span class="lbl">VOIP-01<small>10.0.30.31 · VLAN 30</small></span></div><div class="access path" data-vlan="30" style="color:#d29922"></div></div>
+  </div>
+  <div class="trunkzone">
+    <div class="trunk path" id="trunk" data-vlan="trunk"><span class="tag" id="trunktag">802.1Q TRUNK · tagged</span><span class="x">✗</span></div>
+    <div class="cutnote" id="cutnote">trunk down —<br>switches isolated</div>
+  </div>
+  <div class="switch">
+    <h3>SW-B</h3><div class="sub2">access ports → hosts</div>
+    <div class="host" data-vlan="10"><div class="row"><span class="pc">🖥️</span><span class="lbl">SRV-02<small>10.0.10.12 · VLAN 10</small></span></div><div class="access path" data-vlan="10" style="color:#58a6ff"></div></div>
+    <div class="host" data-vlan="20"><div class="row"><span class="pc">💻</span><span class="lbl">WS-02<small>10.0.20.22 · VLAN 20</small></span></div><div class="access path" data-vlan="20" style="color:#3fb950"></div></div>
+    <div class="host" data-vlan="30"><div class="row"><span class="pc">📞</span><span class="lbl">VOIP-02<small>10.0.30.32 · VLAN 30</small></span></div><div class="access path" data-vlan="30" style="color:#d29922"></div></div>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="domains"><b id="domcount">3</b> broadcast domains<small id="domnote">one per VLAN — each spans both switches over the trunk</small></div>
+  <div class="rowline">
+    <button id="bTrunk" class="toggle-on">Trunk: UP — click to shut it down</button>
+  </div>
+  <div class="bcast">
+    <button data-bc="10">📢 Broadcast on VLAN 10</button>
+    <button data-bc="20">📢 Broadcast on VLAN 20</button>
+    <button data-bc="30">📢 Broadcast on VLAN 30</button>
+  </div>
+</div>
+
+<div class="panel explain">
+  <b>What you're seeing:</b> a VLAN is a <b>broadcast domain</b> — broadcasts stay inside it. The 802.1Q trunk carries all three VLANs between switches by <b>tagging</b> each frame (4 extra bytes). Kill the trunk and each VLAN's broadcast domain splits in two — SRV-01 can no longer reach SRV-02 even though they're on the same VLAN. A router (or layer-3 switch) doing <b>inter-VLAN routing</b> is the only way traffic crosses VLANs.
+</div>
+
+<footer>Created by Interstitium Labs · ThreatLocker IT Infrastructure Assessment Prep</footer>
+
+<script>
+(function(){
+  "use strict";
+  var trunkUp=true,
+      bTrunk=document.getElementById("bTrunk"),
+      trunk=document.getElementById("trunk"),
+      trunktag=document.getElementById("trunktag"),
+      cutnote=document.getElementById("cutnote"),
+      domcount=document.getElementById("domcount"),
+      domnote=document.getElementById("domnote"),
+      chips=Array.prototype.slice.call(document.querySelectorAll(".chip"));
+
+  function setVlan(v){
+    document.body.setAttribute("data-vlan",v||"");
+    chips.forEach(function(c){ c.classList.toggle("active",c.getAttribute("data-v")===(v||"")); });
+  }
+  chips.forEach(function(c){
+    var v=c.getAttribute("data-v");
+    c.addEventListener("mouseenter",function(){ setVlan(v); });
+    c.addEventListener("mouseleave",function(){ setVlan(""); });
+    c.addEventListener("click",function(){
+      setVlan(document.body.getAttribute("data-vlan")===v?"":v);
+    });
+  });
+
+  function updateDomains(){
+    if(trunkUp){
+      domcount.textContent="3";
+      domnote.textContent="one per VLAN — each spans both switches over the trunk";
+    }else{
+      domcount.textContent="6";
+      domnote.textContent="trunk is down — every VLAN is split into two isolated domains";
+    }
+  }
+
+  bTrunk.addEventListener("click",function(){
+    trunkUp=!trunkUp;
+    trunk.classList.toggle("down",!trunkUp);
+    cutnote.classList.toggle("show",!trunkUp);
+    trunktag.textContent=trunkUp?"802.1Q TRUNK · tagged":"TRUNK DOWN";
+    bTrunk.textContent=trunkUp?"Trunk: UP — click to shut it down":"Trunk: DOWN — click to bring it up";
+    bTrunk.classList.toggle("toggle-on",trunkUp);
+    updateDomains();
+  });
+
+  function flash(v){
+    var els=document.querySelectorAll('.path[data-vlan="'+v+'"]');
+    els.forEach(function(e){ e.classList.remove("flash"); void e.offsetWidth; e.classList.add("flash"); });
+    if(trunkUp){ trunk.classList.remove("flash"); void trunk.offsetWidth; trunk.classList.add("flash"); }
+    setTimeout(function(){ els.forEach(function(e){e.classList.remove("flash");}); trunk.classList.remove("flash"); },2000);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll("[data-bc]"),function(b){
+    b.addEventListener("click",function(){ flash(b.getAttribute("data-bc")); });
+  });
+})();
+</script>
+</body>
+</html>

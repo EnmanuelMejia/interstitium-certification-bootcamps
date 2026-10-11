@@ -1065,6 +1065,57 @@
     "Common trap: automating before testing — run the script on one machine and document it before it touches twelve."
    ],
    "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "hardware",
+   "title": "Network triage: from cable to cloud in five commands",
+   "concepts": [
+    "Every network problem lives on a layer. Start at the bottom: is the cable plugged in and the link light on? A lit link light with no connectivity means Layer 1 is fine and the fault is logical — usually addressing, DHCP, or DNS. This bottom-up habit keeps you from reinstalling drivers for a DHCP outage.",
+    "`ipconfig /all` is your map. It shows the IPv4 address, subnet mask, default gateway, and DNS servers. A 169.254.x.x address with no gateway is APIPA — Windows telling you DHCP failed. A correct-looking 192.168.x.x address with a gateway shifts suspicion to DNS or beyond the LAN.",
+    "The ping ladder isolates the fault by climbing outward: `ping 127.0.0.1` tests your own TCP/IP stack; `ping <default-gateway>` tests the LAN; `ping 8.8.8.8` tests internet routing without DNS; `ping google.com` adds DNS to the test. The first step that fails marks the boundary of the problem.",
+    "`tracert` (and `pathping`) shows every hop to a destination, so you can see exactly where packets die — inside your network, at the ISP, or at the far end. Rows of asterisks with eventual success usually mean a router that deprioritizes ICMP, not a broken path.",
+    "DNS failures masquerade as total outages: everything by IP works, but every name fails. `nslookup google.com` tests resolution directly, and `ipconfig /flushdns` clears a poisoned local cache. If names fail but IPs work, fix DNS — not the NIC."
+   ],
+   "example": {
+    "lang": "shell",
+    "code": "ipconfig /all\nping 127.0.0.1\nping 192.168.1.1\nping 8.8.8.8\nping google.com\ntracert 8.8.8.8\nnslookup google.com\nipconfig /flushdns",
+    "walkthrough": "Read ipconfig first: confirm you have a real DHCP address and note the gateway. Then climb the ping ladder — loopback, gateway, external IP, hostname — and stop at the first failure, because that step names the broken layer. tracert shows where the path breaks beyond your LAN, nslookup isolates DNS, and flushdns clears a stale resolver cache as a last resort."
+   },
+   "pitfalls": [
+    "A failed ping does not always mean 'down' — many firewalls block ICMP while the service behind them works fine.",
+    "Seeing 169.254.x.x and 'fixing' it with a static IP in that range: APIPA never routes, so you have only hidden the DHCP failure.",
+    "Asterisks in tracert output are often routers ignoring ICMP, not dead hops — judge by whether the trace completes.",
+    "Flushing DNS fixes name resolution only; it does nothing for a DHCP or gateway problem."
+   ],
+   "try_it": "Open a terminal and run the ping ladder against your own network. Write down your gateway address from ipconfig /all first, then predict which ladder step would fail if your DHCP server died — check your prediction against scenario comptia-a-plus-sc6.",
+   "domain_id_remapped_from": "core1",
+   "merged_from": "cbt-individual/comptia-a-plus"
+  },
+  {
+   "domain_id": "hardware",
+   "title": "The Windows repair toolkit: sfc, chkdsk, and Safe Mode",
+   "concepts": [
+    "`sfc /scannow` (System File Checker) scans protected Windows system files and replaces corrupt ones from the component store. Run it from an elevated Command Prompt when apps crash, Windows behaves erratically, or updates fail. If sfc reports corruption it cannot fix, `DISM /Online /Cleanup-Image /RestoreHealth` repairs the component store itself — then run sfc again.",
+    "`chkdsk` checks filesystem integrity: `/f` fixes logical errors, `/r` additionally locates bad sectors and recovers readable data (implying /f). Use it when Event Viewer shows disk errors or files go missing. On a suspect drive, back up data first — a dying disk can fail completely under the scan's stress — and expect `/r` to take hours on large drives.",
+    "Safe Mode boots Windows with a minimal driver set, which is the right environment for malware removal and driver troubleshooting: if the problem vanishes in Safe Mode, a third-party driver or startup item is the cause. Reach it via Settings → Recovery → Advanced startup, or `shutdown /r /o` from an elevated prompt.",
+    "Event Viewer (eventvwr.msc) is the source of truth that separates hardware from software faults. Windows Logs → System records disk, driver, and service errors with timestamps — check it before theorizing, because its entries often name the failing component outright.",
+    "System Restore rolls system files and settings back to a restore point without touching personal files — useful for bad driver or update rollouts. It is not a backup and not malware removal: the malware-removal procedure explicitly disables System Restore before remediation so infected restore points cannot re-infect the machine."
+   ],
+   "example": {
+    "lang": "powershell",
+    "code": "sfc /scannow\nDISM /Online /Cleanup-Image /RestoreHealth\nchkdsk C: /r\nshutdown /r /o /t 0\neventvwr",
+    "walkthrough": "Start elevated: sfc repairs system files, and DISM repairs the store sfc draws from if sfc cannot finish the job. chkdsk /r addresses the disk surface underneath — always before trusting file repairs on a suspect drive. `shutdown /r /o` reboots into the advanced startup menu for Safe Mode or WinRE, and eventvwr opens Event Viewer so you can confirm the fault from the logs instead of guessing."
+   },
+   "pitfalls": [
+    "sfc and DISM require an elevated prompt — without it they fail or report misleading results.",
+    "chkdsk /r on a multi-terabyte drive can run for many hours; schedule it, and never run it as the first step on a drive with irreplaceable unbacked-up data.",
+    "DISM's /RestoreHealth needs internet access to fetch a healthy image unless you point it at local source media.",
+    "System Restore is disabled during malware remediation for a reason — re-enabling it too early can restore the infection."
+   ],
+   "try_it": "Open Event Viewer on your own machine and read the last 24 hours of the System log. Find one warning or error, note its source and event ID, and decide whether it points at hardware or software — then check your reasoning against scenario comptia-a-plus-sc15.",
+   "id": "cbt-None",
+   "domain_id_remapped_from": "core2",
+   "merged_from": "cbt-individual/comptia-a-plus"
   }
  ],
  "behavioral": [
@@ -1414,6 +1465,73 @@
     }
    ],
    "success_message": "Lab complete — you can see which doors are open on a machine and who opened them. That is the start of real hardening."
+  },
+  {
+   "id": "comptia-a-plus-lab1",
+   "domain_id": "hardware",
+   "title": "Isolate a DHCP failure with the ping ladder",
+   "objective": "Use ipconfig, the ping ladder, and DHCP renewal to prove a workstation's outage is a DHCP failure — not a cable, NIC, or internet problem.",
+   "steps": [
+    "Open the simulated terminal and run `ipconfig`. Record the IPv4 address and note whether a default gateway is present.",
+    "Identify the address type: a 169.254.x.x address with no gateway is APIPA — Windows self-assigned because DHCP failed.",
+    "Run `ping 127.0.0.1` to verify the local TCP/IP stack is healthy independent of the network.",
+    "Run `ping 192.168.1.1` (the gateway) to test LAN reachability.",
+    "Force a fresh DHCP request with `ipconfig /release` followed by `ipconfig /renew`.",
+    "Run `ipconfig` again and document the before/after addresses plus your conclusion: DHCP failure, and whether the renew fixed it."
+   ],
+   "checks": [
+    {
+     "command_pattern": "ipconfig",
+     "expect_contains": "169.254",
+     "hint": "Run ipconfig and look for the APIPA address that proves DHCP failed."
+    },
+    {
+     "command_pattern": "ping\\s+127\\.0\\.0\\.1",
+     "expect_contains": "Reply",
+     "hint": "Ping the loopback address (127.0.0.1) to verify the local TCP/IP stack."
+    },
+    {
+     "command_pattern": "ipconfig\\s+/renew",
+     "expect_contains": "IPv4",
+     "hint": "Renew the DHCP lease with ipconfig /renew, then re-check the address."
+    }
+   ],
+   "domain_id_remapped_from": "core1",
+   "merged_from": "cbt-individual/comptia-a-plus"
+  },
+  {
+   "id": "comptia-a-plus-lab2",
+   "domain_id": "hardware",
+   "title": "Repair system files and check disk health",
+   "objective": "Diagnose a crash-prone Windows machine from its event logs, then apply sfc and chkdsk in the correct order.",
+   "steps": [
+    "Open the simulated terminal and launch Event Viewer with `eventvwr`.",
+    "Navigate to Windows Logs → System and look for repeated entries from the Disk source — these indicate hardware-level disk errors.",
+    "Open an elevated Command Prompt (right-click → Run as administrator) — sfc and chkdsk both require elevation.",
+    "Back up critical data first (simulated with `robocopy C:\\Users\\Tech\\Documents D:\\Backup /E`), because a suspect disk can fail under scan stress.",
+    "Run `chkdsk C: /r` to locate bad sectors and recover readable data — the disk surface must be addressed before file repairs.",
+    "Run `sfc /scannow` to repair protected Windows system files onto the now-stable disk.",
+    "Document your conclusion: whether the disk errors persist after chkdsk, and whether drive replacement is warranted."
+   ],
+   "checks": [
+    {
+     "command_pattern": "eventvwr",
+     "expect_contains": "Windows Logs",
+     "hint": "Launch Event Viewer with eventvwr and open Windows Logs → System."
+    },
+    {
+     "command_pattern": "chkdsk",
+     "expect_contains": "CHKDSK",
+     "hint": "Run chkdsk with the /r flag on the system volume before touching system files."
+    },
+    {
+     "command_pattern": "sfc\\s+/scannow",
+     "expect_contains": "verification",
+     "hint": "Run sfc /scannow from the elevated prompt after chkdsk completes."
+    }
+   ],
+   "domain_id_remapped_from": "core2",
+   "merged_from": "cbt-individual/comptia-a-plus"
   }
  ],
  "terminalMissions": [

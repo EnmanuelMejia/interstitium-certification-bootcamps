@@ -1,13 +1,13 @@
 # Architecture — Interstitium Labs Certification Bootcamps
 
-One shared platform, 68 bootcamps, zero per-path code. Content builders write
+One shared platform, 75 bootcamps, zero per-path code. Content builders write
 **JSON only** (`docs/content-schema.md`); everything else is generated.
 
 ## Layout
 
 ```
 cert-bootcamps/
-├── catalog.json            # 68 bootcamps: slug/title/tagline/vendor/domains/group/maps_to
+├── catalog.json            # 75 bootcamps: slug/title/tagline/vendor/domains/group/maps_to
 ├── content/<slug>.json     # per-bootcamp training content (written by content builders)
 ├── docs/
 │   ├── content-schema.md   # the content contract (fixed; platform may ADD optional fields)
@@ -56,7 +56,7 @@ The hub is different: the generator renders all cards **statically**, and
 ## Engine design (ported from the proven full-spectrum bootcamp)
 
 **Progress** — `localStorage["ilb-bootcamp-<slug>-v1"] = { scenarioId: {a, c} }`
-(`a` attempts, `c` correct). Namespaced per slug so 68 bootcamps never collide.
+(`a` attempts, `c` correct). Namespaced per slug so 75 bootcamps never collide.
 A scenario is *cleared* once answered correctly; mastery per domain =
 cleared / total. Double-click-to-confirm reset.
 

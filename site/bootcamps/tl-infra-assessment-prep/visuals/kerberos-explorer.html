@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kerberos Explorer — Step Through the Ticket Exchange | Interstitium Labs</title>
+<style>
+  :root{--bg:#0d1117;--card:#161b22;--border:#30363d;--text:#e6edf3;--dim:#8b949e;--blue:#2f81f7;--green:#3fb950;--purple:#a371f7}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,'Segoe UI',sans-serif;padding:24px 16px;max-width:960px;margin:0 auto}
+  header{text-align:center;margin-bottom:20px}
+  .brand{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:14px}
+  .sigil{width:36px;height:36px;border:2px solid var(--blue);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--blue);font-size:15px}
+  .brand-name{font-size:14px;letter-spacing:2px;text-transform:uppercase;color:var(--dim)}
+  h1{font-size:24px;margin-bottom:6px}
+  .sub{color:var(--dim);font-size:14px;max-width:640px;margin:0 auto}
+  .stage{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:16px}
+  .stage svg{width:100%;height:auto;display:block}
+  .stepbar{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+  .stepbar button{background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:8px;min-width:46px;padding:10px 14px;font-size:16px;cursor:pointer}
+  .stepbar button:hover{border-color:var(--blue)}
+  .stepbar button.wide{min-width:110px;font-size:14px;font-weight:600}
+  .counter{font-family:monospace;color:var(--dim);font-size:13px;min-width:86px;text-align:center}
+  .dots{display:flex;gap:8px;justify-content:center;margin-bottom:18px}
+  .dot{width:14px;height:14px;border-radius:50%;background:var(--border);cursor:pointer;transition:all .2s;border:none;padding:0}
+  .dot.done{background:var(--blue)}
+  .dot.now{background:#fff;transform:scale(1.25);box-shadow:0 0 8px var(--blue)}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:22px;margin-bottom:16px;min-height:220px}
+  .card .msg{font-size:13px;font-weight:700;letter-spacing:1px;margin-bottom:8px}
+  .card h2{font-size:20px;margin-bottom:10px}
+  .card p{color:var(--dim);font-size:14px;line-height:1.7;margin-bottom:12px}
+  .card p b{color:var(--text)}
+  .payloads{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+  .pl{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-family:monospace;font-size:12px;color:var(--text)}
+  .exam{border-left:3px solid var(--blue);padding:8px 12px;background:rgba(47,129,247,.07);border-radius:0 8px 8px 0;font-size:13px;color:var(--dim)}
+  .exam b{color:var(--blue)}
+  footer{text-align:center;margin-top:28px;color:var(--dim);font-size:12px}
+  @media(max-width:640px){.card{min-height:0}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><div class="sigil">IL</div><div class="brand-name">Interstitium Labs</div></div>
+  <h1>Kerberos Explorer</h1>
+  <p class="sub">Step through the six-message ticket exchange. Six messages, zero passwords on the wire.</p>
+</header>
+
+<div class="stage">
+  <svg viewBox="0 0 800 240" font-family="system-ui,-apple-system,'Segoe UI',sans-serif" role="img" aria-label="Kerberos message flow diagram">
+    <defs>
+      <marker id="ab" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" id="ahead" fill="#58a6ff"/></marker>
+    </defs>
+    <rect x="40" y="60" width="150" height="90" rx="10" fill="#161b22" stroke="#2f81f7" stroke-width="2"/>
+    <text x="115" y="98" text-anchor="middle" fill="#e6edf3" font-size="15" font-weight="700">Client</text>
+    <text x="115" y="122" text-anchor="middle" fill="#8b949e" font-size="11">workstation</text>
+    <rect x="325" y="60" width="150" height="90" rx="10" fill="#161b22" stroke="#a371f7" stroke-width="2"/>
+    <text x="400" y="98" text-anchor="middle" fill="#e6edf3" font-size="15" font-weight="700">KDC</text>
+    <text x="400" y="122" text-anchor="middle" fill="#8b949e" font-size="11">AS + TGS</text>
+    <rect x="610" y="60" width="150" height="90" rx="10" fill="#161b22" stroke="#3fb950" stroke-width="2"/>
+    <text x="685" y="98" text-anchor="middle" fill="#e6edf3" font-size="15" font-weight="700">File Server</text>
+    <text x="685" y="122" text-anchor="middle" fill="#8b949e" font-size="11">target service</text>
+    <line id="flow" x1="190" y1="80" x2="325" y2="80" stroke="#58a6ff" stroke-width="3" marker-end="url(#ab)"/>
+    <text id="flowlabel" x="257" y="62" text-anchor="middle" fill="#58a6ff" font-size="13" font-weight="700">AS-REQ</text>
+    <circle id="pkt" cx="190" cy="80" r="8" fill="#58a6ff"/>
+    <text id="payline" x="400" y="190" text-anchor="middle" fill="#8b949e" font-size="12" font-family="monospace"></text>
+    <g id="granted" opacity="0">
+      <rect x="575" y="192" width="220" height="38" rx="19" fill="#3fb950" opacity="0.12" stroke="#3fb950" stroke-width="2"/>
+      <text x="685" y="216" text-anchor="middle" fill="#3fb950" font-size="13" font-weight="700">✓ Access granted</text>
+    </g>
+  </svg>
+</div>
+
+<div class="stepbar">
+  <button id="bReset" title="Restart">⏮</button>
+  <button id="bBack" title="Previous step">◀</button>
+  <button id="bPlay" class="wide" title="Play / pause">▶ Play</button>
+  <button id="bFwd" title="Next step">▶|</button>
+  <span class="counter" id="counter">Step 1 of 6</span>
+</div>
+<div class="dots" id="dots"></div>
+
+<div class="card">
+  <div class="msg" id="cmsg"></div>
+  <h2 id="ctitle"></h2>
+  <p id="cbody"></p>
+  <div class="payloads" id="cpay"></div>
+  <div class="exam" id="cexam"></div>
+</div>
+
+<footer>Created by Interstitium Labs · ThreatLocker IT Infrastructure Assessment Prep</footer>
+
+<script>
+(function(){
+  "use strict";
+  var STEPS=[
+    {arrow:[190,80,325,80,"#58a6ff",false],label:"AS-REQ",msg:"MESSAGE 1 OF 6 · CLIENT → KDC",
+     title:"Prove who you are — without sending the password",
+     body:"The client asks the <b>Authentication Service</b> for a Ticket-Granting Ticket. It encrypts the current timestamp with a key derived from the user's password. The KDC decrypts it with the stored hash — if the timestamp is fresh, the user must know the password. <b>The password itself never crosses the network.</b>",
+     pay:["username","timestamp encrypted with password-derived key"],
+     exam:"<b>Exam angle:</b> pre-authentication defeats offline password guessing — the KDC won't issue a TGT to anyone who can't prove the password."},
+    {arrow:[325,110,190,110,"#a371f7",false],label:"AS-REP",msg:"MESSAGE 2 OF 6 · KDC → CLIENT",
+     title:"The KDC issues your day pass: the TGT",
+     body:"The Authentication Service replies with a <b>Ticket-Granting Ticket (TGT)</b> — encrypted with the KDC's own secret key, so only the KDC can read it — plus a session key for the client, encrypted so only this client can read it. The TGT typically lasts ~10 hours: one logon, all-day access.",
+     pay:["TGT { user, session key } encrypted with KDC key","client session key"],
+     exam:"<b>Exam angle:</b> a stolen TGT = impersonation until expiry — this is the 'golden ticket' attack when the KDC key itself is compromised."},
+    {arrow:[190,80,325,80,"#58a6ff",false],label:"TGS-REQ",msg:"MESSAGE 3 OF 6 · CLIENT → KDC",
+     title:"Cash in the TGT for a service-specific ticket",
+     body:"When the user opens \\\\FILE-SRV\\share, the client asks the <b>Ticket-Granting Service</b> for a ticket to that specific service. It presents the TGT (proof of identity) plus an authenticator encrypted with the client session key (proof of 'right now'). No password, no re-login.",
+     pay:["TGT","requested service: FILE-SRV","authenticator (fresh timestamp)"],
+     exam:"<b>Exam angle:</b> the TGS never sees a password — it trusts the TGT because only the KDC could have sealed it."},
+    {arrow:[325,110,190,110,"#a371f7",false],label:"TGS-REP",msg:"MESSAGE 4 OF 6 · KDC → CLIENT",
+     title:"The service ticket — sealed for the server's eyes only",
+     body:"The TGS issues a <b>service ticket</b> encrypted with the <b>file server's</b> secret key. The client can't read it — it just carries it. Inside: the username, a fresh service session key, and validity window. The KDC's job is now done.",
+     pay:["service ticket { user, session key } encrypted with FILE-SRV key"],
+     exam:"<b>Exam angle:</b> compromising a service account key lets attackers forge tickets for that service — 'silver ticket' attack."},
+    {arrow:[190,160,610,160,"#3fb950",true],label:"AP-REQ",msg:"MESSAGE 5 OF 6 · CLIENT → SERVER (KDC not involved)",
+     title:"Present the ticket directly to the service",
+     body:"The client hands the service ticket plus a fresh authenticator straight to the file server. <b>The KDC is out of the loop</b> — the server decrypts the ticket with its own key, verifies the authenticator's timestamp, and knows exactly who you are. This is what makes Kerberos scale.",
+     pay:["service ticket","authenticator encrypted with service session key"],
+     exam:"<b>Exam angle:</b> authenticators are single-use and time-bound — replays fail. This is why Kerberos needs clock sync (5-minute skew tolerance)."},
+    {arrow:null,label:"",msg:"MESSAGE 6 OF 6 · SERVER → CLIENT",
+     title:"Access granted (with optional mutual authentication)",
+     body:"The server checks the ticket, confirms the user, and opens the share. Optionally it returns an <b>AP-REP</b> — proving <i>its</i> identity back to the client (mutual authentication), which defeats server impersonation. Six messages, and the password never left the workstation.",
+     pay:["✓ session established","optional AP-REP: server proves itself too"],
+     exam:"<b>Exam angle:</b> NTLM sends challenge-responses the server must validate; Kerberos tickets are self-contained — no password-equivalent ever transits the wire."}
+  ];
+  var idx=0, playing=false, timer=null;
+  var flow=document.getElementById("flow"), flowlabel=document.getElementById("flowlabel"),
+      pkt=document.getElementById("pkt"), ahead=document.getElementById("ahead"),
+      payline=document.getElementById("payline"), granted=document.getElementById("granted"),
+      cmsg=document.getElementById("cmsg"), ctitle=document.getElementById("ctitle"),
+      cbody=document.getElementById("cbody"), cpay=document.getElementById("cpay"),
+      cexam=document.getElementById("cexam"), counter=document.getElementById("counter"),
+      bPlay=document.getElementById("bPlay"), dotsEl=document.getElementById("dots");
+
+  STEPS.forEach(function(s,i){
+    var d=document.createElement("button");
+    d.className="dot"; d.title="Step "+(i+1); d.setAttribute("aria-label","Go to step "+(i+1));
+    d.addEventListener("click",function(){ pause(); go(i); });
+    dotsEl.appendChild(d);
+  });
+  var dots=Array.prototype.slice.call(dotsEl.children);
+
+  function go(i){
+    idx=Math.max(0,Math.min(STEPS.length-1,i));
+    var s=STEPS[idx];
+    if(s.arrow){
+      flow.setAttribute("visibility","visible"); pkt.setAttribute("visibility","visible"); flowlabel.setAttribute("visibility","visible");
+      flow.setAttribute("x1",s.arrow[0]); flow.setAttribute("y1",s.arrow[1]);
+      flow.setAttribute("x2",s.arrow[2]); flow.setAttribute("y2",s.arrow[3]);
+      flow.setAttribute("stroke",s.arrow[4]);
+      flow.setAttribute("stroke-dasharray",s.arrow[5]?"8 5":"none");
+      ahead.setAttribute("fill",s.arrow[4]);
+      flowlabel.setAttribute("x",(s.arrow[0]+s.arrow[2])/2);
+      flowlabel.setAttribute("y",s.arrow[1]-18);
+      flowlabel.setAttribute("fill",s.arrow[4]); flowlabel.textContent=s.label;
+      pkt.setAttribute("cx",s.arrow[0]); pkt.setAttribute("cy",s.arrow[1]); pkt.setAttribute("fill",s.arrow[4]);
+      pkt.innerHTML='<animate attributeName="cx" from="'+s.arrow[0]+'" to="'+s.arrow[2]+'" dur="1.2s" repeatCount="indefinite"/>'+
+                    '<animate attributeName="cy" from="'+s.arrow[1]+'" to="'+s.arrow[3]+'" dur="1.2s" repeatCount="indefinite"/>';
+    }else{
+      flow.setAttribute("visibility","hidden"); pkt.setAttribute("visibility","hidden"); flowlabel.setAttribute("visibility","hidden");
+    }
+    granted.setAttribute("opacity",idx===5?"1":"0");
+    payline.textContent=s.pay.join("  ·  ");
+    cmsg.textContent=s.msg; cmsg.style.color=s.arrow?s.arrow[4]:"#3fb950";
+    ctitle.textContent=s.title; cbody.innerHTML=s.body; cexam.innerHTML=s.exam;
+    cpay.innerHTML="";
+    s.pay.forEach(function(p){ var d=document.createElement("span"); d.className="pl"; d.textContent=p; cpay.appendChild(d); });
+    counter.textContent="Step "+(idx+1)+" of "+STEPS.length;
+    dots.forEach(function(d,i){ d.className="dot"+(i<idx?" done":i===idx?" now":""); });
+  }
+  function pause(){ playing=false; bPlay.textContent="▶ Play"; if(timer){clearInterval(timer);timer=null;} }
+  function play(){ playing=true; bPlay.textContent="⏸ Pause"; timer=setInterval(function(){ go(idx+1>=STEPS.length?0:idx+1); },4500); }
+  bPlay.addEventListener("click",function(){ playing?pause():play(); });
+  document.getElementById("bBack").addEventListener("click",function(){ pause(); go(idx-1); });
+  document.getElementById("bFwd").addEventListener("click",function(){ pause(); go(idx+1); });
+  document.getElementById("bReset").addEventListener("click",function(){ pause(); go(0); });
+  go(0);
+})();
+</script>
+</body>
+</html>

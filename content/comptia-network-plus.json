@@ -871,6 +871,139 @@
     "Common trap: declaring victory when the symptom stops — verify full functionality and add the preventive measure, or it recurs."
    ],
    "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "concepts",
+   "title": "OSI, Encapsulation, and Addressing",
+   "concepts": [
+    "The OSI model has seven layers: 7 Application, 6 Presentation, 5 Session, 4 Transport, 3 Network, 2 Data Link, 1 Physical. Each layer provides services to the layer above and relies on the layer below. When you troubleshoot, the layer tells you which addresses and headers to inspect: MAC addresses at Layer 2, IP addresses at Layer 3, port numbers at Layer 4.",
+    "Encapsulation is the process of wrapping data as it moves down the stack: the Transport layer adds its header (a segment for TCP, a datagram for UDP), the Network layer adds the IP header (a packet), and the Data Link layer adds a header and trailer (a frame). At the Physical layer everything becomes bits on the wire. Decapsulation reverses this at the receiver.",
+    "TCP is connection-oriented: it performs a three-way handshake (SYN, SYN-ACK, ACK), then delivers data reliably, in order, with retransmission of lost segments. UDP is connectionless: no handshake, no retransmission, minimal overhead. Real-time traffic like VoIP and DNS queries favor UDP; file transfers and web browsing favor TCP's reliability.",
+    "IPv4 addresses are 32 bits, usually written as four decimal octets. The private ranges are 10.0.0.0/8, 172.16.0.0/12, and 192.168.0.0/16; APIPA self-assigned addresses use 169.254.0.0/16 when no DHCP server answers. CIDR notation like /26 tells you how many bits are network: usable hosts = 2^(host bits) - 2, subtracting the network and broadcast addresses.",
+    "IPv6 addresses are 128 bits in hexadecimal. Key scopes: fe80::/10 link-local (single link, never routed), fc00::/7 unique local (private), 2000::/3 global unicast, ::1 loopback, ff00::/8 multicast. Every IPv6 interface auto-configures a link-local address, and SLAAC lets hosts self-configure global addresses from router advertisements.",
+    "Two services make addressing usable: DHCP automates IPv4 assignment through the DORA sequence (Discover, Offer, Request, Acknowledge), and DNS translates names to addresses with records like A (IPv4), AAAA (IPv6), CNAME (alias), MX (mail), and PTR (reverse lookup)."
+   ],
+   "example": {
+    "lang": "shell",
+    "code": "$ ip -4 addr show eth0\n2: eth0: <BROADCAST,MULTICAST,UP> mtu 1500\n    inet 192.168.14.25/26 brd 192.168.14.63 scope global eth0\n$ ip route show default\ndefault via 192.168.14.1 dev eth0",
+    "walkthrough": "The /26 means 26 network bits and 6 host bits: 2^6 - 2 = 62 usable hosts. The broadcast (brd) .63 and the .25 address confirm this host sits in the 192.168.14.0/26 subnet (usable .1-.62, broadcast .63). The default route points at 192.168.14.1 — the gateway every off-subnet packet is sent to. Reading CIDR, broadcast, and gateway from two commands is the core addressing skill."
+   },
+   "pitfalls": [
+    "Forgetting to subtract 2 for the network and broadcast addresses when counting usable hosts.",
+    "Confusing the default gateway (a Layer 3 next-hop IP) with a DNS server (a name-resolution service).",
+    "Reading 'fe80::' as a globally reachable address — link-local is never routed.",
+    "Assuming UDP is 'unreliable and therefore bad' — its low overhead is exactly why DNS, DHCP, and VoIP use it."
+   ],
+   "try_it": "Pick any /28 from 10.9.9.0/24 and write out its network address, first and last usable hosts, and broadcast address. Then verify with: python3 -c \"import ipaddress; n=ipaddress.ip_network('10.9.9.0/28'); print(n.network_address, list(n.hosts())[0], list(n.hosts())[-1], n.broadcast_address)\"",
+   "domain_id_remapped_from": "fundamentals",
+   "merged_from": "cbt-individual/comptia-network-plus"
+  },
+  {
+   "domain_id": "concepts",
+   "title": "Cabling, Ethernet, and Wi-Fi Standards",
+   "concepts": [
+    "Twisted-pair categories define bandwidth and distance: Cat5e handles 1 Gbps (1000BASE-T) to 100 m; Cat6 handles 10 Gbps (10GBASE-T) only to 55 m; Cat6a handles 10GBASE-T to the full 100 m; Cat8 targets 25/40GBASE-T over short 30 m data-center runs. Match the category to both the speed AND the distance — either one can disqualify a cable.",
+    "Fiber comes in two families: multimode (OM1-OM4, 850 nm, shorter runs — e.g., 10GBASE-SR to 300 m on OM3) with lower-cost optics, and single-mode (OS1/OS2, 1310/1550 nm lasers) reaching kilometers (10GBASE-LR to 10 km). Common connectors are LC, SC, ST, and MPO/MTP for high-density parallel optics.",
+    "Wiring follows T568A or T568B on both ends for a straight-through cable (the T568B pinout starts white-orange, orange, white-green, blue, white-blue, green, white-brown, brown). A crossover cable wires one end T568A and the other T568B. Modern ports usually auto-MDIX, but the exam still expects you to know which is which.",
+    "Switching fundamentals: VLANs (802.1Q) split one switch into multiple broadcast domains; access ports carry a single untagged VLAN while trunk ports carry many tagged VLANs between switches. STP (802.1D) and RSTP (802.1w) block redundant paths to prevent loops, electing a root bridge via BPDUs. PoE powers devices over the same cable: 802.3af (~15 W), 802.3at/PoE+ (~30 W), 802.3bt (60-90 W).",
+    "Wi-Fi generations: 802.11b (2.4 GHz, 11 Mbps), 802.11g (2.4 GHz, 54 Mbps), 802.11a (5 GHz, 54 Mbps), 802.11n/Wi-Fi 4 (2.4/5 GHz, MIMO, up to 600 Mbps), 802.11ac/Wi-Fi 5 (5 GHz, multi-gigabit), 802.11ax/Wi-Fi 6/6E (2.4/5/6 GHz, OFDMA, up to 9.6 Gbps), 802.11be/Wi-Fi 7 (2.4/5/6 GHz, 320 MHz channels). The 2.4 GHz band has only three non-overlapping channels in the US: 1, 6, and 11.",
+    "Wireless security evolved from broken to strong: WEP (deprecated), WPA with TKIP (deprecated), WPA2 with AES-CCMP, and WPA3 with SAE. Enterprise networks use 802.1X/EAP so the client and server authenticate each other. Plan for interference, attenuation, and proper AP placement — and remember omnidirectional antennas radiate in all directions while directional (Yagi, parabolic) antennas focus the signal."
+   ],
+   "example": {
+    "lang": "shell",
+    "code": "$ ethtool eth0 | grep -E 'Speed|Duplex|Link detected'\n\tSpeed: 1000Mb/s\n\tDuplex: Full\n\tLink detected: yes",
+    "walkthrough": "ethtool reports the negotiated link: 1000 Mbps full-duplex means autonegotiation succeeded at the best common capability of the NIC, cable, and switch port. If this showed 100Mb/s on a gigabit-capable path, you would suspect the cable plant (damaged pairs, wrong category, excessive length) or a forced speed mismatch — a classic physical-layer check before touching any configuration."
+   },
+   "pitfalls": [
+    "Specifying Cat6 for a 90 m 10-Gbps run — Cat6 only does 10 Gbps to 55 m.",
+    "Putting neighboring 2.4 GHz APs on channels 2 or 3 thinking they are 'extra' channels — they overlap 1 and 6.",
+    "Configuring inter-switch links as access ports and wondering why only one VLAN crosses.",
+    "Forgetting STP when adding a redundant link — the loop will melt the network before the ticket is filed."
+   ],
+   "try_it": "Sketch a small office: one switch, three VLANs (10/20/30), and an uplink to a second switch. Label each port as access or trunk, note which VLANs are tagged on the trunk, and state the cable category you would pull for a 40 m 10-Gbps uplink.",
+   "id": "cbt-None",
+   "domain_id_remapped_from": "implementations",
+   "merged_from": "cbt-individual/comptia-network-plus"
+  },
+  {
+   "domain_id": "operations",
+   "title": "Monitoring, Metrics, and Recovery",
+   "concepts": [
+    "You cannot manage what you do not measure. SNMP polls device counters (use SNMPv3 for authentication and encryption; v1/v2c are cleartext), NetFlow/sFlow/IPFIX exports summarize traffic flows for capacity analysis, and syslog (UDP 514) centralizes log messages for correlation in a SIEM. Together they answer what happened, when, and how much.",
+    "The four performance metrics that matter: bandwidth (theoretical capacity), throughput (actual delivered data), latency (delay), and jitter (variation in delay). Packet loss and utilization complete the picture. VoIP is the canary: it needs latency under ~150 ms, jitter under ~30 ms, and near-zero loss — which is why voice gets QoS priority via DSCP markings like EF.",
+    "Baselines turn numbers into meaning. Record normal utilization, error rates, and response times before problems start; then deviations trigger investigation instead of arguments. Alert thresholds should come from the baseline, not from gut feeling.",
+    "Disaster recovery is defined by two objectives: RPO (how much data you can afford to lose, which sets backup frequency) and RTO (how fast service must return, which sets site and restore strategy). Full, incremental, and differential backups trade restore speed against backup windows; hot, warm, and cold sites trade cost against recovery speed.",
+    "High availability removes single points of failure: redundant power and links, NIC teaming, first-hop redundancy with HSRP/VRRP/GLBP so the default gateway never dies with one router, load balancers spreading sessions, and clustering for stateful services. Remote access for administrators runs over SSH (22), RDP (3389), VPNs, or dedicated out-of-band management — never Telnet.",
+    "Change management ties it together: document the baseline, assess the impact of every change, and keep a rollback plan. Most outages are caused by changes, not by hardware."
+   ],
+   "example": {
+    "lang": "shell",
+    "code": "$ ping -c 20 voip-gw.example.com\n--- voip-gw.example.com ping statistics ---\n20 packets transmitted, 19 received, 5% packet loss\nrtt min/avg/max/mdev = 18.2/24.6/61.3/9.8 ms\n$ iperf3 -c 10.4.0.9 -t 30",
+    "walkthrough": "The ping summary gives you three metrics at once: 5% packet loss (voice needs ~0%), average latency 24.6 ms (fine), and mdev 9.8 ms — the jitter indicator (acceptable, but the 61.3 ms max shows spikes). iperf3 then measures actual TCP/UDP throughput to separate 'slow link' from 'lossy link'. This pair — ping for loss/latency/jitter, iperf3 for throughput — is the standard first pass on any performance complaint."
+   },
+   "pitfalls": [
+    "Monitoring with SNMPv1/v2c community strings on a network whose policy requires encryption.",
+    "Setting alert thresholds without a baseline — every normal spike becomes a false alarm.",
+    "Backing up weekly when the RPO is 4 hours, or planning a cold site when the RTO is 24 hours.",
+    "Treating bandwidth upgrades as a fix for jitter — voice needs prioritization, not just capacity."
+   ],
+   "try_it": "Write the RPO and RTO for a hypothetical order database (suggested: RPO 1 hour, RTO 4 hours). Then specify: backup type and frequency, onsite vs offsite copies, and which recovery site type (hot/warm/cold) you would choose — with one sentence justifying each.",
+   "id": "cbt-None",
+   "merged_from": "cbt-individual/comptia-network-plus"
+  },
+  {
+   "domain_id": "concepts",
+   "title": "Threats, Hardening, and Secure Connectivity",
+   "concepts": [
+    "Know the attacker's toolkit: DoS/DDoS floods exhaust resources; spoofing (ARP, IP, DNS) forges identity; on-path (man-in-the-middle) attacks intercept conversations; evil twins and rogue APs harvest wireless credentials; VLAN hopping and MAC flooding attack switches; deauthentication frames kick clients off Wi-Fi. Social engineering — phishing above all — remains the most common initial access.",
+    "Firewalls enforce zone policy: stateless packet filters check each packet against ACLs, while stateful firewalls track connection state and allow return traffic automatically. Next-generation/UTM firewalls add IDS/IPS, malware filtering, and application control. Remember the IDS/IPS split: IDS detects and alerts (usually passive), IPS sits inline and blocks.",
+    "Segmentation contains breaches: VLANs and subnetting divide broadcast domains, a DMZ isolates public servers between firewalls, and microsegmentation plus zero-trust policies ('never trust, always verify') limit lateral movement. Jump servers/bastion hosts concentrate administrative access into one hardened entry point.",
+    "VPNs extend trust across untrusted networks. IPsec tunnel mode encrypts the entire original packet for site-to-site links; transport mode encrypts only the payload for host-to-host. SSL/TLS VPNs serve remote-access users; split tunneling sends only corporate traffic through the VPN while full tunneling sends everything.",
+    "Hardening is the unglamorous work that stops most attacks: change default credentials, disable unused ports and services, patch firmware, enforce 802.1X port-based authentication, enable port security and DHCP snooping with Dynamic ARP Inspection on switches, and guard STP with BPDU guard. Close Telnet (23) and manage everything over SSH (22).",
+    "Wireless hardening layers defenses: WPA3 (or WPA2) with AES, Enterprise 802.1X/EAP with certificates for mutual authentication, strong passphrases where PSK is unavoidable, and a WIPS to find rogue APs. Hidden SSIDs and MAC filtering are speed bumps, not walls."
+   ],
+   "example": {
+    "lang": "shell",
+    "code": "$ nmap -sV 192.168.14.0/24\nNmap scan report for 192.168.14.10\nPORT     STATE SERVICE  VERSION\n21/tcp   open  ftp\n23/tcp   open  telnet\n22/tcp   open  ssh      OpenSSH 9.2\n80/tcp   open  http\n443/tcp  open  https",
+    "walkthrough": "The scan is a hardening audit: Telnet (23) and FTP (21) are cleartext services that must be disabled or replaced with SSH (22) — note SSH is already available on the same host, so Telnet has no reason to exist. HTTP (80) should redirect to HTTPS (443) or be closed. Every open port is an attack surface you must justify; 'we never got around to closing it' is not a justification."
+   },
+   "pitfalls": [
+    "Calling an IDS 'preventive' — detection without blocking is the whole point of the IDS/IPS distinction.",
+    "Using IPsec transport mode for a site-to-site link and leaving original IP headers exposed.",
+    "Trusting hidden SSIDs or MAC filtering to stop an evil twin — only mutual authentication (802.1X/EAP) does that.",
+    "Placing the public web server on the LAN 'behind the firewall' — a DMZ exists for exactly this."
+   ],
+   "try_it": "Draw three zones — internet, DMZ, LAN — with two firewalls. Place a public web server, an internal database, and admin workstations. Write the three firewall rules that let the public reach the web server on 443 while preventing the web server from initiating connections to the LAN.",
+   "id": "cbt-None",
+   "domain_id_remapped_from": "security",
+   "merged_from": "cbt-individual/comptia-network-plus"
+  },
+  {
+   "domain_id": "concepts",
+   "title": "Methodology and the CLI Toolkit",
+   "concepts": [
+    "CompTIA's seven-step methodology keeps you systematic: 1) Identify the problem — gather information, question users, identify symptoms, determine if anything changed. 2) Establish a theory of probable cause — question the obvious. 3) Test the theory to confirm it. 4) Establish a plan of action and identify potential effects. 5) Implement the solution or escalate. 6) Verify full system functionality and implement preventive measures. 7) Document findings, actions, and outcomes.",
+    "The steps have an order for a reason. Jumping from symptoms to implementation skips the theory and the plan — which is how a 'quick fix' creates a second outage. Escalation is not failure; it is step 5 when the problem exceeds your scope. Documentation is not paperwork; it is how the next incident gets solved faster.",
+    "Connectivity toolkit: ping tests reachability with ICMP echo (ping by IP vs by name separates network faults from DNS faults); tracert (Windows) / traceroute (Linux) maps each hop to find where packets die; pathping blends both with per-hop loss statistics. Test a TCP port directly when ping is blocked — many hosts drop ICMP but answer on their service port.",
+    "Name resolution toolkit: nslookup and dig query DNS directly ('server' failures vs 'non-existent domain' answers tell different stories); ipconfig /displaydns, /flushdns, /release, /renew manage the Windows client side. If ping-by-IP works but ping-by-name fails, you have a DNS problem, not a routing problem.",
+    "Local state toolkit: ipconfig /all (Windows) or ip addr / ip route (Linux) shows address, mask, gateway, and DNS servers; netstat -an shows connections and listening ports, netstat -r the routing table; arp -a shows IP-to-MAC mappings for Layer 2 verification. Compare what you see against what you expect from documentation.",
+    "Physical-layer toolkit: cable testers and certifiers check wire map, length, and crosstalk (NEXT/FEXT); a TDR finds the distance to a break or short in copper, an OTDR does the same for fiber; tone generators with probes trace cables through walls; loopback plugs verify a port's transmit/receive path. When errors correlate with a location — near ballasts, a tight bend, a long run — suspect the cable plant first."
+   ],
+   "example": {
+    "lang": "shell",
+    "code": "$ traceroute 203.0.113.9\n 1  192.168.14.1    1.2 ms\n 2  10.20.0.1       8.4 ms\n 3  * * *\n 4  * * *\n 5  203.0.113.9    42.1 ms",
+    "walkthrough": "Hops 1 and 2 answer (LAN gateway, then ISP edge), hops 3-4 time out, but hop 5 — the destination — answers. Timeouts mid-path usually mean those routers deprioritize or drop ICMP, not that they are down: the packet reached its target, so the path works. The diagnostic pattern to memorize: consecutive timeouts AFTER the last responding hop point to the failure location; timeouts with a responding destination are just quiet routers."
+   },
+   "pitfalls": [
+    "Reading mid-path traceroute timeouts as failures when the destination still answers.",
+    "Running tracert before trying ping-by-IP vs ping-by-name to classify the fault.",
+    "Replacing the NIC before checking the cable certifier results and the cable's physical path.",
+    "Documenting nothing because 'it was a quick fix' — the next shift will rediscover it the hard way."
+   ],
+   "try_it": "Simulate a fault: a PC gets 169.254.x.x (APIPA). List the exact command sequence you would run — ipconfig/ifconfig to confirm, then what to check on DHCP (DORA), the switch port, and the cable — and state which methodology step each command belongs to.",
+   "id": "cbt-None",
+   "domain_id_remapped_from": "troubleshooting",
+   "merged_from": "cbt-individual/comptia-network-plus"
   }
  ],
  "behavioral": [
@@ -1207,6 +1340,87 @@
     }
    ],
    "success_message": "Lab complete — you read ARP tables and know the spoofing fingerprint. Dynamic ARP Inspection is your answer when one IP wears two MACs."
+  },
+  {
+   "id": "comptia-network-plus-lab1",
+   "domain_id": "concepts",
+   "title": "Carve a /24 into Four /26 Subnets",
+   "objective": "Subnet 192.168.14.0/24 into four /26 networks and document each subnet's network address, usable range, and broadcast address using the terminal to verify your math.",
+   "steps": [
+    "Decide how many host bits a /26 leaves (32 - 26) and compute usable hosts with 2^(host bits) - 2.",
+    "List the four /26 network addresses that tile 192.168.14.0/24.",
+    "For the first subnet, write the network address, first usable host, last usable host, and broadcast address.",
+    "Verify with Python's ipaddress module: python3 -c \"import ipaddress; n=ipaddress.ip_network('192.168.14.0/26'); print(n.network_address, list(n.hosts())[0], list(n.hosts())[-1], n.broadcast_address)\"",
+    "Repeat the verification for 192.168.14.64/26 and confirm the pattern: each /26 advances the network address by 64."
+   ],
+   "checks": [
+    {
+     "command_pattern": "^python3\\s",
+     "expect_contains": "192.168.14.1",
+     "hint": "Run the ipaddress verification for 192.168.14.0/26 — the first usable host should print as 192.168.14.1."
+    },
+    {
+     "command_pattern": "^python3\\s",
+     "expect_contains": "192.168.14.63",
+     "hint": "The same command should print the broadcast address 192.168.14.63 for the first /26."
+    }
+   ],
+   "domain_id_remapped_from": "fundamentals",
+   "merged_from": "cbt-individual/comptia-network-plus"
+  },
+  {
+   "id": "comptia-network-plus-lab2",
+   "domain_id": "concepts",
+   "title": "Run the Core Diagnostic Toolkit",
+   "objective": "Practice the standard CLI sequence for a 'cannot reach the server' ticket: verify local config, test Layer 3, test name resolution, and map the path — in methodology order.",
+   "steps": [
+    "Step 1 (identify): inspect local addressing with ip addr (Linux) or ipconfig /all (Windows) — record IP, mask, gateway, DNS servers.",
+    "Ping the default gateway by IP to confirm the local link, then ping a public IP (e.g., 8.8.8.8) to confirm routed connectivity.",
+    "Ping a hostname (e.g., example.com). If IP pings succeed but the name fails, run nslookup example.com (or dig example.com) to isolate DNS.",
+    "Run traceroute (Linux) or tracert (Windows) toward the target and note the last responding hop.",
+    "Write a one-line conclusion naming the faulty layer: physical/link, network, or name resolution."
+   ],
+   "checks": [
+    {
+     "command_pattern": "^ping\\s",
+     "expect_contains": "ttl=",
+     "hint": "Run ping against an IP address — successful replies include a ttl= field in the output."
+    },
+    {
+     "command_pattern": "^(nslookup|dig)\\s",
+     "expect_contains": "Address",
+     "hint": "Query DNS for a hostname with nslookup (or dig) — the answer section contains an Address line."
+    }
+   ],
+   "domain_id_remapped_from": "troubleshooting",
+   "merged_from": "cbt-individual/comptia-network-plus"
+  },
+  {
+   "id": "comptia-network-plus-lab3",
+   "domain_id": "concepts",
+   "title": "Audit Open Ports and Harden the Host",
+   "objective": "Scan a host, identify risky cleartext services from the results, and write a hardening plan that closes or replaces them.",
+   "steps": [
+    "Run a service-version scan: nmap -sV 192.168.14.10 (use the lab target address).",
+    "List every open TCP port with its service and version from the output.",
+    "Flag cleartext services (Telnet 23, FTP 21, HTTP 80 without redirect) and any service you cannot justify.",
+    "Write the hardening plan: disable Telnet in favor of the existing SSH (22), replace FTP with SFTP/SCP, and redirect HTTP to HTTPS (443).",
+    "Re-scan after the changes and confirm only justified ports remain open."
+   ],
+   "checks": [
+    {
+     "command_pattern": "^nmap\\s",
+     "expect_contains": "open",
+     "hint": "Run nmap -sV against the target — the results table marks reachable services as 'open'."
+    },
+    {
+     "command_pattern": "^nmap\\s",
+     "expect_contains": "23/tcp",
+     "hint": "The version scan should reveal the Telnet port (23/tcp) you are auditing for removal."
+    }
+   ],
+   "domain_id_remapped_from": "security",
+   "merged_from": "cbt-individual/comptia-network-plus"
   }
  ],
  "terminalMissions": [

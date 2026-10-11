@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>Git &amp; GitHub Simulator — IT Infrastructure Assessment Prep | Interstitium Labs</title>
+<meta name="description" content="Interactive Git simulator with animated commit graph, merge conflicts, and a simulated GitHub PR flow — from absolute zero.">
+<style>
+:root{
+  --bg:#0d1117; --panel:#161b22; --panel2:#1c2128; --panel3:#0a0d12;
+  --border:#30363d; --blue:#2f81f7; --blue-dim:#1f6feb;
+  --text:#e6edf3; --muted:#8b949e; --green:#3fb950; --red:#f85149;
+  --amber:#d29922; --purple:#bc8cff; --cyan:#39c5cf;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --c-main:#2f81f7; --c-feat:#3fb950; --c-hot:#d29922; --c-conf:#f85149;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;line-height:1.55;min-height:100vh}
+header{background:linear-gradient(180deg,#0d1117,#10151d);border-bottom:1px solid var(--border);padding:14px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.brandmark{width:46px;height:46px;flex:0 0 auto;border-radius:12px;background:radial-gradient(circle at 30% 25%,#1f6feb,#0d1117 70%);border:1px solid var(--blue);display:flex;align-items:center;justify-content:center;font-size:24px;color:#fff}
+header h1{font-size:1.08rem;font-weight:700;line-height:1.25}
+header h1 .brand{color:var(--blue);display:block;font-size:.68rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase}
+header .sub{font-size:.78rem;color:var(--muted);margin-left:auto;text-align:right}
+nav.tabs{position:sticky;top:0;z-index:30;background:rgba(13,17,23,.96);border-bottom:1px solid var(--border);display:flex;gap:4px;overflow-x:auto;padding:8px 12px;-webkit-overflow-scrolling:touch}
+nav.tabs button{flex:0 0 auto;background:transparent;border:1px solid transparent;color:var(--muted);padding:10px 14px;border-radius:8px;font-size:.85rem;font-weight:600;cursor:pointer;white-space:nowrap;min-height:44px}
+nav.tabs button.active{background:var(--panel);border-color:var(--border);color:var(--blue)}
+nav.tabs button:hover{color:var(--text)}
+main{max-width:1100px;margin:0 auto;padding:16px 12px 90px}
+.panel{display:none}.panel.active{display:block}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:18px;margin:12px 0}
+.card h2{font-size:1.02rem;margin-bottom:6px}
+.card h3{font-size:.95rem;margin:14px 0 6px;color:var(--blue)}
+.card p,.card li{font-size:.9rem}
+.hint{color:var(--muted);font-size:.82rem;margin-bottom:10px}
+.btn{background:var(--blue-dim);border:none;color:#fff;font-weight:700;font-size:.88rem;padding:11px 18px;border-radius:8px;cursor:pointer;min-height:44px}
+.btn:hover{background:var(--blue)}
+.btn.ghost{background:transparent;border:1px solid var(--border);color:var(--text)}
+.btn.ghost:hover{border-color:var(--blue);color:var(--blue)}
+.btn.green{background:#1a7f37}.btn.green:hover{background:#2ea043}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
+code{font-family:var(--mono);font-size:.85em;background:#010409;border:1px solid var(--border);border-radius:6px;padding:1px 7px;color:#79c0ff}
+pre.code{background:#010409;border:1px solid var(--border);border-radius:10px;padding:14px;font-family:var(--mono);font-size:.84rem;overflow-x:auto;white-space:pre-wrap;word-break:break-word;line-height:1.6;margin:10px 0}
+pre.code .c{color:var(--muted)}pre.code .g{color:var(--green)}pre.code .b{color:#79c0ff}pre.code .a{color:var(--amber)}pre.code .r{color:var(--red)}
+.logic{border:1px solid rgba(210,153,34,.45);background:rgba(210,153,34,.07);border-radius:10px;padding:12px 14px;margin:12px 0;font-size:.87rem}
+.logic .tag{display:inline-block;background:var(--amber);color:#111;font-weight:800;font-size:.68rem;letter-spacing:.08em;border-radius:5px;padding:2px 8px;margin-bottom:6px}
+.why{border-left:3px solid var(--blue);background:rgba(47,129,247,.07);border-radius:0 10px 10px 0;padding:10px 14px;margin:10px 0;font-size:.87rem}
+.why .tag{color:var(--blue);font-weight:800;font-size:.72rem;letter-spacing:.08em;display:block;margin-bottom:4px}
+/* repo visual */
+.repolayout{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:820px){.repolayout{grid-template-columns:1fr}}
+.viz{background:var(--panel3);border:1px solid var(--border);border-radius:10px;padding:12px;min-height:280px}
+.viz h4{font-size:.78rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
+#graph{width:100%;height:auto;display:block}
+.area{background:var(--panel3);border:1px solid var(--border);border-radius:10px;padding:12px;margin:8px 0;font-family:var(--mono);font-size:.82rem}
+.area h4{font-size:.78rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+.fileline{display:flex;justify-content:space-between;gap:8px;padding:5px 8px;border-radius:6px;margin:2px 0;background:rgba(255,255,255,.02)}
+.st{font-size:.68rem;font-weight:800;padding:2px 8px;border-radius:12px;flex:0 0 auto;align-self:center}
+.st.mod{background:rgba(210,153,34,.15);color:var(--amber)}
+.st.staged{background:rgba(63,185,80,.15);color:var(--green)}
+.st.untracked{background:rgba(248,81,73,.13);color:var(--red)}
+.st.clean{background:rgba(139,148,158,.12);color:var(--muted)}
+.st.conflict{background:rgba(248,81,73,.2);color:#ff7b72;animation:blink 1.2s infinite}
+@keyframes blink{50%{opacity:.55}}
+.headbadge{display:inline-block;background:rgba(47,129,247,.16);border:1px solid var(--blue);color:#79c0ff;font-family:var(--mono);font-size:.78rem;font-weight:700;border-radius:8px;padding:4px 10px;margin:4px 6px 4px 0}
+/* terminal */
+.term{background:#010409;border:1px solid var(--border);border-radius:12px;padding:12px;font-family:var(--mono);font-size:.87rem;margin:10px 0}
+.term .out{max-height:360px;overflow-y:auto;white-space:pre-wrap;word-break:break-word;line-height:1.65}
+.term .in{color:#79c0ff}.term .ok{color:var(--green)}.term .er{color:var(--red)}.term .dim{color:var(--muted)}.term .yl{color:var(--amber)}.term .b{color:#79c0ff}
+.cmdline{display:flex;gap:8px;margin-top:8px;align-items:center}
+.cmdline .ps{color:var(--green);font-weight:700;white-space:nowrap;font-size:.8rem}
+.cmdline input{flex:1;background:#0d1117;border:1px solid var(--blue);border-radius:8px;color:var(--text);font-family:var(--mono);font-size:16px;padding:12px;min-width:0}
+.cmdline input:focus{outline:none;box-shadow:0 0 0 3px rgba(47,129,247,.25)}
+/* conflict editor */
+.confbox{border:1px solid var(--red);border-radius:10px;padding:14px;margin:10px 0;background:rgba(248,81,73,.05)}
+.hunk{background:#010409;border:1px solid var(--border);border-radius:8px;padding:10px;font-family:var(--mono);font-size:.82rem;margin:8px 0}
+.hunk .ours{color:#79c0ff}.hunk .theirs{color:var(--green)}.hunk .mark{color:var(--red);font-weight:700}
+/* PR */
+.pr{border:1px solid var(--purple);border-radius:12px;padding:16px;margin:10px 0;background:rgba(188,140,255,.05)}
+.pr .num{font-family:var(--mono);color:var(--purple);font-weight:800}
+.checkrow{display:flex;gap:8px;align-items:center;font-size:.84rem;padding:6px 0}
+.checkrow .ok{color:var(--green)}.checkrow .run{color:var(--amber)}
+.field{margin:12px 0}
+.field label{display:block;font-size:.84rem;font-weight:700;margin-bottom:6px}
+.field input,.field textarea,.field select{width:100%;background:#010409;border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:16px;padding:12px;font-family:inherit}
+.field textarea{font-family:var(--mono);min-height:90px;resize:vertical}
+.field input:focus,.field textarea:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(47,129,247,.25)}
+.checklist{list-style:none;padding:0}
+.checklist li{background:var(--panel3);border:1px solid var(--border);border-radius:10px;padding:12px;margin:8px 0;font-size:.88rem}
+.checklist li.done{border-color:var(--green);background:rgba(63,185,80,.06)}
+.checklist .st2{font-weight:800;margin-right:8px}
+.checklist li.done .st2{color:var(--green)}
+.progbar{height:8px;background:var(--panel3);border-radius:6px;overflow:hidden;margin:8px 0}
+.progbar i{display:block;height:100%;background:var(--blue);border-radius:6px;transition:width .3s}
+footer{border-top:1px solid var(--border);padding:22px 16px;text-align:center;color:var(--muted);font-size:.78rem}
+footer .fbrand{color:var(--blue);font-weight:700;letter-spacing:.1em;font-size:.72rem;text-transform:uppercase}
+table.ref{width:100%;border-collapse:collapse;font-size:.82rem;margin:10px 0}
+table.ref th,table.ref td{border:1px solid var(--border);padding:9px 8px;text-align:left;vertical-align:top}
+table.ref th{background:var(--panel2);color:var(--blue);font-size:.78rem}
+table.ref td.cmd{font-family:var(--mono);color:#79c0ff;white-space:nowrap}
+
+/* accessibility: disable decorative CSS animations for reduced-motion users */
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="brandmark" aria-hidden="true">⬡</div>
+  <h1><span class="brand">Interstitium Labs · Bootcamps</span>Git &amp; GitHub Simulator</h1>
+  <div class="sub">IT Infrastructure Assessment Prep<br>Platform Skills · From Zero</div>
+</header>
+<nav class="tabs" aria-label="Git sections">
+  <button data-tab="repo" class="active">🌳 Repo Visual</button>
+  <button data-tab="term">⌨️ Git Terminal</button>
+  <button data-tab="conflict">💥 Merge Conflicts</button>
+  <button data-tab="github">🐙 GitHub</button>
+  <button data-tab="lab">🧪 Lab: Clone → PR</button>
+  <button data-tab="why">💡 Why It Matters</button>
+</nav>
+<main>
+
+<!-- ================= REPO VISUAL ================= -->
+<section class="panel active" id="tab-repo">
+  <div class="card">
+    <h2>Live Repository State</h2>
+    <p class="hint">Everything you do in the <b>Git Terminal</b> tab updates this picture instantly: the <b>commit graph</b> (your history), the <b>staging area</b> (what's queued for the next snapshot), and the <b>working directory</b> (your actual files). Learn the picture first — the commands will make sense after.</p>
+    <div class="row" style="margin-bottom:6px">
+      <span class="headbadge" id="hud-branch">branch: —</span>
+      <span class="headbadge" id="hud-head">HEAD: —</span>
+      <span class="headbadge" id="hud-remote">origin: —</span>
+    </div>
+    <div class="repolayout">
+      <div class="viz">
+        <h4>Commit graph (time flows down)</h4>
+        <svg id="graph" viewBox="0 0 320 300" role="img" aria-label="Commit graph"></svg>
+      </div>
+      <div>
+        <div class="area"><h4>📥 Staging area (git add puts files here)</h4><div id="viz-stage"><span style="color:var(--muted)">empty — nothing staged</span></div></div>
+        <div class="area"><h4>📁 Working directory (your files)</h4><div id="viz-work"></div></div>
+      </div>
+    </div>
+    <div class="logic"><span class="tag">🔍 LOGIC CHECK</span><br>Git has <b>three places</b> your work can be: <b>working directory</b> (edited, unsaved), <b>staging area</b> (marked for the next commit via <code>git add</code>), and <b>commits</b> (permanent snapshots via <code>git commit</code>). <code>git status</code> tells you which files are in which place. If you remember nothing else, remember the three places.</div>
+    <div class="row">
+      <button class="btn" id="btn-quickstart">⚡ Quick-start a demo repo</button>
+      <button class="btn ghost" id="btn-goto-term">Open Git Terminal</button>
+    </div>
+  </div>
+</section>
+
+<!-- ================= TERMINAL ================= -->
+<section class="panel" id="tab-term">
+  <div class="card">
+    <h2>Git Terminal</h2>
+    <p class="hint">Real Git syntax against a simulated repo. Type <code>help</code> for commands. Suggested first run: <code>git init</code> → <code>git status</code> → <code>git add README.md</code> → <code>git commit -m "first commit"</code> → <code>git log --oneline</code>. Every command repaints the Repo Visual tab.</p>
+    <div class="term">
+      <div class="out" id="g-out" aria-live="polite"></div>
+      <div class="cmdline">
+        <span class="ps">admin@srv01:~/infra-docs$</span>
+        <input id="g-in" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Git terminal input" placeholder="git status">
+      </div>
+    </div>
+    <div class="why"><span class="tag">EDITING FILES</span>Files are edited with <code>edit &lt;file&gt;</code> (opens a small editor below) — the sim has no vim. Editing a tracked file marks it <b>modified</b>; that's the top of the three-place pipeline.</div>
+    <div id="editor" style="display:none" class="card">
+      <h3 id="editor-title">Editing</h3>
+      <div class="field"><textarea id="editor-text" aria-label="File editor"></textarea></div>
+      <div class="row"><button class="btn" id="editor-save">💾 Save</button><button class="btn ghost" id="editor-cancel">Cancel</button></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= CONFLICT ================= -->
+<section class="panel" id="tab-conflict">
+  <div class="card">
+    <h2>💥 Merge Conflict — guided walkthrough</h2>
+    <p class="hint"><b>What a conflict is:</b> two branches changed the <i>same lines</i> of the same file. Git can't pick a winner, so it stops and asks <i>you</i>. This is normal, not an error — it happens to every team. Walk it once here and you'll never fear it.</p>
+    <div id="conflict-stage"></div>
+  </div>
+</section>
+
+<!-- ================= GITHUB ================= -->
+<section class="panel" id="tab-github">
+  <div class="card">
+    <h2>🐙 GitHub Concepts</h2>
+    <p class="hint"><b>Git</b> = the version-control tool on your machine. <b>GitHub</b> = the website where Git repos live so teams can collaborate. Same relationship as "email program" vs "Gmail".</p>
+    <h3>Repositories</h3>
+    <p>A repo is a project folder with history. On GitHub each repo gets a page: code, branches, commit history, and a README that renders as the project's front door. <b>Clone</b> copies it to your machine; <b>push</b> sends your commits up; <b>pull</b> brings others' commits down.</p>
+    <h3>Issues</h3>
+    <p>A to-do list attached to the repo. Each issue has a number, a title, and a discussion thread — e.g. <code>#42</code> "VPN drops every 2 hours". Teams link commits to issues ("fixes #42") so history explains <i>why</i> code changed.</p>
+    <div class="area"><h4>Sample issues — infra-docs</h4>
+      <div class="fileline"><span><b style="color:var(--green)">#41</b> Add runbook: switch firmware upgrade</span><span class="st staged">open</span></div>
+      <div class="fileline"><span><b style="color:var(--purple)">#42</b> VPN drops every 2 hours <span style="color:var(--muted)">— linked: branch fix/vpn-keepalive</span></span><span class="st staged">open</span></div>
+      <div class="fileline"><span><b style="color:var(--muted)">#38</b> Document backup rotation policy</span><span class="st clean">closed</span></div>
+    </div>
+    <h3>Pull Requests — try the simulated flow</h3>
+    <p>A <b>pull request (PR)</b> says: "here are my branch's changes — review them, then merge into <code>main</code>." It's how teams gatekeep quality: discussion + automated checks <i>before</i> code lands.</p>
+    <div id="pr-sim"></div>
+    <h3>Actions basics</h3>
+    <p><b>GitHub Actions</b> runs automation when things happen in the repo — e.g. "on every PR, run the tests; on every merge to main, deploy." The recipe is a YAML file in <code>.github/workflows/</code>:</p>
+<pre class="code"><span class="c"># .github/workflows/ci.yml — runs on every pull request</span>
+<span class="b">on</span>: [pull_request]
+<span class="b">jobs</span>:
+  test:
+    <span class="b">runs-on</span>: ubuntu-latest
+    <span class="b">steps</span>:
+      - <span class="b">uses</span>: actions/checkout@v4   <span class="c"># get the PR's code</span>
+      - <span class="b">run</span>: ./run-tests.sh          <span class="c"># your checks</span></pre>
+    <div class="why"><span class="tag">WHY INFRA TEAMS CARE</span>That same pipeline can <b>validate Terraform</b> (<code>terraform plan</code>) on every PR and <b>apply</b> on merge — infrastructure changes get the same review + automation as app code. That's the seed of GitOps.</div>
+  </div>
+</section>
+
+<!-- ================= LAB ================= -->
+<section class="panel" id="tab-lab">
+  <div class="card">
+    <h2>🧪 Lab: clone → branch → change → PR</h2>
+    <p class="hint">The full professional loop, end to end. Each step runs the real Git command in the terminal and verifies the repo state — then you open the simulated pull request.</p>
+    <div class="progbar"><i id="glab-prog" style="width:0%"></i></div>
+    <p class="hint" id="glab-count">0 of 6 steps complete</p>
+    <ul class="checklist" id="glab-list"></ul>
+    <div class="row"><button class="btn ghost" id="glab-reset">Reset lab</button></div>
+    <div class="why"><span class="tag">WHAT YOU PROVE</span>The exact workflow every infrastructure team uses daily: never commit straight to <code>main</code> — branch, change, push, and let review + automation decide. Do it here until it's boring; boring means mastered.</div>
+  </div>
+</section>
+
+<!-- ================= WHY ================= -->
+<section class="panel" id="tab-why">
+  <div class="card">
+    <h2>💡 Why Git matters for infrastructure</h2>
+    <h3>Infrastructure as Code (IaC)</h3>
+    <p>Modern infrastructure is <b>defined in text files</b> — Terraform files describe servers, Ansible playbooks describe configuration. Those files live in Git, so every infrastructure change is <b>reviewed (PR), tested (Actions), and reversible (<code>git revert</code>)</b> exactly like application code. "Who changed the firewall rule last Tuesday?" → <code>git log</code> answers in seconds.</p>
+<pre class="code"><span class="c"># main.tf — a server, described in text, versioned in Git</span>
+<span class="b">resource</span> "proxmox_vm_qemu" "web" {
+  name   = <span class="g">"lab-web"</span>
+  target_node = <span class="g">"pve01"</span>
+  cores  = 2
+  memory = 2048
+}</pre>
+    <h3>Documentation in Git</h3>
+    <p>Runbooks, network diagrams-as-code, incident timelines — when docs live in Git next to the infrastructure they describe, they <b>stay current</b>: the PR that changes the system also updates the doc, or review blocks it. Stale wiki pages are how outages repeat.</p>
+    <div class="logic"><span class="tag">🔍 LOGIC CHECK</span><br>Why not just keep configs on the server and docs in a wiki? Because then <b>change has no history</b>: no author, no reason, no rollback. Git gives every change a <i>who, when, and why</i> — which is precisely what an auditor, an incident review, and your future self at 3 AM all need.</div>
+    <h3>The three commands that save careers</h3>
+    <table class="ref">
+      <tr><th>Situation</th><th>Command</th><th>What it does</th></tr>
+      <tr><td class="cmd">Broke something, need yesterday back</td><td class="cmd">git log --oneline</td><td>Find the last good commit's ID</td></tr>
+      <tr><td></td><td class="cmd">git revert &lt;id&gt;</td><td>Creates a <i>new</i> commit that undoes it — history stays honest</td></tr>
+      <tr><td class="cmd">Half-finished work, emergency fix needed</td><td class="cmd">git stash</td><td>Shelves your changes; <code>git stash pop</code> brings them back</td></tr>
+      <tr><td class="cmd">"Who changed this line and why?"</td><td class="cmd">git blame file</td><td>Every line annotated with author + commit</td></tr>
+    </table>
+  </div>
+</section>
+
+</main>
+<footer>
+  <div class="fbrand">⬡ Interstitium Labs</div>
+  <p>Created by Interstitium Labs · IT Infrastructure Assessment Prep · All simulation runs locally in your browser — fully offline.</p>
+</footer>
+
+<script>
+"use strict";
+function el(id){return document.getElementById(id);}
+function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+function clone(o){return JSON.parse(JSON.stringify(o));}
+
+/* ---------- tabs ---------- */
+var tabBtns=document.querySelectorAll("nav.tabs button");
+function switchTab(n){
+  tabBtns.forEach(function(b){b.classList.toggle("active",b.dataset.tab===n);});
+  document.querySelectorAll("main .panel").forEach(function(p){p.classList.toggle("active",p.id==="tab-"+n);});
+  window.scrollTo(0,0);
+}
+tabBtns.forEach(function(b){b.addEventListener("click",function(){switchTab(b.dataset.tab);});});
+el("btn-goto-term").addEventListener("click",function(){switchTab("term");setTimeout(function(){el("g-in").focus();},150);});
+
+/* ---------- repo state ---------- */
+var BCOLORS=["#2f81f7","#3fb950","#d29922","#bc8cff","#39c5cf","#f778ba"];
+var G=null;
+function freshRepo(){
+  return {init:false,branches:{},branchOrder:[],commits:{},seq:0,
+    head:{branch:null,commit:null},stage:{},files:{},tracked:{},
+    remote:{},origin:{},pendingRemote:{},stash:[],conflict:null,baseOf:{}};
+}
+function newCommitId(){G.seq++;return "c"+G.seq;}
+function headFiles(){
+  if(!G.head.commit)return {};
+  return clone(G.commits[G.head.commit].files);
+}
+function fileStatus(name){
+  if(G.conflict&&G.conflict.file===name)return "conflict";
+  var tracked=!!G.tracked[name];
+  var hf=headFiles();
+  var inStage=(name in G.stage);
+  var work=G.files[name];
+  if(!tracked)return "untracked";
+  if(inStage&&G.stage[name]!==hf[name])return "staged";
+  if(inStage&&work!==G.stage[name])return "modified";
+  if(inStage)return "staged";
+  if(work!==hf[name])return "modified";
+  return "clean";
+}
+function isDirty(){
+  var hf=headFiles();
+  var names={};
+  Object.keys(G.files).forEach(function(n){names[n]=1;});
+  Object.keys(hf).forEach(function(n){names[n]=1;});
+  return Object.keys(names).some(function(n){
+    var s=fileStatus(n);return s==="modified"||s==="staged"||s==="untracked";
+  });
+}
+function isAncestor(a,b){
+  /* is commit a an ancestor of b? */
+  if(a===b)return true;
+  var seen={},stack=[b];
+  while(stack.length){
+    var id=stack.pop();
+    if(!id||seen[id])continue;seen[id]=1;
+    if(id===a)return true;
+    var c=G.commits[id];
+    if(c)c.parents.forEach(function(p){stack.push(p);});
+  }
+  return false;
+}
+function branchColor(name){
+  var i=G.branchOrder.indexOf(name);
+  return BCOLORS[i%BCOLORS.length];
+}
+
+/* ---------- rendering ---------- */
+function gPrint(html){var o=el("g-out");o.innerHTML+=html+"\n";o.scrollTop=o.scrollHeight;}
+function renderHUD(){
+  el("hud-branch").textContent="branch: "+(G.head.branch||"—");
+  el("hud-head").textContent="HEAD: "+(G.head.commit||"—");
+  var r=Object.keys(G.remote).map(function(k){return k+" → "+G.remote[k];}).join("  ");
+  el("hud-remote").textContent="remotes: "+(r||"—");
+}
+function renderGraph(){
+  var svg=el("graph");
+  if(!G.init){svg.setAttribute("viewBox","0 0 320 120");svg.innerHTML='<text x="16" y="60" fill="#8b949e" font-size="13">No repo yet — run git init or git clone</text>';return;}
+  var commits=Object.keys(G.commits).map(function(id){return G.commits[id];})
+    .sort(function(a,b){return a.n-b.n;});
+  var laneOf={};
+  G.branchOrder.forEach(function(b,i){laneOf[b]=i;});
+  commits.forEach(function(c){if(!(c.branch in laneOf)){laneOf[c.branch]=Object.keys(laneOf).length;}});
+  var lanes=Object.keys(laneOf).length;
+  var W=Math.max(320,lanes*86+120),H=70+commits.length*52;
+  svg.setAttribute("viewBox","0 0 "+W+" "+H);
+  var h="";
+  /* branch lane labels */
+  Object.keys(laneOf).forEach(function(b){
+    var x=44+laneOf[b]*86;
+    h+='<text x="'+x+'" y="22" fill="'+branchColor(b)+'" font-size="12" font-weight="700" text-anchor="middle">'+esc(b)+'</text>';
+  });
+  function pos(c){return {x:44+laneOf[c.branch]*86,y:52+(c.n-1)*52};}
+  /* edges */
+  commits.forEach(function(c){
+    var p1=pos(c);
+    c.parents.forEach(function(pid){
+      var pc=G.commits[pid];if(!pc)return;
+      var p2=pos(pc);
+      var mx=(p1.x+p2.x)/2;
+      h+='<path d="M '+p1.x+' '+p1.y+' C '+mx+' '+p1.y+', '+mx+' '+p2.y+', '+p2.x+' '+p2.y+'" stroke="#6e7681" stroke-width="2" fill="none"/>';
+    });
+  });
+  /* nodes */
+  commits.forEach(function(c){
+    var p=pos(c),col=branchColor(c.branch);
+    var isHead=(c.id===G.head.commit);
+    h+='<circle cx="'+p.x+'" cy="'+p.y+'" r="'+(isHead?15:12)+'" fill="'+col+'"'+(isHead?' stroke="#ffd700" stroke-width="3"':"")+'/>';
+    h+='<text x="'+(p.x+22)+'" y="'+(p.y-2)+'" fill="#e6edf3" font-size="11" font-family="monospace">'+esc(c.id)+'</text>';
+    h+='<text x="'+(p.x+22)+'" y="'+(p.y+13)+'" fill="#8b949e" font-size="10">'+esc(c.msg.length>34?c.msg.slice(0,34)+"…":c.msg)+'</text>';
+    if(isHead)h+='<text x="'+(p.x-24)+'" y="'+(p.y+4)+'" fill="#ffd700" font-size="9" font-weight="700">HEAD</text>';
+  });
+  svg.innerHTML=h;
+}
+function renderStage(){
+  var box=el("viz-stage");
+  var keys=Object.keys(G.stage);
+  if(!G.init){box.innerHTML='<span style="color:var(--muted)">no repo</span>';return;}
+  if(!keys.length){box.innerHTML='<span style="color:var(--muted)">empty — nothing staged</span>';return;}
+  box.innerHTML=keys.map(function(k){
+    return '<div class="fileline"><span>'+esc(k)+'</span><span class="st staged">staged</span></div>';
+  }).join("");
+}
+function renderWork(){
+  var box=el("viz-work");
+  if(!G.init){box.innerHTML='<span style="color:var(--muted)">no repo</span>';return;}
+  var names=Object.keys(G.files).sort();
+  if(!names.length){box.innerHTML='<span style="color:var(--muted)">empty working directory</span>';return;}
+  var labels={modified:"modified",staged:"staged ✓",untracked:"untracked",clean:"clean",conflict:"CONFLICT"};
+  box.innerHTML=names.map(function(k){
+    var s=fileStatus(k);
+    return '<div class="fileline"><span>'+esc(k)+'</span><span class="st '+s+'">'+labels[s]+'</span></div>';
+  }).join("");
+}
+function renderAll(){renderHUD();renderGraph();renderStage();renderWork();if(typeof renderGlab==="function")renderGlab();}
+
+/* ---------- git terminal engine ---------- */
+function needRepo(){if(!G||!G.init)return "not a git repository — run: git init  (or git clone <url>)";return null;}
+function tipOf(b){var br=G.branches[b];return br&&br.commits.length?br.commits[br.commits.length-1]:null;}
+function mergeBase(a,b){
+  var anc={},stack=[a];
+  while(stack.length){var id=stack.pop();if(!id||anc[id])continue;anc[id]=1;var c=G.commits[id];if(c)c.parents.forEach(function(p){stack.push(p);});}
+  stack=[b];
+  while(stack.length){var id2=stack.pop();if(!id2)continue;if(anc[id2])return id2;var c2=G.commits[id2];if(c2)c2.parents.forEach(function(p){stack.push(p);});}
+  return null;
+}
+function makeCommit(msg,parents,files,branch){
+  var id=newCommitId();
+  G.commits[id]={id:id,n:G.seq,msg:msg,branch:branch,parents:parents.slice(),files:clone(files),time:Date.now()};
+  G.branches[branch].commits.push(id);
+  G.head.commit=id;
+  return id;
+}
+function diffText(oldS,newS){
+  var a=(oldS||"").split("\n"),b=(newS||"").split("\n");
+  var pre=0;while(pre<a.length&&pre<b.length&&a[pre]===b[pre])pre++;
+  var suf=0;while(suf<a.length-pre&&suf<b.length-pre&&a[a.length-1-suf]===b[b.length-1-suf])suf++;
+  var out=[];
+  for(var i=pre;i<a.length-suf;i++)out.push('<span class="er">-'+esc(a[i])+'</span>');
+  for(var j=pre;j<b.length-suf;j++)out.push('<span class="ok">+'+esc(b[j])+'</span>');
+  return out.join("\n")||'<span class="dim">(no line differences)</span>';
+}
+function statusText(){
+  var L=["On branch <b>"+esc(G.head.branch)+"</b>"];
+  var up=G.origin[G.head.branch];
+  if(up){L.push(up===G.head.commit?"Your branch is up to date with 'origin/"+esc(G.head.branch)+"'.":"Your branch is ahead of 'origin/"+esc(G.head.branch)+"' — push to publish.");}
+  else if(Object.keys(G.remote).length)L.push("Your branch has no upstream — push with: git push origin "+esc(G.head.branch));
+  if(G.conflict){
+    L.push('<span class="er">You have unmerged paths — resolve the conflict, then:</span>');
+    L.push('  git add '+esc(G.conflict.file)+'   <span class="dim"># mark resolved</span>');
+    L.push('  git commit -m "resolve conflict"');
+    return L.join("\n");
+  }
+  var staged=[],mod=[],un=[];
+  Object.keys(G.files).sort().forEach(function(n){
+    var s=fileStatus(n);
+    if(s==="staged")staged.push(n);else if(s==="modified")mod.push(n);else if(s==="untracked")un.push(n);
+  });
+  if(staged.length){L.push("Changes to be committed:");staged.forEach(function(n){L.push('  <span class="ok">new/modified:</span> '+esc(n));});}
+  if(mod.length){L.push("Changes not staged for commit:");mod.forEach(function(n){L.push('  <span class="yl">modified:</span> '+esc(n));});}
+  if(un.length){L.push("Untracked files:");un.forEach(function(n){L.push('  <span class="er">'+esc(n)+'</span>');});}
+  if(!staged.length&&!mod.length&&!un.length)L.push("nothing to commit, working tree clean");
+  return L.join("\n");
+}
+function doMerge(theirBranch){
+  if(theirBranch===G.head.branch)return '<span class="yl">Already up to date.</span>';
+  if(!G.branches[theirBranch])return '<span class="er">merge: branch \''+esc(theirBranch)+'\' not found</span>';
+  var ours=G.head.commit,theirs=tipOf(theirBranch);
+  if(!theirs)return '<span class="er">merge: \''+esc(theirBranch)+'\' has no commits</span>';
+  if(isAncestor(theirs,ours))return '<span class="yl">Already up to date.</span>';
+  if(isAncestor(ours,theirs)){
+    G.branches[G.head.branch].commits.push(theirs);
+    G.head.commit=theirs;
+    G.files=clone(G.commits[theirs].files);
+    return '<span class="ok">Fast-forward</span> — '+esc(G.head.branch)+' now at '+theirs;
+  }
+  var baseId=mergeBase(ours,theirs);
+  var bf=baseId?G.commits[baseId].files:{},of=G.commits[ours].files,tf=G.commits[theirs].files;
+  var names={};[bf,of,tf].forEach(function(f){Object.keys(f).forEach(function(n){names[n]=1;});});
+  var merged={},conflicts=[];
+  Object.keys(names).forEach(function(n){
+    var b=bf[n],o=of[n],t=tf[n];
+    var oC=(o!==b),tC=(t!==b);
+    if(oC&&tC&&o!==t){conflicts.push(n);merged[n]=o;}
+    else merged[n]=(tC?t:(oC?o:b));
+    if(merged[n]===undefined)delete merged[n];
+  });
+  if(conflicts.length){
+    G.conflict={file:conflicts[0],files:conflicts,branch:theirBranch,oursHead:ours,theirsHead:theirs,merged:merged,base:bf};
+    G.files=clone(merged);
+    G.files[conflicts[0]]=conflictMarkers(bf[conflicts[0]]||"",of[conflicts[0]]||"",tf[conflicts[0]]||"",theirBranch);
+    return '<span class="er">CONFLICT</span> in '+conflicts.map(esc).join(", ")+' — merge paused.\n'
+      +'Git could not choose between your change and \''+esc(theirBranch)+'\'\'s change.\n'
+      +'Open the <b>Merge Conflicts</b> tab for the guided resolution, then git add + git commit.';
+  }
+  var id=makeCommit("Merge branch '"+theirBranch+"' into "+G.head.branch,[ours,theirs],merged,G.head.branch);
+  G.files=clone(merged);
+  return '<span class="ok">Merge made</span> — '+id+' (parents '+ours+', '+theirs+')';
+}
+function conflictMarkers(base,ours,theirs,br){
+  return "<<<<<<< HEAD (your: "+G.head.branch+")\n"+ours+"=======\n"+theirs+">>>>>>> "+br+" (theirs)\n";
+}
+
+var GCMDS={};
+function gcmd(name,fn){GCMDS[name]=fn;}
+gcmd("help",function(a){
+  return "Git commands here (every one repaints the Repo Visual tab):\n"
+  +"  <b>git init</b> · <b>git clone &lt;url&gt;</b> · <b>git status</b> · <b>git add &lt;file|.&gt;</b> · <b>git commit -m \"msg\"</b>\n"
+  +"  <b>git log [--oneline]</b> · <b>git diff [--staged]</b> · <b>git branch [name]</b> · <b>git checkout &lt;branch&gt;</b>\n"
+  +"  <b>git merge &lt;branch&gt;</b> · <b>git stash [pop]</b> · <b>git push</b> · <b>git pull</b> · <b>git remote -v</b>\n"
+  +"  <b>git reset &lt;file&gt;</b> · <b>git revert &lt;id&gt;</b> · <b>git blame &lt;file&gt;</b>\n"
+  +"  sim helpers: <b>new &lt;file&gt;</b> · <b>edit &lt;file&gt;</b> · <b>cat &lt;file&gt;</b> · <b>teammate-push</b> · <b>clear</b>";
+});
+gcmd("clear",function(){return "__CLEAR__";});
+gcmd("init",function(a){
+  if(G&&G.init)return "Reinitialized existing Git repository.";
+  G=freshRepo();G.init=true;
+  G.branches.main={commits:[]};G.branchOrder.push("main");
+  G.head.branch="main";G.baseOf.main=null;
+  G.files={"README.md":"# infra-docs\nTeam runbooks and network docs.\n",
+           "runbook.md":"# On-call runbook\n1. Check alerts\n2. Check /var/log\n3. Escalate\n"};
+  renderAll();
+  return '<span class="ok">Initialized empty Git repository.</span>\nSeeded two untracked files — run <b>git status</b>, then <b>git add .</b> and <b>git commit -m "Initial commit"</b>.';
+});
+gcmd("clone",function(a){
+  var url=a[0]||"https://github.com/interstitium-labs/infra-docs.git";
+  G=freshRepo();G.init=true;
+  G.remote.origin=url;
+  G.branches.main={commits:[]};G.branchOrder.push("main");G.head.branch="main";
+  var f1={"README.md":"# infra-docs\nTeam runbooks and network docs.\n"};
+  var id1=makeCommit("Initial commit",[],f1,"main");
+  var f2=clone(f1);
+  f2["runbook.md"]="# On-call runbook\n1. Check alerts\n2. Check /var/log\n3. Escalate\n";
+  f2["vpn.md"]="# VPN runbook\nserver = vpn01\nkeepalive = 30\n";
+  var id2=makeCommit("Add VPN runbook",[id1],f2,"main");
+  G.files=clone(f2);G.tracked={"README.md":1,"runbook.md":1,"vpn.md":1};
+  G.origin.main=id2;
+  renderAll();
+  return "Cloning into 'infra-docs'...\n<span class='dim'>remote: Enumerating objects, done.</span>\n<span class='ok'>Clone complete</span> — 2 commits on main, already tracking origin. Try <b>git log --oneline</b>.";
+});
+gcmd("status",function(){var e=needRepo();return e?'<span class="er">'+e+'</span>':statusText();});
+gcmd("add",function(a){
+  var e=needRepo();if(e)return '<span class="er">'+e+'</span>';
+  if(!a.length)return '<span class="er">Nothing specified, nothing added.  (git add &lt;file&gt; / git add .)</span>';
+  var all=(a[0]==="."||a[0]==="-A"||a[0]==="--all");
+  var names=all?Object.keys(G.files):a;
+  var added=[];
+  names.forEach(function(n){
+    if(!(n in G.files))return;
+    G.stage[n]=G.files[n];G.tracked[n]=1;added.push(n);
+  });
+  renderAll();
+  return added.length?'<span class="ok">Staged:</span> '+added.map(esc).join(", ")+'\n<span class="dim">→ moved to the staging area. Commit with: git commit -m "message"</span>'
+    :'<span class="yl">nothing matched</span>';
+});
+gcmd("commit",function(a){
+  var e=needRepo();if(e)return '<span class="er">'+e+'</span>';
+  var m=a.indexOf("-m"),msg=(m>=0&&a[m+1])?a[m+1].replace(/^["']|["']$/g,""):"";
+  if(G.conflict){
+    if(!msg)msg="Resolve merge conflict in "+G.conflict.file;
+    var c=G.conflict;
+    var id=makeCommit(msg,[c.oursHead,c.theirsHead],G.files,G.head.branch);
+    G.stage={};G.conflict=null;
+    renderAll();renderConflictDone();
+    return '<span class="ok">Merge conflict resolved</span> — commit '+id+' has two parents ('+c.oursHead+', '+c.theirsHead+').\n<span class="dim">History now shows exactly how the conflict was settled.</span>';
+  }
+  if(!Object.keys(G.stage).length)return '<span class="yl">nothing to commit</span> — stage something first: git add <file>';
+  if(!msg)return '<span class="er">commit needs a message: git commit -m "what changed and why"</span>';
+  var hf=headFiles(),nf=clone(hf);
+  Object.keys(G.stage).forEach(function(n){nf[n]=G.stage[n];});
+  Object.keys(G.tracked).forEach(function(n){if(!(n in G.files))delete nf[n];});
+  var parents=G.head.commit?[G.head.commit]:[];
+  var id2=makeCommit(msg,parents,nf,G.head.branch);
+  G.stage={};
+  renderAll();if(typeof glabCheck==="function")glabCheck();
+  return '<span class="ok">['+esc(G.head.branch)+' '+id2+']</span> '+esc(msg)+'\n<span class="dim">snapshot saved — the graph grew a node. Verify: git log --oneline</span>';
+});
+gcmd("log",function(a){
+  var e=needRepo();if(e)return '<span class="er">'+e+'</span>';
+  if(!G.head.commit)return "fatal: your current branch '"+esc(G.head.branch)+"' does not have any commits yet";
+  var one=a.indexOf("--oneline")>=0,ids=[],cur=G.head.commit,seen={};
+  while(cur&&!seen[cur]){seen[cur]=1;ids.push(cur);var c=G.commits[cur];cur=c.parents[0];}
+  return ids.map(function(id){
+    var c=G.commits[id];
+    return one?'<span class="yl">'+id+'</span> '+esc(c.msg)
+      :'commit <span class="yl">'+id+'</span>  <span class="dim">('+esc(c.branch)+')</span>\n    '+esc(c.msg);
+  }).join(one?"\n":"\n\n");
+});
+gcmd("diff",function(a){
+  var e=needRepo();if(e)return '<span class="er">'+e+'</span>';
+  var staged=a.indexOf("--staged")>=0||a.indexOf("--cached")>=0;
+  var hf=headFiles(),names={},out=[];
+  Object.keys(G.files).forEach(function(n){names[n]=1;});Object.keys(hf).forEach(function(n){names[n]=1;});
+  Object.keys(names).sort().forEach(function(n){
+    var left=staged?hf[n]:(G.stage[n]!==undefined?G.stage[n]:hf[n]);
+    var right=staged?(G.stage[n]!==undefined?G.stage[n]:hf[n]):G.files[n];
+    if(left===right)return;
+    if(left===undefined)left="";
+    out.push("<b>diff --git "+esc(n)+"</b>\n"+diffText(left,right||""));
+  });
+  if(!out.length)return staged?'<span class="dim">no staged changes</span>':'<span class="dim">no unstaged changes</span> — '+(staged?"":"try git diff --staged");
+  return (staged?'<span class="dim"># staged vs last commit</span>\n':'<span class="dim"># working dir vs staged/last commit</span>\n')+out.join("\n");
+});
+gcmd("branch",function(a){
+  var e=needRepo();if(e)return '<span class="er">'+e+'</span>';
+  if(!a.length){
+    return Object.keys(G.branches).map(function(b){
+      return (b===G.head.branch?'<span class="ok">* </span>':'  ')+'<span style="color:'+branchColor(b)+'">'+esc(b)+'</span>';
+    }).join("\n");
+  }
+  if(a[0]==="-d"||a[0]==="-D"){
+    var del=a[1];
+    if(!G.branches[del])return '<span class="er">branch \''+esc(del)+'\' not found</span>';
+    if(del===G.head.branch)return '<span class="er">cannot delete the checked-out branch</span>';
+    var merged=isAncestor(tipOf(del),G.head.commit);
+    if(!merged&&a[0]==="-d")return '<span class="er">not fully merged — use -D to force</span>';
+    delete G.branches[del];
+    var bi=G.branchOrder.indexOf(del);if(bi>=0)G.branchOrder.splice(bi,1);
+    renderAll();return '<span class="yl">Deleted branch '+esc(del)+'.</span>';
+  }
+  var nb=a[0];
+  if(G.branches[nb])return '<span class="er">branch \''+esc(nb)+'\' already exists</span>';
+  G.branches[nb]={commits:G.head.commit?[G.head.commit]:[]};
+  G.branchOrder.push(nb);G.baseOf[nb]=G.head.commit;
+  renderAll();
+  return 'Created branch <span style="color:'+branchColor(nb)+'">'+esc(nb)+'</span> at '+G.head.commit+'\n<span class="dim">switch to it: git checkout '+esc(nb)+'</span>';
+});
+function doCheckout(br){
+  var e=needRepo();if(e)return '<span class="er">'+e+'</span>';
+  if(!G.branches[br])return '<span class="er">error: pathspec \''+esc(br)+'\' did not match any branch</span>';
+  if(br===G.head.branch)return '<span class="yl">Already on \''+esc(br)+'\'</span>';
+  if(isDirty())return '<span class="er">Your local changes would be overwritten.</span>\nCommit them or stash first: <b>git stash</b>';
+  if(G.conflict)return '<span class="er">Resolve the merge conflict first (see Merge Conflicts tab).</span>';
+  G.head.branch=br;G.head.commit=tipOf(br);
+  G.files=clone(headFiles());G.stage={};
+  Object.keys(G.files).forEach(function(n){G.tracked[n]=1;});
+  renderAll();
+  return "Switched to branch '<span style='color:"+branchColor(br)+"'>"+esc(br)+"</span>'\n<span class='dim'>working directory now shows "+esc(br)+"'s files</span>";
+}
+gcmd("checkout",function(a){
+  if(a[0]==="-b"&&a[1]){
+    var r=GCMDS.branch([a[1]]);
+    if(r.indexOf("Created branch")<0)return r;
+    return r+"\n"+doCheckout(a[1]);
+  }
+  if(!a[0])return '<span class="er">usage: git checkout &lt;branch&gt;  or  git checkout -b &lt;new&gt;</span>';
+  return doCheckout(a[0]);
+});
+gcmd("switch",function(a){if(!a[0])return '<span class="er">usage: git switch &lt;branch&gt;</span>';return doCheckout(a[0]);});
+gcmd("merge",function(a){
+  var e=needRepo();if(e)return '<span class="er">'+e+'</span>';
+  if(G.conflict)return '<span class="er">Already merging — resolve the current conflict first.</span>';
+  if(!a[0])return '<span class="er">usage: git merge &lt;branch&gt;</span>';
+  var r=doMerge(a[0]);
+  renderAll();renderConflictUI();if(typeof glabCheck==="function")glabCheck();
+  return r;
+});
+gcmd("stash",function(a){
+  var e=needRepo();if(e)return '<span class="er">'+e+'</span>';
+  if(a[0]==="pop"||a[0]==="apply"){
+    var s=a[0]==="pop"?G.stash.pop():G.stash[G.stash.length-1];
+    if(!s)return '<span class="yl">No stash entries.</span>';
+    G.files=clone(s.files);G.stage=clone(s.stage);
+    Object.keys(G.files).forEach(function(n){G.tracked[n]=1;});
+    renderAll();
+    return '<span class="ok">Restored stash:</span> '+esc(s.msg);
+  }
+  if(a[0]==="list"){
+    if(!G.stash.length)return '<span class="dim">no stash entries</span>';
+    return G.stash.map(function(s,i){return "stash@{"+i+"}: "+esc(s.msg);}).join("\n");
+  }
+  if(!isDirty())return '<span class="yl">No local changes to save.</span>';
+  G.stash.push({msg:"WIP on "+G.head.branch+" ("+G.head.commit+")",files:clone(G.files),stage:clone(G.stage)});
+  G.files=clone(headFiles());G.stage={};
+  renderAll();
+  return '<span class="ok">Saved working directory to stash.</span> <span class="dim">Bring it back: git stash pop</span>';
+});
+gcmd("push",function(a){
+  var e=needRepo();if(e)return '<span class="er">'+e+'</span>';
+  var br=G.head.branch;
+  var pend=G.pendingRemote[br];
+  if(pend&&!isAncestor(pend,G.head.commit))
+    return '<span class="er">! [rejected] '+esc(br)+' → '+esc(br)+' (fetch first)</span>\n<span class="dim">A teammate pushed to origin/'+esc(br)+'. Run: git pull</span>';
+  if(!G.remote.origin){
+    if(!a[0])return '<span class="er">No remote configured.</span> Try: git remote add origin &lt;url&gt;';
+    G.remote.origin=a[0];
+  }
+  G.origin[br]=G.head.commit;G.pendingRemote[br]=null;
+  renderAll();if(typeof glabCheck==="function")glabCheck();
+  return "To "+esc(G.remote.origin)+"\n<span class='ok'>   '+</span> "+G.head.commit+" → "+esc(br)+" (new branch published)";
+});
+gcmd("fetch",function(){
+  var e=needRepo();if(e)return '<span class="er">'+e+'</span>';
+  var br=G.head.branch;
+  if(G.pendingRemote[br])return "From "+esc(G.remote.origin||"origin")+"\n   <span class='yl'>"+G.pendingRemote[br]+"</span>  origin/"+esc(br)+" (teammate's commit — merge with git pull)";
+  return '<span class="dim">up to date with '+(G.remote.origin||"origin")+'</span>';
+});
+gcmd("pull",function(){
+  var e=needRepo();if(e)return '<span class="er">'+e+'</span>';
+  var br=G.head.branch;
+  if(!G.pendingRemote[br])return '<span class="yl">Already up to date.</span>';
+  if(!G.branches["origin/"+br]){G.branches["origin/"+br]={commits:[]};G.branchOrder.push("origin/"+br);G.baseOf["origin/"+br]=G.origin[br];}
+  G.branches["origin/"+br].commits.push(G.pendingRemote[br]);
+  var r=doMerge("origin/"+br);
+  G.origin[br]=G.head.commit;G.pendingRemote[br]=null;
+  renderAll();
+  return r+"\n<span class='dim'>pulled origin/"+esc(br)+" into "+esc(br)+"</span>";
+});
+gcmd("remote",function(a){
+  var e2=needRepo();if(e2)return '<span class="er">'+e2+'</span>';
+  if(a[0]==="-v"||!a.length){
+    var ks=Object.keys(G.remote);
+    if(!ks.length)return '<span class="dim">no remotes</span>';
+    return ks.map(function(k){return k+"\t"+G.remote[k]+" (fetch)\n"+k+"\t"+G.remote[k]+" (push)";}).join("\n");
+  }
+  if(a[0]==="add"&&a[1]&&a[2]){G.remote[a[1]]=a[2];renderAll();return '<span class="ok">remote '+esc(a[1])+' added</span>';}
+  return '<span class="er">usage: git remote -v · git remote add &lt;name&gt; &lt;url&gt;</span>';
+});
+gcmd("reset",function(a){
+  var e=needRepo();if(e)return '<span class="er">'+e+'</span>';
+  if(!a.length)return '<span class="er">usage: git reset &lt;file&gt;  (unstage)</span>';
+  var n=0;
+  a.forEach(function(f){if(G.stage[f]!==undefined){delete G.stage[f];n++;}});
+  renderAll();
+  return n?'<span class="yl">Unstaged</span> '+n+' file(s) — still modified in your working directory.':'<span class="dim">nothing to unstage</span>';
+});
+gcmd("revert",function(a){
+  var e=needRepo();if(e)return '<span class="er">'+e+'</span>';
+  var id=a[0];
+  if(!id||!G.commits[id])return '<span class="er">usage: git revert &lt;commit-id&gt;  (see git log --oneline)</span>';
+  var c=G.commits[id],parent=c.parents[0],pf=parent?G.commits[parent].files:{};
+  var nf=clone(headFiles());
+  Object.keys(c.files).forEach(function(n){
+    if(pf[n]===undefined)delete nf[n];else nf[n]=pf[n];
+  });
+  Object.keys(pf).forEach(function(n){if(c.files[n]===undefined&&nf[n]!==undefined)nf[n]=pf[n];});
+  var nid=makeCommit('Revert "'+c.msg+'"',G.head.commit?[G.head.commit]:[],nf,G.head.branch);
+  G.files=clone(nf);G.stage={};
+  renderAll();
+  return '<span class="ok">['+esc(G.head.branch)+' '+nid+'] Revert "'+esc(c.msg)+'"</span>\n<span class="dim">History kept — the bad commit is still there, visibly undone. That\'s the professional way.</span>';
+});
+gcmd("blame",function(a){
+  var e=needRepo();if(e)return '<span class="er">'+e+'</span>';
+  var f=a[0];
+  if(!f||G.files[f]===undefined)return '<span class="er">usage: git blame &lt;file&gt;</span>';
+  var ids=[],cur=G.head.commit,seen={};
+  while(cur&&!seen[cur]){seen[cur]=1;ids.push(cur);var c=G.commits[cur];cur=c.parents[0];}
+  var lines=G.files[f].split("\n");
+  return lines.map(function(l){
+    var found=ids[ids.length-1];
+    for(var i=0;i<ids.length;i++){
+      var cf=G.commits[ids[i]].files[f];
+      if(cf!==undefined&&cf.split("\n").indexOf(l)>=0){found=ids[i];break;}
+    }
+    return '<span class="yl">'+found+'</span> '+esc(l);
+  }).join("\n");
+});
+gcmd("teammate-push",function(){
+  var e=needRepo();if(e)return '<span class="er">'+e+'</span>';
+  if(!G.remote.origin)return '<span class="er">no remote — clone or push first</span>';
+  var br=G.head.branch;
+  var base=G.origin[br]||G.head.commit;
+  var bf=clone(G.commits[base].files);
+  bf["runbook.md"]=(bf["runbook.md"]||"")+"4. Page secondary on-call\n";
+  var id=newCommitId();
+  G.commits[id]={id:id,n:G.seq,msg:"Teammate: extend on-call runbook",branch:"origin/"+br,parents:[base],files:bf,time:Date.now()};
+  G.pendingRemote[br]=id;
+  return '<span class="dim">(simulated)</span> teammate pushed <span class="yl">'+id+'</span> to origin/'+esc(br)+'\nNow run <b>git fetch</b>, then <b>git pull</b> to bring it in.';
+});
+/* sim file helpers */
+gcmd("new",function(a){
+  var e=needRepo();if(e)return '<span class="er">'+e+'</span>';
+  if(!a[0])return '<span class="er">usage: new &lt;filename&gt;</span>';
+  if(G.files[a[0]]!==undefined)return '<span class="yl">'+esc(a[0])+' already exists — use edit</span>';
+  G.files[a[0]]="";renderAll();
+  return 'created '+esc(a[0])+' <span class="dim">(untracked — edit it, then git add)</span>';
+});
+gcmd("edit",function(a){
+  var e=needRepo();if(e)return '<span class="er">'+e+'</span>';
+  if(!a[0])return '<span class="er">usage: edit &lt;filename&gt;</span>';
+  openEditor(a[0]);
+  return '<span class="dim">editor opened below — save to apply changes</span>';
+});
+gcmd("cat",function(a){
+  var e=needRepo();if(e)return '<span class="er">'+e+'</span>';
+  if(!a[0]||G.files[a[0]]===undefined)return '<span class="er">cat: '+esc(a[0]||"")+': No such file</span>';
+  return esc(G.files[a[0]]);
+});
+function runGit(line){
+  line=line.trim();if(!line)return;
+  gPrint('<span class="in">admin@srv01</span><span class="dim">:</span><span class="b">~/infra-docs$</span> '+esc(line));
+  var toks=line.match(/"[^"]*"|'[^']*'|\S+/g)||[];
+  toks=toks.map(function(t){return t.replace(/^["']|["']$/g,"");});
+  if(toks[0]!=="git"){
+    var solo=GCMDS[toks[0]];
+    if(solo&&["new","edit","cat","clear","help"].indexOf(toks[0])>=0){
+      var r0=solo(toks.slice(1));
+      if(r0==="__CLEAR__"){el("g-out").innerHTML="";return;}
+      if(r0)gPrint(r0);return;
+    }
+    gPrint('<span class="er">not a git command</span> — try <b>git status</b> (or <b>help</b>)');
+    return;
+  }
+  var sub=toks[1],fn=GCMDS[sub];
+  if(!fn){gPrint('<span class="er">git: \''+esc(sub||"")+'\' is not a git command.</span> Try <b>help</b>.');return;}
+  var r=fn(toks.slice(2));
+  if(r==="__CLEAR__"){el("g-out").innerHTML="";return;}
+  if(r)gPrint(r);
+  renderAll();
+}
+el("g-in").addEventListener("keydown",function(ev){
+  if(ev.key==="Enter"){var v=el("g-in").value;el("g-in").value="";runGit(v);}
+});
+/* editor */
+var EDITING=null;
+function openEditor(name){
+  EDITING=name;
+  el("editor-title").textContent="Editing "+name+(G.tracked[name]?"":" (new file)");
+  el("editor-text").value=G.files[name]!==undefined?G.files[name]:"";
+  el("editor").style.display="block";
+  switchTab("term");
+  setTimeout(function(){el("editor-text").focus();},100);
+}
+el("editor-save").addEventListener("click",function(){
+  if(!EDITING)return;
+  G.files[EDITING]=el("editor-text").value;
+  el("editor").style.display="none";
+  gPrint('<span class="ok">saved '+esc(EDITING)+'</span> <span class="dim">— status: '+fileStatus(EDITING)+'</span>');
+  EDITING=null;renderAll();if(typeof glabCheck==="function")glabCheck();
+});
+el("editor-cancel").addEventListener("click",function(){el("editor").style.display="none";EDITING=null;});
+
+/* ---------- merge conflict guided walkthrough ---------- */
+var CONF={step:0};
+function renderConflictUI(){
+  var box=el("conflict-stage");
+  if(!G||!G.init){
+    box.innerHTML='<div class="why"><span class="tag">SETUP FIRST</span>Initialize or clone a repo in the <b>Git Terminal</b> tab (or hit Quick-start), then come back — the walkthrough builds the conflict for you.</div>';
+    return;
+  }
+  if(!G.conflict){
+    box.innerHTML='<div class="card" style="margin:0"><h3>No active conflict</h3>'
+      +'<p class="hint">A conflict needs two branches editing the <b>same lines</b>. This button builds that exact situation: <code>main</code> and <code>feature</code> both change the <code>timeout</code> line in <code>app.conf</code>.</p>'
+      +'<div class="row"><button class="btn" id="cf-setup">⚙ Set up a conflict scenario</button></div>'
+      +'<div class="why"><span class="tag">THEN YOU</span>Run <code>git merge feature</code> in the terminal. Git will stop mid-merge — and this tab becomes your resolution workbench.</div></div>';
+    var b=el("cf-setup");
+    if(b)b.addEventListener("click",setupConflict);
+    return;
+  }
+  var c=G.conflict;
+  var ours=(G.commits[c.oursHead].files[c.file]||"").split("\n");
+  var theirs=(G.commits[c.theirsHead].files[c.file]||"").split("\n");
+  box.innerHTML='<div class="confbox"><h3>💥 Conflict in <code>'+esc(c.file)+'</code></h3>'
+    +'<p class="hint"><b>Step 1 — understand:</b> Git merged everything it could. These lines changed on <b>both</b> sides since the branch split, so it needs a human decision.</p>'
+    +'<div class="hunk"><div class="mark">&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD — yours ('+esc(G.head.branch)+')</div>'
+    +'<div class="ours">'+ours.map(esc).join("<br>")+'</div>'
+    +'<div class="mark">=======</div>'
+    +'<div class="theirs">'+theirs.map(esc).join("<br>")+'</div>'
+    +'<div class="mark">&gt;&gt;&gt;&gt;&gt;&gt;&gt; '+esc(c.branch)+' — theirs</div></div>'
+    +'<p class="hint"><b>Step 2 — decide.</b> Pick the resolution (or edit manually):</p>'
+    +'<div class="row">'
+    +'<button class="btn ghost" data-res="ours">Keep mine</button>'
+    +'<button class="btn ghost" data-res="theirs">Keep theirs</button>'
+    +'<button class="btn ghost" data-res="both">Keep both</button>'
+    +'</div>'
+    +'<div class="field"><label>Or edit the final file yourself:</label><textarea id="cf-text">'+esc(G.files[c.file].replace(/<<<<<<<.*\n|=======\n|>>>>>>>.*\n?/g,""))+'</textarea></div>'
+    +'<p class="hint"><b>Step 3 — finish in the terminal:</b> after resolving, run <code>git add '+esc(c.file)+'</code> then <code>git commit</code>. The commit gets <b>two parents</b> — history records the resolution.</p>'
+    +'<div class="row"><button class="btn green" id="cf-resolve">✓ Mark resolved &amp; stage</button></div></div>';
+  box.querySelectorAll("[data-res]").forEach(function(btn){
+    btn.addEventListener("click",function(){
+      var mode=btn.dataset.res,lines;
+      if(mode==="ours")lines=ours;
+      else if(mode==="theirs")lines=theirs;
+      else lines=ours.concat(["# merged from "+c.branch]).concat(theirs);
+      el("cf-text").value=lines.join("\n");
+    });
+  });
+  el("cf-resolve").addEventListener("click",function(){
+    var txt=el("cf-text").value;
+    G.files[c.file]=txt;G.stage[c.file]=txt;G.tracked[c.file]=1;
+    gPrint('<span class="ok">resolved '+esc(c.file)+'</span> and staged.\n<span class="dim">Finish with: git commit -m "Resolve conflict in '+esc(c.file)+'"</span>');
+    renderAll();switchTab("term");
+  });
+}
+function renderConflictDone(){
+  el("conflict-stage").innerHTML='<div class="card" style="margin:0;border-color:var(--green)"><h3 style="color:var(--green)">✓ Conflict resolved and committed</h3><p class="hint">Notice the graph: the merge commit has <b>two parents</b> — the full story is preserved. In real teams, this is a normal Tuesday, not an emergency.</p><div class="row"><button class="btn ghost" id="cf-again">Run it again</button></div></div>';
+  el("cf-again").addEventListener("click",function(){G.conflict=null;renderConflictUI();});
+}
+function setupConflict(){
+  /* ensure repo with a commit */
+  if(!G.head.commit){
+    G.files={"README.md":"# infra-docs\nTeam runbooks and network docs.\n"};
+    GCMDS.add(["."]);GCMDS.commit(["-m","Initial commit"]);
+  }
+  if(!G.files["app.conf"]){
+    G.files["app.conf"]="[server]\nhost = 10.0.0.5\ntimeout = 30\nretries = 3\n";
+    GCMDS.add(["app.conf"]);GCMDS.commit(["-m","Add app.conf"]);
+  }
+  if(G.branches.feature){gPrint('<span class="yl">scenario already exists — merge it: git merge feature</span>');switchTab("term");return;}
+  /* branch feature, change timeout to 60 */
+  GCMDS.branch(["feature"]);doCheckout("feature");
+  G.files["app.conf"]=G.files["app.conf"].replace("timeout = 30","timeout = 60");
+  GCMDS.add(["app.conf"]);GCMDS.commit(["-m","Raise timeout to 60"]);
+  /* back on main, change timeout to 90 */
+  doCheckout("main");
+  G.files["app.conf"]=G.files["app.conf"].replace("timeout = 30","timeout = 90");
+  GCMDS.add(["app.conf"]);GCMDS.commit(["-m","Raise timeout to 90"]);
+  renderAll();
+  gPrint('Scenario ready: <span class="b">main</span> set timeout=90, <span class="b">feature</span> set timeout=60.\nNow run: <b>git merge feature</b> — then open the Merge Conflicts tab.');
+  switchTab("term");
+}
+
+/* ---------- PR simulator ---------- */
+function renderPR(){
+  var box=el("pr-sim");
+  var branches=Object.keys(G&&G.init?G.branches:{});
+  if(!G||!G.init||branches.length<2){
+    box.innerHTML='<p class="hint">Create a second branch with commits (e.g. via the lab, or <code>git checkout -b fix/x</code> + commit) — then open a pull request here.</p>';
+    return;
+  }
+  var cur=G.head.branch;
+  var opts=branches.filter(function(b){return b!=="main"&&b.indexOf("origin/")!==0;})
+    .map(function(b){return '<option'+(b===cur?' selected':'')+'>'+esc(b)+'</option>';}).join("");
+  box.innerHTML='<div class="field"><label>Compare branch → base</label><div class="row"><select id="pr-compare" style="flex:1;background:#010409;border:1px solid var(--border);border-radius:8px;color:var(--text);padding:12px;font-size:16px">'+opts+'</select><span class="mono">→</span><code>main</code></div></div>'
+    +'<div class="field"><label>Title</label><input id="pr-title" value="Fix: VPN keepalive and timeouts"></div>'
+    +'<div class="field"><label>Description</label><textarea id="pr-desc">What: raise keepalive/timeout values\nWhy: tunnels drop every ~2h (see issue #42)\nTested: applied to lab VPN, 48h stable</textarea></div>'
+    +'<div class="row"><button class="btn" id="pr-open">Open pull request</button></div><div id="pr-view"></div>';
+  el("pr-open").addEventListener("click",openPR);
+}
+function openPR(){
+  var comp=el("pr-compare").value,title=el("pr-title").value||"(no title)";
+  var view=el("pr-view");
+  var nCommits=G.branches[comp].commits.length;
+  view.innerHTML='<div class="pr"><span class="num">PR #43</span> <b>'+esc(title)+'</b><br>'
+    +'<span class="mono" style="font-size:.8rem;color:var(--muted)">'+esc(comp)+' → main · '+nCommits+' commit(s) · by admin</span>'
+    +'<p style="font-size:.85rem;margin:8px 0;white-space:pre-wrap">'+esc(el("pr-desc").value)+'</p>'
+    +'<div class="checkrow"><span class="run">◌</span> lint — running…</div>'
+    +'<div class="checkrow"><span class="run">◌</span> config-validate — running…</div>'
+    +'<div class="row"><button class="btn green" id="pr-merge" disabled>Merge pull request (waiting on checks)</button></div></div>';
+  setTimeout(function(){
+    var rows=view.querySelectorAll(".checkrow");
+    if(rows[0])rows[0].innerHTML='<span class="ok">✓</span> lint — passed';
+    if(rows[1])rows[1].innerHTML='<span class="ok">✓</span> config-validate — passed';
+    var mb=el("pr-merge");
+    if(mb){mb.disabled=false;mb.textContent="Merge pull request";
+      mb.addEventListener("click",function(){
+        var cur=G.head.branch;
+        doCheckout("main");
+        var r=doMerge(comp);
+        gPrint("PR #43 merged: "+r.replace(/<[^>]+>/g,""));
+        renderAll();
+        view.innerHTML='<div class="pr" style="border-color:var(--green)"><span class="num">PR #43</span> <b style="color:var(--green)">✓ Merged</b><br><span class="mono" style="font-size:.8rem;color:var(--muted)">'+esc(comp)+' → main — commits are now on main. See the graph.</span></div>';
+        doCheckout(cur==="main"?"main":cur);
+        renderAll();
+      });
+    }
+  },1600);
+}
+
+/* ---------- guided lab: clone → branch → change → PR ---------- */
+var GLAB={done:{}};
+var GLAB_STEPS=[
+  {t:"1 · Clone the repo",d:"<code>git clone https://github.com/interstitium-labs/infra-docs.git</code> — copies the team's repo (with history) to your machine and wires up <code>origin</code>.",check:function(){return G&&G.init&&!!G.remote.origin;}},
+  {t:"2 · Create a branch",d:"<code>git checkout -b fix/vpn-keepalive</code> — never work directly on <code>main</code>. A branch is a safe sandbox.",check:function(){return G&&G.head.branch==="fix/vpn-keepalive";}},
+  {t:"3 · Make a change",d:"<code>edit vpn.md</code> — change <code>keepalive = 30</code> to <code>keepalive = 60</code> and save. Watch the working directory panel flag it <i>modified</i>.",check:function(){return G&&/keepalive = 60/.test(G.files["vpn.md"]||"");}},
+  {t:"4 · Stage &amp; commit",d:"<code>git add vpn.md</code> then <code>git commit -m \"Raise VPN keepalive to 60\"</code> — snapshot your change with a message explaining <i>why</i>.",check:function(){return G&&G.head.branch==="fix/vpn-keepalive"&&tipOf("fix/vpn-keepalive")&&G.commits[tipOf("fix/vpn-keepalive")].msg.indexOf("keepalive")>=0;}},
+  {t:"5 · Push the branch",d:"<code>git push origin fix/vpn-keepalive</code> — publishes your branch so the team (and the PR) can see it.",check:function(){return G&&G.origin["fix/vpn-keepalive"]===tipOf("fix/vpn-keepalive");}},
+  {t:"6 · Open the pull request",d:"Use the button below — it opens the simulated PR flow in the GitHub tab. Review the checks, then merge.",btn:"Open PR flow",check:function(){return GLAB.prOpened;},run:function(){GLAB.prOpened=true;switchTab("github");renderPR();}}
+];
+function glabCheck(){
+  GLAB_STEPS.forEach(function(s,i){if(!GLAB.done[i]&&s.check())GLAB.done[i]=true;});
+  renderGlab();
+}
+function renderGlab(){
+  var list=el("glab-list");if(!list)return;
+  var h="";
+  GLAB_STEPS.forEach(function(s,i){
+    var done=!!GLAB.done[i];
+    h+="<li class='"+(done?"done":"")+"'><span class='st2'>"+(done?"✓":"○")+"</span><b>"+s.t+"</b><br><span class='hint'>"+s.d+"</span>"
+      +(s.run&&!done?"<br><button class='btn' style='margin-top:8px' data-glabrun='"+i+"'>▶ "+s.btn+"</button>":"")+"</li>";
+  });
+  list.innerHTML=h;
+  var n=GLAB_STEPS.filter(function(s,i){return GLAB.done[i];}).length;
+  el("glab-prog").style.width=(n/GLAB_STEPS.length*100)+"%";
+  el("glab-count").textContent=n+" of "+GLAB_STEPS.length+" steps complete — work in the Git Terminal tab";
+  list.querySelectorAll("[data-glabrun]").forEach(function(b){
+    b.addEventListener("click",function(){GLAB_STEPS[+b.dataset.glabrun].run();glabCheck();});
+  });
+}
+el("glab-reset").addEventListener("click",function(){
+  G=freshRepo();GLAB={done:{}};renderAll();renderGlab();renderConflictUI();
+  gPrint('<span class="yl">lab reset — start at step 1: git clone …</span>');
+});
+el("btn-quickstart").addEventListener("click",function(){
+  G=freshRepo();G.init=true;
+  G.branches.main={commits:[]};G.branchOrder.push("main");G.head.branch="main";G.baseOf.main=null;
+  G.files={"README.md":"# infra-docs\nTeam runbooks and network docs.\n","runbook.md":"# On-call runbook\n1. Check alerts\n"};
+  GCMDS.add(["."]);GCMDS.commit(["-m","Initial commit"]);
+  gPrint('<span class="ok">Demo repo ready.</span> Graph shows your first commit — now: <b>git checkout -b feature</b>, <b>edit README.md</b>, <b>git add</b>, <b>git commit</b>.');
+  renderAll();
+});
+
+/* ---------- init ---------- */
+G=freshRepo();
+renderAll();renderConflictUI();renderGlab();renderPR();
+gPrint('<span class="dim">Git simulator — no repo yet. Start with </span><span class="b">git init</span><span class="dim"> or </span><span class="b">git clone https://github.com/interstitium-labs/infra-docs.git</span>');
+gPrint('<span class="dim">Type </span><span class="b">help</span><span class="dim"> for commands. The Repo Visual tab mirrors everything you do.</span>');
+</script>
+</body>
+</html>

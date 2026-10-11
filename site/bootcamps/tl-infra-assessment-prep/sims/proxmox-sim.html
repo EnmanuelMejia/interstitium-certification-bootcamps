@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>Proxmox VE Simulator — IT Infrastructure Assessment Prep | Interstitium Labs</title>
+<meta name="description" content="Interactive Proxmox VE simulator: virtual machines, LXC containers, CLI, networking, and hypervisor comparison — from absolute zero.">
+<style>
+:root{
+  --bg:#0d1117; --panel:#161b22; --panel2:#1c2128; --panel3:#0a0d12;
+  --border:#30363d; --blue:#2f81f7; --blue-dim:#1f6feb;
+  --text:#e6edf3; --muted:#8b949e; --green:#3fb950; --red:#f85149;
+  --amber:#d29922; --purple:#bc8cff; --cyan:#39c5cf;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;line-height:1.55;min-height:100vh}
+header{background:linear-gradient(180deg,#0d1117,#10151d);border-bottom:1px solid var(--border);padding:14px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.brandmark{width:46px;height:46px;flex:0 0 auto;border-radius:12px;background:radial-gradient(circle at 30% 25%,#1f6feb,#0d1117 70%);border:1px solid var(--blue);display:flex;align-items:center;justify-content:center;font-size:24px;color:#fff}
+header h1{font-size:1.08rem;font-weight:700;line-height:1.25}
+header h1 .brand{color:var(--blue);display:block;font-size:.68rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase}
+header .sub{font-size:.78rem;color:var(--muted);margin-left:auto;text-align:right}
+nav.tabs{position:sticky;top:0;z-index:30;background:rgba(13,17,23,.96);border-bottom:1px solid var(--border);display:flex;gap:4px;overflow-x:auto;padding:8px 12px;-webkit-overflow-scrolling:touch}
+nav.tabs button{flex:0 0 auto;background:transparent;border:1px solid transparent;color:var(--muted);padding:10px 14px;border-radius:8px;font-size:.85rem;font-weight:600;cursor:pointer;white-space:nowrap;min-height:44px}
+nav.tabs button.active{background:var(--panel);border-color:var(--border);color:var(--blue)}
+nav.tabs button:hover{color:var(--text)}
+main{max-width:1100px;margin:0 auto;padding:16px 12px 90px}
+.panel{display:none}
+.panel.active{display:block}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:18px;margin:12px 0}
+.card h2{font-size:1.02rem;margin-bottom:6px;color:var(--text)}
+.card h3{font-size:.95rem;margin:14px 0 6px;color:var(--blue)}
+.card p,.card li{font-size:.9rem;color:var(--text)}
+.card p.muted,.muted{color:var(--muted)}
+ul.tight{padding-left:20px}ul.tight li{margin:6px 0}
+.hint{color:var(--muted);font-size:.82rem;margin-bottom:10px}
+.btn{background:var(--blue-dim);border:none;color:#fff;font-weight:700;font-size:.88rem;padding:11px 18px;border-radius:8px;cursor:pointer;min-height:44px}
+.btn:hover{background:var(--blue)}
+.btn.ghost{background:transparent;border:1px solid var(--border);color:var(--text)}
+.btn.ghost:hover{border-color:var(--blue);color:var(--blue)}
+.btn.green{background:#1a7f37}.btn.green:hover{background:#2ea043}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
+code,.mono{font-family:var(--mono);font-size:.85em}
+code{background:#010409;border:1px solid var(--border);border-radius:6px;padding:1px 7px;color:#79c0ff}
+pre.code{background:#010409;border:1px solid var(--border);border-radius:10px;padding:14px;font-family:var(--mono);font-size:.84rem;overflow-x:auto;white-space:pre-wrap;word-break:break-word;color:var(--text);margin:10px 0;line-height:1.6}
+pre.code .c{color:var(--muted)} pre.code .g{color:var(--green)} pre.code .b{color:#79c0ff} pre.code .a{color:var(--amber)}
+.logic{border:1px solid rgba(210,153,34,.45);background:rgba(210,153,34,.07);border-radius:10px;padding:12px 14px;margin:12px 0;font-size:.87rem}
+.logic .tag{display:inline-block;background:var(--amber);color:#111;font-weight:800;font-size:.68rem;letter-spacing:.08em;border-radius:5px;padding:2px 8px;margin-bottom:6px}
+.why{border-left:3px solid var(--blue);background:rgba(47,129,247,.07);border-radius:0 10px 10px 0;padding:10px 14px;margin:10px 0;font-size:.87rem}
+.why .tag{color:var(--blue);font-weight:800;font-size:.72rem;letter-spacing:.08em;display:block;margin-bottom:4px}
+/* web UI sim */
+.webui{display:grid;grid-template-columns:280px 1fr;gap:12px}
+@media(max-width:760px){.webui{grid-template-columns:1fr}}
+.tree{background:var(--panel3);border:1px solid var(--border);border-radius:10px;padding:10px;font-family:var(--mono);font-size:.84rem;max-height:520px;overflow:auto}
+.tnode{padding:7px 9px;border-radius:7px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:36px;display:flex;align-items:center;gap:7px}
+.tnode:hover{background:var(--panel2)}
+.tnode.sel{background:rgba(47,129,247,.16);outline:1px solid var(--blue)}
+.tnode .dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto}
+.dot.run{background:var(--green);box-shadow:0 0 6px var(--green)}
+.dot.stop{background:var(--muted)}
+.tindent{padding-left:22px}.tindent2{padding-left:44px}
+.detail{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:16px;min-height:300px}
+.kv{display:grid;grid-template-columns:130px 1fr;gap:6px 10px;font-size:.86rem;margin:10px 0}
+.kv dt{color:var(--muted)}.kv dd{font-family:var(--mono)}
+.status-pill{display:inline-block;padding:3px 12px;border-radius:20px;font-size:.76rem;font-weight:700}
+.status-pill.run{background:rgba(63,185,80,.15);color:var(--green);border:1px solid rgba(63,185,80,.4)}
+.status-pill.stop{background:rgba(139,148,158,.12);color:var(--muted);border:1px solid var(--border)}
+/* wizard */
+.wzsteps{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.wzsteps span{font-size:.75rem;font-weight:700;padding:6px 10px;border-radius:20px;background:var(--panel3);border:1px solid var(--border);color:var(--muted)}
+.wzsteps span.cur{background:rgba(47,129,247,.16);border-color:var(--blue);color:var(--blue)}
+.wzsteps span.done{background:rgba(63,185,80,.12);border-color:var(--green);color:var(--green)}
+.field{margin:12px 0}
+.field label{display:block;font-size:.84rem;font-weight:700;margin-bottom:6px}
+.field input,.field select{width:100%;background:#010409;border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:16px;padding:12px;font-family:var(--mono)}
+.field input:focus,.field select:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(47,129,247,.25)}
+.field .fdesc{font-size:.8rem;color:var(--muted);margin-top:6px}
+/* CLI console */
+.console{background:#010409;border:1px solid var(--border);border-radius:10px;padding:12px;font-family:var(--mono);font-size:.86rem;margin:10px 0}
+.console .out{max-height:380px;overflow-y:auto;white-space:pre-wrap;word-break:break-word;line-height:1.6}
+.console .out .in{color:#79c0ff}.console .out .ok{color:var(--green)}.console .out .er{color:var(--red)}.console .out .dim{color:var(--muted)}.console .out .yl{color:var(--amber)}
+.cmdline{display:flex;gap:8px;margin-top:8px}
+.cmdline .ps{color:var(--green);font-weight:700;align-self:center;white-space:nowrap}
+.cmdline input{flex:1;background:#0d1117;border:1px solid var(--blue);border-radius:8px;color:var(--text);font-family:var(--mono);font-size:16px;padding:12px;min-width:0}
+.cmdline input:focus{outline:none;box-shadow:0 0 0 3px rgba(47,129,247,.25)}
+table.cmp{width:100%;border-collapse:collapse;font-size:.83rem;margin:10px 0}
+table.cmp th,table.cmp td{border:1px solid var(--border);padding:10px 8px;text-align:left;vertical-align:top}
+table.cmp th{background:var(--panel2);color:var(--blue)}
+table.cmp td:first-child{font-weight:700;color:var(--muted)}
+.checklist{list-style:none;padding:0}
+.checklist li{background:var(--panel3);border:1px solid var(--border);border-radius:10px;padding:12px;margin:8px 0;font-size:.88rem}
+.checklist li.done{border-color:var(--green);background:rgba(63,185,80,.06)}
+.checklist .st{font-weight:800;margin-right:8px}
+.checklist li.done .st{color:var(--green)}
+.badge{display:inline-block;font-size:.7rem;font-weight:800;letter-spacing:.06em;padding:3px 10px;border-radius:20px;margin-bottom:8px}
+.badge.qemu{background:rgba(47,129,247,.15);color:#79c0ff;border:1px solid rgba(47,129,247,.4)}
+.badge.lxc{background:rgba(188,140,255,.13);color:var(--purple);border:1px solid rgba(188,140,255,.4)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:700px){.grid2{grid-template-columns:1fr}}
+footer{border-top:1px solid var(--border);padding:22px 16px;text-align:center;color:var(--muted);font-size:.78rem}
+footer .fbrand{color:var(--blue);font-weight:700;letter-spacing:.1em;font-size:.72rem;text-transform:uppercase}
+.progbar{height:8px;background:var(--panel3);border-radius:6px;overflow:hidden;margin:8px 0}
+.progbar i{display:block;height:100%;background:var(--blue);border-radius:6px;transition:width .3s}
+</style>
+</head>
+<body>
+<header>
+  <div class="brandmark" aria-hidden="true">⬡</div>
+  <h1><span class="brand">Interstitium Labs · Bootcamps</span>Proxmox VE Simulator</h1>
+  <div class="sub">IT Infrastructure Assessment Prep<br>Platform Skills · From Zero</div>
+</header>
+<nav class="tabs" aria-label="Simulator sections">
+  <button data-tab="webui" class="active">🖥️ Web UI</button>
+  <button data-tab="wizard">🧙 VM Wizard</button>
+  <button data-tab="lxc">📦 LXC vs VM</button>
+  <button data-tab="cli">⌨️ CLI Console</button>
+  <button data-tab="concepts">📚 Concepts</button>
+  <button data-tab="lab">🧪 Lab: 3-VM Deploy</button>
+  <button data-tab="compare">⚖️ Compare</button>
+</nav>
+<main>
+
+<!-- ================= WEB UI ================= -->
+<section class="panel active" id="tab-webui">
+  <div class="card">
+    <h2>Simulated Proxmox Web UI</h2>
+    <p class="hint">This is what the real Proxmox VE web interface feels like. Click anything in the tree on the left — datacenter, node, VM, or container — and inspect it on the right, just like the real Datacenter view. Start from the top: the <b>datacenter</b> is the whole cluster, a <b>node</b> is one physical server, and under it live your virtual machines and containers.</p>
+    <div class="webui">
+      <div class="tree" id="pve-tree" role="tree" aria-label="Proxmox resource tree"></div>
+      <div class="detail" id="pve-detail"></div>
+    </div>
+    <div class="row">
+      <button class="btn" id="btn-goto-wizard">＋ Create VM…</button>
+      <button class="btn ghost" id="btn-goto-cli">Open CLI console</button>
+    </div>
+    <div class="why"><span class="tag">WHY THIS MATTERS</span>In an IT infrastructure role you will live in a hypervisor console — creating test VMs, snapshotting before changes, and reading resource graphs. Proxmox VE is free and open-source, so it is the fastest way to build this muscle memory before you ever touch production.</div>
+  </div>
+</section>
+
+<!-- ================= WIZARD ================= -->
+<section class="panel" id="tab-wizard">
+  <div class="card">
+    <h2>VM Creation Wizard</h2>
+    <p class="hint">Walk the same steps as the real <b>Create VM</b> wizard. Each choice is explained as you make it — nothing is assumed. Finish and the VM appears in the Web UI tree, with the equivalent CLI commands shown.</p>
+    <div class="wzsteps" id="wz-steps"></div>
+    <div id="wz-body"></div>
+    <div class="row">
+      <button class="btn ghost" id="wz-back">← Back</button>
+      <button class="btn" id="wz-next">Next →</button>
+    </div>
+    <div id="wz-done"></div>
+  </div>
+</section>
+
+<!-- ================= LXC ================= -->
+<section class="panel" id="tab-lxc">
+  <div class="card">
+    <span class="badge lxc">LXC CONTAINERS</span>
+    <h2>LXC Containers vs Virtual Machines — from zero</h2>
+    <p>A <b>virtual machine</b> virtualizes <i>hardware</i>: every VM boots its own full operating system with its own kernel. An <b>LXC container</b> virtualizes the <i>operating system</i>: containers share the host's Linux kernel and just get isolated slices of it (their own filesystem, processes, and network).</p>
+    <div class="grid2">
+      <div class="card" style="margin:12px 0">
+        <span class="badge qemu">KVM VIRTUAL MACHINE</span>
+        <ul class="tight">
+          <li>Own virtual hardware: vCPU, virtual disk, virtual NIC</li>
+          <li>Own kernel — can run <b>Windows</b>, BSD, any Linux</li>
+          <li>Strong isolation (hardware boundary)</li>
+          <li>Heavier: each VM needs its own RAM for a full OS (1–2 GB+ just to idle)</li>
+          <li>Boots in ~20–60 seconds</li>
+          <li>Managed with <code>qm</code> commands</li>
+        </ul>
+      </div>
+      <div class="card" style="margin:12px 0">
+        <span class="badge lxc">LXC CONTAINER</span>
+        <ul class="tight">
+          <li>Shares the host kernel — <b>Linux guests only</b></li>
+          <li>No virtual hardware; processes run natively on the host CPU</li>
+          <li>Featherweight: a container can idle on <b>~50 MB</b> of RAM</li>
+          <li>Starts in ~1–2 seconds</li>
+          <li>Perfect for: DNS servers, reverse proxies, monitoring, small services</li>
+          <li>Managed with <code>pct</code> commands</li>
+        </ul>
+      </div>
+    </div>
+    <div class="logic"><span class="tag">🔍 LOGIC CHECK</span><br>If a container shares the host's kernel, could it run Windows? <b>No</b> — Windows needs its own kernel, which only a full VM provides. Rule of thumb: <b>Linux service, lightweight → LXC. Windows, or needs its own kernel → VM.</b> Interviewers love this exact question.</div>
+    <h3>Try it: <code>pct</code> commands in the CLI</h3>
+    <p class="hint">Open the CLI Console tab and run <code>pct list</code>, then create one: <code>pct create 210 debian-12 --hostname dns01 --memory 512</code> — then <code>pct start 210</code>. Watch it appear in the Web UI tree.</p>
+    <div class="why"><span class="tag">WHEN TO USE WHICH</span><b>VM:</b> Windows Server, appliances needing a custom kernel, untrusted workloads, anything needing full isolation. <b>LXC:</b> fleets of small Linux services — you can run 5× more containers than VMs on the same hardware.</div>
+  </div>
+</section>
+
+<!-- ================= CLI ================= -->
+<section class="panel" id="tab-cli">
+  <div class="card">
+    <h2>Proxmox CLI Console</h2>
+    <p class="hint">The real Proxmox shell. Everything the web UI does, the CLI can do — and in an assessment, the CLI is faster. Type <code>help</code> to list commands. Try: <code>qm list</code> → <code>qm create 110 --name test01 --memory 1024</code> → <code>qm start 110</code>.</p>
+    <div class="console">
+      <div class="out" id="cli-out" aria-live="polite"></div>
+      <div class="cmdline">
+        <span class="ps">root@pve01:~#</span>
+        <input id="cli-in" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Proxmox CLI input" placeholder="type a command, e.g. qm list">
+      </div>
+    </div>
+    <div class="why"><span class="tag">WHAT / HOW / WHY / WHEN</span><b>What:</b> <code>qm</code> = QEMU/KVM VM manager, <code>pct</code> = Proxmox Container Toolkit. <b>How:</b> <code>&lt;tool&gt; &lt;action&gt; &lt;id&gt; [options]</code>. <b>Why:</b> scriptable, faster than clicking, works over SSH when the web UI is unreachable. <b>When:</b> bulk VM creation, automation, troubleshooting a down node.</div>
+  </div>
+</section>
+
+<!-- ================= CONCEPTS ================= -->
+<section class="panel" id="tab-concepts">
+  <div class="card">
+    <h2>Core Concepts — from absolute zero</h2>
+    <p class="hint">Read these in order. Each answers <b>what</b> it is, <b>how</b> it works, <b>why</b> it exists, and <b>when</b> you meet it.</p>
+
+    <h3>1 · Type-1 hypervisor</h3>
+    <p><b>What:</b> Software that lets one physical server run many virtual servers. <b>How:</b> A Type-1 ("bare-metal") hypervisor installs <i>directly on the hardware</i> — there is no Windows or desktop underneath. Proxmox VE is a Type-1 hypervisor (its base is Debian Linux, but it boots straight into the hypervisor). Contrast with Type-2 (VirtualBox, VMware Workstation), which run as apps <i>inside</i> a desktop OS.</p>
+    <div class="why"><span class="tag">WHY IT MATTERS</span>Type-1 is faster and more stable — nothing competes with the VMs for resources. Every production datacenter uses Type-1. If an interviewer asks "Proxmox: Type-1 or Type-2?" the answer is <b>Type-1, bare metal</b>.</div>
+
+    <h3>2 · KVM vs LXC — the two engines inside Proxmox</h3>
+    <p><b>What:</b> Proxmox ships two virtualization engines. <b>KVM</b> (Kernel-based Virtual Machine) turns Linux into a hypervisor for full VMs. <b>LXC</b> (Linux Containers) provides OS-level containers. <b>How:</b> One web UI and one CLI family (<code>qm</code> for KVM, <code>pct</code> for LXC) manage both. <b>When:</b> you pick per workload — see the LXC vs VM tab.</p>
+
+    <h3>3 · Network bridges — vmbr0</h3>
+    <p><b>What:</b> A Linux bridge is a <b>virtual switch</b> built in software. <code>vmbr0</code> is Proxmox's default bridge, bound to the physical network card. <b>How:</b> You plug each VM's virtual NIC into a bridge, exactly like plugging a cable into a switch port. VMs on the same bridge talk to each other; if the bridge is tied to the physical NIC, they also reach the LAN and internet.</p>
+    <div class="logic"><span class="tag">🔍 LOGIC CHECK</span><br>Want an <b>isolated</b> lab network (VMs talk to each other but <i>not</i> the outside world)? Create a second bridge — <code>vmbr1</code> — with <b>no physical port attached</b>. It's a switch with no uplink cable: traffic stays inside the host. This is exactly what the guided lab builds.</div>
+
+    <h3>4 · Storage pools</h3>
+    <p><b>What:</b> Named places where VM disks, ISOs, and backups live. <b>How:</b> Proxmox defaults: <code>local</code> (ISOs, templates, backups — a directory) and <code>local-lvm</code> (thin-provisioned space for VM disks). Bigger setups add <b>NFS</b> shares or <b>Ceph</b> distributed storage so disks survive a node failure.</p>
+    <div class="why"><span class="tag">WHEN YOU MEET IT</span>During VM creation you pick a storage target for the disk. Rule: ISOs live on <code>local</code>; VM disks go on <code>local-lvm</code> (fast, thin). Backups go wherever has space.</div>
+
+    <h3>5 · Live migration</h3>
+    <p><b>What:</b> Moving a <i>running</i> VM from one physical node to another with no downtime. <b>How:</b> Memory pages are copied while the VM keeps running; at the final instant the VM is paused for milliseconds and the last changes transfer. <b>Why:</b> hardware maintenance without outages. <b>When:</b> you need it only in a <b>cluster</b> (2+ nodes) with <b>shared storage</b> — a VM's disk must be reachable from both nodes, otherwise there is nothing to migrate <i>to</i>.</p>
+    <div class="logic"><span class="tag">🔍 LOGIC CHECK</span><br>Live migration moves the <b>running state</b> (RAM/CPU), not the disk — that is why shared storage is the prerequisite. No shared storage → you can only do an <i>offline</i> move (shut down, copy disk, start).</div>
+
+    <h3>6 · Clustering & quorum</h3>
+    <p><b>What:</b> Joining Proxmox nodes into one managed cluster with a single web UI. <b>How:</b> <code>pvecm</code> commands join nodes; they elect a leader via <b>quorum</b> — more than half the nodes must agree, so a 2-node cluster that splits can't both think they're in charge (split-brain). <b>Why:</b> one pane of glass, HA failover, migration.</p>
+  </div>
+</section>
+
+<!-- ================= LAB ================= -->
+<section class="panel" id="tab-lab">
+  <div class="card">
+    <h2>🧪 Lab: Deploy a 3-VM Lab with Isolated Networking</h2>
+    <p class="hint"><b>Guided mode:</b> work the checklist top to bottom — each step tells you the exact command and verifies it ran. When all six are green, flip to <b>Free mode</b>: wipe your work and rebuild from memory in the CLI.</p>
+    <div class="progbar"><i id="lab-prog" style="width:0%"></i></div>
+    <p class="muted" style="font-size:.82rem" id="lab-count">0 of 6 steps complete</p>
+    <ul class="checklist" id="lab-list"></ul>
+    <div class="row">
+      <button class="btn ghost" id="lab-reset">Reset lab</button>
+      <button class="btn ghost" id="lab-freemode">Enter free mode (wipe & rebuild)</button>
+    </div>
+    <div class="why"><span class="tag">WHAT YOU PROVE</span>You can plan VM IDs and resources, create an isolated virtual switch (<code>vmbr1</code>), attach VMs to it, and verify the topology from the CLI — the exact loop an infrastructure assessment tests: <b>design → build → verify</b>.</div>
+  </div>
+</section>
+
+<!-- ================= COMPARE ================= -->
+<section class="panel" id="tab-compare">
+  <div class="card">
+    <h2>⚖️ Hypervisors Compared — from zero</h2>
+    <p class="hint">Three Type-1 hypervisors you will hear about in interviews. Same job — very different price tags and ecosystems.</p>
+    <table class="cmp">
+      <tr><th style="width:22%"></th><th>Proxmox VE</th><th>Hyper-V</th><th>ESXi</th></tr>
+      <tr><td>Maker / base</td><td>Proxmox (Debian Linux)</td><td>Microsoft (Windows Server)</td><td>Broadcom (proprietary)</td></tr>
+      <tr><td>Cost</td><td><b>Free &amp; open-source</b>; optional paid support subscription</td><td>Included with Windows Server license</td><td>Paid per-CPU licensing (enterprise pricing)</td></tr>
+      <tr><td>VM technology</td><td>KVM</td><td>Hyper-V hypervisor</td><td>VMkernel</td></tr>
+      <tr><td>Containers built in?</td><td><b>Yes — LXC</b> side by side with VMs</td><td>Yes — Windows containers (separate tooling)</td><td>Via Tanzu / add-ons, not native-simple</td></tr>
+      <tr><td>Management</td><td>Web UI + <code>qm</code>/<code>pct</code> CLI, clustering free</td><td>Hyper-V Manager / Failover Cluster Manager / PowerShell</td><td>vSphere Client; advanced features need vCenter license</td></tr>
+      <tr><td>Live migration</td><td>Free (needs shared storage)</td><td>Free with clustering ("Live Migration")</td><td>vMotion (licensed tier)</td></tr>
+      <tr><td>Typical home</td><td>Homelabs, SMBs, MSPs, budget-conscious enterprise</td><td>Windows-centric shops, existing Microsoft licensing</td><td>Large enterprises with VMware contracts</td></tr>
+      <tr><td>Learning curve</td><td>Gentle — install the ISO, open the web UI</td><td>Moderate — rewards Windows Server knowledge</td><td>Moderate — rewards vSphere ecosystem knowledge</td></tr>
+    </table>
+    <div class="logic"><span class="tag">🔍 LOGIC CHECK</span><br>Why does this course teach Proxmox first? Because the <b>concepts transfer</b>: bridges ≈ virtual switches, storage pools ≈ datastores, live migration ≈ vMotion/Live Migration. Learn the idea once on free software, then map the vocabulary in an interview: <i>"In Proxmox that's a Linux bridge; in Hyper-V you'd call it a virtual switch."</i> That sentence is worth more than memorizing three consoles.</div>
+    <div class="why"><span class="tag">INTERVIEW FRAMING</span>Never trash a vendor's product in an interview. Frame it as fit: <i>"ESXi dominates large VMware shops; Hyper-V is natural where Windows Server licensing already exists; Proxmox gives small teams enterprise features — HA, replication, backups — at open-source cost."</i></div>
+  </div>
+</section>
+
+</main>
+<footer>
+  <div class="fbrand">⬡ Interstitium Labs</div>
+  <p>Created by Interstitium Labs · IT Infrastructure Assessment Prep · All simulation runs locally in your browser — no servers, no accounts, fully offline.</p>
+</footer>
+
+<script>
+"use strict";
+/* ---------- helpers ---------- */
+function el(id){return document.getElementById(id);}
+function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+
+/* ---------- state ---------- */
+var S = {
+  vms: {
+    100:{name:"web01", status:"running", type:"qemu", cpu:2, mem:2048, disk:32, bridge:"vmbr0", iso:"ubuntu-24.04.iso", node:"pve01", uptime:"6d 04:12"},
+    101:{name:"db01",  status:"stopped", type:"qemu", cpu:4, mem:4096, disk:80, bridge:"vmbr0", iso:"debian-12.iso",    node:"pve01", uptime:"-"}
+  },
+  cts: {
+    200:{name:"app-ct", status:"running", template:"debian-12-standard", mem:512, disk:8, bridge:"vmbr0", node:"pve01", uptime:"12d 01:40"}
+  },
+  bridges:["vmbr0"],
+  selected:"node",
+  nextVm:102, nextCt:210,
+  storage:{local:{kind:"Directory", content:"ISO images, templates, backups", used:"18 GB", avail:"210 GB"},
+           "local-lvm":{kind:"LVM-Thin", content:"VM & container disks", used:"96 GB", avail:"820 GB"}}
+};
+
+/* ---------- tabs ---------- */
+var tabBtns = document.querySelectorAll("nav.tabs button");
+function switchTab(name){
+  tabBtns.forEach(function(b){b.classList.toggle("active", b.dataset.tab===name);});
+  document.querySelectorAll("main .panel").forEach(function(p){p.classList.toggle("active", p.id==="tab-"+name);});
+  if(name==="webui"){renderTree();renderDetail();}
+  if(name==="lab"){renderLab();}
+  window.scrollTo(0,0);
+}
+tabBtns.forEach(function(b){b.addEventListener("click",function(){switchTab(b.dataset.tab);});});
+el("btn-goto-wizard").addEventListener("click",function(){switchTab("wizard");});
+el("btn-goto-cli").addEventListener("click",function(){switchTab("cli");setTimeout(function(){el("cli-in").focus();},150);});
+
+/* ---------- tree ---------- */
+function dot(st){return '<span class="dot '+(st==="running"?"run":"stop")+'"></span>';}
+function renderTree(){
+  var h = '';
+  h += tnode("dc","🏢 Datacenter: dc1","");
+  h += tnode("node","🖥️ Node: pve01 (192.168.1.10)","tindent");
+  h += '<div class="tnode tindent2" style="cursor:default;color:var(--muted)">— Virtual Machines —</div>';
+  Object.keys(S.vms).sort().forEach(function(id){
+    var v=S.vms[id];
+    h += tnode("vm"+id, dot(v.status)+" "+id+" ("+esc(v.name)+") · "+v.status, "tindent2");
+  });
+  h += '<div class="tnode tindent2" style="cursor:default;color:var(--muted)">— LXC Containers —</div>';
+  Object.keys(S.cts).sort().forEach(function(id){
+    var c=S.cts[id];
+    h += tnode("ct"+id, dot(c.status)+" "+id+" ("+esc(c.name)+") · "+c.status, "tindent2");
+  });
+  h += '<div class="tnode tindent2" style="cursor:default;color:var(--muted)">— Storage —</div>';
+  Object.keys(S.storage).forEach(function(s){
+    h += tnode("st"+s, "💾 "+esc(s)+" <span style='color:var(--muted)'>"+esc(S.storage[s].kind)+"</span>", "tindent2");
+  });
+  el("pve-tree").innerHTML = h;
+  var nodes = el("pve-tree").querySelectorAll(".tnode[data-k]");
+  nodes.forEach(function(n){n.addEventListener("click",function(){S.selected=n.dataset.k;renderTree();renderDetail();});});
+}
+function tnode(k,label,indent){
+  return '<div class="tnode '+indent+(S.selected===k?" sel":"")+'" data-k="'+k+'" role="treeitem" tabindex="0">'+label+'</div>';
+}
+
+function kvRow(k,v){return "<dt>"+k+"</dt><dd>"+v+"</dd>";}
+function renderDetail(){
+  var d = el("pve-detail"), k = S.selected, h = "";
+  if(k==="dc"){
+    h = "<h2>🏢 Datacenter: dc1</h2><p class='muted'>The whole cluster — every node, VM, and container managed from one place.</p><dl class='kv'>"
+      + kvRow("Nodes","1 (pve01)") + kvRow("Total VMs",Object.keys(S.vms).length)
+      + kvRow("Total containers",Object.keys(S.cts).length) + kvRow("Cluster status","Standalone (quorum: 1 of 1)")
+      + "</dl><div class='why'><span class='tag'>WHAT THIS IS</span>A datacenter object groups nodes so you manage them as one unit. One node works fine — clusters of 3+ unlock HA and live migration.</div>";
+  } else if(k==="node"){
+    h = "<h2>🖥️ Node: pve01</h2><p class='muted'>One physical server running the Proxmox VE hypervisor (Type-1, bare metal).</p><dl class='kv'>"
+      + kvRow("Proxmox VE","8.3 (Debian 12 base)") + kvRow("Kernel","6.8.12-4-pve")
+      + kvRow("CPU","Intel Xeon E5-2680 v4 · 28 threads") + kvRow("Memory","64 GB DDR4")
+      + kvRow("Uptime","21d 07:33") + kvRow("Load","0.42, 0.51, 0.48")
+      + kvRow("Bridges",S.bridges.map(esc).join(", "))
+      + "</dl><div class='row'><button class='btn ghost' onclick=\"cliPreset('pveversion')\">pveversion</button> "
+      + "<button class='btn ghost' onclick=\"cliPreset('qm list')\">qm list</button> "
+      + "<button class='btn ghost' onclick=\"cliPreset('pct list')\">pct list</button></div>";
+  } else if(k.indexOf("vm")===0){
+    var v=S.vms[k.slice(2)];
+    h = "<span class='badge qemu'>KVM VIRTUAL MACHINE</span><h2>"+k.slice(2)+" "+esc(v.name)+" <span class='status-pill "+(v.status==="running"?"run\">● RUNNING":"stop\">■ STOPPED")+"</span></h2>"
+      + "<dl class='kv'>"+kvRow("VMID",k.slice(2))+kvRow("vCPUs",v.cpu)+kvRow("Memory",v.mem+" MB")+kvRow("Disk",v.disk+" GB on local-lvm")
+      + kvRow("Network","virtio → "+esc(v.bridge))+kvRow("Install ISO",esc(v.iso))+kvRow("Node",v.node)+kvRow("Uptime",v.uptime)+"</dl>"
+      + "<div class='row'><button class='btn ghost' onclick=\"vmAction('"+k+"','start')\">▶ Start</button>"
+      + "<button class='btn ghost' onclick=\"vmAction('"+k+"','stop')\">■ Stop</button>"
+      + "<button class='btn ghost' onclick=\"vmAction('"+k+"','destroy')\">🗑 Destroy</button></div>";
+  } else if(k.indexOf("ct")===0){
+    var c=S.cts[k.slice(2)];
+    h = "<span class='badge lxc'>LXC CONTAINER</span><h2>"+k.slice(2)+" "+esc(c.name)+" <span class='status-pill "+(c.status==="running"?"run\">● RUNNING":"stop\">■ STOPPED")+"</span></h2>"
+      + "<dl class='kv'>"+kvRow("CTID",k.slice(2))+kvRow("Template",esc(c.template))+kvRow("Memory",c.mem+" MB")+kvRow("Disk",c.disk+" GB")
+      + kvRow("Network","veth → "+esc(c.bridge))+kvRow("Node",c.node)+kvRow("Uptime",c.uptime)+"</dl>"
+      + "<div class='row'><button class='btn ghost' onclick=\"ctAction('"+k+"','start')\">▶ Start</button>"
+      + "<button class='btn ghost' onclick=\"ctAction('"+k+"','stop')\">■ Stop</button>"
+      + "<button class='btn ghost' onclick=\"ctAction('"+k+"','destroy')\">🗑 Destroy</button></div>";
+  } else if(k.indexOf("st")===0){
+    var s=S.storage[k.slice(2)];
+    h = "<h2>💾 Storage: "+esc(k.slice(2))+"</h2><dl class='kv'>"+kvRow("Type",esc(s.kind))+kvRow("Holds",esc(s.content))+kvRow("Used",s.used)+kvRow("Available",s.avail)+"</dl>"
+      + "<div class='why'><span class='tag'>RULE OF THUMB</span><code>local</code> = ISOs, templates, backups. <code>local-lvm</code> = thin-provisioned VM disks (space is only consumed as the guest writes).</div>";
+  }
+  d.innerHTML = h;
+}
+function vmAction(k,act){
+  var id=k.slice(2), v=S.vms[id];
+  if(act==="start"){v.status="running";v.uptime="0d 00:01";cliSay("qm start "+id,"VM "+id+" ("+v.name+") started.");}
+  if(act==="stop"){v.status="stopped";v.uptime="-";cliSay("qm stop "+id,"VM "+id+" ("+v.name+") stopped.");}
+  if(act==="destroy"){delete S.vms[id];S.selected="node";cliSay("qm destroy "+id,"VM "+id+" removed.");}
+  renderTree();renderDetail();
+}
+function ctAction(k,act){
+  var id=k.slice(2), c=S.cts[id];
+  if(act==="start"){c.status="running";c.uptime="0d 00:01";cliSay("pct start "+id,"Container "+id+" started.");}
+  if(act==="stop"){c.status="stopped";c.uptime="-";cliSay("pct stop "+id,"Container "+id+" stopped.");}
+  if(act==="destroy"){delete S.cts[id];S.selected="node";cliSay("pct destroy "+id,"Container "+id+" removed.");}
+  renderTree();renderDetail();
+}
+
+/* ---------- VM wizard ---------- */
+var WZ_STEPS = ["General","OS / ISO","CPU & Memory","Disk","Network","Confirm"];
+var WZ = {step:0, data:{name:"lab-web01", iso:"ubuntu-24.04.iso", cpu:2, mem:2048, disk:32, bridge:"vmbr0"}};
+var ISOS = ["ubuntu-24.04.iso","debian-12.iso","windows-server-2022.iso","rocky-9.iso"];
+
+function renderWzSteps(){
+  var h="";
+  WZ_STEPS.forEach(function(s,i){
+    var cls = i===WZ.step?"cur":(i<WZ.step?"done":"");
+    h += "<span class='"+cls+"'>"+(i+1)+". "+s+"</span>";
+  });
+  el("wz-steps").innerHTML=h;
+}
+function field(label, inner, desc){
+  return "<div class='field'><label>"+label+"</label>"+inner+(desc?"<div class='fdesc'>"+desc+"</div>":"")+"</div>";
+}
+function renderWizard(){
+  renderWzSteps();
+  var d=WZ.data, b=el("wz-body"), h="";
+  el("wz-back").disabled = WZ.step===0;
+  el("wz-next").textContent = WZ.step===WZ_STEPS.length-1 ? "✓ Create VM" : "Next →";
+  if(WZ.step===0){
+    h = "<h3>Step 1 · General</h3>"+field("VM name","<input id='w-name' value='"+esc(d.name)+"'>",
+      "Names are for humans; the <b>VMID</b> (a number like 100) is the real identity. Convention: <code>lab-web01</code>, <code>prod-db02</code> — environment, role, number.")
+      +"<div class='why'><span class='tag'>WHAT IS A VMID?</span>Every VM/container gets a unique numeric ID. Proxmox suggests 100+. CLI commands address VMs by ID (<code>qm start 100</code>), so pick IDs with a scheme: 100s = web, 200s = db, etc.</div>";
+  } else if(WZ.step===1){
+    var opts=ISOS.map(function(o){return "<option"+(o===d.iso?" selected":"")+">"+o+"</option>";}).join("");
+    h = "<h3>Step 2 · OS / ISO image</h3>"+field("ISO image","<select id='w-iso'>"+opts+"</select>",
+      "An <b>ISO</b> is a byte-for-byte copy of an installation disc. The VM boots from it once, you install the OS, then it never needs the ISO again. ISOs live on the <code>local</code> storage pool.")
+      +"<div class='why'><span class='tag'>WHY THIS STEP EXISTS</span>A VM is an empty computer — no OS, no disk contents. The ISO is how the first OS gets in, exactly like booting a physical server from a USB installer.</div>";
+  } else if(WZ.step===2){
+    h = "<h3>Step 3 · CPU &amp; Memory</h3>"
+      +field("vCPUs","<input id='w-cpu' type='number' min='1' max='28' value='"+d.cpu+"'>","Virtual CPUs are <b>shares of real CPU time</b>, not dedicated cores. Over-provisioning is normal: 28 threads can comfortably host VMs totalling 40+ vCPUs if they idle.")
+      +field("Memory (MB)","<input id='w-mem' type='number' min='512' step='512' value='"+d.mem+"'>","RAM <b>is</b> reserved — a 2048 MB VM locks 2 GB of host memory. This is the resource to budget most carefully; RAM exhaustion is the #1 cause of a host refusing to start VMs.");
+  } else if(WZ.step===3){
+    h = "<h3>Step 4 · Disk</h3>"+field("Disk size (GB)","<input id='w-disk' type='number' min='8' value='"+d.disk+"'>",
+      "Stored on <code>local-lvm</code> as a <b>thin-provisioned</b> volume: a 32 GB disk with a fresh 4 GB Ubuntu install only consumes ~4 GB on the host. It grows as the guest writes, up to 32 GB.")
+      +"<div class='why'><span class='tag'>WHEN IT MATTERS</span>Thin provisioning lets you oversell disk like vCPUs — great until everyone fills up at once. Monitor real usage, not allocated size.</div>";
+  } else if(WZ.step===4){
+    var bopts=S.bridges.map(function(br){return "<option"+(br===d.bridge?" selected":"")+">"+br+"</option>";}).join("");
+    h = "<h3>Step 5 · Network</h3>"+field("Bridge","<select id='w-bridge'>"+bopts+"</select>",
+      "A <b>bridge</b> is a virtual switch. <code>vmbr0</code> is plugged into the physical network card, so VMs on it get LAN IPs and internet. A bridge with <b>no</b> physical port is an isolated lab network.")
+      +"<div class='logic'><span class='tag'>🔍 LOGIC CHECK</span><br>Your VM gets its IP from the same DHCP/router as the host when on <code>vmbr0</code>. On an isolated bridge, <b>you</b> become the network admin: assign static IPs or run your own DHCP VM.</div>";
+  } else {
+    h = "<h3>Step 6 · Confirm</h3><pre class='code'>VMID:    <span class='b'>"+S.nextVm+"</span> (next free)\nName:    <span class='b'>"+esc(d.name)+"</span>\nISO:     "+esc(d.iso)+"\nCPU:     "+d.cpu+" vCPU(s)    RAM: "+d.mem+" MB\nDisk:    "+d.disk+" GB on local-lvm (thin)\nNetwork: virtio NIC → bridge <span class='b'>"+esc(d.bridge)+"</span>\nNode:    pve01</pre>"
+      +"<div class='why'><span class='tag'>REVIEW LIKE AN ADMIN</span>Before clicking Create, an admin checks three things: <b>1)</b> VMID doesn't collide, <b>2)</b> host has the RAM free, <b>3)</b> the bridge gives the network access the workload needs. Build that habit now.</div>";
+  }
+  b.innerHTML=h;
+  el("wz-done").innerHTML="";
+}
+function wzCollect(){
+  var g=function(id){var n=el(id);return n?n.value:null;};
+  if(g("w-name"))WZ.data.name=g("w-name").trim()||"vm"+S.nextVm;
+  if(g("w-iso"))WZ.data.iso=g("w-iso");
+  if(g("w-cpu"))WZ.data.cpu=Math.max(1,parseInt(g("w-cpu"),10)||1);
+  if(g("w-mem"))WZ.data.mem=Math.max(512,parseInt(g("w-mem"),10)||512);
+  if(g("w-disk"))WZ.data.disk=Math.max(8,parseInt(g("w-disk"),10)||8);
+  if(g("w-bridge"))WZ.data.bridge=g("w-bridge");
+}
+el("wz-next").addEventListener("click",function(){
+  wzCollect();
+  if(WZ.step<WZ_STEPS.length-1){WZ.step++;renderWizard();}
+  else{wzFinish();}
+});
+el("wz-back").addEventListener("click",function(){wzCollect();if(WZ.step>0){WZ.step--;renderWizard();}});
+function wzFinish(){
+  var id=S.nextVm++, d=WZ.data;
+  S.vms[id]={name:d.name,status:"stopped",type:"qemu",cpu:d.cpu,mem:d.mem,disk:d.disk,bridge:d.bridge,iso:d.iso,node:"pve01",uptime:"-"};
+  var cli="qm create "+id+" --name "+d.name+" --memory "+d.mem+" --cores "+d.cpu+"\n"
+        +"qm set "+id+" --scsi0 local-lvm:"+d.disk+" --ide2 local:iso/"+d.iso+",media=cdrom\n"
+        +"qm set "+id+" --net0 virtio,bridge="+d.bridge;
+  el("wz-done").innerHTML="<div class='card' style='border-color:var(--green)'><h3 style='color:var(--green)'>✓ VM "+id+" ("+esc(d.name)+") created — stopped</h3>"
+    +"<p class='hint'>It now appears in the Web UI tree. The wizard just ran the equivalent of these CLI commands:</p><pre class='code'>"+esc(cli)+"</pre>"
+    +"<div class='row'><button class='btn' onclick=\"switchTab('webui')\">View in Web UI</button>"
+    +"<button class='btn ghost' onclick=\"cliPreset('qm start "+id+"')\">Start it via CLI</button></div></div>";
+  cliSay("qm create "+id+" --name "+d.name+" --memory "+d.mem+" --cores "+d.cpu, "VM "+id+" ("+d.name+") created via wizard.");
+  WZ.step=0;renderWzSteps();
+}
+
+/* ---------- CLI console ---------- */
+var cliHist=[];
+function cliPrint(html){var o=el("cli-out");o.innerHTML+=html+"\n";o.scrollTop=o.scrollHeight;}
+function cliSay(cmd,msg){
+  cliPrint('<span class="in">root@pve01:~# '+esc(cmd)+'</span>');
+  cliPrint(esc(msg));
+}
+function cliPreset(cmd){switchTab("cli");setTimeout(function(){el("cli-in").value=cmd;runCli(cmd);el("cli-in").value="";},150);}
+function cliErr(m){cliPrint('<span class="er">'+esc(m)+'</span>');}
+function qmTable(){
+  var h='<span class="dim">      NAME                 STATUS     MEM(MB)    BOOTDISK(GB) PID</span>\n';
+  Object.keys(S.vms).sort().forEach(function(id){
+    var v=S.vms[id];
+    h+=esc(id).padEnd(6)+" "+esc(v.name+"").padEnd(20)+" "+esc(v.status+"").padEnd(10)+" "+String(v.mem).padEnd(10)+" "+String(v.disk).padEnd(12)+" "+(v.status==="running"?"4201":"0")+"\n";
+  });
+  return h;
+}
+function pctTable(){
+  var h='<span class="dim">VMID       STATUS     NAME</span>\n';
+  Object.keys(S.cts).sort().forEach(function(id){
+    var c=S.cts[id];
+    h+=esc(id).padEnd(11)+" "+esc(c.status+"").padEnd(10)+" "+esc(c.name)+"\n";
+  });
+  return h;
+}
+function parseOpts(args){
+  var o={_pos:[]},i=0;
+  while(i<args.length){
+    var a=args[i];
+    if(a.indexOf("--")===0){
+      var k=a.slice(2),v=true;
+      if(i+1<args.length&&args[i+1].indexOf("--")!==0){v=args[i+1];i++;}
+      o[k]=v;
+    } else o._pos.push(a);
+    i++;
+  }
+  return o;
+}
+function needId(id,map,kind){
+  if(!id)return "missing VMID/CTID — usage: "+kind;
+  if(!map[id])return (kind==="qm"?"VM ":"container ")+id+" does not exist";
+  return null;
+}
+function runCli(line){
+  line=line.trim();if(!line)return;
+  cliHist.push(line);
+  cliPrint('<span class="in">root@pve01:~# '+esc(line)+'</span>');
+  var parts=line.split(/\s+/),cmd=parts[0],rest=parts.slice(1);
+  if(cmd==="help"){
+    cliPrint('<span class="dim">Proxmox VE simulated shell — real command syntax.\n\n</span>'
+      +'<span class="b">qm list</span>                          list all VMs\n'
+      +'<span class="b">qm create &lt;id&gt; --name &lt;n&gt; --memory &lt;MB&gt; [--cores &lt;n&gt;]</span>\n'
+      +'<span class="b">qm start|stop|status|destroy &lt;id&gt;</span>     power &amp; lifecycle\n'
+      +'<span class="b">qm config &lt;id&gt;</span>                      show VM config\n'
+      +'<span class="b">pct list</span>                          list containers\n'
+      +'<span class="b">pct create &lt;id&gt; &lt;template&gt; --hostname &lt;n&gt; [--memory &lt;MB&gt;]</span>\n'
+      +'<span class="b">pct start|stop|status|destroy &lt;id&gt;</span>\n'
+      +'<span class="b">pveversion</span>  <span class="b">pvesm status</span>  <span class="b">ip link show</span>  <span class="b">clear</span>');
+    return;
+  }
+  if(cmd==="clear"){el("cli-out").innerHTML="";return;}
+  if(cmd==="pveversion"){cliPrint("pve-manager/8.3.2 (running kernel: 6.8.12-4-pve)");return;}
+  if(cmd==="pvesm"&&rest[0]==="status"){
+    cliPrint('<span class="dim">Name             Type     Status   Total      Used  Available</span>\n'
+      +"local            dir      active   228GB     18GB    210GB\n"
+      +"local-lvm        lvmthin  active   916GB     96GB    820GB");
+    return;
+  }
+  if(cmd==="ip"&&rest[0]==="link"&&rest[1]==="show"){
+    var h='<span class="dim"># bridges are virtual switches; a bridge with no physical port = isolated</span>\n';
+    S.bridges.forEach(function(br){
+      var ports = br==="vmbr0" ? "eth0 (physical uplink)" : "<span class='yl'>no physical port — isolated</span>";
+      h+="bridge <span class='b'>"+esc(br)+"</span>  ports: "+ports+"\n";
+    });
+    cliPrint(h);return;
+  }
+  if(cmd==="qm"){
+    var sub=rest[0],o=parseOpts(rest.slice(1));
+    if(sub==="list"){cliPrint(qmTable());return;}
+    if(sub==="create"){
+      var id=o._pos[0];
+      if(!id||!/^\d+$/.test(id)){cliErr("qm create: VMID must be numeric, e.g. qm create 110 --name web01");return;}
+      if(S.vms[id]||S.cts[id]){cliErr("VMID "+id+" already in use — pick another (try qm list)");return;}
+      var br=(o.net0||"").match(/bridge=([\w-]+)/);
+      S.vms[id]={name:String(o.name||"vm"+id),status:"stopped",type:"qemu",cpu:parseInt(o.cores,10)||1,
+        mem:parseInt(o.memory,10)||1024,disk:32,bridge:br?br[1]:"vmbr0",iso:"(none)",node:"pve01",uptime:"-"};
+      if(S.nextVm<=+id)S.nextVm=+id+1;
+      cliPrint('<span class="ok">VM '+id+' ('+esc(S.vms[id].name)+') created on bridge '+esc(S.vms[id].bridge)+'.</span>');
+      renderLab();return;
+    }
+    var e=needId(o._pos[0],S.vms,"qm");
+    if(sub==="status"||sub==="start"||sub==="stop"||sub==="shutdown"||sub==="destroy"){
+      if(e){cliErr(e);return;}
+      var v=S.vms[o._pos[0]];
+      if(sub==="status"){cliPrint("status: "+v.status);return;}
+      if(sub==="start"){v.status="running";v.uptime="0d 00:01";cliPrint('<span class="ok">VM '+o._pos[0]+' started.</span>');}
+      if(sub==="stop"||sub==="shutdown"){v.status="stopped";v.uptime="-";cliPrint('<span class="ok">VM '+o._pos[0]+' stopped.</span>');}
+      if(sub==="destroy"){delete S.vms[o._pos[0]];cliPrint('<span class="yl">VM '+o._pos[0]+' destroyed.</span>');}
+      renderLab();return;
+    }
+    if(sub==="config"){
+      if(e){cliErr(e);return;}
+      var c=S.vms[o._pos[0]];
+      cliPrint("boot: order=scsi0\ncores: "+c.cpu+"\nmemory: "+c.mem+"\nname: "+esc(c.name)
+        +"\nnet0: virtio,bridge="+esc(c.bridge)+"\nscsi0: local-lvm:"+c.disk+"\nvmgenid: (generated)");
+      return;
+    }
+    cliErr("unknown qm subcommand — try: list, create, start, stop, status, destroy, config");return;
+  }
+  if(cmd==="pct"){
+    var psub=rest[0],po=parseOpts(rest.slice(1));
+    if(psub==="list"){cliPrint(pctTable());return;}
+    if(psub==="create"){
+      var cid=po._pos[0],tpl=po._pos[1]||"debian-12-standard";
+      if(!cid||!/^\d+$/.test(cid)){cliErr("pct create: CTID must be numeric, e.g. pct create 210 debian-12 --hostname dns01");return;}
+      if(S.vms[cid]||S.cts[cid]){cliErr("ID "+cid+" already in use");return;}
+      S.cts[cid]={name:String(po.hostname||"ct"+cid),status:"stopped",template:tpl,mem:parseInt(po.memory,10)||512,disk:8,bridge:"vmbr0",node:"pve01",uptime:"-"};
+      cliPrint('<span class="ok">Container '+cid+' ('+esc(S.cts[cid].name)+') created from template '+esc(tpl)+'.</span>\n<span class="dim">Containers share the host kernel — start it with: pct start '+cid+'</span>');
+      return;
+    }
+    var pe=needId(po._pos[0],S.cts,"pct");
+    if(psub==="status"||psub==="start"||psub==="stop"||psub==="destroy"){
+      if(pe){cliErr(pe);return;}
+      var cc=S.cts[po._pos[0]];
+      if(psub==="status"){cliPrint("status: "+cc.status);return;}
+      if(psub==="start"){cc.status="running";cc.uptime="0d 00:01";cliPrint('<span class="ok">Container '+po._pos[0]+' started (1s — no kernel to boot).</span>');}
+      if(psub==="stop"){cc.status="stopped";cc.uptime="-";cliPrint('<span class="ok">Container '+po._pos[0]+' stopped.</span>');}
+      if(psub==="destroy"){delete S.cts[po._pos[0]];cliPrint('<span class="yl">Container '+po._pos[0]+' destroyed.</span>');}
+      return;
+    }
+    cliErr("unknown pct subcommand — try: list, create, start, stop, status, destroy");return;
+  }
+  cliErr("command not found: "+cmd+"  (type 'help')");
+}
+el("cli-in").addEventListener("keydown",function(ev){
+  if(ev.key==="Enter"){var v=el("cli-in").value;el("cli-in").value="";runCli(v);}
+});
+
+/* ---------- guided lab ---------- */
+var LAB = {done:{}, free:false};
+var LAB_STEPS=[
+  {t:"1 · Plan your IDs and names",
+   d:"Admin habit: decide the scheme <b>before</b> clicking. Use VMIDs <code>120, 121, 122</code> and names <code>lab-web</code>, <code>lab-app</code>, <code>lab-db</code> (120s = lab network). Write it down — collisions are the classic beginner error.",
+   btn:"Mark planned", check:function(){return true;}},
+  {t:"2 · Create the isolated bridge vmbr1",
+   d:"Real Proxmox: Node → Network → Create → Linux Bridge, with <b>no bridge port</b>. A bridge with no physical port is a switch with no uplink cable — traffic stays inside the host. This button simulates that Web-UI action.",
+   btn:"Create vmbr1 (no uplink)", check:function(){return S.bridges.indexOf("vmbr1")>=0;},
+   run:function(){if(S.bridges.indexOf("vmbr1")<0){S.bridges.push("vmbr1");cliSay("# Node → Network → Create → Linux Bridge: vmbr1 (no bridge port)","Bridge vmbr1 created — isolated (no physical uplink).");}}},
+  {t:"3 · Create 3 VMs attached to vmbr1",
+   d:"Three VMs, each with a virtual NIC plugged into the <b>isolated</b> switch: <code>--net0 virtio,bridge=vmbr1</code>. This button runs the three <code>qm create</code> commands — or type them yourself in the CLI tab.",
+   btn:"Run qm create × 3", check:function(){return [120,121,122].every(function(id){return S.vms[id]&&S.vms[id].bridge==="vmbr1";});},
+   run:function(){
+     var defs=[[120,"lab-web",1,1024],[121,"lab-app",2,2048],[122,"lab-db",2,4096]];
+     defs.forEach(function(x){
+       if(!S.vms[x[0]]){S.vms[x[0]]={name:x[1],status:"stopped",type:"qemu",cpu:x[2],mem:x[3],disk:32,bridge:"vmbr1",iso:"ubuntu-24.04.iso",node:"pve01",uptime:"-"};
+         cliSay("qm create "+x[0]+" --name "+x[1]+" --memory "+x[3]+" --cores "+x[2]+" --net0 virtio,bridge=vmbr1","VM "+x[0]+" ("+x[1]+") created on vmbr1.");}
+     });
+   }},
+  {t:"4 · Power them on",
+   d:"<code>qm start</code> each. In the real world you'd now install the OS from the ISO — the sim skips the install and boots them straight to 'running'.",
+   btn:"Start all 3", check:function(){return [120,121,122].every(function(id){return S.vms[id]&&S.vms[id].status==="running";});},
+   run:function(){[120,121,122].forEach(function(id){if(S.vms[id]){S.vms[id].status="running";S.vms[id].uptime="0d 00:01";cliSay("qm start "+id,"VM "+id+" started.");}});}},
+  {t:"5 · Verify the topology",
+   d:"Prove it: <code>qm list</code> shows all three; <code>ip link show</code> shows <code>vmbr1</code> with <b>no physical port</b> while <code>vmbr0</code> holds <code>eth0</code>. That's your evidence the lab is isolated.",
+   btn:"Show verification", check:function(){return true;},
+   run:function(){cliSay("qm list","");cliPrint(qmTable());cliSay("ip link show","");S.bridges.forEach(function(br){var ports=br==="vmbr0"?"eth0 (physical uplink)":"no physical port — isolated";cliPrint("bridge "+br+"  ports: "+ports);});}},
+  {t:"6 · Document &amp; free-mode rebuild",
+   d:"Real labs end with notes: IDs, bridges, what you proved. Then the real test — <b>free mode</b>: wipe the lab and rebuild it from memory using only the CLI tab. No buttons.",
+   btn:"Show lab summary", check:function(){return true;},
+   run:function(){cliSay("# lab summary","3-VM isolated lab: 120/lab-web, 121/lab-app, 122/lab-db — all on vmbr1 (no uplink).\nTopology: VMs ↔ vmbr1 (virtual switch) — no path to LAN/internet.\nSkills proven: ID planning, bridge design, qm create/start, topology verification.");}}
+];
+function labDoneCount(){return LAB_STEPS.filter(function(s,i){return LAB.done[i];}).length;}
+function renderLab(){
+  var h="";
+  LAB_STEPS.forEach(function(s,i){
+    var done=!!LAB.done[i];
+    h+="<li class='"+(done?"done":"")+"'><span class='st'>"+(done?"✓":"○")+"</span><b>"+s.t+"</b><br><span class='muted'>"+s.d+"</span><br>"
+      +"<button class='btn ghost' style='margin-top:8px' data-lab='"+i+"'>"+(done?"Re-run":"▶ "+s.btn)+"</button></li>";
+  });
+  el("lab-list").innerHTML=h;
+  var n=labDoneCount();
+  el("lab-prog").style.width=(n/LAB_STEPS.length*100)+"%";
+  el("lab-count").textContent=n+" of "+LAB_STEPS.length+" steps complete"+(LAB.free?" · FREE MODE — rebuild from the CLI, no buttons":"");
+  var btns=el("lab-list").querySelectorAll("button[data-lab]");
+  btns.forEach(function(b){b.addEventListener("click",function(){
+    var i=+b.dataset.lab, s=LAB_STEPS[i];
+    if(LAB.free&&i>0){cliErr("Free mode: no buttons — rebuild using the CLI tab (qm create / qm start).");switchTab("cli");return;}
+    if(s.run)s.run();
+    if(s.check()){LAB.done[i]=true;}
+    renderLab();renderTree();
+  });});
+}
+el("lab-reset").addEventListener("click",function(){
+  LAB.done={};LAB.free=false;
+  [120,121,122].forEach(function(id){delete S.vms[id];});
+  var ix=S.bridges.indexOf("vmbr1");if(ix>=0)S.bridges.splice(ix,1);
+  cliSay("# lab reset","Lab wiped: VMs 120–122 removed, vmbr1 deleted.");
+  renderLab();renderTree();
+});
+el("lab-freemode").addEventListener("click",function(){
+  [120,121,122].forEach(function(id){delete S.vms[id];});
+  var ix=S.bridges.indexOf("vmbr1");if(ix>=0)S.bridges.splice(ix,1);
+  LAB.done={0:true};LAB.free=true;
+  cliSay("# free mode","Lab wiped. Rebuild it from memory in the CLI:\n1) create bridge vmbr1 — (simulated via Web UI: Node → Network → Create → Linux Bridge, no port)\n   → click step 2's button once to simulate the Web-UI action, then do the rest in CLI.\n2) qm create 120 --name lab-web --memory 1024 --cores 1 --net0 virtio,bridge=vmbr1 (×3)\n3) qm start 120/121/122  4) verify with qm list + ip link show");
+  renderLab();renderTree();switchTab("cli");
+});
+
+/* ---------- init ---------- */
+renderTree();renderDetail();renderWizard();
+cliPrint('<span class="dim">Proxmox VE 8.3 simulated shell — node pve01. Type </span><span class="b">help</span><span class="dim"> to begin.</span>');
+cliPrint('<span class="dim">Try: </span><span class="in">qm list</span>');
+</script>
+</body>
+</html>

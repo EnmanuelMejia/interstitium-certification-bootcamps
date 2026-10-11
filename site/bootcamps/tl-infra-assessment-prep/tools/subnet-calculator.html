@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Subnetting Calculator — Interstitium Labs</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c2330; --border:#30363d;
+    --accent:#2f81f7; --accent-dim:#1f6feb; --text:#e6edf3; --muted:#8b949e;
+    --green:#3fb950; --red:#f85149; --gold:#d29922;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.5; padding-bottom:48px;
+  }
+  header{
+    padding:18px 16px 14px; text-align:center;
+    border-bottom:1px solid var(--border);
+    background:linear-gradient(180deg,#11161d,#0d1117);
+  }
+  header .brand{font-size:13px; letter-spacing:3px; text-transform:uppercase; color:var(--accent); font-weight:700;}
+  header h1{margin:6px 0 4px; font-size:22px; font-weight:650;}
+  header p{margin:0; color:var(--muted); font-size:13px;}
+  .wrap{max-width:760px; margin:0 auto; padding:0 14px;}
+  .tabs{display:flex; gap:6px; margin:16px 0 4px; flex-wrap:wrap;}
+  .tab{
+    flex:1 1 0; min-width:120px; padding:10px 8px; text-align:center; cursor:pointer;
+    background:var(--panel); border:1px solid var(--border); border-radius:8px;
+    color:var(--muted); font-weight:600; font-size:14px; user-select:none;
+  }
+  .tab.active{background:var(--accent-dim); border-color:var(--accent); color:#fff;}
+  .panel{display:none; margin-top:14px;}
+  .panel.active{display:block;}
+  .card{
+    background:var(--panel); border:1px solid var(--border); border-radius:10px;
+    padding:16px; margin-bottom:14px;
+  }
+  .card h2{margin:0 0 12px; font-size:16px; color:var(--accent);}
+  label{display:block; font-size:13px; color:var(--muted); margin:10px 0 4px; font-weight:600;}
+  input[type=text], input[type=number], select{
+    width:100%; padding:10px 12px; font-size:16px; border-radius:8px;
+    background:#0d1117; border:1px solid var(--border); color:var(--text);
+  }
+  input:focus{outline:none; border-color:var(--accent);}
+  input[type=range]{width:100%; accent-color:var(--accent); margin:6px 0;}
+  .row{display:flex; gap:10px; flex-wrap:wrap;}
+  .row > div{flex:1 1 140px;}
+  .btn{
+    display:inline-block; width:100%; padding:12px; margin-top:12px; font-size:15px; font-weight:700;
+    color:#fff; background:var(--accent); border:none; border-radius:8px; cursor:pointer;
+  }
+  .btn:hover{background:var(--accent-dim);}
+  .btn.secondary{background:var(--panel2); border:1px solid var(--border); color:var(--text);}
+  .btn.secondary:hover{border-color:var(--accent);}
+  .btn.ghost{background:transparent; border:1px dashed var(--border); color:var(--muted);}
+  .err{color:var(--red); font-size:13px; margin-top:8px; display:none;}
+  table.results{width:100%; border-collapse:collapse; font-size:14px; margin-top:6px;}
+  table.results td{padding:8px 6px; border-bottom:1px solid var(--border); vertical-align:top;}
+  table.results td:first-child{color:var(--muted); width:44%;}
+  table.results td:last-child{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; word-break:break-all;}
+  .bin{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:13px; line-height:2; word-break:break-all;}
+  .bin .oct{display:inline-block; margin-right:10px;}
+  .nb{color:var(--accent); font-weight:700;}
+  .hb{color:#6e7681;}
+  .legend{font-size:12px; color:var(--muted); margin-top:8px;}
+  .legend .nb, .legend .hb{font-weight:700;}
+  .q{font-size:17px; font-weight:650; margin:0 0 12px;}
+  .opt{
+    display:block; width:100%; text-align:left; padding:11px 12px; margin:7px 0;
+    background:#0d1117; border:1px solid var(--border); border-radius:8px;
+    color:var(--text); font-size:15px; font-family:ui-monospace,Menlo,Consolas,monospace; cursor:pointer;
+  }
+  .opt:hover:not(:disabled){border-color:var(--accent);}
+  .opt:disabled{cursor:default; opacity:.85;}
+  .opt.correct{background:rgba(63,185,80,.15); border-color:var(--green);}
+  .opt.wrong{background:rgba(248,81,73,.12); border-color:var(--red);}
+  .scorebar{display:flex; gap:10px; flex-wrap:wrap; margin:12px 0;}
+  .stat{flex:1 1 90px; background:var(--panel2); border:1px solid var(--border); border-radius:8px; padding:8px; text-align:center;}
+  .stat .v{font-size:20px; font-weight:700; color:var(--accent);}
+  .stat .l{font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:1px;}
+  .worked{background:#0d1117; border:1px solid var(--border); border-radius:8px; padding:12px; margin-top:12px; display:none;}
+  .worked.show{display:block;}
+  .worked h3{margin:0 0 8px; font-size:14px; color:var(--gold);}
+  .worked ol{margin:0; padding-left:20px; font-size:13.5px;}
+  .worked li{margin-bottom:10px;}
+  .worked .ans{font-weight:700; color:var(--green);}
+  .feedback{margin-top:10px; font-weight:700; font-size:15px;}
+  .feedback.good{color:var(--green);} .feedback.bad{color:var(--red);}
+  .subnet-list{margin-top:10px; max-height:420px; overflow-y:auto;}
+  .subnet-item{background:#0d1117; border:1px solid var(--border); border-radius:8px; padding:10px 12px; margin-bottom:8px; font-size:13.5px;}
+  .subnet-item .sn{font-weight:700; color:var(--accent); font-family:ui-monospace,Menlo,Consolas,monospace;}
+  .subnet-item .dt{color:var(--muted); font-family:ui-monospace,Menlo,Consolas,monospace; font-size:12.5px;}
+  .note{font-size:13px; color:var(--muted); margin-top:8px;}
+  .copy-ok{color:var(--green); font-size:13px; margin-top:8px; display:none;}
+  footer{text-align:center; color:var(--muted); font-size:12px; margin-top:28px; padding:0 14px;}
+  footer .brand{color:var(--accent); font-weight:700; letter-spacing:2px; font-size:11px; text-transform:uppercase;}
+  @media (max-width:420px){
+    header h1{font-size:19px;}
+    .tab{font-size:13px; padding:9px 4px;}
+    .bin{font-size:11.5px;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">Interstitium Labs</div>
+  <h1>Subnetting Calculator</h1>
+  <p>IT Infrastructure Assessment Prep &mdash; interactive study tool</p>
+</header>
+
+<div class="wrap">
+  <div class="tabs" role="tablist">
+    <div class="tab active" data-tab="calc" role="tab">Calculator</div>
+    <div class="tab" data-tab="practice" role="tab">Practice Mode</div>
+    <div class="tab" data-tab="planner" role="tab">Subnet Planner</div>
+  </div>
+
+  <!-- ============ CALCULATOR ============ -->
+  <section class="panel active" id="panel-calc">
+    <div class="card">
+      <h2>Input</h2>
+      <label for="ipInput">IPv4 address</label>
+      <input type="text" id="ipInput" inputmode="decimal" placeholder="192.168.20.130" value="192.168.20.130" autocomplete="off" spellcheck="false">
+
+      <label for="cidrSlider">CIDR prefix length: <span id="cidrEcho">26</span></label>
+      <input type="range" id="cidrSlider" min="0" max="32" value="26">
+      <div class="row">
+        <div>
+          <label for="cidrNum">Prefix (0&ndash;32)</label>
+          <input type="number" id="cidrNum" min="0" max="32" value="26">
+        </div>
+        <div>
+          <label for="maskInput">Or dotted subnet mask (auto-converts)</label>
+          <input type="text" id="maskInput" inputmode="decimal" placeholder="255.255.255.192" autocomplete="off" spellcheck="false">
+        </div>
+      </div>
+      <div class="err" id="calcErr"></div>
+      <button class="btn" id="calcBtn">Calculate</button>
+    </div>
+
+    <div class="card" id="resultCard" style="display:none;">
+      <h2>Results</h2>
+      <table class="results" id="resultTable"></table>
+      <button class="btn secondary" id="copyBtn">Copy results</button>
+      <div class="copy-ok" id="copyOk">&#10003; Copied to clipboard</div>
+    </div>
+
+    <div class="card" id="binCard" style="display:none;">
+      <h2>Binary view</h2>
+      <label>IP address</label>
+      <div class="bin" id="binIp"></div>
+      <label>Subnet mask</label>
+      <div class="bin" id="binMask"></div>
+      <label>Network address (IP AND mask)</label>
+      <div class="bin" id="binNet"></div>
+      <div class="legend"><span class="nb">Blue</span> = network bits &nbsp;&middot;&nbsp; <span class="hb">Grey</span> = host bits</div>
+    </div>
+  </section>
+
+  <!-- ============ PRACTICE ============ -->
+  <section class="panel" id="panel-practice">
+    <div class="scorebar">
+      <div class="stat"><div class="v" id="stCorrect">0</div><div class="l">Correct</div></div>
+      <div class="stat"><div class="v" id="stTotal">0</div><div class="l">Answered</div></div>
+      <div class="stat"><div class="v" id="stPct">—</div><div class="l">Score</div></div>
+      <div class="stat"><div class="v" id="stStreak">0</div><div class="l">Streak</div></div>
+    </div>
+    <div class="card">
+      <p class="q" id="qText">Press "New question" to begin.</p>
+      <div id="qOpts"></div>
+      <div class="feedback" id="qFeedback"></div>
+      <div class="worked" id="qWorked">
+        <h3>Worked solution (binary AND)</h3>
+        <ol id="qSteps"></ol>
+      </div>
+      <div class="row">
+        <div><button class="btn secondary" id="showAnsBtn" disabled>Show answer</button></div>
+        <div><button class="btn" id="newQBtn">New question</button></div>
+      </div>
+      <button class="btn ghost" id="resetScoreBtn">Reset score</button>
+    </div>
+  </section>
+
+  <!-- ============ PLANNER ============ -->
+  <section class="panel" id="panel-planner">
+    <div class="card">
+      <h2>Subnet planner</h2>
+      <label for="planBase">Base network (address/prefix)</label>
+      <input type="text" id="planBase" inputmode="decimal" placeholder="172.16.0.0/20" value="172.16.0.0/20" autocomplete="off" spellcheck="false">
+      <label for="planCount">Number of subnets needed</label>
+      <input type="number" id="planCount" min="1" max="16777216" value="8">
+      <div class="err" id="planErr"></div>
+      <button class="btn" id="planBtn">Plan subnets</button>
+    </div>
+    <div class="card" id="planResult" style="display:none;">
+      <h2>Plan</h2>
+      <div id="planSummary" style="font-size:14px;"></div>
+      <div class="subnet-list" id="planList"></div>
+    </div>
+  </section>
+</div>
+
+<footer>
+  <div class="brand">Interstitium Labs</div>
+  <p>Built for the ThreatLocker IT Infrastructure assessment prep course.<br>All calculations run locally in your browser.</p>
+</footer>
+
+<script>
+"use strict";
+/* ================= PURE SUBNET MATH (no DOM) ================= */
+function parseIPv4(s){
+  if(typeof s!=="string") return null;
+  const parts=s.trim().split(".");
+  if(parts.length!==4) return null;
+  const oct=[];
+  for(const p of parts){
+    if(!/^\d{1,3}$/.test(p)) return null;
+    const n=parseInt(p,10);
+    if(n<0||n>255) return null;
+    oct.push(n);
+  }
+  return oct;
+}
+function ipToInt(o){ return ((o[0]*16777216)+(o[1]*65536)+(o[2]*256)+o[3])>>>0; }
+function intToIp(n){
+  n=n>>>0;
+  return [(n>>>24)&255,(n>>>16)&255,(n>>>8)&255,n&255].join(".");
+}
+function prefixToInt(p){ return p===0?0:((0xFFFFFFFF<<(32-p))>>>0); }
+function maskFromCIDR(p){ return intToIp(prefixToInt(p)).split(".").map(Number); }
+function cidrFromMask(oct){
+  // returns prefix length if octets form a contiguous mask, else null
+  const n=ipToInt(oct);
+  let p=0, seenZero=false;
+  for(let i=31;i>=0;i--){
+    const bit=(n>>>i)&1;
+    if(bit===1){ if(seenZero) return null; p++; }
+    else seenZero=true;
+  }
+  return p;
+}
+function classOf(firstOctet){
+  const o=firstOctet;
+  if(o>=1&&o<=126) return "A";
+  if(o===127) return "Loopback";
+  if(o>=128&&o<=191) return "B";
+  if(o>=192&&o<=223) return "C";
+  if(o>=224&&o<=239) return "D (Multicast)";
+  if(o>=240&&o<=255) return "E (Experimental)";
+  return "—";
+}
+function isPrivate(n){
+  const a=(n>>>24)&255, b=(n>>>16)&255;
+  return a===10 || (a===172&&b>=16&&b<=31) || (a===192&&b===168);
+}
+function calc(ipStr, prefix){
+  const oct=parseIPv4(ipStr);
+  if(!oct) return {error:"Invalid IPv4 address"};
+  if(!Number.isInteger(prefix)||prefix<0||prefix>32) return {error:"Invalid prefix"};
+  const ip=ipToInt(oct), mask=prefixToInt(prefix);
+  const net=((ip&mask)>>>0), bc=((net|((~mask)>>>0))>>>0);
+  const total=Math.pow(2,32-prefix);
+  const usable=(prefix>=31)?0:total-2;
+  const first=usable>0?intToIp(net+1):"N/A";
+  const last=usable>0?intToIp(bc-1):"N/A";
+  return {
+    network:intToIp(net), broadcast:intToIp(bc),
+    mask:intToIp(mask), wildcard:intToIp((~mask)>>>0),
+    first:first, last:last, total:total, usable:usable,
+    cidr:intToIp(net)+"/"+prefix,
+    ipClass:classOf(oct[0]),
+    scope:isPrivate(ip)?"Private (RFC 1918)":"Public",
+    ipInt:ip, netInt:net, maskInt:mask, bcInt:bc
+  };
+}
+function planSubnets(baseStr, needed){
+  const m=/^(.+?)\/(\d{1,2})$/.exec((baseStr||"").trim());
+  if(!m) return {error:"Use the form 172.16.0.0/20"};
+  const oct=parseIPv4(m[1]);
+  if(!oct) return {error:"Invalid base IPv4 address"};
+  const baseP=parseInt(m[2],10);
+  if(baseP<0||baseP>30) return {error:"Base prefix must be 0–30"};
+  if(!Number.isInteger(needed)||needed<1) return {error:"Subnets needed must be ≥ 1"};
+  const bits=Math.ceil(Math.log2(needed));
+  const newP=baseP+bits;
+  if(newP>30) return {error:"Needs /"+newP+" — too many subnets for /"+baseP+" (max prefix /30)"};
+  const baseInt=ipToInt(oct), mask=prefixToInt(baseP);
+  const baseNet=((baseInt&mask)>>>0);
+  const size=Math.pow(2,32-newP);
+  const subnets=[];
+  for(let i=0;i<needed;i++){
+    const net=(baseNet+i*size)>>>0, bc=(net+size-1)>>>0;
+    subnets.push({network:intToIp(net)+"/"+newP, broadcast:intToIp(bc),
+      first:intToIp(net+1), last:intToIp(bc-1), usable:size-2, usablePer:size-2});
+  }
+  return {base:intToIp(baseNet)+"/"+baseP, newPrefix:newP, size:size,
+          usablePer:size-2, count:needed, subnets:subnets,
+          normalized:baseNet!==baseInt};
+}
+
+/* ================= SELF-TESTS (run on load, pure logic) ================= */
+(function runSelfTests(){
+  function eq(got,want,label){ console.assert(got===want,"SELF-TEST FAIL ["+label+"]: got "+got+", want "+want); }
+  let r=calc("192.168.20.130",26);
+  eq(r.network,"192.168.20.128","192.168.20.130/26 network");
+  eq(r.broadcast,"192.168.20.191","192.168.20.130/26 broadcast");
+  eq(r.first,"192.168.20.129","192.168.20.130/26 first");
+  eq(r.last,"192.168.20.190","192.168.20.130/26 last");
+  eq(r.usable,62,"192.168.20.130/26 usable");
+  eq(r.total,64,"192.168.20.130/26 total");
+  eq(r.wildcard,"0.0.0.63","192.168.20.130/26 wildcard");
+  r=calc("10.0.0.0",8);
+  eq(r.usable,16777214,"10.0.0.0/8 usable");
+  eq(r.total,16777216,"10.0.0.0/8 total");
+  eq(r.scope,"Private (RFC 1918)","10.0.0.0/8 private");
+  eq(r.ipClass,"A","10.0.0.0/8 class");
+  r=calc("192.168.1.5",30);
+  eq(r.usable,2,"/30 usable");
+  eq(r.total,4,"/30 total");
+  eq(r.network,"192.168.1.4","/30 network");
+  eq(r.broadcast,"192.168.1.7","/30 broadcast");
+  eq(cidrFromMask(maskFromCIDR(26)),26,"mask round-trip /26");
+  eq(cidrFromMask([255,255,255,192]),26,"dotted 255.255.255.192 -> /26");
+  eq(cidrFromMask([255,0,255,0]),null,"non-contiguous mask rejected");
+  eq(intToIp(ipToInt([192,168,20,130])),"192.168.20.130","ip int round-trip");
+  const pl=planSubnets("172.16.0.0/20",8);
+  eq(pl.newPrefix,23,"planner 8 subnets of /20 -> /23");
+  eq(pl.subnets.length,8,"planner subnet count");
+  eq(pl.subnets[0].network,"172.16.0.0/23","planner first subnet");
+  eq(pl.subnets[7].network,"172.16.14.0/23","planner last subnet");
+  eq(pl.usablePer,510,"planner usable per /23");
+  console.log("Subnet calculator self-tests complete (no assertion failures above = pass).");
+})();
+
+/* ================= UI ================= */
+document.addEventListener("DOMContentLoaded",function(){
+  "use strict";
+  const $=id=>document.getElementById(id);
+
+  /* ---- tabs ---- */
+  document.querySelectorAll(".tab").forEach(t=>{
+    t.addEventListener("click",()=>{
+      document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
+      document.querySelectorAll(".panel").forEach(x=>x.classList.remove("active"));
+      t.classList.add("active");
+      $("panel-"+t.dataset.tab).classList.add("active");
+    });
+  });
+
+  /* ---- calculator ---- */
+  const ipInput=$("ipInput"), cidrSlider=$("cidrSlider"), cidrNum=$("cidrNum"),
+        maskInput=$("maskInput"), cidrEcho=$("cidrEcho"), calcErr=$("calcErr");
+  function setPrefix(p,silent){
+    p=Math.max(0,Math.min(32,p|0));
+    cidrSlider.value=p; cidrNum.value=p; cidrEcho.textContent=p;
+    if(!silent) maskInput.value=intToIp(prefixToInt(p));
+  }
+  cidrSlider.addEventListener("input",()=>setPrefix(parseInt(cidrSlider.value,10)));
+  cidrNum.addEventListener("change",()=>setPrefix(parseInt(cidrNum.value,10)||0));
+  maskInput.addEventListener("change",()=>{
+    const oct=parseIPv4(maskInput.value);
+    if(!oct){ showErr("Not a valid dotted mask."); return; }
+    const p=cidrFromMask(oct);
+    if(p===null){ showErr("Mask is not contiguous (e.g. 255.0.255.0 is invalid)."); return; }
+    hideErr(); setPrefix(p,true);
+  });
+  function showErr(m){ calcErr.textContent=m; calcErr.style.display="block"; }
+  function hideErr(){ calcErr.style.display="none"; }
+  setPrefix(26,true); maskInput.value="255.255.255.192";
+
+  function binHTML(n,prefix){
+    // n = 32-bit int, prefix = network bits; network bits blue, host bits grey, grouped per octet
+    let html="";
+    for(let o=0;o<4;o++){
+      html+='<span class="oct">';
+      for(let b=7;b>=0;b--){
+        const bitPos=o*8+(7-b);            // 0..31 from MSB
+        const bit=((n>>>(31-bitPos))&1);
+        const cls=bitPos<prefix?"nb":"hb";
+        html+='<span class="'+cls+'">'+bit+"</span>";
+      }
+      html+="</span>";
+    }
+    return html;
+  }
+
+  let lastCalc=null;
+  $("calcBtn").addEventListener("click",()=>{
+    hideErr();
+    const p=parseInt(cidrNum.value,10);
+    const r=calc(ipInput.value,p);
+    if(r.error){ showErr(r.error); return; }
+    lastCalc=r;
+    const rows=[
+      ["Network address",r.network],
+      ["Broadcast address",r.broadcast],
+      ["Subnet mask",r.mask],
+      ["Wildcard mask",r.wildcard],
+      ["First usable host",r.first],
+      ["Last usable host",r.last],
+      ["Total addresses",r.total.toLocaleString("en-US")],
+      ["Usable hosts",r.usable.toLocaleString("en-US")],
+      ["CIDR notation",r.cidr],
+      ["IP class","Class "+r.ipClass],
+      ["Scope",r.scope]
+    ];
+    $("resultTable").innerHTML=rows.map(x=>"<tr><td>"+x[0]+"</td><td>"+x[1]+"</td></tr>").join("");
+    $("binIp").innerHTML=binHTML(r.ipInt,p);
+    $("binMask").innerHTML=binHTML(r.maskInt,p);
+    $("binNet").innerHTML=binHTML(r.netInt,p);
+    $("resultCard").style.display="block";
+    $("binCard").style.display="block";
+    $("copyOk").style.display="none";
+  });
+
+  $("copyBtn").addEventListener("click",()=>{
+    if(!lastCalc) return;
+    const r=lastCalc;
+    const text=[
+      "Subnet calculation — "+ipInput.value+"/"+cidrNum.value,
+      "Network address: "+r.network,
+      "Broadcast address: "+r.broadcast,
+      "Subnet mask: "+r.mask,
+      "Wildcard mask: "+r.wildcard,
+      "First usable host: "+r.first,
+      "Last usable host: "+r.last,
+      "Total addresses: "+r.total,
+      "Usable hosts: "+r.usable,
+      "CIDR notation: "+r.cidr,
+      "IP class: "+r.ipClass,
+      "Scope: "+r.scope,
+      "— Interstitium Labs"
+    ].join("\n");
+    const done=()=>{ $("copyOk").style.display="block"; };
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(done).catch(()=>fallbackCopy(text,done));
+    }else fallbackCopy(text,done);
+  });
+  function fallbackCopy(text,done){
+    const ta=document.createElement("textarea");
+    ta.value=text; ta.style.position="fixed"; ta.style.opacity="0";
+    document.body.appendChild(ta); ta.select();
+    try{ document.execCommand("copy"); done(); }catch(e){}
+    document.body.removeChild(ta);
+  }
+
+  /* ---- practice mode ---- */
+  const qText=$("qText"), qOpts=$("qOpts"), qFeedback=$("qFeedback"),
+        qWorked=$("qWorked"), qSteps=$("qSteps"), showAnsBtn=$("showAnsBtn");
+  let score={correct:0,total:0,streak:0};
+  let current=null, answered=false;
+
+  function rand(a,b){ return a+Math.floor(Math.random()*(b-a+1)); }
+  function shuffle(arr){
+    for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; }
+    return arr;
+  }
+  function uniqStr(list){ const seen=new Set(),out=[]; for(const s of list){ if(!seen.has(s)){ seen.add(s); out.push(s);} } return out; }
+  function randIp(){
+    // bias toward private ranges + common octets for realistic questions
+    const pick=Math.random();
+    if(pick<0.45) return [192,168,rand(0,255),rand(1,254)];
+    if(pick<0.7)  return [10,rand(0,255),rand(0,255),rand(1,254)];
+    if(pick<0.9)  return [172,rand(16,31),rand(0,255),rand(1,254)];
+    return [rand(1,223),rand(0,255),rand(0,255),rand(1,254)];
+  }
+  function randPrefix(){ return rand(16,30); }
+
+  function workedSteps(ipStr,p,what){
+    // returns HTML list items showing the binary AND, and the final answer string
+    const oct=parseIPv4(ipStr), r=calc(ipStr,p);
+    const ipB=binHTML(r.ipInt,p), maskB=binHTML(r.maskInt,p), netB=binHTML(r.netInt,p);
+    const steps=[
+      "Write the IP <b>"+ipStr+"</b> in binary:<br><span class='bin'>"+ipB+"</span>",
+      "Write the /"+p+" mask <b>"+r.mask+"</b> in binary:<br><span class='bin'>"+maskB+"</span>",
+      "AND them bit by bit (1 AND 1 = 1, anything else = 0):<br><span class='bin'>"+netB+"</span>",
+      "Convert back to dotted decimal: <span class='ans'>"+what+"</span>"
+    ];
+    return steps;
+  }
+
+  function genQuestion(){
+    const type=rand(1,4), ip=randIp().join("."), p=randPrefix();
+    const r=calc(ip,p), size=Math.pow(2,32-p);
+    let q, answer, options, steps;
+    if(type===1){
+      q="What is the <b>network address</b> of "+ip+"/"+p+"?";
+      answer=r.network;
+      options=uniqStr([answer, intToIp((r.netInt+size)>>>0), intToIp((r.netInt-size)>>>0), r.broadcast, r.first]).slice(0,4);
+      steps=workedSteps(ip,p,answer);
+    }else if(type===2){
+      const p2=rand(24,30);
+      const r2=calc("192.168.1.0",p2);
+      q="How many <b>usable hosts</b> are in a /"+p2+" subnet?";
+      answer=String(r2.usable);
+      options=uniqStr([answer, String(r2.total), String(r2.total-1), String(Math.max(0,r2.usable-1)), String(r2.usable+1)]).slice(0,4);
+      steps=[
+        "Total addresses in /"+p2+": 2<sup>"+(32-p2)+"</sup> = <b>"+r2.total+"</b>.",
+        "Subtract the network and broadcast addresses: "+r2.total+" − 2 = <span class='ans'>"+answer+"</span> usable hosts."
+      ];
+    }else if(type===3){
+      q="What is the <b>broadcast address</b> of "+ip+"/"+p+"?";
+      answer=r.broadcast;
+      options=uniqStr([answer, intToIp((r.bcInt+size)>>>0), intToIp((r.bcInt-size)>>>0), r.network, r.last]).slice(0,4);
+      steps=workedSteps(ip,p,"Network = "+r.network+". Broadcast = network + "+(size-1)+" → <span class='ans'>"+answer+"</span>.");
+    }else{
+      q="Which subnet does <b>"+ip+"/"+p+"</b> belong to?";
+      answer=r.network+"/"+p;
+      options=uniqStr([answer, intToIp((r.netInt+size)>>>0)+"/"+p, intToIp((r.netInt-size)>>>0)+"/"+p, r.broadcast+"/"+p]).slice(0,4);
+      steps=workedSteps(ip,p,"The host sits in subnet <span class='ans'>"+answer+"</span>.");
+    }
+    // pad if fewer than 4 unique options (edge prefixes)
+    while(options.length<4) options.push(answer+" ");
+    return {q:q, answer:String(answer).trim(), options:shuffle(options.map(o=>String(o).trim())).slice(0,4), steps:steps};
+  }
+
+  function renderScore(){
+    $("stCorrect").textContent=score.correct;
+    $("stTotal").textContent=score.total;
+    $("stStreak").textContent=score.streak;
+    $("stPct").textContent=score.total?Math.round(score.correct/score.total*100)+"%":"—";
+  }
+  function newQuestion(){
+    current=genQuestion(); answered=false;
+    qFeedback.textContent=""; qFeedback.className="feedback";
+    qWorked.classList.remove("show"); showAnsBtn.disabled=false;
+    qText.innerHTML=current.q;
+    qOpts.innerHTML="";
+    current.options.forEach(opt=>{
+      const b=document.createElement("button");
+      b.className="opt"; b.textContent=opt;
+      b.addEventListener("click",()=>answer(b,opt));
+      qOpts.appendChild(b);
+    });
+  }
+  function answer(btn,opt){
+    if(answered) return; answered=true;
+    score.total++;
+    const ok=opt===current.answer;
+    if(ok){ score.correct++; score.streak++;
+      qFeedback.textContent="✓ Correct!"; qFeedback.className="feedback good";
+    }else{ score.streak=0;
+      qFeedback.innerHTML="✗ Not quite — the answer is <b>"+current.answer+"</b>.";
+      qFeedback.className="feedback bad";
+    }
+    qOpts.querySelectorAll(".opt").forEach(b=>{
+      b.disabled=true;
+      if(b.textContent===current.answer) b.classList.add("correct");
+      else if(b===btn&&!ok) b.classList.add("wrong");
+    });
+    renderScore();
+  }
+  showAnsBtn.addEventListener("click",()=>{
+    if(!current) return;
+    qSteps.innerHTML=current.steps.map(s=>"<li>"+s+"</li>").join("");
+    qWorked.classList.add("show");
+    showAnsBtn.disabled=true;
+  });
+  $("newQBtn").addEventListener("click",newQuestion);
+  $("resetScoreBtn").addEventListener("click",()=>{
+    score={correct:0,total:0,streak:0}; renderScore();
+    qFeedback.textContent="Score reset. Press “New question” to keep practicing.";
+    qFeedback.className="feedback";
+  });
+  renderScore();
+
+  /* ---- planner ---- */
+  const planErr=$("planErr");
+  $("planBtn").addEventListener("click",()=>{
+    planErr.style.display="none";
+    const needed=parseInt($("planCount").value,10);
+    const r=planSubnets($("planBase").value,needed);
+    if(r.error){ planErr.textContent=r.error; planErr.style.display="block"; $("planResult").style.display="none"; return; }
+    let html="<b>"+r.count+"</b> subnets from <b>"+r.base+"</b> → smallest fit: <b>/"+r.newPrefix+"</b> ";
+    html+="("+r.size.toLocaleString("en-US")+" addresses each, "+r.usablePer.toLocaleString("en-US")+" usable per subnet).";
+    if(r.normalized) html+="<div class='note'>Note: base address was normalized to the network boundary.</div>";
+    $("planSummary").innerHTML=html;
+    $("planList").innerHTML=r.subnets.map((s,i)=>
+      "<div class='subnet-item'><span class='sn'>#"+(i+1)+" "+s.network+"</span><br>"+
+      "<span class='dt'>broadcast "+s.broadcast+"<br>usable "+s.first+" – "+s.last+" ("+s.usable.toLocaleString("en-US")+" hosts)</span></div>"
+    ).join("");
+    $("planResult").style.display="block";
+  });
+});
+</script>
+</body>
+</html>
