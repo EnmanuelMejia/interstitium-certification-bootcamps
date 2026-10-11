@@ -1,3 +1,9 @@
+<div align="center">
+
+![Banner](assets/banner.png)
+
+</div>
+
 # Interstitium Labs — Certification Bootcamp Catalog
 
 An enterprise-grade platform of **69 interactive, adaptive certification-prep bootcamps** covering the full Interstitium Labs catalog: programming languages, web frameworks, developer tooling, CompTIA, AWS, Microsoft/Azure, Oracle, databases, Linux, cloud-native, security, government/NSA programs, data/AI, and career tracks.
