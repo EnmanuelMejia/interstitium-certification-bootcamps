@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Site-to-Site VPN — Network Simulator · Interstitium Labs</title>
+<style>
+:root{--bg:#0d1117;--panel:#161b22;--panel2:#0a0d12;--border:#30363d;--blue:#2f81f7;
+--text:#e6edf3;--dim:#8b949e;--green:#3fb950;--red:#f85149;--orange:#d29922;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:14px;line-height:1.45}
+header.top{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--border);background:#010409;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:8px;font-weight:700;font-size:15px}
+.brand svg{flex:none}
+.sim-title{font-size:14px;color:var(--dim)}
+.sim-title b{color:var(--text);font-size:15px}
+nav.modes{margin-left:auto;display:flex;gap:6px}
+nav.modes button{background:transparent;border:1px solid var(--border);color:var(--dim);border-radius:6px;padding:7px 12px;cursor:pointer;font-size:13px}
+nav.modes button.active{background:var(--blue);border-color:var(--blue);color:#fff;font-weight:600}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:12px;padding:12px;max-width:1460px;margin:0 auto}
+@media(max-width:980px){.layout{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:12px}
+.card h2,.card h3{margin:0 0 8px;font-size:15px}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.row .spacer{flex:1}
+.dim{color:var(--dim)} .small{font-size:12px}
+button.btn{background:var(--blue);color:#fff;border:0;border-radius:6px;padding:8px 14px;cursor:pointer;font-size:13px;font-weight:600}
+button.btn:hover{filter:brightness(1.12)}
+button.ghost{background:transparent;border:1px solid var(--border);color:var(--text);border-radius:6px;padding:7px 12px;cursor:pointer;font-size:13px}
+button.ghost:hover{border-color:var(--blue)}
+button.sm{padding:5px 10px;font-size:12px}
+button.linklike{background:none;border:0;color:var(--blue);cursor:pointer;font-size:12px;padding:0;text-decoration:underline}
+#topo{width:100%;height:auto;display:block;background:var(--panel2);border:1px solid var(--border);border-radius:8px}
+.node{cursor:pointer}
+.node:focus{outline:2px solid var(--blue);outline-offset:2px}
+.legend{display:flex;gap:12px;align-items:center;font-size:12px;color:var(--dim);flex-wrap:wrap}
+.dotk{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px;vertical-align:baseline}
+#log{height:260px;overflow-y:auto;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:8px}
+#log div{margin:3px 0}
+#log .ok{color:var(--green)} #log .bad{color:var(--red)} #log .info{color:var(--text)}
+#log .head{color:var(--blue);font-weight:700;margin-top:8px}
+.side-tabs .tabs{display:flex;gap:6px;margin-bottom:10px}
+.side-tabs .tabs button{background:transparent;border:1px solid var(--border);color:var(--dim);border-radius:6px;padding:7px 12px;cursor:pointer;font-size:13px}
+.side-tabs .tabs button.active{background:#1f2a3a;border-color:var(--blue);color:var(--text);font-weight:600}
+#term{background:#000;border:1px solid var(--border);border-radius:8px;height:340px;display:flex;flex-direction:column;overflow:hidden}
+#term-title{font-size:13px;font-weight:700;padding:8px 10px;border-bottom:1px solid var(--border);color:var(--dim)}
+#term-out{flex:1;overflow-y:auto;padding:8px 10px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px;white-space:pre-wrap;word-break:break-word}
+#term-out .pIn{color:#9ecfff}
+#term-in-row{display:flex;align-items:center;border-top:1px solid var(--border)}
+#term-prompt{padding:8px 0 8px 10px;color:var(--green);font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;white-space:pre}
+#term-in{flex:1;background:transparent;border:0;color:var(--text);outline:none;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;padding:8px 10px;min-width:0}
+.hintline{font-size:12px;color:var(--dim);margin-top:6px}
+#pc-card{background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px}
+#pc-card h4{margin:0 0 8px}
+#pc-card label{display:block;font-size:12px;color:var(--dim);margin:6px 0}
+#pc-card input{width:100%;background:#0d1117;border:1px solid var(--border);color:var(--text);border-radius:6px;padding:7px 9px;font-size:13px;font-family:ui-monospace,monospace}
+.step{border:1px solid var(--border);border-radius:8px;padding:9px 10px;margin:8px 0;background:var(--panel2)}
+.step.done{border-color:var(--green)}
+.step .step-t{display:flex;align-items:center;gap:8px}
+.step .n{background:#21262d;border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;flex:none}
+.step.done .n{background:var(--green);color:#04120a;font-weight:700}
+.step .why{margin-top:6px}
+.step .whybody{font-size:12.5px;color:var(--dim);background:#0d1117;border:1px solid var(--border);border-radius:6px;padding:8px;margin-top:6px}
+.step pre{background:#000;border:1px solid var(--border);border-radius:6px;padding:8px;font-size:12px;overflow-x:auto}
+.step details.cmds{margin-top:6px;font-size:12.5px}
+.step details.cmds summary{cursor:pointer;color:var(--blue)}
+.progress{height:6px;background:#21262d;border-radius:3px;margin:8px 0}
+.progress>i{display:block;height:100%;background:var(--blue);border-radius:3px;transition:width .3s}
+.checkmsg{font-size:12.5px;margin-top:6px}
+.checkmsg.ok{color:var(--green)} .checkmsg.no{color:var(--red)}
+details.hint{border:1px solid var(--border);border-radius:6px;padding:8px;margin:6px 0;background:var(--panel2);font-size:13px}
+details.hint summary{cursor:pointer;color:var(--orange);font-weight:600}
+.verifybox{margin-top:8px;padding:10px;border-radius:8px;font-size:13px}
+.verifybox.ok{background:rgba(63,185,80,.12);border:1px solid var(--green)}
+.verifybox.no{background:rgba(248,81,73,.12);border:1px solid var(--red)}
+.solved{background:rgba(63,185,80,.12);border:1px solid var(--green);border-radius:8px;padding:10px;margin-top:8px;font-weight:600}
+.tunnelbar{display:flex;gap:8px;margin:8px 0;font-size:12px;flex-wrap:wrap}
+.phase{border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--dim)}
+.phase.up{border-color:var(--green);color:var(--green);font-weight:700}
+.phase.down{border-color:var(--red);color:var(--red);font-weight:700}
+footer{padding:14px;text-align:center;color:var(--dim);font-size:12px;border-top:1px solid var(--border)}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><polygon points="13,1 24,7.5 24,18.5 13,25 2,18.5 2,7.5" fill="none" stroke="#2f81f7" stroke-width="2"/><circle cx="13" cy="13" r="4" fill="#2f81f7"/></svg>
+    <span>Interstitium Labs</span>
+  </div>
+  <div class="sim-title"><b>Site-to-Site VPN</b> · Network Simulator · IT Infrastructure Assessment Prep</div>
+  <nav class="modes" id="modeNav">
+    <button data-m="guided" class="active">Guided</button>
+    <button data-m="challenge">Challenge</button>
+    <button data-m="free">Free Lab</button>
+  </nav>
+</header>
+
+<main class="layout">
+  <section>
+    <div class="card">
+      <div class="row">
+        <h2>Topology</h2>
+        <span class="legend">
+          <span>Site A: 10.1.1.0/24</span><span>Site B: 10.2.2.0/24</span>
+          <span><span class="dotk" style="background:#3fb950"></span>link up</span>
+          <span><span class="dotk" style="background:#f85149"></span>link down</span>
+        </span>
+        <span class="spacer"></span>
+        <button class="ghost sm" id="resetLab">Reset lab</button>
+      </div>
+      <svg id="topo" viewBox="0 0 800 430" role="img" aria-label="Network topology"></svg>
+      <div class="tunnelbar">
+        <span class="phase" id="ph1">Phase 1 (IKE): down</span>
+        <span class="phase" id="ph2">Phase 2 (IPsec): down</span>
+      </div>
+      <div class="row" id="pktButtons" style="margin-top:6px"></div>
+      <p class="dim small">Traffic is plaintext on each LAN and ESP-encrypted across the internet (lock icon). Run <b>show crypto isakmp sa</b> / <b>show crypto ipsec sa</b> on either router after establishing the tunnel.</p>
+    </div>
+    <div class="card">
+      <div class="row"><h3>Packet log</h3><span class="spacer"></span><button class="ghost sm" id="clearLog">Clear</button></div>
+      <div id="log" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <aside>
+    <div class="card side-tabs">
+      <div class="tabs">
+        <button data-t="tasks" class="active">Tasks</button>
+        <button data-t="cli">CLI</button>
+      </div>
+      <div id="tab-tasks">
+        <div class="progress"><i id="progBar" style="width:0%"></i></div>
+        <div id="panel-guided"></div>
+        <div id="panel-challenge" hidden></div>
+        <div id="panel-free" hidden></div>
+      </div>
+      <div id="tab-cli" hidden>
+        <div id="term-title">CLI — click a device on the topology</div>
+        <div style="height:8px"></div>
+        <div id="pc-card" hidden></div>
+        <div id="term">
+          <div id="term-out"></div>
+          <div id="term-in-row"><span id="term-prompt"></span><input id="term-in" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="CLI input"/></div>
+        </div>
+        <div class="hintline">Type <b>?</b> for commands · <b>↑/↓</b> history · try <b>show crypto map</b></div>
+      </div>
+    </div>
+  </aside>
+</main>
+<footer>Interstitium Labs · Hands-on network training · All simulation runs 100% offline in your browser</footer>
+
+<script src="ios-cli.js"></script>
+<script>
+'use strict';
+/* ============================ shared framework ============================ */
+const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
+const NS='http://www.w3.org/2000/svg';
+const DEV={}, NODES={}, LINKS=[];
+let MODE='guided', termDev=null, hist=[], hi=-1;
+const S={lastResult:null,tunnelUp:false};
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const dI=c=>String(c).replace(/^(fa|gi|eth|vlan|lo|tu|s)(.+)$/, (m,p,r)=>({fa:'Fa',gi:'Gi',eth:'Eth',vlan:'Vlan',lo:'Loopback',tu:'Tunnel',s:'Serial'}[p])+r);
+const nl=id=>NODES[id].label;
+
+function E(n,at,p){const e=document.createElementNS(NS,n);for(const k in at)e.setAttribute(k,at[k]);if(p)p.appendChild(e);return e;}
+function drawIcon(g,type,x,y){
+  if(type==='router'){
+    E('circle',{cx:x,cy:y,r:26,fill:'#161b22',stroke:'#2f81f7','stroke-width':2},g);
+    E('path',{d:`M ${x-14} ${y} L ${x+14} ${y} M ${x} ${y-14} L ${x} ${y+14}`,stroke:'#2f81f7','stroke-width':2,fill:'none'},g);
+    E('path',{d:`M ${x-14} ${y-8} Q ${x} ${y-16} ${x+14} ${y-8} M ${x-14} ${y+8} Q ${x} ${y+16} ${x+14} ${y+8}`,stroke:'#2f81f7','stroke-width':1.6,fill:'none'},g);
+  }else if(type==='switch'){
+    E('rect',{x:x-27,y:y-16,width:54,height:32,rx:7,fill:'#161b22',stroke:'#2f81f7','stroke-width':2},g);
+    E('path',{d:`M ${x-17} ${y-7} h34 M ${x-17} ${y+7} h34 M ${x-9} ${y-7} l-6 7 6 7 M ${x+9} ${y+7} l6 -7 -6 -7`,stroke:'#2f81f7','stroke-width':1.6,fill:'none'},g);
+  }else if(type==='pc'){
+    E('rect',{x:x-20,y:y-24,width:40,height:28,rx:3,fill:'#161b22',stroke:'#8b949e','stroke-width':2},g);
+    E('rect',{x:x-14,y:y-18,width:28,height:16,fill:'#0d1117',stroke:'#30363d'},g);
+    E('path',{d:`M ${x-8} ${y+4} h16 M ${x} ${y+4} v7 M ${x-11} ${y+11} h22`,stroke:'#8b949e','stroke-width':2,fill:'none'},g);
+  }else if(type==='cloud'){
+    E('ellipse',{cx:x,cy:y,rx:36,ry:21,fill:'#161b22',stroke:'#8b949e','stroke-width':2},g);
+    E('ellipse',{cx:x-12,cy:y-6,rx:16,ry:11,fill:'#161b22',stroke:'#8b949e','stroke-width':1.5},g);
+    E('ellipse',{cx:x+12,cy:y-6,rx:16,ry:11,fill:'#161b22',stroke:'#8b949e','stroke-width':1.5},g);
+  }else if(type==='srv'){
+    E('rect',{x:x-20,y:y-19,width:40,height:38,rx:4,fill:'#161b22',stroke:'#8b949e','stroke-width':2},g);
+    E('circle',{cx:x-10,cy:y-9,r:2.4,fill:'#3fb950'},g);E('circle',{cx:x-10,cy:y+1,r:2.4,fill:'#3fb950'},g);
+    E('rect',{x:x-4,y:y-12,width:16,height:3,fill:'#30363d'},g);E('rect',{x:x-4,y:y-5,width:16,height:3,fill:'#30363d'},g);
+  }
+}
+function renderTopo(){
+  const svg=$('#topo'); svg.innerHTML='';
+  const linkL=E('g',{},svg), dotL=E('g',{},svg), nodeL=E('g',{},svg), pktL=E('g',{id:'pkt-layer'},svg);
+  LINKS.forEach(L=>{
+    const a=NODES[L.a], b=NODES[L.b];
+    E('line',{x1:a.x,y1:a.y,x2:b.x,y2:b.y,stroke:'#3a424c','stroke-width':3},linkL);
+    const mx=(a.x+b.x)/2, my=(a.y+b.y)/2;
+    L.dot=E('circle',{cx:mx,cy:my,r:6.5,fill:'#3fb950',stroke:'#0d1117','stroke-width':2},dotL);
+    if(L.label){const t=E('text',{x:mx,y:my-13,'text-anchor':'middle',fill:'#8b949e','font-size':11},linkL);t.textContent=L.label;}
+  });
+  Object.values(NODES).forEach(n=>{
+    const g=E('g',{class:'node',tabindex:'0',role:'button','aria-label':n.label},nodeL);
+    drawIcon(g,n.type,n.x,n.y);
+    const t=E('text',{x:n.x,y:n.y+46,'text-anchor':'middle',fill:'#e6edf3','font-size':13,'font-weight':700},g);t.textContent=n.label;
+    if(n.sub){const s=E('text',{x:n.x,y:n.y+60,'text-anchor':'middle',fill:'#8b949e','font-size':11},g);s.textContent=n.sub;}
+    const open=()=>selectDevice(n.id);
+    g.addEventListener('click',open);
+    g.addEventListener('keydown',ev=>{if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();open();}});
+  });
+  refreshLinks();
+}
+function refreshLinks(){
+  LINKS.forEach(L=>{
+    let up=true;
+    [['a','aIf'],['b','bIf']].forEach(([side,k])=>{
+      const iface=L[k]; if(!iface) return;
+      const st=DEV[L[side]].getState().interfaces[iface];
+      if(!st||st.shutdown||st.protocol==='down') up=false;
+    });
+    if(L.dot) L.dot.setAttribute('fill',up?'#3fb950':'#f85149');
+  });
+}
+function selectDevice(id){
+  termDev=DEV[id];
+  $('#term-title').textContent=NODES[id].label+' — '+(DEV[id].type==='pc'?'host CLI':'IOS CLI');
+  $('#term-out').innerHTML='';
+  tprint('<span class="dim">Connected to '+esc(NODES[id].label)+'. Type <b>?</b> for available commands.</span>');
+  setPrompt();
+  if(DEV[id].type==='pc'){renderPcCard(id);$('#pc-card').hidden=false;}
+  else $('#pc-card').hidden=true;
+  showSideTab('cli');
+  setTimeout(()=>$('#term-in').focus(),60);
+}
+function tprint(h){const o=$('#term-out');o.insertAdjacentHTML('beforeend','<div>'+h+'</div>');o.scrollTop=o.scrollHeight;}
+function setPrompt(){$('#term-prompt').textContent=termDev?termDev.prompt()+' ':'';}
+function execCmd(raw){
+  if(!termDev){tprint('<span class="dim">Select a device on the topology first.</span>');return;}
+  tprint('<span class="pIn">'+esc(termDev.prompt()+' '+raw)+'</span>');
+  if(raw.trim()){hist.push(raw);hi=hist.length;}
+  let out=''; try{out=termDev.exec(raw)||'';}catch(e){out='% Error: '+e.message;}
+  if(out) tprint(esc(out));
+  setPrompt(); refreshLinks();
+}
+function plog(html,cls){const l=$('#log');const d=document.createElement('div');if(cls)d.className=cls;d.innerHTML=html;l.appendChild(d);l.scrollTop=l.scrollHeight;}
+function lockIcon(layer,x,y){
+  const g=E('g',{transform:`translate(${x},${y-17})`},layer);
+  E('rect',{x:-6.5,y:-1,width:13,height:10,rx:2,fill:'#d29922',stroke:'#0d1117','stroke-width':1},g);
+  E('path',{d:'M -4 -1 v-3.5 a4 4 0 0 1 8 0 v3.5',fill:'none',stroke:'#d29922','stroke-width':2.2},g);
+  return g;
+}
+function animateLegs(legs,done){
+  const layer=$('#pkt-layer'); let i=0;
+  (function next(){
+    if(i>=legs.length){done&&done();return;}
+    const L=legs[i++];
+    plog(L.label,L.cls==='bad'?'bad':(L.cls==='ok'?'ok':'info'));
+    const c=E('circle',{cx:L.x1,cy:L.y1,r:7,fill:L.cls==='bad'?'#f85149':'#2f81f7',stroke:'#fff','stroke-width':1.5},layer);
+    const lk=L.lock?lockIcon(layer,L.x1,L.y1):null;
+    const t0=performance.now(), dur=L.dur||850;
+    (function fr(t){
+      const k=Math.min(1,(t-t0)/dur), x=L.x1+(L.x2-L.x1)*k, y=L.y1+(L.y2-L.y1)*k;
+      c.setAttribute('cx',x);c.setAttribute('cy',y);
+      if(lk)lk.setAttribute('transform',`translate(${x},${y-17})`);
+      if(k<1)requestAnimationFrame(fr);
+      else setTimeout(()=>{c.remove();if(lk)lk.remove();next();},L.hold||500);
+    })(t0);
+  })();
+}
+function showSideTab(t){
+  $$('.side-tabs .tabs button').forEach(b=>b.classList.toggle('active',b.dataset.t===t));
+  $('#tab-tasks').hidden=t!=='tasks'; $('#tab-cli').hidden=t!=='cli';
+}
+function renderPcCard(id){
+  const d=DEV[id], c=d.ipconfig||{};
+  $('#pc-card').innerHTML=
+    '<h4>'+esc(NODES[id].label)+' — IP settings</h4>'+
+    '<label>IP address<input id="pc-ip" value="'+esc(c.ip||'')+'"></label>'+
+    '<label>Subnet mask<input id="pc-mask" value="'+esc(c.mask||'255.255.255.0')+'"></label>'+
+    '<label>Default gateway<input id="pc-gw" value="'+esc(c.gateway||'')+'"></label>'+
+    '<div class="row" style="margin-top:8px"><button class="btn sm" id="pc-apply">Apply</button><span id="pc-extra"></span></div>';
+  $('#pc-apply').onclick=()=>{
+    d.setIp({ip:$('#pc-ip').value.trim()||null,mask:$('#pc-mask').value.trim()||null,gateway:$('#pc-gw').value.trim()||null});
+    tprint('<span class="dim">IP settings applied on '+esc(NODES[id].label)+'.</span>');
+  };
+  if(window.PAGE&&PAGE.pcExtra) PAGE.pcExtra(id);
+}
+function renderSteps(){
+  const box=$('#panel-guided'); box.innerHTML='<h3>Guided lab</h3><p class="dim small">Build a site-to-site IPsec tunnel between R1 and R2: IKE Phase 1, Phase 2 proposals, interesting traffic, crypto map, routes.</p>';
+  STEPS.forEach((s,i)=>{
+    const d=document.createElement('div'); d.className='step'+(s.done?' done':''); d.id='step'+i;
+    d.innerHTML='<div class="step-t"><span class="n">'+(i+1)+'</span><b>'+esc(s.t)+'</b><span class="spacer" style="flex:1"></span><button class="ghost sm" data-chk="'+i+'">Check</button></div>'+
+      '<div class="why"><button class="linklike" data-why="'+i+'">Why this step?</button><div class="whybody" hidden>'+s.why+'</div></div>'+
+      (s.cmds?'<details class="cmds"><summary>Show commands</summary><pre>'+esc(s.cmds)+'</pre></details>':'')+
+      '<div class="checkmsg" id="chkmsg'+i+'"></div>';
+    box.appendChild(d);
+  });
+  updateProgress();
+}
+function updateProgress(){
+  const done=STEPS.filter(s=>s.done).length;
+  $('#progBar').style.width=(STEPS.length?100*done/STEPS.length:0)+'%';
+}
+function checkStep(i){
+  const s=STEPS[i], msg=$('#chkmsg'+i);
+  let ok=false; try{ok=!!s.check();}catch(e){ok=false;}
+  if(ok){s.done=true;$('#step'+i).classList.add('done');msg.className='checkmsg ok';msg.textContent='✓ Step complete.';}
+  else{msg.className='checkmsg no';msg.textContent='Not yet — re-read the step, apply the config, then check again.';}
+  updateProgress();
+}
+function renderChallenge(){
+  const box=$('#panel-challenge');
+  box.innerHTML='<h3>Challenge</h3><p>'+CH.story+'</p><p><b>Goal:</b> '+CH.goal+'</p>'+
+    CH.hints.map((h,i)=>'<details class="hint"><summary>Hint '+(i+1)+'</summary>'+h+'</details>').join('')+
+    '<div class="row" style="margin-top:8px"><button class="btn sm" id="verifyBtn">Verify fix</button></div><div id="verifyOut"></div><div id="solvedBox"></div>';
+  $('#verifyBtn').onclick=()=>{
+    const r=CH.verify(), o=$('#verifyOut');
+    o.innerHTML='<div class="verifybox '+(r.ok?'ok':'no')+'">'+(r.ok?'✓ ':'✗ ')+r.msg+'</div>';
+    if(r.ok)$('#solvedBox').innerHTML='<div class="solved">Challenge solved. Phase 1 up + Phase 2 down almost always means the proxies or transform-sets don\'t mirror — check both ends line by line.</div>';
+  };
+}
+function renderFree(){
+  $('#panel-free').innerHTML='<h3>Free lab</h3><p class="dim small">Blank devices. Build the tunnel from scratch.</p>'+
+    '<pre style="background:#000;border:1px solid var(--border);border-radius:6px;padding:8px;font-size:12px;overflow-x:auto">'+esc(FREE_REF)+'</pre>'+
+    '<div class="row"><button class="ghost sm" id="freeReset">Reset lab</button></div>';
+  $('#freeReset').onclick=()=>initLab('free');
+}
+function renderModePanels(){
+  ['guided','challenge','free'].forEach(m=>{$('#panel-'+m).hidden=MODE!==m;});
+  if(MODE==='guided')renderSteps();
+  if(MODE==='challenge')renderChallenge();
+  if(MODE==='free')renderFree();
+  updateProgress();
+}
+function initLab(mode){
+  MODE=mode;
+  Object.keys(DEV).forEach(k=>delete DEV[k]);
+  Object.keys(NODES).forEach(k=>delete NODES[k]);
+  LINKS.length=0;
+  PAGE.buildTopology(); PAGE.buildDevices(mode);
+  hist=[];hi=-1;termDev=null;
+  $('#term-out').innerHTML='';$('#term-prompt').textContent='';
+  $('#term-title').textContent='CLI — click a device on the topology';
+  $('#log').innerHTML='';$('#pc-card').hidden=true;
+  $('#pktButtons').innerHTML='';
+  (PAGE.packetButtons||[]).forEach(b=>{
+    const btn=document.createElement('button');btn.className='ghost sm';btn.textContent=b.label;
+    btn.onclick=b.run;$('#pktButtons').appendChild(btn);
+  });
+  STEPS.forEach(s=>s.done=false);
+  S.lastResult=null;S.tunnelUp=false;
+  setPhase('ph1','down');setPhase('ph2','down');
+  renderTopo(); renderModePanels(); showSideTab('tasks');
+  plog('<span class="dim">Lab initialized in <b>'+mode+'</b> mode. Click a device to open its CLI.</span>');
+}
+function setPhase(id,st){
+  const e=$('#'+id);
+  e.className='phase '+(st==='up'?'up':st==='down'?'down':'');
+  e.textContent=(id==='ph1'?'Phase 1 (IKE): ':'Phase 2 (IPsec): ')+st;
+}
+
+/* ================================= scenario =============================== */
+function mkDev(id,cfg){DEV[id]=new IOSDevice(cfg);return DEV[id];}
+function runCmds(dev,cmds){cmds.forEach(c=>dev.exec(c));}
+
+const PAGE={};
+PAGE.buildTopology=function(){
+  Object.assign(NODES,{
+    pc1:{id:'pc1',label:'PC1',type:'pc',x:95,y:300,sub:'10.1.1.11'},
+    r1:{id:'r1',label:'R1',type:'router',x:255,y:195,sub:'Site A'},
+    isp:{id:'isp',label:'INTERNET',type:'cloud',x:410,y:195,sub:'198.51.100.0/30'},
+    r2:{id:'r2',label:'R2',type:'router',x:565,y:195,sub:'Site B'},
+    pc2:{id:'pc2',label:'PC2',type:'pc',x:725,y:300,sub:'10.2.2.11'}
+  });
+  LINKS.push(
+    {a:'pc1',b:'r1',aIf:null,bIf:'gi0/0',label:'Gi0/0 · 10.1.1.0/24'},
+    {a:'r1',b:'isp',aIf:'gi0/1',bIf:null,label:'Gi0/1 · 198.51.100.1'},
+    {a:'isp',b:'r2',aIf:null,bIf:'gi0/0',label:'Gi0/0 · 198.51.100.2'},
+    {a:'r2',b:'pc2',aIf:'gi0/1',bIf:null,label:'Gi0/1 · 10.2.2.0/24'}
+  );
+};
+
+const R1_IF=['enable','configure terminal',
+  'interface gi0/0','ip address 10.1.1.1 255.255.255.0','no shutdown','exit',
+  'interface gi0/1','ip address 198.51.100.1 255.255.255.252','no shutdown','exit','end'];
+const R2_IF=['enable','configure terminal',
+  'interface gi0/0','ip address 198.51.100.2 255.255.255.252','no shutdown','exit',
+  'interface gi0/1','ip address 10.2.2.1 255.255.255.0','no shutdown','exit','end'];
+const R1_CRYPTO=['enable','configure terminal',
+  'crypto isakmp policy 10','encryption aes','hash sha','authentication pre-share','group 14','exit',
+  'crypto ipsec transform-set TS esp-aes esp-sha-hmac',
+  'access-list 100 permit ip 10.1.1.0 0.0.0.255 10.2.2.0 0.0.0.255',
+  'crypto map CMAP 10 ipsec-isakmp','set peer 198.51.100.2','set transform-set TS','match address 100','exit',
+  'interface gi0/1','crypto map CMAP','exit',
+  'ip route 10.2.2.0 255.255.255.0 198.51.100.2','end'];
+const R2_CRYPTO=['enable','configure terminal',
+  'crypto isakmp policy 10','encryption aes','hash sha','authentication pre-share','group 14','exit',
+  'crypto ipsec transform-set TS esp-aes esp-sha-hmac',
+  'access-list 100 permit ip 10.2.2.0 0.0.0.255 10.1.1.0 0.0.0.255',
+  'crypto map CMAP 10 ipsec-isakmp','set peer 198.51.100.1','set transform-set TS','match address 100','exit',
+  'interface gi0/0','crypto map CMAP','exit',
+  'ip route 10.1.1.0 255.255.255.0 198.51.100.1','end'];
+const R2_CRYPTO_BROKEN=['enable','configure terminal',
+  'crypto isakmp policy 10','encryption aes','hash sha','authentication pre-share','group 14','exit',
+  'crypto ipsec transform-set TS esp-aes esp-sha-hmac',
+  'access-list 100 permit ip 10.2.0.0 0.0.255.255 10.1.1.0 0.0.0.255',
+  'crypto map CMAP 10 ipsec-isakmp','set peer 198.51.100.1','set transform-set TS','match address 100','exit',
+  'interface gi0/0','crypto map CMAP','exit',
+  'ip route 10.1.1.0 255.255.255.0 198.51.100.1','end'];
+
+PAGE.buildDevices=function(mode){
+  mkDev('r1',{hostname:'R1',type:'router',interfaces:['gi0/0','gi0/1']});
+  mkDev('r2',{hostname:'R2',type:'router',interfaces:['gi0/0','gi0/1']});
+  mkDev('pc1',{hostname:'PC1',type:'pc'});
+  mkDev('pc2',{hostname:'PC2',type:'pc'});
+  const preset=mode!=='guided';
+  DEV.pc1.setIp({ip:'10.1.1.11',mask:'255.255.255.0',gateway:preset?'10.1.1.1':null});
+  DEV.pc2.setIp({ip:'10.2.2.11',mask:'255.255.255.0',gateway:preset?'10.2.2.1':null});
+  DEV.pc1.pingResolver=ip=>ip==='10.2.2.11'?S.tunnelUp:(ip==='10.1.1.1');
+  DEV.pc2.pingResolver=ip=>ip==='10.1.1.11'?S.tunnelUp:(ip==='10.2.2.1');
+  if(mode==='challenge'){
+    runCmds(DEV.r1,R1_IF);runCmds(DEV.r1,R1_CRYPTO);
+    runCmds(DEV.r2,R2_IF);runCmds(DEV.r2,R2_CRYPTO_BROKEN);
+  }
+};
+PAGE.pcExtra=function(id){
+  const cfg=id==='pc1'?['10.1.1.11','10.1.1.1']:['10.2.2.11','10.2.2.1'];
+  const b=document.createElement('button');b.className='ghost sm';b.style.marginLeft='6px';
+  b.textContent='Set '+cfg[0]+' gw '+cfg[1];
+  b.onclick=()=>{DEV[id].setIp({ip:cfg[0],mask:'255.255.255.0',gateway:cfg[1]});renderPcCard(id);
+    tprint('<span class="dim">Addressing applied on '+nl(id)+'.</span>');};
+  $('#pc-extra').appendChild(b);
+};
+
+/* tunnel model */
+function r1s(){return DEV.r1.getState();}
+function r2s(){return DEV.r2.getState();}
+function ikeParams(st){
+  const p=st.isakmp['10'];
+  return p?{enc:p.encryption,hash:p.hash,auth:p.auth,group:p.group}:null;
+}
+function phase1Check(){
+  const a=ikeParams(r1s()), b=ikeParams(r2s());
+  if(!a||!b)return{ok:false,why:'IKE policy 10 missing on one or both peers'};
+  for(const k of['enc','hash','auth','group'])
+    if(!a[k]||a[k]!==b[k])return{ok:false,why:'IKE policy mismatch on '+k+' ('+a[k]+' vs '+b[k]+')'};
+  return{ok:true,params:a};
+}
+function proxyOf(st){
+  const e=(st.acls['100']||[]).find(x=>x.proto==='ip');
+  return e?{src:e.src,srcWc:e.srcWc,dst:e.dst,dstWc:e.dstWc}:null;
+}
+function phase2Check(){
+  const s1=r1s(), s2=r2s();
+  const m1=s1.cryptoMaps['CMAP'], m2=s2.cryptoMaps['CMAP'];
+  if(!m1||!m2)return{ok:false,why:'crypto map CMAP missing on one or both peers'};
+  if(!m1.peer||!m2.peer)return{ok:false,why:'crypto map peer not set'};
+  if(s1.interfaces['gi0/1'].cryptoMap!=='CMAP')return{ok:false,why:'crypto map CMAP not applied to R1 Gi0/1'};
+  if(s2.interfaces['gi0/0'].cryptoMap!=='CMAP')return{ok:false,why:'crypto map CMAP not applied to R2 Gi0/0'};
+  const t1=s1.transformSets[m1.ts], t2=s2.transformSets[m2.ts];
+  if(!t1||!t2)return{ok:false,why:'transform-set missing on one side'};
+  if(t1.transforms.join(' ')!==t2.transforms.join(' '))
+    return{ok:false,why:'transform-set mismatch: "'+t1.transforms.join(' ')+'" vs "'+t2.transforms.join(' ')+'"'};
+  const p1=proxyOf(s1), p2=proxyOf(s2);
+  if(!p1||!p2)return{ok:false,why:'ACL 100 (interesting traffic) missing on one side'};
+  const mirror=p1.src===p2.dst&&p1.srcWc===p2.dstWc&&p1.dst===p2.src&&p1.dstWc===p2.srcWc;
+  if(!mirror)return{ok:false,why:'Phase 2 proxy mismatch — R1 protects '+p1.src+'/'+p1.srcWc+' → '+p1.dst+'/'+p1.dstWc+
+    ' but R2 protects '+p2.src+'/'+p2.srcWc+' → '+p2.dst+'/'+p2.dstWc};
+  return{ok:true,ts:m1.ts,proxy:p1};
+}
+function establishTunnel(){
+  const R1=NODES.r1,I=NODES.isp,R2=NODES.r2;
+  plog('<div class="head">▸ Establishing IPsec tunnel R1 ↔ R2</div>');
+  S.tunnelUp=false;setPhase('ph1','down');setPhase('ph2','down');
+  DEV.r1.setVpn({ike:'down',ipsec:'down'});DEV.r2.setVpn({ike:'down',ipsec:'down'});
+  const p1=phase1Check();
+  const legs=[
+    {x1:R1.x,y1:R1.y,x2:I.x,y2:I.y,cls:'info',label:'<b>R1</b> → IKE Phase 1: Main Mode msg 1/2 — SA proposal (aes / sha / pre-share / group 14)'},
+    {x1:I.x,y1:I.y,x2:R2.x,y2:R2.y,cls:'info',label:'→ <b>R2</b>: proposal received'},
+    {x1:R2.x,y1:R2.y,x2:I.x,y2:I.y,cls:p1.ok?'ok':'bad',hold:700,
+      label:p1.ok?'<b>R2</b> accepts — DH key exchange (msg 3/4)':'<b>R2</b> rejects — '+(p1.why||'policy mismatch')+' ✗'},
+  ];
+  if(!p1.ok){
+    animateLegs(legs,()=>{plog('<span class="bad"><b>✗ Phase 1 failed.</b> '+(p1.why||'')+' — align <b>crypto isakmp policy 10</b> on both peers.</span>');S.lastResult={key:'tunnel',ok:false};});
+    return;
+  }
+  legs.push(
+    {x1:I.x,y1:I.y,x2:R1.x,y2:R1.y,cls:'ok',label:'→ <b>R1</b>: authentication (msg 5/6) — <b>Phase 1 UP</b> (QM_IDLE) ✓'},
+    {x1:R1.x,y1:R1.y,x2:R1.x,y2:R1.y,cls:'ok',label:'<b>R1</b>: <b>show crypto isakmp sa</b> now shows an ACTIVE SA ✓'}
+  );
+  const p2=phase2Check();
+  legs.push({x1:R1.x,y1:R1.y,x2:I.x,y2:I.y,cls:'info',hold:600,
+    label:'<b>R1</b> → IKE Quick Mode: negotiating Phase 2 (proxies + transform-set)'});
+  legs.push({x1:I.x,y1:I.y,x2:R2.x,y2:R2.y,cls:p2.ok?'ok':'bad',hold:700,
+    label:p2.ok?'→ <b>R2</b>: proxies and transform-set agree — <b>Phase 2 UP</b> ✓'
+               :'→ <b>R2</b>: <b>Phase 2 FAILED</b> — '+(p2.why||'')+' ✗'});
+  animateLegs(legs,()=>{
+    DEV.r1.setVpn({ike:'up',localAddr:'198.51.100.1',map:'CMAP'});
+    DEV.r2.setVpn({ike:'up',localAddr:'198.51.100.2',map:'CMAP'});
+    setPhase('ph1','up');
+    if(p2.ok){
+      S.tunnelUp=true;setPhase('ph2','up');
+      const id1=p2.proxy.src+'/'+p2.proxy.srcWc, id2=p2.proxy.dst+'/'+p2.proxy.dstWc;
+      DEV.r1.setVpn({ipsec:'up',iface:'GigabitEthernet0/1',localIdent:id1,remoteIdent:id2});
+      DEV.r2.setVpn({ipsec:'up',iface:'GigabitEthernet0/0',localIdent:id2,remoteIdent:id1});
+      plog('<span class="ok"><b>✓ Tunnel established.</b> Phase 1 QM_IDLE, Phase 2 IPsec SA active. Send traffic with “PC1 → PC2 (via tunnel)”.</span>');
+    }else{
+      setPhase('ph2','down');
+      plog('<span class="bad"><b>✗ Phase 1 is up but Phase 2 failed.</b> '+(p2.why||'')+'. Fix the mismatch, then re-establish.</span>');
+    }
+    S.lastResult={key:'tunnel',ok:p2.ok};
+  });
+}
+function sendVpn(){
+  const P1=NODES.pc1,R1=NODES.r1,I=NODES.isp,R2=NODES.r2,P2=NODES.pc2;
+  plog('<div class="head">▸ PC1 (10.1.1.11) → PC2 (10.2.2.11) via tunnel</div>');
+  if(!S.tunnelUp){
+    plog('<span class="bad"><b>✗ No tunnel.</b> Establish the tunnel first — without Phase 2 there is no encryption path.</span>');
+    S.lastResult={key:'vpn',ok:false};return;
+  }
+  const gwOk=DEV.pc1.ipconfig.gateway==='10.1.1.1';
+  const legs=[
+    {x1:P1.x,y1:P1.y,x2:R1.x,y2:R1.y,cls:gwOk?'info':'bad',label:'<b>PC1</b> → <b>R1</b> — LAN segment, <b>plaintext</b>'+(gwOk?'':' — no gateway ✗')},
+  ];
+  if(!gwOk){animateLegs(legs,()=>{S.lastResult={key:'vpn',ok:false};});return;}
+  legs.push(
+    {x1:R1.x,y1:R1.y,x2:R1.x,y2:R1.y,cls:'ok',hold:700,label:'<b>R1</b>: crypto map CMAP — ACL 100 matches (interesting traffic) → <b>encrypting</b> ✓'},
+    {x1:R1.x,y1:R1.y,x2:I.x,y2:I.y,cls:'ok',lock:true,label:'<b>R1</b> → <b>INTERNET</b> — <b>ESP encrypted</b> (transform-set TS) — opaque to the ISP'},
+    {x1:I.x,y1:I.y,x2:R2.x,y2:R2.y,cls:'ok',lock:true,label:'<b>INTERNET</b> → <b>R2</b> — still encrypted in transit'},
+    {x1:R2.x,y1:R2.y,x2:R2.x,y2:R2.y,cls:'ok',hold:700,label:'<b>R2</b>: IPsec SA match — <b>decrypting</b>, verifying integrity ✓'},
+    {x1:R2.x,y1:R2.y,x2:P2.x,y2:P2.y,cls:'ok',label:'<b>R2</b> → <b>PC2</b> — LAN segment, <b>plaintext</b> delivered ✓'}
+  );
+  animateLegs(legs,()=>{
+    const v1=DEV.r1.vpn,v2=DEV.r2.vpn;
+    DEV.r1.setVpn({encaps:v1.encaps+1});DEV.r2.setVpn({decaps:v2.decaps+1});
+    plog('<span class="ok"><b>✓ Delivered via encrypted tunnel.</b> #pkts encaps/decaps incremented — check <b>show crypto ipsec sa</b>.</span>');
+    S.lastResult={key:'vpn',ok:true};
+  });
+}
+
+PAGE.packetButtons=[
+  {label:'Establish tunnel',run:establishTunnel},
+  {label:'PC1 → PC2 (via tunnel)',run:sendVpn}
+];
+
+const rif=(id,c)=>(id==='r1'?r1s():r2s()).interfaces[c]||{};
+const STEPS=[
+  {t:'Address R1: Gi0/0 10.1.1.1/24, Gi0/1 198.51.100.1/30',why:'Gi0/0 faces the LAN, Gi0/1 faces the internet. The crypto map will bind to the <i>outside</i> interface — addressing comes first.',
+   cmds:'On R1:\nenable\nconfigure terminal\ninterface gi0/0\nip address 10.1.1.1 255.255.255.0\nno shutdown\nexit\ninterface gi0/1\nip address 198.51.100.1 255.255.255.252\nno shutdown\nexit',
+   check:()=>rif('r1','gi0/0').ip==='10.1.1.1'&&rif('r1','gi0/1').ip==='198.51.100.1'},
+  {t:'Address R2: Gi0/0 198.51.100.2/30, Gi0/1 10.2.2.1/24',why:'Mirror image. The two outside addresses (/30) are the tunnel endpoints — each side\'s <b>set peer</b> points at the other\'s.',
+   cmds:'On R2:\nenable\nconfigure terminal\ninterface gi0/0\nip address 198.51.100.2 255.255.255.252\nno shutdown\nexit\ninterface gi0/1\nip address 10.2.2.1 255.255.255.0\nno shutdown\nexit',
+   check:()=>rif('r2','gi0/0').ip==='198.51.100.2'&&rif('r2','gi0/1').ip==='10.2.2.1'},
+  {t:'R1: IKE Phase 1 policy 10',why:'<b>Phase 1 (ISAKMP)</b> builds the secure management channel: agree on encryption, hash, authentication and DH group. Both peers must propose <i>identical</i> parameters or Phase 1 never completes.',
+   cmds:'On R1:\ncrypto isakmp policy 10\nencryption aes\nhash sha\nauthentication pre-share\ngroup 14\nexit',
+   check:()=>{const p=ikeParams(r1s());return p&&p.enc==='aes'&&p.hash==='sha'&&p.auth==='pre-share'&&p.group==='14';}},
+  {t:'R1: transform-set TS (esp-aes esp-sha-hmac)',why:'<b>Phase 2 (IPsec)</b> protects the actual data. The transform-set is the cipher proposal for user traffic — again, both ends must match.',
+   cmds:'crypto ipsec transform-set TS esp-aes esp-sha-hmac',
+   check:()=>{const t=r1s().transformSets['TS'];return t&&t.transforms.join(' ')==='esp-aes esp-sha-hmac';}},
+  {t:'R1: ACL 100 — interesting traffic',why:'The <b>crypto ACL</b> defines the Phase 2 <i>proxies</i>: which source/destination pairs get encrypted. Here: “10.1.1.0/24 talking to 10.2.2.0/24.” R2\'s ACL must be the exact mirror.',
+   cmds:'access-list 100 permit ip 10.1.1.0 0.0.0.255 10.2.2.0 0.0.0.255',
+   check:()=>{const p=proxyOf(r1s());return p&&p.src==='10.1.1.0'&&p.dst==='10.2.2.0';}},
+  {t:'R1: crypto map CMAP + apply to Gi0/1',why:'The <b>crypto map</b> ties it together: peer address, transform-set, and the interesting-traffic ACL. Applying it to Gi0/1 arms the outside interface — traffic matching ACL 100 gets encrypted on the way out.',
+   cmds:'crypto map CMAP 10 ipsec-isakmp\nset peer 198.51.100.2\nset transform-set TS\nmatch address 100\nexit\ninterface gi0/1\ncrypto map CMAP\nexit',
+   check:()=>{const m=r1s().cryptoMaps['CMAP'];return m&&m.peer==='198.51.100.2'&&rif('r1','gi0/1').cryptoMap==='CMAP';}},
+  {t:'R1: route 10.2.2.0/24 via 198.51.100.2',why:'Encryption doesn\'t route. R1 needs a path sending Site-B traffic out Gi0/1, where the crypto map can intercept it.',
+   cmds:'ip route 10.2.2.0 255.255.255.0 198.51.100.2',
+   check:()=>r1s().routes.some(r=>r.net==='10.2.2.0')},
+  {t:'R2: mirror the crypto config',why:'Same four pieces, mirrored: ISAKMP policy 10 (identical params), transform-set TS (identical), ACL 100 with <b>swapped</b> proxies (permit ip 10.2.2.0 … 10.1.1.0 …), crypto map CMAP with peer 198.51.100.1 applied to Gi0/0, plus the return route.',
+   cmds:'On R2:\ncrypto isakmp policy 10\nencryption aes\nhash sha\nauthentication pre-share\ngroup 14\nexit\ncrypto ipsec transform-set TS esp-aes esp-sha-hmac\naccess-list 100 permit ip 10.2.2.0 0.0.0.255 10.1.1.0 0.0.0.255\ncrypto map CMAP 10 ipsec-isakmp\nset peer 198.51.100.1\nset transform-set TS\nmatch address 100\nexit\ninterface gi0/0\ncrypto map CMAP\nexit\nip route 10.1.1.0 255.255.255.0 198.51.100.1',
+   check:()=>phase2Check().ok},
+  {t:'Address PC1 and PC2',why:'Hosts need addresses and gateways before any end-to-end test. Click each PC and use the quick-set button.',
+   cmds:'PC1: 10.1.1.11/24 gw 10.1.1.1 · PC2: 10.2.2.11/24 gw 10.2.2.1',
+   check:()=>DEV.pc1.ipconfig.gateway==='10.1.1.1'&&DEV.pc2.ipconfig.gateway==='10.2.2.1'},
+  {t:'Establish the tunnel',why:'Watch IKE: Phase 1 Main Mode (proposal → DH → auth), then Quick Mode negotiating proxies and the transform-set. The phase badges above the buttons track state.',
+   cmds:'Click “Establish tunnel” and watch the log.',
+   check:()=>S.lastResult&&S.lastResult.key==='tunnel'&&S.lastResult.ok},
+  {t:'Test: PC1 → PC2 through the tunnel',why:'Plaintext on both LANs, ESP-encrypted across the internet (lock icon). Then run <b>show crypto ipsec sa</b> on R1 — the encaps/decaps counters prove traffic used the SA.',
+   cmds:'Click “PC1 → PC2 (via tunnel)”',
+   check:()=>S.lastResult&&S.lastResult.key==='vpn'&&S.lastResult.ok}
+];
+
+const CH={
+  story:'The tunnel was working yesterday. Now <b>show crypto isakmp sa</b> still shows Phase 1 ACTIVE — but no traffic passes, and <b>show crypto ipsec sa</b> shows no active SAs. Someone “cleaned up” an ACL on R2.',
+  goal:'Get Phase 2 up and pass traffic PC1 → PC2.',
+  hints:[
+    'Click “Establish tunnel” and read the Phase 2 failure line carefully — what exactly doesn\'t match?',
+    'Compare the crypto ACLs: on R1 <b>show access-lists</b>, on R2 <b>show access-lists</b>. Phase 2 proxies must be perfect mirrors.',
+    'R1 protects 10.1.1.0/24 → 10.2.2.0/24. R2\'s ACL 100 should protect 10.2.2.0/24 → 10.1.1.0/24. Delete and re-add it (<b>no access-list 100</b>), then re-establish.'
+  ],
+  verify:()=>{
+    const p2=phase2Check();
+    if(!p2.ok)return{ok:false,msg:'Phase 2 still down: '+(p2.why||'check the proxies')};
+    return{ok:true,msg:'Proxies mirror and transform-sets agree. Re-establish the tunnel and pass traffic.'};
+  }
+};
+
+const FREE_REF=[
+'crypto isakmp policy <n>     IKE Phase 1',
+' encryption aes | hash sha | authentication pre-share | group 14',
+'crypto ipsec transform-set <n> esp-aes esp-sha-hmac',
+'access-list 100 permit ip <src> <wc> <dst> <wc>',
+'crypto map <n> <seq> ipsec-isakmp',
+' set peer <ip> | set transform-set <n> | match address 100',
+'interface <if> → crypto map <n>   apply to outside interface',
+'show crypto isakmp sa | show crypto ipsec sa | show crypto map'
+].join('\n');
+
+/* --------------------------------- wiring --------------------------------- */
+$$('#modeNav button').forEach(b=>b.onclick=()=>{
+  $$('#modeNav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');
+  initLab(b.dataset.m);
+});
+$$('.side-tabs .tabs button').forEach(b=>b.onclick=()=>showSideTab(b.dataset.t));
+$('#resetLab').onclick=()=>initLab(MODE);
+$('#clearLog').onclick=()=>{$('#log').innerHTML='';};
+$('#term-in').addEventListener('keydown',e=>{
+  if(e.key==='Enter'){const v=e.target.value;e.target.value='';execCmd(v);}
+  else if(e.key==='ArrowUp'){e.preventDefault();if(hist.length&&hi>0){hi--;e.target.value=hist[hi];}}
+  else if(e.key==='ArrowDown'){e.preventDefault();if(hist.length&&hi<hist.length-1){hi++;e.target.value=hist[hi];}else{hi=hist.length;e.target.value='';}}
+});
+window.PAGE=PAGE;
+initLab('guided');
+</script>
+</body>
+</html>

@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RAID Failure Simulator — Click a Disk to Kill It | Interstitium Labs</title>
+<style>
+  :root{--bg:#0d1117;--card:#161b22;--border:#30363d;--text:#e6edf3;--dim:#8b949e;--blue:#2f81f7;--green:#3fb950;--amber:#d29922;--red:#f85149;--purple:#a371f7}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,'Segoe UI',sans-serif;padding:24px 16px;max-width:1000px;margin:0 auto}
+  header{text-align:center;margin-bottom:24px}
+  .brand{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:14px}
+  .sigil{width:36px;height:36px;border:2px solid var(--blue);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--blue);font-size:15px}
+  .brand-name{font-size:14px;letter-spacing:2px;text-transform:uppercase;color:var(--dim)}
+  h1{font-size:24px;margin-bottom:6px}
+  .sub{color:var(--dim);font-size:14px;max-width:640px;margin:0 auto}
+  .levels{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-bottom:18px}
+  .lvl{background:var(--card);border:2px solid var(--border);border-radius:10px;padding:10px 18px;font-size:15px;font-weight:700;color:var(--text);cursor:pointer;transition:border-color .2s,transform .1s}
+  .lvl:hover{border-color:var(--blue)}
+  .lvl.active{border-color:var(--blue);background:#1c2b45}
+  .lvl:active{transform:scale(.96)}
+  .infobar{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 18px;margin-bottom:18px;font-size:13px;color:var(--dim);line-height:1.7;text-align:center}
+  .infobar b{color:var(--text)} .infobar .mono{font-family:monospace;color:var(--blue)}
+  .array{display:flex;flex-wrap:wrap;gap:14px;justify-content:center;margin-bottom:18px}
+  .disk{width:110px;height:130px;background:var(--card);border:2px solid var(--border);border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;cursor:pointer;transition:border-color .25s,transform .15s;position:relative;user-select:none}
+  .disk:hover{border-color:var(--blue);transform:translateY(-3px)}
+  .disk .ic{font-size:30px}
+  .disk .nm{font-size:12px;font-weight:700}
+  .disk .st{font-size:10px;color:var(--dim)}
+  .disk.ok{border-color:var(--green)}
+  .disk.failed{border-color:var(--red);background:#2a1518;animation:shake .4s}
+  .disk.failed .ic{filter:grayscale(1)}
+  .disk.spare{border-style:dashed;opacity:.85}
+  .disk.spent{opacity:.35;cursor:default}
+  .disk.rebuilding{border-color:var(--amber)}
+  @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+  .blocks{display:flex;gap:3px}
+  .blk{width:10px;height:10px;border-radius:2px;background:var(--green);opacity:.8}
+  .disk.failed .blk{background:var(--red);opacity:.4}
+  .verdict{border-radius:12px;padding:18px;text-align:center;font-size:17px;font-weight:700;margin-bottom:18px;border:2px solid var(--border);background:var(--card);transition:all .3s}
+  .verdict small{display:block;font-weight:400;font-size:13px;color:var(--dim);margin-top:6px}
+  .verdict.ok{border-color:var(--green);color:var(--green)}
+  .verdict.warn{border-color:var(--amber);color:var(--amber)}
+  .verdict.dead{border-color:var(--red);color:var(--red);animation:pulse 1.2s infinite}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(248,81,73,.35)}50%{box-shadow:0 0 0 12px rgba(248,81,73,0)}}
+  .actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:18px}
+  button{background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px 18px;font-size:14px;cursor:pointer;transition:border-color .2s}
+  button:hover{border-color:var(--blue)}
+  button.primary{background:var(--blue);border-color:var(--blue);color:#fff;font-weight:600}
+  button:disabled{opacity:.4;cursor:default}
+  .rebuild-wrap{max-width:520px;margin:0 auto 18px;display:none}
+  .rebuild-wrap.show{display:block}
+  .rbar{height:22px;background:var(--card);border:1px solid var(--border);border-radius:11px;overflow:hidden}
+  .rfill{height:100%;width:0;background:linear-gradient(90deg,var(--amber),var(--green));transition:width .2s}
+  .rlabel{text-align:center;color:var(--dim);font-size:13px;margin-top:8px;font-family:monospace}
+  .key{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;font-size:13px;color:var(--dim);line-height:1.8}
+  .key b{color:var(--text)}
+  .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:baseline}
+  footer{text-align:center;margin-top:28px;color:var(--dim);font-size:12px}
+
+/* accessibility: disable decorative CSS animations for reduced-motion users */
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><div class="sigil">IL</div><div class="brand-name">Interstitium Labs</div></div>
+  <h1>RAID Failure Simulator</h1>
+  <p class="sub">Pick a RAID level, then click disks to fail them. Find out which arrays survive — and watch RAID 5/6 rebuild onto the hot spare.</p>
+</header>
+
+<div class="levels" id="levels"></div>
+<div class="infobar" id="info"></div>
+<div class="array" id="array"></div>
+<div class="verdict" id="verdict">Select a RAID level, then click any disk to fail it.</div>
+
+<div class="rebuild-wrap" id="rwrap">
+  <div class="rbar"><div class="rfill" id="rfill"></div></div>
+  <div class="rlabel" id="rlabel">rebuilding…</div>
+</div>
+
+<div class="actions">
+  <button id="bRandom">Fail a random disk</button>
+  <button id="bRebuild" class="primary" disabled>Rebuild onto hot spare</button>
+  <button id="bReset">Reset array</button>
+</div>
+
+<div class="key">
+  <b>Legend:</b>
+  <span class="dot" style="background:#3fb950"></span>healthy&ensp;
+  <span class="dot" style="background:#f85149"></span>failed&ensp;
+  <span class="dot" style="background:#d29922"></span>rebuilding<br>
+  <b>Rules of thumb:</b> RAID 0 = speed, zero redundancy · RAID 1/10 = mirroring, survives one failure <b>per pair</b> ·
+  RAID 5 = one parity disk, survives <b>any single</b> failure · RAID 6 = double parity, survives <b>any two</b> ·
+  a second failure during a RAID 5 rebuild = data loss (the classic exam trap).
+</div>
+
+<footer>Created by Interstitium Labs · ThreatLocker IT Infrastructure Assessment Prep</footer>
+
+<script>
+(function(){
+  "use strict";
+  var DISKS=8;
+  var LEVELS={
+    "0":{name:"RAID 0",min:2,tol:0,cap:"n × d",desc:"Striping, no redundancy. <b>Any</b> single disk failure = total data loss.",rebuild:false},
+    "1":{name:"RAID 1",min:2,tol:"1 per mirror pair",cap:"(n ÷ 2) × d",desc:"Mirroring. Survives one failure <b>per pair</b> — lose both disks of a pair and the data is gone.",rebuild:false},
+    "5":{name:"RAID 5",min:3,tol:1,cap:"(n − 1) × d",desc:"Striping + rotating parity. Survives <b>any one</b> disk failure. Rebuild stresses the survivors.",rebuild:true},
+    "6":{name:"RAID 6",min:4,tol:2,cap:"(n − 2) × d",desc:"Striping + double parity. Survives <b>any two</b> disk failures. The safe choice for large disks.",rebuild:true},
+    "10":{name:"RAID 10",min:4,tol:"1 per pair (lucky: more)",cap:"(n ÷ 2) × d",desc:"Mirrored stripes. Survives one failure per pair — and can survive several if they land in different pairs.",rebuild:false}
+  };
+  var level="5", failed={}, spareSpent=false, rebuilding=false;
+
+  var levelsEl=document.getElementById("levels"),
+      infoEl=document.getElementById("info"),
+      arrayEl=document.getElementById("array"),
+      verdictEl=document.getElementById("verdict"),
+      bRandom=document.getElementById("bRandom"),
+      bRebuild=document.getElementById("bRebuild"),
+      bReset=document.getElementById("bReset"),
+      rwrap=document.getElementById("rwrap"),
+      rfill=document.getElementById("rfill"),
+      rlabel=document.getElementById("rlabel");
+
+  Object.keys(LEVELS).forEach(function(k){
+    var b=document.createElement("button");
+    b.className="lvl"+(k===level?" active":"");
+    b.textContent="RAID "+k;
+    b.addEventListener("click",function(){
+      level=k; failed={}; spareSpent=false;
+      Array.prototype.forEach.call(levelsEl.children,function(c){c.classList.remove("active");});
+      b.classList.add("active"); render();
+    });
+    levelsEl.appendChild(b);
+  });
+
+  function pairOf(i){ return Math.floor(i/2); }
+
+  function evaluate(){
+    var f=Object.keys(failed).map(Number), L=LEVELS[level], nf=f.length;
+    if(nf===0) return {cls:"", html:"Select a RAID level, then click any disk to fail it."};
+    var dead=false, note="";
+    if(level==="0"){ dead=true; note="RAID 0 has no redundancy — one dead disk kills the stripe."; }
+    else if(level==="1"||level==="10"){
+      var seen={};
+      for(var i=0;i<f.length;i++){ var p=pairOf(f[i]); if(seen[p]){dead=true;break;} seen[p]=1; }
+      note=dead?("Both disks of mirror pair "+(p+1)+" failed — that mirror is gone.")
+               :(nf===1?"The surviving mirror carries the load — array degraded but alive."
+                        :"Failures landed in different pairs — every mirror still has a survivor.");
+    }
+    else if(level==="5"){ dead=nf>1; note=dead?"Two failures exceeds single parity — data loss.":"Single parity absorbed the failure — array degraded."; }
+    else if(level==="6"){ dead=nf>2; note=dead?"Three failures exceeds double parity — data loss.":"Double parity absorbed the failures — array degraded."; }
+    var usable="Usable capacity: <span class='mono'>"+L.cap+"</span> · fault tolerance: <b>"+L.tol+"</b>";
+    if(dead) return {cls:"dead", html:"✗ DATA LOSS<small>"+note+"<br>"+usable+"</small>"};
+    if(nf>0) return {cls:"warn", html:"⚠ SURVIVES — degraded ("+nf+" disk"+(nf>1?"s":"")+" failed).<small>"+note+"<br>"+usable+"</small>"};
+    return {cls:"", html:""};
+  }
+
+  function render(){
+    var L=LEVELS[level];
+    infoEl.innerHTML="<b>"+L.name+"</b> — "+L.desc+"<br>Minimum disks: <b>"+L.min+"</b> · usable capacity: <span class='mono'>"+L.cap+"</span> (d = one disk)";
+    arrayEl.innerHTML="";
+    for(var i=0;i<DISKS;i++){
+      (function(i){
+        var d=document.createElement("div");
+        var isF=!!failed[i];
+        d.className="disk "+(isF?"failed":"ok");
+        d.innerHTML='<div class="ic">'+(isF?"💀":"💽")+'</div><div class="nm">Disk '+(i+1)+
+          ((level==="1"||level==="10")?(" · pair "+(pairOf(i)+1)):"")+'</div>'+
+          '<div class="blocks"><span class="blk"></span><span class="blk"></span><span class="blk"></span><span class="blk"></span></div>'+
+          '<div class="st">'+(isF?"FAILED":"healthy")+'</div>';
+        d.addEventListener("click",function(){
+          if(rebuilding) return;
+          if(failed[i]) delete failed[i]; else failed[i]=1;
+          render();
+        });
+        arrayEl.appendChild(d);
+      })(i);
+    }
+    var s=document.createElement("div");
+    s.className="disk spare "+(spareSpent?"spent":"ok");
+    s.innerHTML='<div class="ic">'+(spareSpent?"▫️":"💽")+'</div><div class="nm">Hot spare</div><div class="st">'+(spareSpent?"consumed":"standby")+'</div>';
+    arrayEl.appendChild(s);
+
+    var ev=evaluate();
+    verdictEl.className="verdict "+ev.cls;
+    verdictEl.innerHTML=ev.html;
+    var nf=Object.keys(failed).length;
+    bRebuild.disabled=!(L.rebuild&&nf>0&&!spareSpent&&ev.cls!=="dead"&&!rebuilding);
+  }
+
+  bRandom.addEventListener("click",function(){
+    if(rebuilding) return;
+    var alive=[];
+    for(var i=0;i<DISKS;i++) if(!failed[i]) alive.push(i);
+    if(!alive.length) return;
+    failed[alive[Math.floor(Math.random()*alive.length)]]=1;
+    render();
+  });
+
+  bReset.addEventListener("click",function(){
+    failed={}; spareSpent=false; rebuilding=false;
+    rwrap.classList.remove("show"); render();
+  });
+
+  bRebuild.addEventListener("click",function(){
+    if(rebuilding) return;
+    rebuilding=true; render();
+    rwrap.classList.add("show");
+    var pct=0, nf=Object.keys(failed).length;
+    rlabel.textContent="recomputing parity from "+(DISKS-nf)+" survivors… 0%";
+    var t=setInterval(function(){
+      pct+=4; if(pct>100) pct=100;
+      rfill.style.width=pct+"%";
+      rlabel.textContent="recomputing parity from "+(DISKS-nf)+" survivors… "+pct+"%";
+      if(pct>=100){
+        clearInterval(t);
+        failed={}; spareSpent=true; rebuilding=false;
+        rlabel.textContent="✓ rebuild complete — hot spare is now a live member";
+        setTimeout(function(){ rwrap.classList.remove("show"); rfill.style.width="0"; },2500);
+        render();
+      }
+    },120);
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>

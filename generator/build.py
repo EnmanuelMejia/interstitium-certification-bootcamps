@@ -228,7 +228,7 @@ def render_chat(entry, tpl, content, build_date):
     return html
 
 
-def hub_card(entry, stats, has_content):
+def hub_card(entry, stats, has_content, theme=""):
     slug = entry["slug"]
     vendor = entry["vendor"]
     vendor_line = vendor["name"] + (" · " + vendor["certs"] if vendor.get("certs") else "")
@@ -236,12 +236,14 @@ def hub_card(entry, stats, has_content):
                        vendor.get("certs", ""), " ".join(entry["domains"])]).lower()
     count_tag = ('<span class="tag accent">%d scenarios</span>' % stats["scenarios"]
                  if has_content else '<span class="badge-soon">IN BUILD</span>')
+    # 2026-10-09 themed-content rollout: data-topic-theme activates il-topic-themes.css.
+    theme_attr = (' data-topic-theme="%s"' % esc(theme)) if theme else ""
     return (
-        '<a class="hub-card" href="%s/" data-group="%s" data-vendor="%s" data-search="%s">'
+        '<a class="hub-card" href="%s/" data-group="%s" data-vendor="%s" data-search="%s"%s>'
         '<p class="vendor">%s</p><h3>%s</h3><p>%s</p>'
         '<div class="hub-meta">%s<span class="tag">%d domains</span>'
         '<span class="go">Open →</span></div></a>'
-    ) % (esc(slug), esc(entry["group"]), esc(vendor["name"]), esc(search),
+    ) % (esc(slug), esc(entry["group"]), esc(vendor["name"]), esc(search), theme_attr,
          esc(vendor_line), esc(entry["title"]), esc(entry["tagline"]),
          count_tag, len(entry["domains"]))
 
@@ -252,11 +254,30 @@ def render_hub(entries, contents, stats_map, tpl, build_date, version):
         if e["group"] not in groups_in_order:
             groups_in_order.append(e["group"])
 
+    # 2026-10-09 themed-content rollout: resolve each bootcamp's theme from its
+    # content.json topicTheme (set by .work/apply_bootcamp_themes.py); fall back
+    # to a slug-keyword map for contentless entries.
+    def _theme_for(entry):
+        c = contents.get(entry["slug"]) or {}
+        if c.get("topicTheme"):
+            return c["topicTheme"]
+        s = entry["slug"]
+        if re.search(r"blockchain|web3", s): return "goldrush"
+        if re.search(r"threatlocker|pentest|secops|blue-team|zero.?trust|siem|soc-|cissp|cism|isc2|comptia-cyber|comptia-security|nsa-codebreaker|dod-8140|nice-framework|fde|active-directory|ml-defense|ai-agent-sec|security-graphs|hackers-arise|cyber", s): return "mr-robot"
+        if re.search(r"llm|nlp|deep-learning|neuroai|nvidia|aws-ml|datascience-ml|analyst-to-ml|ai-lab|ai-product|quantum", s): return "exmachina"
+        if re.search(r"mongodb|^sql$|oracle-db|oracle-sql", s): return "alexandria"
+        if re.search(r"ccna|network-plus|az-700|network", s): return "tron"
+        if re.search(r"aws-|azure|az-|docker|kubernetes|k8s|cka|ckad|terraform|gitops|devops|sre|platform|openshift|vault|consul|oci|m365|ms-fundamentals|comptia-infra|cloud", s): return "steampunk"
+        if re.search(r"linux|rhcsa|rhce|windows-admin|systems|electrician|embedded|comptia-a|comptia-core", s): return "industrial"
+        if re.search(r"python|c-lang|cpp|java|dotnet|spring|dsa|ides|android|ios-interview", s): return "hackers95"
+        if re.search(r"react|fullstack|frontend|web|creative-code", s): return "vaporwave"
+        return "sacredgeo"
+
     sections = []
     for g in groups_in_order:
         gname, gdesc = GROUP_META.get(g, (g.title(), ""))
         cards = "".join(
-            hub_card(e, stats_map[e["slug"]], contents[e["slug"]] is not None)
+            hub_card(e, stats_map[e["slug"]], contents[e["slug"]] is not None, _theme_for(e))
             for e in entries if e["group"] == g)
         sections.append(
             '<section class="group-section" data-group-section="%s">'

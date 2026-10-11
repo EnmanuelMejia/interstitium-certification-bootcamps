@@ -67,6 +67,72 @@ function clearTimers() {
   S.timers = [];
 }
 
+/* ---- TikTok-style inline video standard (2026-10-09) ----
+   Muted autoplay previews: play when scrolled into view, pause when out.
+   Tap/click unmutes + reveals controls. prefers-reduced-motion => poster
+   + native controls, no autoplay. */
+var bcReducedMotion = (typeof window !== 'undefined' && typeof window.matchMedia === 'function') &&
+  window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+function bcVideoPoster(url) {
+  if (!url) return '';
+  var clean = String(url).split('?')[0].split('#')[0];
+  if (/\.mp4$/i.test(clean) && clean.indexOf('/assets/videos/') !== -1) {
+    return clean.replace('/assets/videos/', '/assets/videos/thumbnails/').replace(/\.mp4$/i, '.jpg');
+  }
+  return '';
+}
+function bcAutoplayVideos(root) {
+  var scope = root || document;
+  if (!scope || !scope.querySelectorAll) return;
+  Array.prototype.forEach.call(scope.querySelectorAll('video[data-bc-autoplay]'), function (v) {
+    if (v._bcBound) return; v._bcBound = true;
+    v.muted = true; v.loop = true;
+    if (!v.hasAttribute('playsinline')) v.setAttribute('playsinline', '');
+    if (bcReducedMotion) {
+      v.setAttribute('controls', '');
+      v.removeAttribute('data-bc-autoplay');
+      return; /* poster + native controls, no autoplay */
+    }
+    v.addEventListener('click', function () {
+      if (v.muted) {
+        v.muted = false;
+        v.setAttribute('controls', '');
+        if (v.paused) v.play().catch(function () {});
+      }
+    });
+    /* hide cards whose video file is missing (404) instead of showing a broken player */
+    var card = v.closest ? v.closest('[data-bc-video-card]') : null;
+    if (card) {
+      v.addEventListener('error', function () {
+        card.style.display = 'none';
+        bcPruneEmptyVideoPanels(scope);
+      }, true);
+    }
+    if ('IntersectionObserver' in window) {
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (en) {
+          if (en.isIntersecting) {
+            if (v.getAttribute('preload') === 'none') v.setAttribute('preload', 'metadata');
+            if (v.paused) v.play().catch(function () {});
+          } else {
+            v.pause();
+          }
+        });
+      }, { rootMargin: '200px 0px', threshold: 0.1 });
+      io.observe(v);
+    }
+  });
+}
+function bcPruneEmptyVideoPanels(scope) {
+  Array.prototype.forEach.call((scope || document).querySelectorAll('[data-bc-video-panel]'), function (p) {
+    var visible = false;
+    Array.prototype.forEach.call(p.querySelectorAll('[data-bc-video-card]'), function (c) {
+      if (c.style.display !== 'none') visible = true;
+    });
+    if (!visible) p.style.display = 'none';
+  });
+}
+
 /* ---------------- inline deck stylesheet (selectors not in the theme) ---------------- */
 var DECK_CSS = [
   '.learn-crumb{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 14px}',
@@ -488,12 +554,27 @@ function slideHTML(slide) {
       '<p class="learn-walkthrough">' + esc(slide.walkthrough || '') + '</p>' +
       transcriptHTML(slide.narration) + '</div>';
   } else if (slide.kind === 'figure') {
-    /* enterprise CBT: embedded media[] diagram (SVG <img> + caption) */
+    /* enterprise CBT: embedded media[] diagram (SVG <img> + caption) or
+       original animation video (<video> + preview label) */
     var m = slide.media || {};
+    var mediaInner = '';
+    if (m.video) {
+      var figPoster = bcVideoPoster(m.video);
+      mediaInner = '<video data-bc-autoplay muted loop playsinline preload="metadata" style="width:100%;max-width:720px;border-radius:8px;background:#000" ' +
+        'aria-label="' + esc(m.alt || slide.heading) + '"' +
+        (figPoster ? ' poster="' + esc(figPoster) + '"' : '') + '>' +
+        '<source src="' + esc(m.video) + '" type="video/mp4">' +
+        (m.captions ? '<track kind="captions" src="' + esc(m.captions) + '" srclang="en" label="English">' : '') +
+        'Your browser does not support the video tag.</video>' +
+        '<p class="small muted">🔇 Muted preview — tap video for sound &amp; controls. ' +
+        '<span class="il-badge il-badge-preview">Preview</span> ' +
+        'Original Interstitium Labs animation — narration coming soon.</p>';
+    } else {
+      mediaInner = '<img src="./' + esc(m.svg) + '" alt="' + esc(m.alt || slide.heading) + '" loading="lazy" />';
+    }
     h = '<div class="learn-slide"><p class="eyebrow">DIAGRAM</p>' +
       '<h3>' + esc(slide.heading) + '</h3>' +
-      '<figure class="learn-media-figure">' +
-      '<img src="./' + esc(m.svg) + '" alt="' + esc(m.alt || slide.heading) + '" loading="lazy" />' +
+      '<figure class="learn-media-figure">' + mediaInner +
       (m.caption ? '<figcaption>' + esc(m.caption) + '</figcaption>' : '') +
       '</figure>' + transcriptHTML(slide.narration || '') + '</div>';
   } else if (slide.kind === 'tryit') {
@@ -552,6 +633,7 @@ function paintSlide() {
   if (!stage) return;
   var slide = deck.slides[deck.idx];
   stage.innerHTML = slideHTML(slide);
+  bcAutoplayVideos(stage);
   if (slide.kind === 'diagram') renderDiagram();
   if (slide.kind === 'code') typeCode(slide);
   if (deck.idx === deck.slides.length - 1) {
@@ -619,6 +701,7 @@ function renderDeck() {
   if (!body) return;
   body.innerHTML = deckHTML();
   paintSlide();
+  bcAutoplayVideos(body);
 }
 function goSlide(i) {
   var n = S.deck.slides.length;
@@ -638,9 +721,36 @@ function sections() {
     lectures: lessons.map(function (l) { return 'c-' + l.domain_id; }),
     lab_ids: [], drill_domain_ids: [] }];
 }
+/* ---- bootcamp animation library: content.json videos[] rendered inline ----
+   Muted autoplay previews (TikTok-style); cards for missing files hide on error. */
+function videosSectionHTML() {
+  var vs = (S.content && S.content.videos) || [];
+  if (!vs.length) return '';
+  var h = '<div class="panel" data-bc-video-panel style="margin-bottom:18px">' +
+    '<p class="eyebrow">ANIMATED PREVIEWS</p>' +
+    '<h3 style="margin:0 0 6px">Course animations</h3>' +
+    '<p class="small muted" style="margin:0 0 12px">🔇 Muted previews play as you scroll — tap any video for sound &amp; controls.</p>' +
+    '<div class="learn-videos" style="display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(280px,1fr))">';
+  for (var i = 0; i < vs.length; i++) {
+    var v = vs[i] || {};
+    var poster = bcVideoPoster(v.url);
+    h += '<div data-bc-video-card>' +
+      '<video data-bc-autoplay muted loop playsinline preload="metadata" style="width:100%;border-radius:8px;background:#000;aspect-ratio:16/9" ' +
+      'aria-label="' + esc(v.title || 'Animation') + '"' +
+      (poster ? ' poster="' + esc(poster) + '"' : '') + '>' +
+      '<source src="' + esc(v.url || '') + '" type="video/mp4">' +
+      (v.captionsUrl ? '<track kind="captions" src="' + esc(v.captionsUrl) + '" srclang="en" label="English">' : '') +
+      'Your browser does not support the video tag.</video>' +
+      '<p style="margin:8px 0 0"><strong>' + esc(v.title || 'Animation') + '</strong>' +
+      (v.durationMin ? ' <span class="small muted">· ' + esc(String(v.durationMin)) + ' min</span>' : '') + '</p>' +
+      (v.blurb ? '<p class="small muted" style="margin:4px 0 0">' + esc(v.blurb) + '</p>' : '') +
+      '</div>';
+  }
+  return h + '</div></div>';
+}
 function overviewHTML() {
   var secs = sections();
-  var h = '<div class="learn-path">';
+  var h = videosSectionHTML() + '<div class="learn-path">';
   for (var i = 0; i < secs.length; i++) {
     var st = sectionStats(secs[i]);
     var totalL = st.lectures.length;
@@ -728,10 +838,12 @@ function render() {
       if (secs[i].id === S.sectionId) sec = secs[i];
     }
     body.innerHTML = sec ? lectureListHTML(sec) : overviewHTML();
+    bcAutoplayVideos(body);
     return;
   }
   S.level = 'overview';
   body.innerHTML = overviewHTML();
+  bcAutoplayVideos(body);
 }
 
 /* ---------------- enterprise CBT: Resources view ----------------
@@ -758,10 +870,25 @@ function showResourcesSection() {
 }
 function resourcesHTML() {
   var r = (S.content && S.content.resources) || null;
-  if (!r) {
+  var h = '<div class="learn-resources">', i, j;
+  /* ---- visual PDF guides (byte-byte-go style, wired as pdfGuides) ---- */
+  var pg = (S.content && S.content.pdfGuides) || [];
+  if (pg.length) {
+    h += '<div class="panel"><p class="eyebrow">VISUAL GUIDES</p>' +
+      '<h3 style="margin:0 0 10px">Step-by-step PDF guides</h3><ul class="learn-links">';
+    for (i = 0; i < pg.length; i++) {
+      var g = pg[i];
+      h += '<li><a href="' + esc(g.url || '#') + '" target="_blank" rel="noopener noreferrer">' +
+        esc(g.title || 'Guide') + '</a>' +
+        '<br><span style="color:var(--muted);font-size:13px">' +
+        esc(g.pages || '?') + ' pages' + (g.animated ? ' · animated' : '') +
+        (g.blurb ? ' — ' + esc(g.blurb) : '') + '</span></li>';
+    }
+    h += '</ul></div>';
+  }
+  if (!r && !pg.length) {
     return brandedEmpty('Reference resources for this path are still being written.');
   }
-  var h = '<div class="learn-resources">', i, j;
   var cs = r.cheatsheet;
   if (cs && cs.sections && cs.sections.length) {
     h += '<div class="panel"><p class="eyebrow">CHEAT SHEET</p><h3 style="margin:0 0 10px">' +

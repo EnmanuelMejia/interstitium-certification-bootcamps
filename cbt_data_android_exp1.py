@@ -1,0 +1,268 @@
+#!/usr/bin/env python3
+"""Expansion lessons/scenarios for existing android-interview domains, part A.
+
+Covers: android-kotlin-core, android-framework, android-coroutines
+(5 lessons each) + 3 extra scenarios. Merges part B on call.
+"""
+from cbt_builder import L, S
+
+def _build_part_a():
+    lessons = []
+    scenarios = {}  # did -> [scenario dicts]
+
+    def add_lessons(did, specs):
+        for sp in specs:
+            lessons.append(L(did, *sp))
+
+    def add_scenarios(did, specs):
+        scenarios.setdefault(did, []).extend(S(did, *sp) for sp in specs)
+
+    # ---------- android-kotlin-core ----------
+    did = "android-kotlin-core"
+    add_lessons(did, [
+        ("Null Safety: Ending the Billion-Dollar Mistake",
+         ["Kotlin's type system distinguishes nullable (String?) from non-null (String) at compile time — the NPE moves from runtime crash to compile error",
+          "Safe call (?.), Elvis (?:), and non-null assertion (!!) — prefer the first two; !! is a code smell that reintroduces the crash",
+          "let with safe calls: user?.let { ... } executes the block only when non-null",
+          "Platform types (String!) from Java interop: the compiler cannot guarantee nullability — treat every Java return as suspect and null-check at the boundary",
+          "lateinit vs nullable var vs lazy: choose by lifecycle — lateinit for injected fields, lazy for expensive computed values, nullable for genuinely absent state"],
+         "// Safe: compile-time guaranteed\nfun greet(user: User?) = \"Hello, ${user?.name ?: \"guest\"}\"\n// Platform type from Java: assume hostile\nval token: String = prefs.getString(\"t\", null) ?: error(\"missing token\")\n// Scope it\nuser?.let { analytics.trackLogin(it.id) }",
+         "The greet function shows the idiom: safe call plus Elvis collapses null handling into one expression with no branches. The Java interop line is the interview trap — getString returns a platform type, so the Elvis with error() converts the uncertainty into an explicit decision at the boundary instead of a crash three screens later.",
+         ["!! scattered through the codebase — every one is a deferred crash; replace with explicit handling",
+          "Trusting platform types from Java — null-check at the boundary, not deep in business logic",
+          "Overusing nullable vars for state that has a real default — prefer non-null with a sensible initial value"],
+         "Find three !! operators in a sample codebase and rewrite each with safe-call/Elvis or an explicit error."),
+        ("Data Classes, Sealed Classes, and Plain Classes",
+         ["Data classes auto-generate equals, hashCode, toString, copy — use them for value holders (DTOs, UI state snapshots); a plain class is for behavior and identity",
+          "Sealed classes restrict hierarchies to known subtypes: the compiler enforces exhaustive when — the standard for UI state (Loading, Success, Error)",
+          "Sealed interface vs sealed class vs enum: interface for multi-inheritance flexibility, class for shared state, enum when cases carry no data",
+          "copy() enables immutable state updates: state.copy(isLoading = false) — the foundation of UDF in ViewModels",
+          "Destructuring and componentN come free with data classes — convenient, but do not destructure across module boundaries where field order is a hidden contract"],
+         "sealed interface FeedUiState {\n    data object Loading : FeedUiState\n    data class Success(val items: List<Post>) : FeedUiState\n    data class Error(val msg: String) : FeedUiState\n}\n// Exhaustive when — compiler enforces all branches\nwhen (state) {\n    is FeedUiState.Loading -> showSpinner()\n    is FeedUiState.Success -> showPosts(state.items)\n    is FeedUiState.Error -> showError(state.msg)\n}",
+         "The sealed interface models every possible UI state as a type, and the when expression is compiler-checked exhaustive — add a new subtype and every when breaks until handled. That is the whole point: impossible states become unrepresentable, and the compiler finds the places you forgot.",
+         ["Stringly-typed state (status: String = 'loading') — typos become runtime bugs; sealed hierarchies make them compile errors",
+          "Data class with mutable vars — copy() on mutable state defeats immutability; use val",
+          "Sealed class with dozens of subtypes — a sign the state model needs splitting, not extending"],
+         "Convert a string-status field in a sample ViewModel to a sealed UI state and fix every when to be exhaustive."),
+        ("Extension Functions and Scope Functions",
+         ["Extension functions add behavior without inheritance: fun String.isEmail(): Boolean — resolved statically, so they cannot override and should not fake polymorphism",
+          "Member functions win over extensions on signature clash — extensions are syntactic sugar, not virtual dispatch",
+          "Scope functions: let (null-check plus transform), run (compute with receiver), with (operate on non-null), apply (configure and return receiver), also (side effects, return receiver)",
+          "apply for builders, also for logging and telemetry side effects, let for nullable chains — using the wrong one obscures intent",
+          "Interview trap: extension on a nullable receiver (fun String?.safe()) is legal and often the cleanest null-handling idiom"],
+         "fun String?.toUserId(): String = this?.trim().orEmpty()\n// apply: configure, return the object\nval paint = Paint().apply { color = RED; strokeWidth = 4f }\n// also: side effect, keep the chain\nval user = repo.getUser(id).also { analytics.track(\"user_loaded\") }\n// let: transform nullable\nval domain = email?.let { it.substringAfter(\"@\") } ?: \"unknown\"",
+         "Each scope function answers a different question: apply configures and returns the receiver, also performs a side effect and returns the receiver, let transforms (often a nullable) and returns the lambda result. Picking by intent makes the code self-documenting — a reader knows apply means configuration without reading the body.",
+         ["Nesting scope functions 4 deep — the receiver/it confusion becomes unreadable; extract a named function",
+          "Extension functions that should be members — if it needs private state, it belongs inside the class",
+          "Shadowing: an extension named like a member misleads readers into expecting virtual dispatch"],
+         "Rewrite a 5-line null-check-and-configure block using let and apply, then compare readability."),
+        ("Delegation: Composition in One Keyword",
+         ["by delegates interface implementation to a composed object: class Repo(api: Api) : Api by api — composition without boilerplate",
+          "lazy: thread-safe deferred initialization — val config by lazy { loadConfig() } — computed once, on first access",
+          "observable/vetoable: Delegates.observable fires a callback on change — lightweight reactive state without Flow",
+          "Custom delegates via getValue/setValue operators: build once (for example a preference-backed delegate) and reuse everywhere",
+          "Class delegation vs inheritance: prefer by-composition for behavior reuse; inheritance is for true is-a relationships"],
+         "class CachedRepo(private val api: Api) : Api by api {\n    private val cache = mutableMapOf<String, Data>()\n    override suspend fun get(id: String) =\n        cache.getOrPut(id) { api.get(id) } // override only what differs\n}\n// Property delegates\nval token by lazy { secureStore.readToken() }\nvar query by Delegates.observable(\"\") { _, old, new ->\n    if (new != old) search(new)\n}",
+         "CachedRepo delegates the entire Api interface to the wrapped api in one keyword, then overrides only get() to add caching — all other methods forward automatically. The property delegates show the two workhorses: lazy defers expensive reads until needed, observable turns a var into a change-notifier without ceremony.",
+         ["Delegating then overriding everything — if you override all methods, you did not need delegation",
+          "lazy with side effects and NONE mode in multi-threaded code — the default SYNCHRONIZED mode is safe",
+          "observable triggering heavy work (network) on every keystroke — debounce before acting"],
+         "Write a preference-backed delegate: var username by prefs.string(\"username\", \"\") backed by SharedPreferences."),
+        ("Reified Generics and Inline Functions",
+         ["Type erasure: at runtime List<String> is just List — generic type arguments do not survive, so you cannot do arg is T",
+          "reified with inline: inline fun <reified T> parse(json: String): T — the compiler substitutes the real type at each call site",
+          "Use cases: type-safe intent extras, JSON parsing, startActivity<T>() helpers — anywhere you would otherwise pass Class<T>",
+          "inline also enables non-local returns and avoids lambda allocation overhead in hot paths",
+          "Cost: inlining duplicates bytecode at every call site — use for small functions and reified needs, not giant utilities"],
+         "// Without reified: clumsy Class<T> parameter\nfun <T> Fragment.arg(key: String, cls: Class<T>): T\n// With reified: clean call site\ninline fun <reified T : Any> Fragment.arg(key: String): T =\n    requireArguments().get(key) as T\n// Usage: val userId: String = arg(\"userId\")\n// JSON: inline fun <reified T> String.fromJson(): T = gson.fromJson(this, T::class.java)",
+         "The reified version erases the Class parameter from the call site — the compiler inlines the actual type, so T::class.java works. Compare the two signatures: the non-reified one forces every caller to pass String::class.java, the reified one reads like a normal generic function. That call-site cleanliness is why every Android codebase has a reified arg()/fromJson() helper.",
+         ["reified without inline — does not compile; reified requires inlining",
+          "Inlining large functions called from many sites — bytecode bloat; keep inlined functions small",
+          "Using reified where a simple overload would do — do not pay inlining costs for marginal syntax wins"],
+         "Write an inline reified startActivity<T : Activity>() extension on Context and use it to launch an activity."),
+    ])
+    add_scenarios(did, [
+        ("akc-null", "The Platform Type Trap",
+         "Your Kotlin code calls a Java library method declared as String getDisplayName(). In production, it occasionally returns null and your app crashes with an NPE on a non-null Kotlin String.",
+         "What is the correct handling?",
+         ["Treat the platform type as hostile: assign to a nullable (String?) or add an explicit null check / Elvis with a fallback at the interop boundary.",
+          "Wrap every Java call in try/catch NullPointerException.",
+          "Rewrite the Java library in Kotlin.",
+          "Declare the result as String (non-null) — the Java signature says String, so trust it."],
+         0,
+         "The correct approach respects platform types: Java's String compiles to String! — the compiler makes no guarantee. Null-checking or Elvis at the boundary converts uncertainty into an explicit decision. Trusting the signature reintroduces the NPE; try/catch on NPE is exception abuse; rewriting the library is disproportionate.",
+         "What does the ! in String! mean?",
+         ["Handle Java platform types", "Null-check at interop boundaries", "Apply Elvis for fallbacks"], 10,
+         [["Crash", "NPE at greeting.kt:42 — getDisplayName() returned null despite String signature"]]),
+    ])
+
+    # ---------- android-framework ----------
+    did = "android-framework"
+    add_lessons(did, [
+        ("Activity and Fragment Lifecycles",
+         ["Activity order: onCreate -> onStart -> onResume -> onPause -> onStop -> onDestroy; onRestart sits between onStop and onStart on return",
+          "onCreate is for one-time setup (setContentView, ViewModel init); onResume/onPause bracket interactivity (camera, sensors, animations)",
+          "Fragment adds onAttach/onCreateView/onViewCreated/onDestroyView — the view lifecycle is shorter than the fragment lifecycle, the number one source of view-binding leaks",
+          "Clear view bindings in onDestroyView, not onDestroy — the fragment instance can outlive its view across back-stack operations",
+          "Modern guidance: single-Activity architecture with the Navigation component — Activities become entry points, Fragments (or Compose destinations) become screens"],
+         "class DetailFragment : Fragment() {\n    private var _binding: FragmentDetailBinding? = null\n    private val binding get() = _binding!!\n    override fun onCreateView(inf: LayoutInflater, c: ViewGroup?, s: Bundle?) =\n        FragmentDetailBinding.inflate(inf, c, false).also { _binding = it }.root\n    override fun onDestroyView() {\n        super.onDestroyView()\n        _binding = null // view lifecycle ends here; fragment may survive\n    }\n}",
+         "The binding pattern exists because of the lifecycle mismatch: the fragment can sit on the back stack with no view. Nulling _binding in onDestroyView releases the entire view hierarchy; holding it until onDestroy leaks every view through every back-stack stay. The !! on the getter is the one acceptable use — it fails fast during the valid window.",
+         ["Accessing binding after onDestroyView — the classic back-stack crash; null it and guard",
+          "Heavy work in onCreate of every Activity — startup cost multiplies per entry point",
+          "Registering listeners in onResume but unregistering in onDestroy — asymmetric pairing leaks across pause/resume cycles"],
+         "Add lifecycle logging to each callback of a sample Activity, then rotate and background the app and narrate the log."),
+        ("Intents: Explicit, Implicit, and Deep Links",
+         ["Explicit intents name the component (Intent(this, DetailActivity::class.java)) — intra-app navigation, no resolution needed",
+          "Implicit intents declare an action (ACTION_VIEW, ACTION_SEND) — the system resolves handlers; any app can claim them",
+          "Intent filters advertise capabilities in the manifest; android:exported must be explicit on every filtered component",
+          "Deep links route URLs into screens; App Links (verified via assetlinks.json) prove ownership so no other app can hijack your URLs",
+          "Extras are untyped: define const val keys and document types — a mismatched getStringExtra returns null silently"],
+         "// Explicit: internal navigation\nstartActivity(Intent(this, CheckoutActivity::class.java).apply {\n    putExtra(EXTRA_ORDER_ID, orderId)\n})\n// Deep link with verification (App Link)\n<intent-filter android:autoVerify=\"true\">\n    <action android:name=\"android.intent.action.VIEW\" />\n    <category android:name=\"android.intent.category.BROWSABLE\" />\n    <data android:scheme=\"https\" android:host=\"shop.example.com\" />\n</intent-filter>",
+         "Explicit intents are for your own components — direct and safe. The intent-filter with autoVerify turns a deep link into an App Link: Android checks assetlinks.json on your domain, and only your app opens those URLs. Without verification it is a plain deep link any app can claim, which is both a UX and a security problem.",
+         ["Implicit intents for internal navigation — any app can intercept; use explicit internally",
+          "autoVerify without a valid assetlinks.json — verification silently fails and links open in the browser",
+          "Reading extras without defaults — getIntExtra without a default masks missing data as 0"],
+         "Add an App Link intent-filter to a sample app and verify assetlinks.json serves with content-type application/json."),
+        ("Fragments: Transactions and State Loss",
+         ["FragmentManager transactions are async: commit() schedules, executePendingTransactions() forces — state loss happens when you commit after onSaveInstanceState",
+          "IllegalStateException: Can not perform this action after onSaveInstanceState — the framework cannot guarantee the transaction survives process death",
+          "Fixes: commit before state save, use commitAllowingStateLoss only when the UI state is truly disposable, or post the transaction to the next lifecycle event",
+          "Back stack: addToBackStack() makes Back reverse the transaction; without it, Back exits — a UX decision per screen",
+          "Modern alternative: the Navigation component manages transactions, back stack, and deep links declaratively — fewer hand-written transactions, fewer state-loss bugs"],
+         "// Safe commit pattern for async callbacks\nfun showDialogSafely(fm: FragmentManager) {\n    if (fm.isStateSaved) {\n        pendingDialog = true // postpone: state already saved\n    } else {\n        MyDialog().show(fm, \"tag\")\n    }\n}\n// In onResume: if (pendingDialog) { show...; pendingDialog = false }",
+         "The guard is the lesson: async callbacks (network responses, timers) fire whenever they want, including after the framework saved state. Checking isStateSaved before committing — and deferring to onResume when set — eliminates the crash class entirely instead of suppressing it with commitAllowingStateLoss.",
+         ["commitAllowingStateLoss as a habit — it hides the bug; the transaction can still vanish after process death",
+          "Committing transactions from background threads — FragmentManager is main-thread only",
+          "Nested fragments with getFragmentManager instead of childFragmentManager — transactions target the wrong manager"],
+         "Trigger a state-loss crash deliberately (commit in a delayed callback after backgrounding), then fix it with the isStateSaved guard."),
+        ("RecyclerView Internals",
+         ["ViewHolder pattern: views are inflated once and recycled — onCreateViewHolder is rare, onBindViewHolder is constant; expensive work belongs in the former",
+          "Recycling means stale state: every bind must set every visible property — a recycled view remembers the last item's data",
+          "DiffUtil computes minimal updates (insert/move/remove) off the main thread — no more notifyDataSetChanged jank and free item animations",
+          "ListAdapter plus DiffUtil.ItemCallback is the modern default: submitList() diffs on a background thread and animates changes",
+          "View types: getItemViewType for heterogeneous lists — each type gets its own ViewHolder pool; misused types cause ClassCastException on recycle"],
+         "class PostAdapter : ListAdapter<Post, PostVH>(DIFF) {\n    companion object {\n        val DIFF = object : DiffUtil.ItemCallback<Post>() {\n            override fun areItemsTheSame(a: Post, b: Post) = a.id == b.id\n            override fun areContentsTheSame(a: Post, b: Post) = a == b\n        }\n    }\n    override fun onBindViewHolder(h: PostVH, pos: Int) {\n        h.bind(getItem(pos)) // set EVERY visible field — recycled views remember\n    }\n}",
+         "ListAdapter handles the diffing: submitList posts the new list, DiffUtil compares on a background thread using your areItemsTheSame/areContentsTheSame, and only changed rows rebind with animations. The bind comment is the eternal rule — recycled views carry the previous item's state, so bind must be total, not incremental.",
+         ["notifyDataSetChanged on every update — kills animations and rebinds everything; use DiffUtil",
+          "Partial binds (setting text but not image) — recycled views show the wrong image from the previous item",
+          "areItemsTheSame comparing full objects — defeats move detection; compare stable IDs"],
+         "Convert a notifyDataSetChanged adapter to ListAdapter and watch the item animations appear."),
+        ("Configuration Changes and State Survival",
+         ["Rotation destroys and recreates the Activity by default — the framework calls onSaveInstanceState, then rebuilds",
+          "ViewModel survives configuration changes (scoped to the Activity/Fragment lifecycle) — UI state and in-flight work live here, not in the Activity",
+          "onSaveInstanceState Bundle: for transient UI state (scroll position, form input) that must survive process death too — keep it small and parcelable",
+          "rememberSaveable in Compose: the equivalent — survives both rotation and process death via the saved instance state registry",
+          "What ViewModel does NOT survive: process death — persist critical state to DataStore or Room; ViewModel is for config changes, storage is for death"],
+         "class FormViewModel : ViewModel() {\n    var draft by mutableStateOf(\"\") // survives rotation, not process death\n        private set\n}\n// Compose: survives rotation AND process death\n@Composable fun Form() {\n    var draft by rememberSaveable { mutableStateOf(\"\") }\n    TextField(value = draft, onValueChange = { draft = it })\n}",
+         "Two survival tiers: ViewModel and mutableStateOf survive rotation because the ViewModelStore outlives the Activity instance; rememberSaveable goes further by writing to the saved-state registry, surviving process death. The interview answer names both tiers and their limits — and notes that anything the user must never lose goes to disk.",
+         ["Storing everything in onSaveInstanceState — Bundles are small and slow; large data belongs in the ViewModel or storage",
+          "Assuming ViewModel survives process death — it does not; test with Don't keep activities plus backgrounding",
+          "remember without Saveable for form input — rotation wipes the form and users notice"],
+         "Enable Don't keep activities, background your app mid-form, return, and verify which state survived and which did not."),
+    ])
+    add_scenarios(did, [
+        ("afw-config", "Process Death at 2 AM",
+         "QA reports: filling a long form, switching to the camera app, returning — the form is empty and the app restarted. Don't keep activities reproduces it instantly.",
+         "What is the diagnosis and fix?",
+         ["Disable the camera app on test devices.",
+          "The Activity was destroyed for memory; the form lived only in memory. Fix: persist form state — rememberSaveable for UI state plus DataStore/Room for anything the user must never lose. ViewModel alone is not enough.",
+          "Lock the app to portrait so rotation cannot destroy anything.",
+          "Increase the heap so the system never kills the process."],
+         1,
+         "The correct approach names the mechanism: process death, which ViewModels do not survive. rememberSaveable covers UI state across death; durable user input belongs in persistent storage. Orientation locks do not stop process death, heap size does not prevent the low-memory killer, and the camera app is just the trigger.",
+         "What survives process death — ViewModel, or only what you persist?",
+         ["Distinguish config change from process death", "Persist UI state correctly", "Reproduce with Don't keep activities"], 10,
+         [["QA", "Form empty after returning from camera; logcat shows process recreated (new PID)"]]),
+    ])
+
+    # ---------- android-coroutines ----------
+    did = "android-coroutines"
+    add_lessons(did, [
+        ("Suspend Functions and Structured Concurrency",
+         ["suspend marks a function that can pause without blocking a thread — sequential-looking code that does not hold threads hostage",
+          "Structured concurrency: every coroutine runs in a scope; when the scope dies, its children are cancelled — no leaked background work",
+          "launch (fire-and-forget Job) vs async (Deferred with a result) — use async only when you need the return value; await() propagates exceptions",
+          "CoroutineScope hierarchy: viewModelScope and lifecycleScope tie coroutines to UI lifecycles — the default choice for UI work",
+          "Never use GlobalScope in app code — unstructured, uncancelled, untestable"],
+         "// Structured: children cancelled with the scope\nviewModelScope.launch {\n    val user = async { repo.getUser(id) }      // concurrent\n    val posts = async { repo.getPosts(id) }\n    _uiState.value = Success(user.await(), posts.await())\n} // if the ViewModel clears, both requests cancel\n// Sequential suspend calls read top-to-bottom, block no thread\nsuspend fun loadFeed(): Feed {\n    val user = repo.getUser()      // suspends, thread free\n    return repo.getFeed(user.id)\n}",
+         "The two async blocks run concurrently inside the viewModelScope; await() collects both results, and if either throws, the other cancels — structured concurrency in action. The loadFeed function looks synchronous but suspends at each call, freeing the thread. Contrast with callbacks: same concurrency, a tenth of the nesting.",
+         ["GlobalScope.launch for UI work — survives the screen, leaks, and cannot be cancelled coherently",
+          "async without await — exceptions vanish silently until the Deferred is GC'd",
+          "Blocking calls (Thread.sleep, .get()) inside coroutines — defeats the entire purpose; use suspend equivalents"],
+         "Convert a callback-based repository method to a suspend function and call it from viewModelScope."),
+        ("Dispatchers: Main, IO, and Default",
+         ["Dispatchers.Main: the UI thread — updating views and state; Main.immediate avoids a dispatch when already on Main",
+          "Dispatchers.IO: blocking I/O (disk, network blocking calls) — a large thread pool built for blocking",
+          "Dispatchers.Default: CPU-intensive work (sorting, parsing, image processing) — sized to CPU cores",
+          "withContext switches dispatcher mid-coroutine: withContext(Dispatchers.IO) { db.query() } — cheap, structured, no callbacks",
+          "Room and Retrofit suspend functions handle their own threading — do not wrap them in withContext(IO); that is the library's job"],
+         "suspend fun loadAndProcess(id: String): UiModel = withContext(Dispatchers.Default) {\n    val raw = repo.getRaw(id)          // suspend, main-safe by library\n    heavyParse(raw)                     // CPU work on Default\n} // returns to the caller's dispatcher automatically\n// In ViewModel: viewModelScope.launch { _state.value = loadAndProcess(id) }\n// state update lands on Main — viewModelScope is Main by default",
+         "The withContext block moves only the CPU-heavy parse to Default; the suspend repo call was already main-safe. Control returns to the caller's dispatcher (Main, from viewModelScope) after the block, so the state update needs no manual thread hop. The rule: switch dispatchers for the work, not for the call.",
+         ["withContext(Dispatchers.IO) around Retrofit suspend calls — redundant; the library already dispatches",
+          "Updating UI state from Dispatchers.Default — state writes must happen on Main",
+          "Dispatchers.IO for CPU-bound loops — starves the IO pool meant for blocking calls"],
+         "Audit one repository: remove redundant withContext(IO) wrappers around suspend DAO/Retrofit calls."),
+        ("Exception Handling and Supervision",
+         ["A child exception cancels the parent scope and all siblings by default — one failed request kills the whole screen's work",
+          "supervisorScope: children fail independently — use when requests are independent (feed plus notifications plus profile)",
+          "SupervisorJob in a custom scope gives the same isolation for long-lived scopes",
+          "CoroutineExceptionHandler catches uncaught exceptions from launch (not async — async holds them until await)",
+          "Result<T> and runCatching as return values: for per-item resilience where exceptions are data, not crashes"],
+         "// One failure must not kill the screen\nviewModelScope.launch {\n    supervisorScope {\n        val feed = async { repo.getFeed() }\n        val notif = async { repo.getNotifications() }\n        _feed.value = feed.await()                       // may throw\n        _notif.value = runCatching { notif.await() }     // isolated failure\n            .getOrDefault(emptyList())\n    }\n}",
+         "Inside supervisorScope, the feed and notification requests are independent: if notifications fail, the feed still renders. runCatching converts the notification failure into a default empty list — the screen degrades gracefully instead of dying. Without supervisorScope, the notification exception would cancel the feed request too.",
+         ["Catching Exception around the whole scope — masks cancellation; never swallow CancellationException",
+          "CoroutineExceptionHandler on async — it never fires there; exceptions surface at await()",
+          "supervisorScope for dependent requests — if B needs A's result, they are not independent; let failure propagate"],
+         "Wrap two independent loads in supervisorScope and verify one failing still renders the other."),
+        ("StateFlow vs SharedFlow",
+         ["StateFlow: holds a value, replays the latest to new collectors — the UI state holder; always has a value (needs an initial)",
+          "SharedFlow: no value, configurable replay — the event bus; emits events (navigation, toasts, snackbars)",
+          "The event problem: StateFlow replays, so a navigate state retriggers on rotation — one-shot events belong in SharedFlow (replay=0) or a Channel",
+          "Sharing strategies: shareIn(viewModelScope, SharingStarted.WhileSubscribed(5000), replay=1) turns a cold flow hot for the UI",
+          "stateIn converts any Flow to StateFlow — the standard repository-to-ViewModel bridge"],
+         "class Vm(repo: Repo) : ViewModel() {\n    // UI state: StateFlow, always has a value\n    val uiState: StateFlow<UiState> = repo.data\n        .map { UiState.Success(it) }\n        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000),\n            UiState.Loading)\n    // One-shot events: SharedFlow, no replay\n    private val _events = MutableSharedFlow<Event>()\n    val events: SharedFlow<Event> = _events.asSharedFlow()\n}",
+         "Two flows, two jobs: uiState is a StateFlow with Loading as the initial value — collectors always get the current screen state, surviving rotation. _events is a SharedFlow with no replay — a snackbar event emitted while nobody collects is dropped, which is correct for events but would be a bug for state. Mixing them up causes the classic bugs: replayed navigation and lost UI state.",
+         ["One-shot events in StateFlow — rotation replays the navigation event and the user teleports",
+          "SharedFlow for UI state — new collectors (post-rotation) get nothing until the next emission",
+          "SharingStarted.Eagerly in ViewModels — starts work with no collectors; WhileSubscribed(5000) survives quick rotations"],
+         "Convert a LiveData event wrapper (SingleLiveEvent) to SharedFlow and delete the wrapper class."),
+        ("Debounce, Retry, and Flow Patterns",
+         ["debounce(300): wait for a pause in emissions — the search-as-you-type pattern; only the settled query hits the network",
+          "flatMapLatest: switch to the newest query's flow, cancelling the previous — stale results can never overwrite fresh ones",
+          "retryWhen with exponential backoff: transient failures (timeout) retry, permanent ones (401) do not — inspect the exception",
+          "combine vs zip: combine emits on any upstream change (search query plus filters), zip pairs emissions one-to-one",
+          "cancellable(): mark cleanup points in non-cancellable sections so cancellation still propagates"],
+         "// Search-as-you-type: the canonical Flow pipeline\nval results: StateFlow<List<Item>> = query\n    .debounce(300)                          // wait for typing pause\n    .filter { it.length >= 2 }               // ignore stubs\n    .flatMapLatest { repo.search(it) }       // cancel stale requests\n    .retryWhen { cause, attempt ->\n        cause is IOException && attempt < 3   // transient only\n    }\n    .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())",
+         "Read the pipeline as a sentence: queries debounce 300ms, short stubs are filtered, each settled query switches to a fresh search (cancelling the in-flight one), IO failures retry up to 3 times, and the whole thing becomes UI state. flatMapLatest is the key insight — without it, a slow first query overwrites the fast second one.",
+         ["debounce on the result instead of the query — debouncing results delays rendering, not requests",
+          "Retrying 401s — auth failures need re-login, not retries; retry only transient errors",
+          "flatMapConcat for search — queues stale requests instead of cancelling them"],
+         "Build the search pipeline above against a fake repository with artificial delays and verify stale results never win."),
+    ])
+    add_scenarios(did, [
+        ("acr-scope", "The Cancelled Upload",
+         "An upload runs in viewModelScope.launch. The user navigates away mid-upload; the upload continues, then crashes trying to update the destroyed screen's state.",
+         "What is the correct structured-concurrency fix?",
+         ["Use GlobalScope so the upload is independent of the screen.",
+          "Keep the upload in viewModelScope but make the state update null-safe.",
+          "Scope the upload to the work's lifetime: if it must survive the screen, move it to a WorkManager worker or an application-scoped repository; screen-scoped state updates flow through StateFlow that the current screen collects.",
+          "Disable navigation during uploads."],
+         2,
+         "The correct approach matches scope to lifetime: viewModelScope cancelling on navigate-away is correct behavior, not a bug — the bug is screen-lifetime work that should outlive the screen. WorkManager (guaranteed) or an application-scoped operation owns the upload; UI updates flow through state the current screen collects. GlobalScope abandons cancellation; null-safety hides the lifecycle violation; locking navigation punishes users.",
+         "Whose lifetime should the upload have — the screen's, or the work's?",
+         ["Apply structured concurrency", "Scope work to its true lifetime", "Separate work from UI updates"], 10,
+         [["Crash", "Upload callback touches destroyed Fragment's binding after navigate-away"]]),
+    ])
+
+    return lessons, scenarios
+
+
+def build_expansion_android():
+    """Returns (lessons_list, scenarios_dict) for all 7 existing android domains."""
+    lessons, scenarios = _build_part_a()
+    from cbt_data_android_exp2 import build_expansion_android_b
+    l2, s2 = build_expansion_android_b()
+    lessons.extend(l2)
+    for did, lst in s2.items():
+        scenarios.setdefault(did, []).extend(lst)
+    return lessons, scenarios

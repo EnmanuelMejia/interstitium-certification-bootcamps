@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 520" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif">
+  <rect width="800" height="520" fill="#0d1117"/>
+  <text x="400" y="30" text-anchor="middle" fill="#e6edf3" font-size="20" font-weight="600">Firewall ACL — Top-Down, First Match Wins</text>
+  <text x="400" y="52" text-anchor="middle" fill="#8b949e" font-size="12">Each packet walks the rules in order and stops at the FIRST match</text>
+
+  <!-- Rules -->
+  <g font-size="13">
+    <rect id="rule1" x="130" y="110" width="540" height="58" rx="8" fill="#161b22" stroke="#30363d" stroke-width="2">
+      <animate attributeName="stroke" values="#30363d;#da3633;#da3633;#30363d" keyTimes="0.10;0.14;0.40;0.46" dur="18s" repeatCount="indefinite"/>
+    </rect>
+    <text x="150" y="133" fill="#8b949e" font-size="11">RULE 1</text>
+    <text x="150" y="154" fill="#e6edf3" font-weight="600">DENY · src <tspan font-family="monospace">10.0.0.0/8</tspan> → any</text>
+    <text x="640" y="154" text-anchor="end" fill="#8b949e" font-size="11">corp blacklist</text>
+
+    <rect id="rule2" x="130" y="180" width="540" height="58" rx="8" fill="#161b22" stroke="#30363d" stroke-width="2">
+      <animate attributeName="stroke" values="#30363d;#3fb950;#3fb950;#30363d;#30363d;#30363d" keyTimes="0.50;0.56;0.86;0.92;0.94;1" dur="18s" repeatCount="indefinite"/>
+    </rect>
+    <text x="150" y="203" fill="#8b949e" font-size="11">RULE 2</text>
+    <text x="150" y="224" fill="#e6edf3" font-weight="600">ALLOW · any → web-srv <tspan font-family="monospace">TCP/443</tspan></text>
+    <text x="640" y="224" text-anchor="end" fill="#8b949e" font-size="11">HTTPS</text>
+
+    <rect x="130" y="250" width="540" height="58" rx="8" fill="#161b22" stroke="#30363d" stroke-width="2"/>
+    <text x="150" y="273" fill="#8b949e" font-size="11">RULE 3</text>
+    <text x="150" y="294" fill="#e6edf3" font-weight="600">ALLOW · any → web-srv <tspan font-family="monospace">TCP/80</tspan></text>
+    <text x="640" y="294" text-anchor="end" fill="#8b949e" font-size="11">HTTP</text>
+
+    <rect x="130" y="320" width="540" height="58" rx="8" fill="#161b22" stroke="#30363d" stroke-width="2"/>
+    <text x="150" y="343" fill="#8b949e" font-size="11">RULE 4</text>
+    <text x="150" y="364" fill="#e6edf3" font-weight="600">DENY · any → any <tspan fill="#8b949e">(implicit deny-all)</tspan></text>
+  </g>
+
+  <!-- Packet P1: blocked at rule 1 -->
+  <g opacity="0">
+    <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.02;0.42;0.48" dur="18s" repeatCount="indefinite"/>
+    <text x="400" y="84" text-anchor="middle" fill="#f85149" font-size="12" font-weight="600" font-family="monospace">pkt A · 10.1.1.5 → web-srv:443</text>
+    <circle cx="400" cy="92" r="9" fill="#f85149">
+      <animate attributeName="cy" values="92;139" keyTimes="0.03;0.12" dur="18s" repeatCount="indefinite" fill="freeze"/>
+    </circle>
+    <g opacity="0">
+      <animate attributeName="opacity" values="0;1;1;0" keyTimes="0.30;0.36;0.42;0.46" dur="18s" repeatCount="indefinite"/>
+      <rect x="180" y="404" width="440" height="38" rx="19" fill="#da3633" opacity="0.12" stroke="#da3633" stroke-width="2"/>
+      <text x="400" y="428" text-anchor="middle" fill="#da3633" font-size="13" font-weight="700">✗ DENIED at RULE 1 — 10.1.1.5 is inside 10.0.0.0/8</text>
+    </g>
+  </g>
+
+  <!-- Packet P2: passes rule 1, allowed at rule 2 -->
+  <g opacity="0">
+    <animate attributeName="opacity" values="0;1;1;0" keyTimes="0.50;0.52;0.94;1" dur="18s" repeatCount="indefinite"/>
+    <text x="400" y="84" text-anchor="middle" fill="#3fb950" font-size="12" font-weight="600" font-family="monospace">pkt B · 192.168.1.20 → web-srv:443</text>
+    <circle cx="400" cy="92" r="9" fill="#3fb950">
+      <animate attributeName="cy" values="92;209" keyTimes="0.53;0.66" dur="18s" repeatCount="indefinite" fill="freeze"/>
+    </circle>
+    <g opacity="0">
+      <animate attributeName="opacity" values="0;1;1;0" keyTimes="0.55;0.60;0.64;0.68" dur="18s" repeatCount="indefinite"/>
+      <text x="690" y="143" fill="#8b949e" font-size="11">rule 1: no match…</text>
+    </g>
+    <g opacity="0">
+      <animate attributeName="opacity" values="0;1;1;0" keyTimes="0.80;0.86;0.94;0.98" dur="18s" repeatCount="indefinite"/>
+      <rect x="180" y="404" width="440" height="38" rx="19" fill="#3fb950" opacity="0.12" stroke="#3fb950" stroke-width="2"/>
+      <text x="400" y="428" text-anchor="middle" fill="#3fb950" font-size="13" font-weight="700">✓ ALLOWED at RULE 2 — first match wins, evaluation stops</text>
+    </g>
+  </g>
+
+  <text x="400" y="478" text-anchor="middle" fill="#8b949e" font-size="12">Order matters: a broad DENY above a narrow ALLOW silently kills legit traffic · always end with explicit deny-all + logging</text>
+  <text x="400" y="500" text-anchor="middle" fill="#8b949e" font-size="12">Packet A never reached rule 2 even though it "would have" matched — the walk stops at the first hit</text>
+</svg>

@@ -1,0 +1,1165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FortiGate Firewall Simulator — Interstitium Labs</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c2330; --border:#30363d;
+    --accent:#2f81f7; --accent-dim:#1f6feb; --text:#e6edf3; --muted:#8b949e;
+    --green:#3fb950; --red:#f85149; --gold:#d29922; --purple:#a371f7;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  body{margin:0; background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.55; padding-bottom:48px;}
+  header{padding:20px 16px 14px; text-align:center; border-bottom:1px solid var(--border);
+    background:linear-gradient(180deg,#11161d,#0d1117);}
+  .brand{display:flex; align-items:center; justify-content:center; gap:8px;
+    font-size:12px; letter-spacing:3px; text-transform:uppercase; color:var(--accent); font-weight:700;}
+  header h1{margin:8px 0 4px; font-size:22px; font-weight:650;}
+  header p{margin:0; color:var(--muted); font-size:13px;}
+  .wrap{max-width:860px; margin:0 auto; padding:0 14px;}
+  .tabs{display:flex; gap:6px; margin:16px 0 4px; flex-wrap:wrap;}
+  .tab{flex:1 1 0; min-width:110px; padding:10px 6px; text-align:center; cursor:pointer;
+    background:var(--panel); border:1px solid var(--border); border-radius:8px;
+    color:var(--muted); font-weight:600; font-size:13.5px; user-select:none;}
+  .tab.active{background:var(--accent-dim); border-color:var(--accent); color:#fff;}
+  .panel{display:none; margin-top:14px;}
+  .panel.active{display:block;}
+  .card{background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:16px; margin-bottom:14px;}
+  .card h2{margin:0 0 10px; font-size:16px; color:var(--accent);}
+  .card h3{margin:14px 0 6px; font-size:14px; color:var(--text);}
+  .card p{margin:8px 0; font-size:14px;}
+  .card ul{margin:8px 0; padding-left:20px; font-size:14px;}
+  .card li{margin-bottom:6px;}
+  .muted{color:var(--muted);}
+  .logic{border-left:3px solid var(--gold); background:rgba(210,153,34,.08);
+    padding:10px 12px; border-radius:0 8px 8px 0; margin:12px 0; font-size:13.5px;}
+  .logic b{color:var(--gold);}
+  .code{font-family:var(--mono); font-size:12.5px; background:#010409; border:1px solid var(--border);
+    border-radius:8px; padding:10px 12px; overflow-x:auto; white-space:pre; margin:8px 0; line-height:1.6;}
+  .kbd{font-family:var(--mono); background:var(--panel2); border:1px solid var(--border);
+    border-radius:4px; padding:1px 6px; font-size:12.5px;}
+  .btn{display:inline-block; padding:11px 14px; margin-top:10px; font-size:14px; font-weight:700;
+    color:#fff; background:var(--accent); border:none; border-radius:8px; cursor:pointer;}
+  .btn:hover{background:var(--accent-dim);}
+  .btn.secondary{background:var(--panel2); border:1px solid var(--border); color:var(--text);}
+  .btn.secondary:hover{border-color:var(--accent);}
+  .btn.danger{background:transparent; border:1px solid var(--red); color:var(--red);}
+  .btn.small{padding:6px 10px; font-size:12.5px; margin:2px;}
+  .btn:disabled{opacity:.45; cursor:default;}
+  label.fl{display:block; font-size:12.5px; color:var(--muted); margin:10px 0 4px; font-weight:600;}
+  input[type=text], select{width:100%; padding:9px 11px; font-size:14.5px; border-radius:8px;
+    background:#0d1117; border:1px solid var(--border); color:var(--text); font-family:inherit;}
+  input:focus, select:focus{outline:none; border-color:var(--accent);}
+  .row{display:flex; gap:10px; flex-wrap:wrap;}
+  .row > div{flex:1 1 150px;}
+  .checkline{display:flex; align-items:center; gap:8px; font-size:13.5px; margin:6px 0;}
+  .checkline input{width:17px; height:17px; accent-color:var(--accent);}
+  /* terminal */
+  .term{background:#010409; border:1px solid var(--border); border-radius:10px; overflow:hidden; margin-bottom:14px;}
+  .term-bar{display:flex; align-items:center; gap:8px; padding:8px 12px; background:var(--panel2);
+    border-bottom:1px solid var(--border); font-size:12px; color:var(--muted);}
+  .dot{width:10px; height:10px; border-radius:50%;}
+  #term-out{height:340px; overflow-y:auto; padding:12px; font-family:var(--mono); font-size:13px; line-height:1.55;}
+  #term-out .echo{color:var(--text);}
+  #term-out .ok{color:var(--green);}
+  #term-out .err{color:var(--red);}
+  #term-out .info{color:var(--accent);}
+  #term-out .dim{color:var(--muted);}
+  #term-out .warn{color:var(--gold);}
+  .term-inrow{display:flex; align-items:center; gap:6px; padding:10px 12px; border-top:1px solid var(--border); background:#010409;}
+  #term-prompt{font-family:var(--mono); font-size:13px; color:var(--green); white-space:nowrap;}
+  #term-in{flex:1; background:transparent; border:none; color:var(--text); font-family:var(--mono); font-size:13px; padding:4px 0;}
+  #term-in:focus{outline:none;}
+  .hint-box{font-size:12.5px; color:var(--muted); margin-top:8px;}
+  /* policy board */
+  .pol{border:1px solid var(--border); border-radius:10px; background:#010409; padding:12px; margin-bottom:10px;
+    position:relative; transition:border-color .25s, box-shadow .25s;}
+  .pol.evaluating{border-color:var(--gold); box-shadow:0 0 0 2px rgba(210,153,34,.35);}
+  .pol.matched-allow{border-color:var(--green); box-shadow:0 0 0 2px rgba(63,185,80,.4);}
+  .pol.matched-deny{border-color:var(--red); box-shadow:0 0 0 2px rgba(248,81,73,.4);}
+  .pol.shadowed{opacity:.55;}
+  .pol-head{display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
+  .pol-id{font-family:var(--mono); font-weight:700; color:var(--accent); font-size:14px;}
+  .pol-name{font-weight:650; font-size:14px;}
+  .badge{font-size:11px; font-weight:700; letter-spacing:.5px; padding:3px 8px; border-radius:20px; text-transform:uppercase;}
+  .badge.accept{background:rgba(63,185,80,.15); color:var(--green); border:1px solid var(--green);}
+  .badge.deny{background:rgba(248,81,73,.12); color:var(--red); border:1px solid var(--red);}
+  .badge.nat{background:rgba(47,129,247,.12); color:var(--accent); border:1px solid var(--accent);}
+  .badge.utm{background:rgba(163,113,247,.12); color:var(--purple); border:1px solid var(--purple);}
+  .badge.hits{background:var(--panel2); color:var(--muted); border:1px solid var(--border);}
+  .pol-detail{font-family:var(--mono); font-size:12px; color:var(--muted); margin-top:8px; line-height:1.7;}
+  .pol-actions{margin-top:8px; display:flex; gap:4px; flex-wrap:wrap;}
+  /* packet pipeline */
+  .pipe{position:relative; background:#010409; border:1px solid var(--border); border-radius:10px;
+    padding:14px; margin:12px 0 4px; overflow:hidden;}
+  .pipe-lanes{display:flex; align-items:stretch; gap:0; position:relative; min-height:120px;}
+  .zone{flex:1; border:1px dashed var(--border); border-radius:8px; padding:8px; text-align:center; font-size:12px; color:var(--muted);}
+  .zone b{display:block; color:var(--text); font-size:13px; margin-bottom:4px;}
+  .zone .hosts{font-family:var(--mono); font-size:11px;}
+  .fwcol{flex:1.2; border:1px solid var(--accent); border-radius:8px; padding:8px; text-align:center; font-size:12px;}
+  .fwcol b{display:block; color:var(--accent); font-size:13px; margin-bottom:4px;}
+  .pkt{position:absolute; top:56px; width:16px; height:16px; border-radius:50%;
+    background:var(--accent); box-shadow:0 0 12px var(--accent); transition:left 1s linear; z-index:5;}
+  .pkt.dead{background:var(--red); box-shadow:0 0 12px var(--red);}
+  .eval-log{font-family:var(--mono); font-size:12px; background:#010409; border:1px solid var(--border);
+    border-radius:8px; padding:10px 12px; margin-top:10px; max-height:180px; overflow-y:auto; line-height:1.7;}
+  .eval-log .m-ok{color:var(--green);} .eval-log .m-no{color:var(--muted);} .eval-log .m-deny{color:var(--red);}
+  .result-banner{margin-top:10px; padding:12px; border-radius:8px; font-weight:700; font-size:14.5px; display:none;}
+  .result-banner.allow{display:block; background:rgba(63,185,80,.12); border:1px solid var(--green); color:var(--green);}
+  .result-banner.deny{display:block; background:rgba(248,81,73,.12); border:1px solid var(--red); color:var(--red);}
+  .steps{counter-reset:step; margin:10px 0; padding:0; list-style:none;}
+  .steps li{counter-increment:step; padding:10px 10px 10px 44px; position:relative; font-size:13.5px;
+    border:1px solid var(--border); border-radius:8px; margin-bottom:8px; background:#010409;}
+  .steps li::before{content:counter(step); position:absolute; left:10px; top:10px; width:24px; height:24px;
+    border-radius:50%; background:var(--panel2); border:1px solid var(--accent); color:var(--accent);
+    font-weight:700; font-size:13px; display:flex; align-items:center; justify-content:center;}
+  .steps li.done{border-color:var(--green);}
+  .steps li.done::before{background:var(--green); border-color:var(--green); color:#04120a; content:"✓";}
+  .feedback{margin-top:10px; font-size:13.5px; font-weight:600;}
+  .feedback.good{color:var(--green);} .feedback.bad{color:var(--red);}
+  footer{text-align:center; color:var(--muted); font-size:12px; margin-top:28px; padding:0 14px;}
+  footer .brand{color:var(--accent); font-weight:700; letter-spacing:2px; font-size:11px; text-transform:uppercase;}
+  .ana-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:10px 0;}
+  .ana{background:#010409; border:1px solid var(--border); border-radius:8px; padding:10px; font-size:12.5px;}
+  .ana b{color:var(--accent);}
+  @media (max-width:560px){
+    header h1{font-size:19px;}
+    .tab{font-size:12.5px; padding:9px 4px;}
+    #term-out{height:280px; font-size:12px;}
+    .ana-grid{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M12 2 L21 7 V17 L12 22 L3 17 V7 Z" stroke="#2f81f7" stroke-width="1.8"/>
+      <path d="M12 7 L16.5 9.5 V14.5 L12 17 L7.5 14.5 V9.5 Z" fill="#2f81f7" opacity="0.35"/>
+      <circle cx="12" cy="12" r="1.6" fill="#2f81f7"/>
+    </svg>
+    <span>Interstitium Labs</span>
+  </div>
+  <h1>FortiGate Firewall Simulator</h1>
+  <p>IT Infrastructure Assessment Prep &mdash; FortiOS CLI, policy order &amp; NAT, taught from zero</p>
+</header>
+
+<div class="wrap">
+  <div class="tabs" role="tablist">
+    <div class="tab active" data-tab="concepts" role="tab">Concepts</div>
+    <div class="tab" data-tab="terminal" role="tab">CLI Terminal</div>
+    <div class="tab" data-tab="board" role="tab">Policy Board</div>
+    <div class="tab" data-tab="labs" role="tab">Labs</div>
+  </div>
+
+  <!-- ============ CONCEPTS ============ -->
+  <section id="tab-concepts" class="panel active">
+    <div class="card">
+      <h2>1 &middot; What a firewall actually does</h2>
+      <p>Think of a firewall as the <b>bouncer at the door of your network</b>. Every packet of data trying to enter, leave, or cross between network segments has to show the bouncer its ID: <i>where are you from, where are you going, and what are you carrying?</i></p>
+      <p>A <b>next-generation firewall (NGFW)</b> like FortiGate is a bouncer with a brain. A basic firewall only checks the envelope &mdash; source IP, destination IP, port number. An NGFW opens the envelope: it can spot viruses (<b>antivirus</b>), block known attack patterns (<b>IPS &mdash; intrusion prevention</b>), filter websites by category (<b>web filter</b>), and recognize applications (<b>application control</b>). Fortinet bundles these as <b>UTM profiles</b> (Unified Threat Management) that you attach to a policy.</p>
+      <div class="logic"><b>LOGIC CHECK:</b> If a firewall only checked IP addresses, could it stop malware hidden inside an allowed web download? No &mdash; the envelope looks fine. That gap is exactly why NGFWs inspect <i>content</i>, not just headers.</div>
+    </div>
+
+    <div class="card">
+      <h2>2 &middot; Policy order: first match wins</h2>
+      <p>FortiGate evaluates firewall policies <b>top-down, in order, and stops at the first match</b>. It does <i>not</i> keep looking for a "better" match below.</p>
+      <div class="code">policy 1:  LAN -&gt; WAN, service ALL, action DENY     &larr; evaluated first
+policy 2:  LAN -&gt; WAN, service HTTP/HTTPS, action ACCEPT  &larr; never reached!</div>
+      <p>In the example above, web traffic from the LAN is <b>blocked</b> &mdash; policy 1 matches everything from LAN to WAN and denies it, so policy 2 never gets a say. This is the single most common firewall misconfiguration in the field, and it <i>will</i> show up on your assessment.</p>
+      <div class="logic"><b>LOGIC CHECK:</b> Rules are read like a recipe, top to bottom. The golden order is: <b>specific allows at the top, general denies at the bottom</b>. A deny-all at the very bottom is your safety net &mdash; it catches everything you forgot to allow on purpose.</div>
+      <div class="ana-grid">
+        <div class="ana"><b>Top of list</b><br>Specific allow rules (web from LAN, DNS to server&hellip;)</div>
+        <div class="ana"><b>Bottom of list</b><br>Explicit deny-all (action deny, service ALL) so unmatched traffic is logged and dropped</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>3 &middot; UTM profiles: the NGFW brain</h2>
+      <p>When a policy's action is <span class="kbd">accept</span>, you can bolt on inspection profiles. Each one answers a different question about the traffic:</p>
+      <ul>
+        <li><b>Antivirus (AV)</b> &mdash; "Does this file contain known malware?" Scans downloads, email attachments.</li>
+        <li><b>IPS (Intrusion Prevention)</b> &mdash; "Does this traffic match a known attack signature?" Blocks exploits, scans, brute-force patterns.</li>
+        <li><b>Web Filter</b> &mdash; "Is this website in an allowed category?" Blocks gambling, malware sites, etc. by category or URL.</li>
+        <li><b>Application Control</b> &mdash; "Which application is this, really?" Identifies apps even on non-standard ports.</li>
+      </ul>
+      <p>In FortiOS you enable them per-policy (<span class="kbd">set utm-status enable</span>), because deep inspection costs CPU &mdash; you inspect where it matters (user web traffic), not everywhere (backup replication between servers).</p>
+      <div class="logic"><b>LOGIC CHECK:</b> UTM profiles only make sense on <b>accept</b> policies. Inspecting traffic you are about to deny is wasted work &mdash; deny first, inspect what you allow.</div>
+    </div>
+
+    <div class="card">
+      <h2>4 &middot; NAT: one public IP, many private devices</h2>
+      <p>Your LAN uses private addresses (192.168.1.x) that the internet cannot route. <b>NAT (Network Address Translation)</b> rewrites addresses as packets cross the firewall:</p>
+      <ul>
+        <li><b>Source NAT (SNAT)</b> &mdash; outbound. Fifty LAN PCs browse the web; the firewall rewrites every source IP to its single public WAN IP. The internet replies to the firewall, which un-rewrites and delivers. In FortiOS: <span class="kbd">set nat enable</span> on the policy.</li>
+        <li><b>Destination NAT (DNAT / VIP)</b> &mdash; inbound. A public IP:port maps to a private server (<span class="kbd">config firewall vip</span>). Internet users hit 203.0.113.10:443 and reach your DMZ web server at 10.10.10.50:443.</li>
+      </ul>
+      <div class="logic"><b>LOGIC CHECK:</b> NAT is <b>stateful</b> &mdash; the firewall remembers each translation, so reply traffic is un-NATed automatically. You never write a second rule for the return path. If return traffic needed its own rule, every web session would need two policies.</div>
+    </div>
+
+    <div class="card">
+      <h2>5 &middot; Zones, interfaces &amp; direction</h2>
+      <p>FortiGate policies are <b>directional</b>: every policy has a source interface and a destination interface (<span class="kbd">set srcintf</span> / <span class="kbd">set dstintf</span>). Interfaces play zone roles:</p>
+      <div class="code">port1  192.168.1.1/24   LAN  (trusted users)
+port2  203.0.113.2/24   WAN  (untrusted internet)
+port3  10.10.10.1/24    DMZ  (public servers, semi-trusted)</div>
+      <p>A policy <span class="kbd">srcintf port1 dstintf port2</span> governs LAN&rarr;WAN only. Return traffic is handled by the session table, not by a mirror policy. Traffic the <i>firewall itself</i> may receive (ping, HTTPS admin) is controlled separately per-interface with <span class="kbd">set allowaccess</span> &mdash; and you keep that list tiny.</p>
+      <h3>The implicit deny</h3>
+      <p class="muted">After the last policy, FortiOS has a built-in <b>implicit deny</b> &mdash; anything unmatched is dropped silently. Best practice is an <i>explicit</i> deny-all policy at the bottom anyway, so the drop is logged and visible in hit counts instead of vanishing.</p>
+    </div>
+  </section>
+
+  <!-- ============ TERMINAL ============ -->
+  <section id="tab-terminal" class="panel">
+    <div class="card">
+      <h2>FortiOS CLI &mdash; simulated terminal</h2>
+      <p class="muted" style="margin-top:0">A faithful-feeling FortiOS command line. Configure interfaces, policies, VIP NAT, and IPsec VPN, then verify with <span class="kbd">show</span> and <span class="kbd">diagnose</span>. Type <span class="kbd">?</span> anywhere for help. Everything you build here appears live on the Policy Board tab.</p>
+      <div class="term">
+        <div class="term-bar"><span class="dot" style="background:#f85149"></span><span class="dot" style="background:#d29922"></span><span class="dot" style="background:#3fb950"></span><span>FortiGate-60F &mdash; FortiOS v7.4 (simulated)</span></div>
+        <div id="term-out" aria-live="polite"></div>
+        <div class="term-inrow">
+          <span id="term-prompt">FortiGate # </span>
+          <input id="term-in" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="FortiOS command input">
+        </div>
+      </div>
+      <div class="hint-box">Try: <span class="kbd">config firewall policy</span> &rarr; <span class="kbd">edit 2</span> &rarr; <span class="kbd">set srcintf port1</span> &hellip; &rarr; <span class="kbd">next</span> &rarr; <span class="kbd">end</span> &mdash; then <span class="kbd">show firewall policy</span>.</div>
+    </div>
+    <div class="card">
+      <h2>Command quick reference</h2>
+      <div class="code">config system interface            # enter interface config
+config firewall address            # named address objects
+config firewall policy             # the policy table
+config firewall vip                # destination NAT (port forwarding)
+config vpn ipsec phase1-interface  # IKE phase 1 (tunnel negotiation)
+config vpn ipsec phase2-interface  # IPsec phase 2 (traffic selectors)
+
+  edit &lt;id|name&gt;   # create-or-open an entry   delete &lt;id|name&gt;
+  set &lt;key&gt; &lt;value&gt;   # change a field    unset &lt;key&gt;
+  next              # save entry, stay in config    end  # save &amp; exit to root
+  show              # display current table
+  move &lt;id&gt; before|after &lt;id&gt;   # reorder policies (policy table only)
+
+show firewall policy | show system interface | show vpn ipsec phase1-interface
+get system status
+diagnose firewall policy list      # policies + live hit counts
+diagnose vpn tunnel list           # tunnel status
+execute ping 8.8.8.8</div>
+    </div>
+  </section>
+
+  <!-- ============ POLICY BOARD ============ -->
+  <section id="tab-board" class="panel">
+    <div class="card">
+      <h2>Policy list &mdash; top-down, first match wins</h2>
+      <p class="muted" style="margin-top:0">Policies are evaluated from <b>#1 downward</b>. Use &uarr;/&darr; to reorder &mdash; watch how the same packet gets a different verdict when order changes. Hit counts update live.</p>
+      <div id="policy-list"></div>
+      <button class="btn secondary" id="btn-reset-pol">Reset to secure baseline</button>
+    </div>
+
+    <div class="card">
+      <h2>Quick-add policy</h2>
+      <div class="row">
+        <div><label class="fl">Name</label><input type="text" id="qa-name" value="LAN-to-WAN-web"></div>
+        <div><label class="fl">Source interface</label><select id="qa-src"><option>port1</option><option>port3</option><option>port2</option></select></div>
+        <div><label class="fl">Destination interface</label><select id="qa-dst"><option>port2</option><option>port1</option><option>port3</option></select></div>
+      </div>
+      <div class="row">
+        <div><label class="fl">Service</label><select id="qa-svc"><option>HTTP</option><option>HTTPS</option><option>HTTP+HTTPS</option><option>DNS</option><option>SSH</option><option>ALL</option></select></div>
+        <div><label class="fl">Action</label><select id="qa-act"><option value="accept">ACCEPT</option><option value="deny">DENY</option></select></div>
+        <div><label class="fl">Source NAT</label><select id="qa-nat"><option value="enable">enable</option><option value="disable">disable</option></select></div>
+      </div>
+      <label class="fl">UTM profiles (inspect allowed traffic)</label>
+      <div class="checkline"><input type="checkbox" id="qa-av" checked> Antivirus</div>
+      <div class="checkline"><input type="checkbox" id="qa-ips" checked> IPS</div>
+      <div class="checkline"><input type="checkbox" id="qa-wf" checked> Web filter</div>
+      <button class="btn" id="btn-qa">Add policy to bottom of list</button>
+    </div>
+
+    <div class="card">
+      <h2>Packet tester &mdash; watch first-match in action</h2>
+      <div class="row">
+        <div><label class="fl">Source IP</label>
+          <select id="pkt-src">
+            <option value="192.168.1.50">192.168.1.50 (LAN user)</option>
+            <option value="192.168.1.51">192.168.1.51 (LAN user)</option>
+            <option value="10.10.10.50">10.10.10.50 (DMZ server)</option>
+            <option value="198.51.100.9">198.51.100.9 (internet)</option>
+          </select></div>
+        <div><label class="fl">Destination IP</label>
+          <select id="pkt-dst">
+            <option value="93.184.216.34">93.184.216.34 (internet web)</option>
+            <option value="8.8.8.8">8.8.8.8 (internet DNS)</option>
+            <option value="192.168.1.10">192.168.1.10 (LAN server)</option>
+            <option value="10.10.10.50">10.10.10.50 (DMZ web server)</option>
+          </select></div>
+        <div><label class="fl">Service</label>
+          <select id="pkt-svc"><option>HTTPS</option><option>HTTP</option><option>DNS</option><option>SSH</option><option>PING</option></select></div>
+      </div>
+      <button class="btn" id="btn-pkt">Send packet through the firewall</button>
+      <div class="pipe" id="pipe">
+        <div class="pipe-lanes">
+          <div class="zone" id="zone-a"><b>LAN</b><div class="hosts">192.168.1.0/24<br>port1</div></div>
+          <div class="fwcol"><b>FortiGate</b><div class="muted" style="font-size:11px">evaluating policies<br>top &rarr; down</div></div>
+          <div class="zone" id="zone-b"><b>WAN</b><div class="hosts">internet<br>port2</div></div>
+        </div>
+        <div class="pkt" id="pkt-dot" style="left:-30px; display:none;"></div>
+      </div>
+      <div class="eval-log" id="eval-log"><span class="m-no">Packet evaluation log will appear here&hellip;</span></div>
+      <div class="result-banner" id="result-banner"></div>
+    </div>
+  </section>
+
+  <!-- ============ LABS ============ -->
+  <section id="tab-labs" class="panel">
+    <div class="card">
+      <h2>Lab 1 (guided) &mdash; Allow web from LAN to WAN, block everything else</h2>
+      <p>Build it in the <b>CLI Terminal</b> tab (or Quick-add on the Policy Board). The baseline already has an explicit <span class="kbd">deny-all</span> at the bottom &mdash; your job is the allow rule <i>above</i> it.</p>
+      <ol class="steps" id="lab1-steps">
+        <li><span class="kbd">config firewall policy</span> &mdash; enter the policy table.</li>
+        <li><span class="kbd">edit 2</span> &mdash; create policy #2. New policies land at the <b>bottom</b> of the list &mdash; notice where that puts it relative to deny-all.</li>
+        <li>Set the fields: <span class="kbd">set srcintf port1</span>, <span class="kbd">set dstintf port2</span>, <span class="kbd">set service "HTTP" "HTTPS"</span>, <span class="kbd">set action accept</span>, <span class="kbd">set nat enable</span>.</li>
+        <li><span class="kbd">next</span> then <span class="kbd">end</span> &mdash; save and exit.</li>
+        <li><span class="kbd">config firewall policy</span> again, then <span class="kbd">move 2 before 1</span> &mdash; slide your allow rule <b>above</b> deny-all. First match wins, so order is everything.</li>
+        <li>Send an HTTPS packet from 192.168.1.50 on the Policy Board and confirm it is ACCEPTED by your new policy.</li>
+      </ol>
+      <div class="logic"><b>LOGIC CHECK:</b> Why does the allow rule have to be <i>above</i> deny-all? Because evaluation stops at the first match. If deny-all sits on top, your allow rule is decoration &mdash; correct config, wrong order, still broken.</div>
+      <button class="btn" id="btn-lab1">Check my work</button>
+      <div class="feedback" id="lab1-fb"></div>
+    </div>
+
+    <div class="card">
+      <h2>Lab 2 (challenge) &mdash; The case of the dead web browser</h2>
+      <p><b>Incident:</b> "Nobody on the LAN can browse the web since last night's change window. The allow rule is right there in the config!" Load the broken config, diagnose with the packet tester, fix it, then verify.</p>
+      <button class="btn danger" id="btn-broken">Load broken config</button>
+      <div class="logic"><b>LOGIC CHECK:</b> <span class="kbd">show firewall policy</span> tells you what exists; <span class="kbd">diagnose firewall policy list</span> tells you what is <i>firing</i>. When traffic misbehaves, hit counts are your witness &mdash; the rule with climbing hits is the one making the decision.</div>
+      <button class="btn" id="btn-lab2">Verify my fix</button>
+      <div class="feedback" id="lab2-fb"></div>
+    </div>
+  </section>
+</div>
+
+<footer>
+  <div class="brand">Interstitium Labs</div>
+  <p>Created by Interstitium Labs &middot; IT Infrastructure Assessment Prep &middot; FortiGate simulation for study purposes</p>
+</footer>
+
+<script>
+"use strict";
+/* ================= STATE ================= */
+var SVC = {
+  "ALL":  {proto:"ALL",  port:0},
+  "HTTP": {proto:"TCP",  port:80},
+  "HTTPS":{proto:"TCP",  port:443},
+  "DNS":  {proto:"UDP",  port:53},
+  "SSH":  {proto:"TCP",  port:22},
+  "PING": {proto:"ICMP", port:0},
+  "FTP":  {proto:"TCP",  port:21}
+};
+var IFACES0 = {
+  port1:{ip:"192.168.1.1/24", allow:"ping https ssh", desc:"LAN"},
+  port2:{ip:"203.0.113.2/24", allow:"ping",           desc:"WAN"},
+  port3:{ip:"10.10.10.1/24",  allow:"ping",           desc:"DMZ"}
+};
+var ADDR0 = {
+  "all":    {type:"ipmask", val:"0.0.0.0 0.0.0.0"},
+  "LAN-net":{type:"ipmask", val:"192.168.1.0 255.255.255.0"},
+  "DMZ-net":{type:"ipmask", val:"10.10.10.0 255.255.255.0"}
+};
+function baselinePolicies(){
+  return [
+    {id:1, name:"deny-all", srcintf:"port1", dstintf:"port2",
+     srcaddr:["all"], dstaddr:["all"], service:["ALL"],
+     action:"deny", nat:"disable", utm:{}, hits:0, status:"enable"}
+  ];
+}
+var S = {
+  ifaces: JSON.parse(JSON.stringify(IFACES0)),
+  addrs:  JSON.parse(JSON.stringify(ADDR0)),
+  policies: baselinePolicies(),
+  vips: [], p1: [], p2: []
+};
+
+/* ================= TABS ================= */
+var tabs = document.querySelectorAll(".tab");
+var panels = document.querySelectorAll(".panel");
+tabs.forEach(function(t){
+  t.addEventListener("click", function(){
+    tabs.forEach(function(x){x.classList.remove("active");});
+    panels.forEach(function(x){x.classList.remove("active");});
+    t.classList.add("active");
+    document.getElementById("tab-"+t.dataset.tab).classList.add("active");
+  });
+});
+function gotoTab(name){
+  tabs.forEach(function(x){x.classList.toggle("active", x.dataset.tab===name);});
+  panels.forEach(function(x){x.classList.toggle("active", x.id==="tab-"+name);});
+  window.scrollTo(0,0);
+}
+
+/* ================= TERMINAL ================= */
+var termOut = document.getElementById("term-out");
+var termIn = document.getElementById("term-in");
+var termPrompt = document.getElementById("term-prompt");
+var mode = "root";       // "root" or "system interface" | "firewall policy" | ...
+var editing = null;      // {kind, key, draft}
+var hist = [], hIdx = 0;
+
+var KIND_OF = {
+  "system interface":"iface",
+  "firewall address":"addr",
+  "firewall policy":"policy",
+  "firewall vip":"vip",
+  "vpn ipsec phase1-interface":"phase1",
+  "vpn ipsec phase2-interface":"phase2"
+};
+var SHORT_OF = {
+  "system interface":"interface",
+  "firewall address":"address",
+  "firewall policy":"policy",
+  "firewall vip":"vip",
+  "vpn ipsec phase1-interface":"phase1-interface",
+  "vpn ipsec phase2-interface":"phase2-interface"
+};
+var FIELDS = {
+  iface:  ["ip","allowaccess","description","role"],
+  addr:   ["subnet","comment"],
+  policy: ["name","srcintf","dstintf","srcaddr","dstaddr","service","action","schedule","nat","status","utm-av","utm-ips","utm-webfilter"],
+  vip:    ["extip","mappedip","extintf","portforward","extport","mappedport","comment"],
+  phase1: ["interface","peertype","proposal","remote-gw","psksecret","dpd"],
+  phase2: ["phase1name","proposal","src-subnet","dst-subnet","keepalive"]
+};
+
+function tprint(txt, cls){
+  var d = document.createElement("div");
+  if(cls) d.className = cls;
+  d.textContent = txt;
+  termOut.appendChild(d);
+  termOut.scrollTop = termOut.scrollHeight;
+}
+function tprintPre(txt, cls){ // preserve spacing for tables
+  var d = document.createElement("div");
+  if(cls) d.className = cls;
+  d.style.whiteSpace = "pre";
+  d.textContent = txt;
+  termOut.appendChild(d);
+  termOut.scrollTop = termOut.scrollHeight;
+}
+function setPrompt(){
+  var p = "FortiGate # ";
+  if(mode !== "root"){
+    if(editing) p = "FortiGate (" + editing.key + ") # ";
+    else p = "FortiGate (" + SHORT_OF[mode] + ") # ";
+  }
+  termPrompt.textContent = p;
+}
+function fail(){ tprint("Command fail. Return code -1", "err"); }
+function needEdit(){ tprint("Command fail. Return code -1", "err"); tprint("  hint: 'set' needs an entry context -- use 'edit <id|name>' first.", "dim"); }
+
+function cfgHelp(){
+  tprint("edit <id|name>     create or open an entry", "dim");
+  tprint("delete <id|name>   remove an entry", "dim");
+  tprint("set <key> <value>  change a field  (unset <key> to clear)", "dim");
+  tprint("next               save entry, stay in config", "dim");
+  tprint("end                save and exit to root", "dim");
+  tprint("show               display this table", "dim");
+  tprint("Fields here: " + FIELDS[KIND_OF[mode]].join(", "), "info");
+}
+function rootHelp(){
+  tprint("config system interface | config firewall address | config firewall policy", "dim");
+  tprint("config firewall vip | config vpn ipsec phase1-interface | config vpn ipsec phase2-interface", "dim");
+  tprint("show system interface | show firewall address | show firewall policy | show firewall vip", "dim");
+  tprint("show vpn ipsec phase1-interface | show vpn ipsec phase2-interface", "dim");
+  tprint("get system status | diagnose firewall policy list | diagnose vpn tunnel list | execute ping <ip>", "dim");
+}
+
+/* ---------- entries ---------- */
+function getEntries(kind){
+  if(kind==="iface") return S.ifaces;
+  if(kind==="addr") return S.addrs;
+  if(kind==="policy") return S.policies;
+  if(kind==="vip") return S.vips;
+  if(kind==="phase1") return S.p1;
+  if(kind==="phase2") return S.p2;
+  return null;
+}
+function blankDraft(kind, key){
+  if(kind==="policy") return {id:parseInt(key,10), name:"", srcintf:"port1", dstintf:"port2",
+    srcaddr:["all"], dstaddr:["all"], service:["ALL"], action:"accept", schedule:"always",
+    nat:"disable", status:"enable", utm:{}, hits:0};
+  if(kind==="iface") return {ip:"0.0.0.0/0", allow:"", desc:"", role:""};
+  if(kind==="addr") return {type:"ipmask", val:"0.0.0.0 0.0.0.0"};
+  if(kind==="vip") return {extip:"", mappedip:"", extintf:"port2", portforward:"disable", extport:"", mappedport:""};
+  if(kind==="phase1") return {"interface":"port2", peertype:"any", proposal:"aes256-sha256", "remote-gw":"", psksecret:"", dpd:"enable"};
+  if(kind==="phase2") return {phase1name:"", proposal:"aes256-sha256", "src-subnet":"", "dst-subnet":"", keepalive:"enable"};
+  return {};
+}
+function findEntry(kind, key){
+  if(kind==="iface") return S.ifaces[key] || null;
+  if(kind==="addr") return S.addrs[key] || null;
+  if(kind==="policy"){
+    var id = parseInt(key, 10);
+    for(var i=0;i<S.policies.length;i++) if(S.policies[i].id===id) return S.policies[i];
+    return null;
+  }
+  var arr = getEntries(kind);
+  for(var j=0;j<arr.length;j++) if(arr[j].name===key) return arr[j];
+  return null;
+}
+function tokenize(s){
+  var out=[], cur="", q=null;
+  for(var i=0;i<s.length;i++){
+    var c = s[i];
+    if(q){ if(c===q){ q=null; } else { cur += c; } }
+    else if(c==='"' || c==="'"){ q = c; }
+    else if(c===" " || c==="\t"){ if(cur!==""){ out.push(cur); cur=""; } }
+    else { cur += c; }
+  }
+  if(cur!=="") out.push(cur);
+  return out;
+}
+function isIP(s){ return /^(\d{1,3}\.){3}\d{1,3}$/.test(s); }
+
+function applySet(d, kind, field, vals){
+  function bad(m){ return {ok:false, msg:m}; }
+  var v = vals.join(" ");
+  if(kind==="policy"){
+    switch(field){
+      case "name": d.name = v; return {ok:true};
+      case "srcintf": case "dstintf":
+        if(!vals[0] || !S.ifaces[vals[0]]) return bad("entry '" + (vals[0]||"") + "' not found in datasource (system interface)");
+        d[field] = vals[0]; return {ok:true};
+      case "srcaddr": case "dstaddr":
+        if(!vals.length) return bad("missing value");
+        for(var i=0;i<vals.length;i++) if(!S.addrs[vals[i]]) return bad("entry '" + vals[i] + "' not found in datasource (firewall address) -- create it under 'config firewall address' first");
+        d[field] = vals.slice(); return {ok:true};
+      case "service":
+        if(!vals.length) return bad("missing value");
+        for(var j=0;j<vals.length;j++) if(!SVC[vals[j].toUpperCase()]) return bad("invalid service '" + vals[j] + "' -- known services: " + Object.keys(SVC).join(", "));
+        d.service = vals.map(function(x){ return x.toUpperCase(); }); return {ok:true};
+      case "action":
+        if(vals[0]!=="accept" && vals[0]!=="deny") return bad("invalid value '" + (vals[0]||"") + "' for 'action' (accept|deny)");
+        d.action = vals[0]; return {ok:true};
+      case "nat": case "status":
+        if(vals[0]!=="enable" && vals[0]!=="disable") return bad("invalid value '" + (vals[0]||"") + "' (enable|disable)");
+        d[field] = vals[0]; return {ok:true};
+      case "schedule": d.schedule = v || "always"; return {ok:true};
+      case "utm-av": case "utm-ips": case "utm-webfilter":
+        if(vals[0]!=="enable" && vals[0]!=="disable") return bad("invalid value '" + (vals[0]||"") + "' (enable|disable)");
+        d.utm[field.slice(4)] = (vals[0]==="enable"); return {ok:true};
+      default: return bad("unknown field '" + field + "' for firewall policy");
+    }
+  }
+  if(kind==="iface"){
+    switch(field){
+      case "ip":
+        if(!/^(\d{1,3}\.){3}\d{1,3}\/\d{1,2}$/.test(vals[0])) return bad("invalid value '" + (vals[0]||"") + "' -- use format 192.168.1.1/24");
+        d.ip = vals[0]; return {ok:true};
+      case "allowaccess":
+        var okTok = ["ping","https","http","ssh","snmp","ftm"];
+        for(var k=0;k<vals.length;k++) if(okTok.indexOf(vals[k])<0) return bad("invalid allowaccess token '" + vals[k] + "'");
+        d.allow = vals.join(" "); return {ok:true};
+      case "description": d.desc = v; return {ok:true};
+      case "role": d.role = vals[0]||""; return {ok:true};
+      default: return bad("unknown field '" + field + "' for system interface");
+    }
+  }
+  if(kind==="addr"){
+    if(field==="subnet"){
+      if(vals.length<2 || !isIP(vals[0]) || !isIP(vals[1])) return bad("use: set subnet <network-ip> <netmask>  e.g. 10.10.10.0 255.255.255.0");
+      d.val = vals[0] + " " + vals[1]; d.type = "ipmask"; return {ok:true};
+    }
+    if(field==="comment"){ d.comment = v; return {ok:true}; }
+    return bad("unknown field '" + field + "' for firewall address");
+  }
+  if(kind==="vip"){
+    switch(field){
+      case "extip": case "mappedip":
+        if(!isIP(vals[0])) return bad("invalid IPv4 address '" + (vals[0]||"") + "'");
+        d[field] = vals[0]; return {ok:true};
+      case "extintf":
+        if(!S.ifaces[vals[0]]) return bad("entry '" + (vals[0]||"") + "' not found in datasource (system interface)");
+        d.extintf = vals[0]; return {ok:true};
+      case "portforward":
+        if(vals[0]!=="enable" && vals[0]!=="disable") return bad("invalid value (enable|disable)");
+        d.portforward = vals[0]; return {ok:true};
+      case "extport": case "mappedport":
+        if(!/^\d+$/.test(vals[0]||"")) return bad("port must be numeric");
+        d[field] = vals[0]; return {ok:true};
+      case "comment": d.comment = v; return {ok:true};
+      default: return bad("unknown field '" + field + "' for firewall vip");
+    }
+  }
+  if(kind==="phase1"){
+    switch(field){
+      case "interface":
+        if(!S.ifaces[vals[0]]) return bad("entry '" + (vals[0]||"") + "' not found in datasource (system interface)");
+        d["interface"] = vals[0]; return {ok:true};
+      case "peertype": d.peertype = vals[0]||"any"; return {ok:true};
+      case "proposal": d.proposal = v; return {ok:true};
+      case "remote-gw":
+        if(!isIP(vals[0])) return bad("invalid IPv4 address '" + (vals[0]||"") + "'");
+        d["remote-gw"] = vals[0]; return {ok:true};
+      case "psksecret": d.psksecret = v; return {ok:true};
+      case "dpd": d.dpd = vals[0]||"enable"; return {ok:true};
+      default: return bad("unknown field '" + field + "' for phase1-interface");
+    }
+  }
+  if(kind==="phase2"){
+    switch(field){
+      case "phase1name":
+        if(!findEntry("phase1", vals[0])) return bad("entry '" + (vals[0]||"") + "' not found in datasource (phase1-interface) -- create phase 1 first");
+        d.phase1name = vals[0]; return {ok:true};
+      case "proposal": d.proposal = v; return {ok:true};
+      case "src-subnet": case "dst-subnet":
+        if(vals.length<2 || !isIP(vals[0]) || !isIP(vals[1])) return bad("use: set " + field + " <network-ip> <netmask>");
+        d[field] = vals[0] + " " + vals[1]; return {ok:true};
+      case "keepalive": d.keepalive = vals[0]||"enable"; return {ok:true};
+      default: return bad("unknown field '" + field + "' for phase2-interface");
+    }
+  }
+  return bad("unknown config context");
+}
+
+function commitEdit(){
+  if(!editing) return;
+  var k = editing.kind, d = editing.draft;
+  if(k==="iface"){ S.ifaces[editing.key] = d; }
+  else if(k==="addr"){ S.addrs[editing.key] = d; }
+  else if(k==="policy"){
+    var i = -1;
+    for(var a=0;a<S.policies.length;a++) if(S.policies[a].id===d.id) i = a;
+    if(i>=0) S.policies[i] = d; else S.policies.push(d); /* new policies land at the BOTTOM, like FortiOS */
+  } else {
+    var arr = getEntries(k), j = -1;
+    d.name = editing.key;
+    for(var b=0;b<arr.length;b++) if(arr[b].name===editing.key) j = b;
+    if(j>=0) arr[j] = d; else arr.push(d);
+  }
+  tprint("Entry saved.", "ok");
+  renderPolicies();
+}
+
+/* ---------- show renderers ---------- */
+function q(s){ return '"' + s + '"'; }
+function showTable(path){
+  var kind = KIND_OF[path];
+  if(kind==="iface"){
+    tprint("config system interface", "info");
+    Object.keys(S.ifaces).forEach(function(n){
+      var e = S.ifaces[n];
+      tprint("    edit " + q(n));
+      tprint("        set ip " + e.ip);
+      if(e.allow) tprint("        set allowaccess " + e.allow);
+      if(e.desc) tprint("        set description " + q(e.desc));
+      tprint("    next");
+    });
+    tprint("end", "info"); return;
+  }
+  if(kind==="addr"){
+    tprint("config firewall address", "info");
+    Object.keys(S.addrs).forEach(function(n){
+      var e = S.addrs[n];
+      tprint("    edit " + q(n));
+      tprint("        set subnet " + e.val);
+      tprint("    next");
+    });
+    tprint("end", "info"); return;
+  }
+  if(kind==="policy"){
+    tprint("config firewall policy", "info");
+    if(!S.policies.length) tprint("    # (no policies -- implicit deny drops everything)", "dim");
+    S.policies.forEach(function(p){
+      tprint("    edit " + p.id);
+      if(p.name) tprint('        set name ' + q(p.name));
+      tprint("        set srcintf " + q(p.srcintf));
+      tprint("        set dstintf " + q(p.dstintf));
+      tprint("        set action " + p.action);
+      tprint("        set srcaddr " + p.srcaddr.map(q).join(" "));
+      tprint("        set dstaddr " + p.dstaddr.map(q).join(" "));
+      tprint("        set schedule " + q(p.schedule || "always"));
+      tprint("        set service " + p.service.map(q).join(" "));
+      tprint("        set nat " + p.nat);
+      if(p.action==="accept" && (p.utm.av || p.utm.ips || p.utm.webfilter)){
+        tprint("        set utm-status enable");
+        if(p.utm.av) tprint('        set av-profile "default"');
+        if(p.utm.ips) tprint('        set ips-sensor "default"');
+        if(p.utm.webfilter) tprint('        set webfilter-profile "default"');
+      }
+      tprint("    next");
+    });
+    tprint("end", "info"); return;
+  }
+  if(kind==="vip"){
+    tprint("config firewall vip", "info");
+    if(!S.vips.length) tprint("    # (no VIPs configured)", "dim");
+    S.vips.forEach(function(e){
+      tprint("    edit " + q(e.name));
+      tprint("        set extip " + (e.extip||"0.0.0.0"));
+      tprint("        set mappedip " + (e.mappedip||"0.0.0.0"));
+      tprint("        set extintf " + q(e.extintf||"port2"));
+      tprint("        set portforward " + (e.portforward||"disable"));
+      if(e.portforward==="enable"){ tprint("        set extport " + (e.extport||"0")); tprint("        set mappedport " + (e.mappedport||"0")); }
+      tprint("    next");
+    });
+    tprint("end", "info"); return;
+  }
+  if(kind==="phase1"){
+    tprint("config vpn ipsec phase1-interface", "info");
+    if(!S.p1.length) tprint("    # (no phase-1 gateways)", "dim");
+    S.p1.forEach(function(e){
+      tprint("    edit " + q(e.name));
+      tprint("        set interface " + q(e["interface"]||"port2"));
+      tprint("        set peertype " + (e.peertype||"any"));
+      tprint("        set proposal " + (e.proposal||"aes256-sha256"));
+      tprint("        set remote-gw " + (e["remote-gw"]||"0.0.0.0"));
+      tprint("        set psksecret " + (e.psksecret ? "********" : "(not set)"));
+      tprint("    next");
+    });
+    tprint("end", "info"); return;
+  }
+  if(kind==="phase2"){
+    tprint("config vpn ipsec phase2-interface", "info");
+    if(!S.p2.length) tprint("    # (no phase-2 selectors)", "dim");
+    S.p2.forEach(function(e){
+      tprint("    edit " + q(e.name));
+      tprint("        set phase1name " + q(e.phase1name||""));
+      tprint("        set proposal " + (e.proposal||"aes256-sha256"));
+      tprint("        set src-subnet " + (e["src-subnet"]||"0.0.0.0 0.0.0.0"));
+      tprint("        set dst-subnet " + (e["dst-subnet"]||"0.0.0.0 0.0.0.0"));
+      tprint("    next");
+    });
+    tprint("end", "info"); return;
+  }
+}
+function sysStatus(){
+  tprint("Hostname: FortiGate-60F", "info");
+  tprint("Version: FortiOS v7.4.2 (simulated build)", "info");
+  tprint("Serial-Number: FG60FSIM00000001", "dim");
+  tprint("System time: " + new Date().toUTCString(), "dim");
+  tprint("Interfaces: " + Object.keys(S.ifaces).join(", "), "dim");
+  tprint("Firewall policies: " + S.policies.length + " | VIPs: " + S.vips.length + " | IPsec phase1: " + S.p1.length + " phase2: " + S.p2.length, "dim");
+}
+function diagnose(args){
+  var sub = args.join(" ");
+  if(sub === "firewall policy list"){
+    tprintPre("id   name              src -> dst        action   hits", "info");
+    tprintPre("---  ----------------  ----------------  -------  ----", "dim");
+    if(!S.policies.length){ tprint("(no policies -- implicit deny)", "dim"); return; }
+    S.policies.forEach(function(p){
+      var line = String(p.id).padEnd(5) + (p.name||"-").padEnd(18) +
+        (p.srcintf + " -> " + p.dstintf).padEnd(18) + p.action.padEnd(9) + p.hits;
+      tprintPre(line, p.action==="accept" ? "ok" : "err");
+    });
+    return;
+  }
+  if(sub === "vpn tunnel list"){
+    if(!S.p1.length){ tprint("No IPsec tunnels configured.", "dim"); return; }
+    S.p1.forEach(function(g){
+      var kids = S.p2.filter(function(x){ return x.phase1name===g.name; });
+      var st = kids.length ? "up" : "down (phase2 incomplete)";
+      tprint("gateway " + g.name + " -> " + (g["remote-gw"]||"?") + " : " + st, kids.length ? "ok" : "warn");
+      kids.forEach(function(k){
+        tprint("   phase2 " + k.name + " : " + (k["src-subnet"]||"?") + " <-> " + (k["dst-subnet"]||"?"), "dim");
+      });
+    });
+    return;
+  }
+  tprint("diagnose: unknown subcommand. Try 'diagnose firewall policy list' or 'diagnose vpn tunnel list'.", "err");
+}
+function doPing(ip){
+  if(!ip || !isIP(ip)){ tprint("execute ping: missing or invalid IPv4 address", "err"); return; }
+  tprint("PING " + ip + " (" + ip + "): 56 data bytes", "dim");
+  for(var i=0;i<5;i++) tprint("64 bytes from " + ip + ": icmp_seq=" + i + " ttl=117 time=" + (8+i*3) + "." + (i*7) + " ms", "ok");
+  tprint("--- " + ip + " ping statistics ---", "dim");
+  tprint("5 packets transmitted, 5 packets received, 0% packet loss", "dim");
+}
+
+/* ---------- dispatch ---------- */
+function handleRoot(line){
+  var t = tokenize(line);
+  if(!t.length) return;
+  var c0 = t[0].toLowerCase();
+  if(c0==="?"){ rootHelp(); return; }
+  if(c0==="config"){
+    var path = t.slice(1).join(" ");
+    if(KIND_OF[path]){ mode = path; editing = null; tprint("Entering " + path + " ...", "info"); }
+    else { fail(); tprint("  valid: config system interface | config firewall address | config firewall policy | config firewall vip | config vpn ipsec phase1-interface | config vpn ipsec phase2-interface", "dim"); }
+    return;
+  }
+  if(c0==="show"){
+    var sp = t.slice(1).join(" ");
+    if(KIND_OF[sp]){ showTable(sp); } else { fail(); }
+    return;
+  }
+  if(c0==="get" && t[1]==="system" && t[2]==="status"){ sysStatus(); return; }
+  if(c0==="diagnose"){ diagnose(t.slice(1)); return; }
+  if(c0==="execute" && (t[1]||"").toLowerCase()==="ping"){ doPing(t[2]); return; }
+  fail();
+}
+function handleConfig(line){
+  var t = tokenize(line);
+  if(!t.length) return;
+  var kind = KIND_OF[mode];
+  var c0 = t[0].toLowerCase();
+  if(c0==="?"){ cfgHelp(); return; }
+  if(c0==="end"){
+    commitEdit(); mode = "root"; editing = null;
+    tprint("Configuration saved. Exited to root.", "dim"); return;
+  }
+  if(c0==="show"){ showTable(mode); return; }
+  if(c0==="edit" && t[1]){
+    var key = t[1];
+    if(kind==="policy" && !/^\d+$/.test(key)){ tprint("policy id must be numeric (e.g. edit 2)", "err"); return; }
+    var ex = findEntry(kind, key);
+    editing = {kind:kind, key:key, draft: ex ? JSON.parse(JSON.stringify(ex)) : blankDraft(kind, key)};
+    tprint(ex ? "Opened existing entry '" + key + "'." : "Created new entry '" + key + "' (saved on next/end).", "info");
+    return;
+  }
+  if(c0==="delete" && t[1]){
+    var key2 = t[1], gone = false;
+    if(kind==="iface" || kind==="addr"){
+      var dict = getEntries(kind);
+      if(dict[key2]){ delete dict[key2]; gone = true; }
+    } else if(kind==="policy"){
+      var id = parseInt(key2, 10), arr = S.policies;
+      for(var i=0;i<arr.length;i++) if(arr[i].id===id){ arr.splice(i,1); gone = true; break; }
+    } else {
+      var arr2 = getEntries(kind);
+      for(var j=0;j<arr2.length;j++) if(arr2[j].name===key2){ arr2.splice(j,1); gone = true; break; }
+    }
+    tprint(gone ? "Entry '" + key2 + "' deleted." : "entry '" + key2 + "' not found", gone ? "ok" : "err");
+    if(gone && kind==="policy") renderPolicies();
+    return;
+  }
+  if(c0==="move" && kind==="policy"){
+    if(t[1] && (t[2]==="before" || t[2]==="after") && t[3]){
+      var idA = parseInt(t[1], 10), idB = parseInt(t[3], 10), ia = -1, ib = -1, m;
+      for(m=0;m<S.policies.length;m++){ if(S.policies[m].id===idA) ia = m; if(S.policies[m].id===idB) ib = m; }
+      if(ia<0 || ib<0){ tprint("move: policy id not found", "err"); return; }
+      var mv = S.policies.splice(ia, 1)[0];
+      ib = -1;
+      for(m=0;m<S.policies.length;m++) if(S.policies[m].id===idB) ib = m;
+      S.policies.splice(t[2]==="before" ? ib : ib+1, 0, mv);
+      tprint("Moved policy #" + idA + " " + t[2] + " policy #" + idB + ".", "ok");
+      renderPolicies();
+    } else {
+      tprint("usage: move <id> before|after <id>", "err");
+    }
+    return;
+  }
+  if(c0==="next"){
+    if(!editing){ tprint("nothing to save -- 'edit <id|name>' first.", "warn"); return; }
+    commitEdit(); editing = null; return;
+  }
+  if(c0==="set" && t[1]){
+    if(!editing){ needEdit(); return; }
+    var r = applySet(editing.draft, kind, t[1].toLowerCase(), t.slice(2));
+    if(!r.ok) tprint(r.msg, "err");
+    else tprint("  set " + t[1] + " <- " + t.slice(2).join(" "), "dim");
+    return;
+  }
+  if(c0==="unset" && t[1]){
+    if(!editing){ needEdit(); return; }
+    tprint("  unset " + t[1] + " (field cleared to default)", "dim");
+    return;
+  }
+  fail();
+}
+function runLine(line){
+  tprint(termPrompt.textContent + line, "echo");
+  if(mode==="root") handleRoot(line); else handleConfig(line);
+  setPrompt();
+}
+termIn.addEventListener("keydown", function(e){
+  if(e.key==="Enter"){
+    var v = termIn.value;
+    termIn.value = "";
+    if(v.trim()!==""){ hist.push(v); hIdx = hist.length; }
+    runLine(v);
+  } else if(e.key==="ArrowUp"){
+    if(hIdx>0){ hIdx--; termIn.value = hist[hIdx]||""; }
+    e.preventDefault();
+  } else if(e.key==="ArrowDown"){
+    if(hIdx<hist.length){ hIdx++; termIn.value = hist[hIdx]||""; }
+    e.preventDefault();
+  }
+});
+/* ================= POLICY BOARD (array order = evaluation order, like FortiOS) ================= */
+var polList = document.getElementById("policy-list");
+
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function utmBadges(p){
+  var b = [];
+  if(p.utm.av) b.push('<span class="badge utm">AV</span>');
+  if(p.utm.ips) b.push('<span class="badge utm">IPS</span>');
+  if(p.utm.webfilter) b.push('<span class="badge utm">WF</span>');
+  return b.join(" ");
+}
+function renderPolicies(){
+  polList.innerHTML = "";
+  if(!S.policies.length){
+    polList.innerHTML = '<p class="muted">No policies. Everything is dropped by the implicit deny.</p>';
+    return;
+  }
+  S.policies.forEach(function(p, idx){
+    var d = document.createElement("div");
+    d.className = "pol" + (p.status!=="enable" ? " shadowed" : "");
+    d.id = "pol-" + p.id;
+    d.innerHTML =
+      '<div class="pol-head">' +
+        '<span class="pol-id">#' + p.id + '</span>' +
+        '<span class="pol-name">' + esc(p.name||"(unnamed)") + '</span>' +
+        '<span class="badge ' + p.action + '">' + p.action.toUpperCase() + '</span>' +
+        (p.nat==="enable" ? '<span class="badge nat">NAT</span>' : "") +
+        utmBadges(p) +
+        '<span class="badge hits">hits: ' + p.hits + '</span>' +
+        (p.status!=="enable" ? '<span class="badge">disabled</span>' : "") +
+      "</div>" +
+      '<div class="pol-detail">' + esc(p.srcintf) + " &rarr; " + esc(p.dstintf) +
+        " &nbsp;|&nbsp; src: " + esc(p.srcaddr.join(",")) +
+        " &nbsp;|&nbsp; dst: " + esc(p.dstaddr.join(",")) +
+        " &nbsp;|&nbsp; svc: " + esc(p.service.join(",")) + "</div>" +
+      '<div class="pol-actions">' +
+        '<button class="btn small secondary" data-mv="-1" data-id="' + p.id + '">&uarr; move up</button>' +
+        '<button class="btn small secondary" data-mv="1" data-id="' + p.id + '">&darr; move down</button>' +
+        '<button class="btn small secondary" data-tg="1" data-id="' + p.id + '">' + (p.status==="enable" ? "disable" : "enable") + "</button>" +
+        '<button class="btn small danger" data-del="1" data-id="' + p.id + '">delete</button>' +
+      "</div>";
+    polList.appendChild(d);
+  });
+  var btns = polList.querySelectorAll("button");
+  btns.forEach(function(b){
+    b.addEventListener("click", function(){
+      var id = parseInt(b.dataset.id, 10);
+      var i = -1;
+      for(var k=0;k<S.policies.length;k++) if(S.policies[k].id===id) i = k;
+      if(i<0) return;
+      if(b.dataset.mv){
+        var j = i + parseInt(b.dataset.mv, 10);
+        if(j<0 || j>=S.policies.length) return;
+        var tmp = S.policies[i]; S.policies[i] = S.policies[j]; S.policies[j] = tmp;
+        renderPolicies();
+      } else if(b.dataset.tg){
+        S.policies[i].status = S.policies[i].status==="enable" ? "disable" : "enable";
+        renderPolicies();
+      } else if(b.dataset.del){
+        S.policies.splice(i, 1); renderPolicies();
+      }
+    });
+  });
+}
+
+document.getElementById("btn-qa").addEventListener("click", function(){
+  var name = document.getElementById("qa-name").value.trim() || "unnamed";
+  var svcSel = document.getElementById("qa-svc").value;
+  var svc = svcSel==="HTTP+HTTPS" ? ["HTTP","HTTPS"] : [svcSel];
+  var maxId = 0;
+  S.policies.forEach(function(p){ if(p.id>maxId) maxId = p.id; });
+  S.policies.push({
+    id: maxId+1, name: name,
+    srcintf: document.getElementById("qa-src").value,
+    dstintf: document.getElementById("qa-dst").value,
+    srcaddr:["all"], dstaddr:["all"], service: svc,
+    action: document.getElementById("qa-act").value,
+    schedule:"always",
+    nat: document.getElementById("qa-nat").value,
+    status:"enable", hits:0,
+    utm:{ av: document.getElementById("qa-av").checked,
+          ips: document.getElementById("qa-ips").checked,
+          webfilter: document.getElementById("qa-wf").checked }
+  });
+  renderPolicies();
+  tprint("Quick-add: policy #" + (maxId+1) + " '" + name + "' appended to bottom of list.", "info");
+});
+document.getElementById("btn-reset-pol").addEventListener("click", function(){
+  S.policies = baselinePolicies();
+  renderPolicies();
+});
+
+/* ---------- packet evaluation ---------- */
+function zoneOfIp(ip){
+  if(ip.indexOf("192.168.1.")===0) return "port1";
+  if(ip.indexOf("10.10.10.")===0) return "port3";
+  return "port2";
+}
+var ZNAME = {port1:"LAN", port2:"WAN", port3:"DMZ"};
+var ZNET = {port1:"192.168.1.0/24", port2:"internet", port3:"10.10.10.0/24"};
+
+function evalPacket(pkt){
+  var log = [];
+  var srcIf = zoneOfIp(pkt.src), dstIf = zoneOfIp(pkt.dst);
+  log.push({t:"packet " + pkt.src + " -> " + pkt.dst + " " + pkt.svc + "  (" + srcIf + " -> " + dstIf + ")", c:"m-no"});
+  for(var i=0;i<S.policies.length;i++){
+    var p = S.policies[i];
+    if(p.status!=="enable"){ log.push({t:"policy #" + p.id + " skipped (disabled)", c:"m-no"}); continue; }
+    var reasons = [], ok = true;
+    if(p.srcintf!==srcIf){ ok = false; reasons.push("srcintf " + p.srcintf + "!=" + srcIf); }
+    if(p.dstintf!==dstIf){ ok = false; reasons.push("dstintf " + p.dstintf + "!=" + dstIf); }
+    if(p.service.indexOf("ALL")<0 && p.service.indexOf(pkt.svc)<0){ ok = false; reasons.push("service " + p.service.join("/") + "!=" + pkt.svc); }
+    if(!ok){
+      log.push({t:"policy #" + p.id + " (" + (p.name||"unnamed") + ") -- no match (" + reasons.join("; ") + ")", c:"m-no"});
+      continue;
+    }
+    p.hits++;
+    log.push({t:"policy #" + p.id + " (" + (p.name||"unnamed") + ") MATCH -> " + p.action.toUpperCase(), c: p.action==="accept" ? "m-ok" : "m-deny"});
+    return {verdict:p.action, policy:p, log:log};
+  }
+  log.push({t:"no policy matched -> implicit DENY", c:"m-deny"});
+  return {verdict:"deny", policy:null, log:log};
+}
+
+var pktBusy = false;
+document.getElementById("btn-pkt").addEventListener("click", function(){
+  if(pktBusy) return;
+  pktBusy = true;
+  var pkt = {
+    src: document.getElementById("pkt-src").value,
+    dst: document.getElementById("pkt-dst").value,
+    svc: document.getElementById("pkt-svc").value
+  };
+  var srcIf = zoneOfIp(pkt.src), dstIf = zoneOfIp(pkt.dst);
+  document.getElementById("zone-a").innerHTML = "<b>" + ZNAME[srcIf] + "</b><div class='hosts'>" + ZNET[srcIf] + "<br>" + srcIf + "</div>";
+  document.getElementById("zone-b").innerHTML = "<b>" + ZNAME[dstIf] + "</b><div class='hosts'>" + ZNET[dstIf] + "<br>" + dstIf + "</div>";
+  var res = evalPacket(pkt);
+  renderPolicies();
+  var logEl = document.getElementById("eval-log");
+  var banner = document.getElementById("result-banner");
+  logEl.innerHTML = "";
+  banner.className = "result-banner";
+  banner.textContent = "";
+  var dot = document.getElementById("pkt-dot");
+  dot.style.display = "block";
+  dot.className = "pkt";
+  dot.style.transition = "none";
+  dot.style.left = (srcIf==="port2" ? "84%" : "8%");
+  void dot.offsetWidth;
+  dot.style.transition = "left 1s linear";
+  var i = 0;
+  function flashCard(id, cls){
+    var card = document.getElementById("pol-" + id);
+    if(!card) return;
+    card.classList.add(cls);
+    setTimeout(function(){ card.classList.remove(cls); }, 800);
+  }
+  function stepLog(){
+    if(i < res.log.length){
+      var e = res.log[i];
+      var d = document.createElement("div");
+      d.className = e.c;
+      d.textContent = "> " + e.t;
+      logEl.appendChild(d);
+      logEl.scrollTop = logEl.scrollHeight;
+      var m = e.t.match(/policy #(\d+)/);
+      if(m) flashCard(parseInt(m[1], 10), "evaluating");
+      i++;
+      setTimeout(stepLog, 450);
+    } else {
+      dot.style.left = "47%";
+      setTimeout(function(){
+        if(res.policy) flashCard(res.policy.id, res.verdict==="accept" ? "matched-allow" : "matched-deny");
+        if(res.verdict==="accept"){
+          var dstIf2 = zoneOfIp(pkt.dst);
+          dot.style.left = (dstIf2==="port2" ? "84%" : "8%");
+          banner.className = "result-banner allow";
+          var via = res.policy ? " by policy #" + res.policy.id + " (" + (res.policy.name||"unnamed") + ")" : "";
+          var natNote = (res.policy && res.policy.nat==="enable") ? " — source NAT applied (private IP hidden behind the WAN IP)" : "";
+          banner.textContent = "ACCEPTED" + via + natNote;
+        } else {
+          dot.classList.add("dead");
+          banner.className = "result-banner deny";
+          banner.textContent = "DENIED" + (res.policy ? " by policy #" + res.policy.id + " (" + (res.policy.name||"unnamed") + ")" : " by implicit deny (no matching policy)") + " — packet dropped at the firewall";
+        }
+        setTimeout(function(){ dot.style.display = "none"; pktBusy = false; }, 2200);
+      }, 900);
+    }
+  }
+  setTimeout(stepLog, 600);
+});
+
+/* ================= LABS ================= */
+function findAcceptWeb(){
+  for(var i=0;i<S.policies.length;i++){
+    var p = S.policies[i];
+    if(p.action==="accept" && p.status==="enable" && p.srcintf==="port1" && p.dstintf==="port2" &&
+       (p.service.indexOf("ALL")>=0 || p.service.indexOf("HTTP")>=0 || p.service.indexOf("HTTPS")>=0)) return {p:p, idx:i};
+  }
+  return null;
+}
+function findDenyBelow(idx){
+  for(var i=idx+1;i<S.policies.length;i++){
+    if(S.policies[i].action==="deny") return {p:S.policies[i], idx:i};
+  }
+  return null;
+}
+function markSteps(listId, doneIdx){
+  var items = document.querySelectorAll("#" + listId + " li");
+  items.forEach(function(li, n){ li.classList.toggle("done", doneIdx.indexOf(n)>=0); });
+}
+document.getElementById("btn-lab1").addEventListener("click", function(){
+  var fb = document.getElementById("lab1-fb");
+  var msgs = [], ok = true, done = [0];
+  var ap = findAcceptWeb();
+  if(ap){ done.push(1, 2, 3); msgs.push("PASS — allow rule found: policy #" + ap.p.id + " (" + esc(ap.p.name||"unnamed") + "), port1&rarr;port2, web service, NAT " + ap.p.nat + "."); }
+  else { ok = false; msgs.push("FAIL — no enabled ACCEPT policy port1&rarr;port2 covering HTTP/HTTPS. Re-check your set commands."); }
+  var dp = ap ? findDenyBelow(ap.idx) : null;
+  if(dp){ done.push(4); msgs.push("PASS — deny-all (#" + dp.p.id + ") sits below your allow rule. Order is correct."); }
+  else { ok = false; msgs.push("FAIL — no DENY policy below your allow rule. Run: move <allow-id> before <deny-id>."); }
+  if(ap && dp){
+    var r = evalPacket({src:"192.168.1.50", dst:"93.184.216.34", svc:"HTTPS"});
+    renderPolicies();
+    if(r.verdict==="accept" && r.policy && r.policy.id===ap.p.id){
+      done.push(5); msgs.push("PASS — live packet test: HTTPS from 192.168.1.50 accepted by YOUR policy #" + ap.p.id + ".");
+    } else { ok = false; msgs.push("FAIL — packet test: HTTPS was " + r.verdict.toUpperCase() + (r.policy ? " by policy #" + r.policy.id : " by implicit deny") + "."); }
+  }
+  markSteps("lab1-steps", ok ? [0,1,2,3,4,5] : done);
+  fb.className = "feedback " + (ok ? "good" : "bad");
+  fb.innerHTML = (ok ? "LAB 1 COMPLETE — web flows, everything else hits the deny-all.<br>" : "Not yet:<br>") + msgs.join("<br>");
+});
+
+document.getElementById("btn-broken").addEventListener("click", function(){
+  S.policies = [
+    {id:1, name:"deny-all", srcintf:"port1", dstintf:"port2", srcaddr:["all"], dstaddr:["all"],
+     service:["ALL"], action:"deny", nat:"disable", status:"enable", utm:{}, hits:0},
+    {id:2, name:"LAN-to-WAN-web", srcintf:"port1", dstintf:"port2", srcaddr:["all"], dstaddr:["all"],
+     service:["HTTP","HTTPS"], action:"accept", nat:"enable", status:"enable",
+     utm:{av:true, ips:true, webfilter:true}, hits:0}
+  ];
+  renderPolicies();
+  var fb = document.getElementById("lab2-fb");
+  fb.className = "feedback bad";
+  fb.textContent = "Broken config loaded: the allow rule EXISTS but web is dead. Diagnose with the packet tester on the Policy Board, fix the order, then verify.";
+  gotoTab("board");
+});
+document.getElementById("btn-lab2").addEventListener("click", function(){
+  var fb = document.getElementById("lab2-fb");
+  var ap = findAcceptWeb();
+  var dp = ap ? findDenyBelow(ap.idx) : null;
+  var ok = !!(ap && dp);
+  var detail = "";
+  if(ok){
+    var r = evalPacket({src:"192.168.1.50", dst:"93.184.216.34", svc:"HTTPS"});
+    renderPolicies();
+    if(r.verdict==="accept" && r.policy && r.policy.id===ap.p.id){
+      detail = " Policy #" + ap.p.id + " now fires before deny-all #" + dp.p.id + " — hit counts prove it.";
+    } else { ok = false; }
+  }
+  fb.className = "feedback " + (ok ? "good" : "bad");
+  fb.textContent = ok
+    ? "FIXED." + detail + " Root cause: correct rule, wrong order — the deny shadowed the allow."
+    : "Still broken — the allow rule must sit ABOVE deny-all so it matches first. (Hint: move <id> before <id>, or drag with \u2191 on the board.)";
+});
+
+/* ================= BOOT ================= */
+tprint("FortiGate-60F (simulated FortiOS v7.4) -- type '?' for commands.", "dim");
+tprint("Baseline: explicit deny-all policy #1 (port1 -> port2). Nothing is allowed yet.", "info");
+setPrompt();
+renderPolicies();
+</script>
+</body>
+</html>

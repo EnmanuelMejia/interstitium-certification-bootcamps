@@ -529,6 +529,37 @@
       "SLO visualization"
      ],
      "mins": 5
+    },
+    {
+     "id": "sreplat-obs-cardinality",
+     "title": "The cardinality explosion",
+     "domain_id": "observability",
+     "situation": "Prometheus is OOMing after a deploy added user_id as a metric label. Ingestion lag is growing; queries time out.",
+     "objectives": [
+      "Cardinality management",
+      "Label discipline"
+     ],
+     "evidence": [
+      [
+       "metric",
+       "http_requests_total{user_id=\"u-91823\", endpoint=\"/checkout\"} — 4.2M series"
+      ],
+      [
+       "alert",
+       "Prometheus OOMKilled twice today"
+      ]
+     ],
+     "prompt": "What is the correct fix?",
+     "choices": [
+      "Remove user_id from labels (keep bounded labels like endpoint/status); move per-user detail to logs/traces",
+      "Vertically scale Prometheus (more RAM)",
+      "Shard Prometheus by user_id hash",
+      "Drop the metric entirely"
+     ],
+     "answer": 0,
+     "hint": "Which label has unbounded values?",
+     "why": "The 4.2M series come from the unbounded user_id label — each user multiplies every other label combination. Removing it collapses the series count to the bounded set (endpoints × statuses), and per-user questions move to logs/traces where high cardinality is fine. Choice 2 feeds the explosion. Choice 3 is complex machinery preserving a bad design. Choice 4 loses the SLI signal. Correct: bounded labels; high-cardinality detail in logs/traces.",
+     "mins": 6
     }
    ]
   },
@@ -661,6 +692,37 @@
       "Web performance"
      ],
      "mins": 5
+    },
+    {
+     "id": "sreplat-cap-spike",
+     "title": "The 2-minute spike vs 5-minute scaling",
+     "domain_id": "capacity-performance",
+     "situation": "Flash-sale traffic spikes 10x for 2 minutes. Autoscaling takes 5 minutes to add capacity. The last sale saw 6 minutes of errors.",
+     "objectives": [
+      "Autoscaling latency",
+      "Capacity planning"
+     ],
+     "evidence": [
+      [
+       "metrics",
+       "spike duration: ~2 min; scale-up latency: 5 min"
+      ],
+      [
+       "incident",
+       "6 min of 5xx during last flash sale"
+      ]
+     ],
+     "prompt": "What is the correct approach?",
+     "choices": [
+      "Pre-provision (scheduled scale-up) for known flash sales; keep autoscaling for unknown variance — 5-min scaling can't catch a 2-min spike",
+      "Make autoscaling more aggressive (scale up faster)",
+      "Accept the errors; spikes are rare",
+      "Over-provision permanently at flash-sale levels"
+     ],
+     "answer": 0,
+     "hint": "Can any reactive system respond to a spike shorter than its reaction time?",
+     "why": "Autoscaling reacts to load; a 2-minute spike is over before 5-minute scaling responds — physics, not tuning. Known events get scheduled pre-provisioning (scale up 15 min before, down after); autoscaling handles the unknown. Choice 2 can't beat the spike duration. Choice 3 accepts user-facing errors as policy. Choice 4 pays flash-sale capacity 24/7. Correct: pre-provision known peaks, autoscale the rest.",
+     "mins": 6
     }
    ]
   },
@@ -793,6 +855,37 @@
       "Cognitive load"
      ],
      "mins": 5
+    },
+    {
+     "id": "sreplat-platform-adopt",
+     "title": "The platform nobody uses",
+     "domain_id": "platform-design",
+     "situation": "The platform team built a full PaaS. Six months later, 3 of 40 teams use it; the rest maintain their own pipelines.",
+     "objectives": [
+      "Platform as product",
+      "Adoption"
+     ],
+     "evidence": [
+      [
+       "survey",
+       "'too hard to migrate', 'doesn't support our workflow', 'we didn't know it existed'"
+      ],
+      [
+       "metrics",
+       "adoption: 7%; platform uptime: 99.99%"
+      ]
+     ],
+     "prompt": "What is the correct response?",
+     "choices": [
+      "Treat it as a product failure: interview teams, fix onboarding (golden-path migration tooling), support the missing workflows, market the wins — measure adoption as the KPI",
+      "Mandate migration by executive order",
+      "Add more features to the platform",
+      "Declare the holdouts non-compliant"
+     ],
+     "answer": 0,
+     "hint": "Is 99.99% uptime the right KPI for a platform with 7% adoption?",
+     "why": "99.99% uptime with 7% adoption is a failed product — the survey says why: migration friction, workflow gaps, awareness. Mandates (choice 2/4) breed resentment and shadow workarounds; more features (choice 3) don't fix onboarding. The product response — user interviews, paved-road migration, workflow coverage, adoption KPI — addresses the actual blockers. Correct: product discipline, adoption as the metric.",
+     "mins": 6
     }
    ]
   },
@@ -955,6 +1048,1194 @@
      "why": "Toil is the work that is manual, repetitive, automatable, and devoid of enduring value — and it scales with service growth, so hiring into it is a treadmill. The SRE discipline: measure toil, cap it, and spend the freed engineering time automating it away. Each automation permanently reduces the toil fraction; each hire without automation just adds capacity for more toil."
     }
    ]
+  },
+  {
+   "id": "systems-anatomy",
+   "name": "Systems Anatomy: Seeing Systems as Living Flows",
+   "description": "Learn to see Sre Platform as living systems — not static diagrams, but moving sequences where every part connects. Master systems thinking for exams and interviews.",
+   "icon": "🔬",
+   "lessons": [],
+   "scenarios": [
+    {
+     "id": "sysanat-slis/slos",
+     "title": "The SLIs/SLOs Mystery",
+     "domain_id": "systems-anatomy",
+     "situation": "Users report that SLIs/SLOs is not working correctly. The obvious checks pass — the components are online, basic connectivity works. You need to think in systems, not symptoms.",
+     "prompt": "Using the systems anatomy method (whole → cut open → step through → pull apart), how would you systematically trace a failure in SLIs/SLOs?",
+     "choices": [
+      "Walk the full journey: start from the trigger, verify each handoff in sequence, check dependencies at every step, and isolate where the flow breaks — then examine that specific layer",
+      "Restart all components — SLIs/SLOs issues are always fixed by restarting",
+      "Check the most common cause from memory and apply that fix immediately",
+      "Escalate to senior support — SLIs/SLOs is too complex to troubleshoot systematically"
+     ],
+     "answer": 0,
+     "why": "The correct answer is A. Systems thinking means tracing the living flow: (1) Whole: what is SLIs/SLOs supposed to do end-to-end? (2) Cut open: what are the layers/stages? (3) Step through: verify each handoff — where does the expected output diverge from actual? (4) Pull apart: isolate the broken layer and examine it in detail. This method works for any SLIs/SLOs failure in Sre Platform.",
+     "hint": "Don't jump to the fix. First map the journey, then find where it breaks.",
+     "objectives": [
+      "Apply systems anatomy to SLIs/SLOs",
+      "Trace failures through layered dependencies",
+      "Distinguish symptoms from root causes"
+     ],
+     "mins": 15,
+     "evidence": [
+      [
+       "System Status",
+       "All SLIs/SLOs components report 'online'. Basic health checks pass."
+      ],
+      [
+       "User Report",
+       "Functionality is broken despite green status indicators. The failure is in the flow, not the components."
+      ]
+     ]
+    },
+    {
+     "id": "sysanat-incident-response",
+     "title": "The Incident Response Mystery",
+     "domain_id": "systems-anatomy",
+     "situation": "Users report that Incident Response is not working correctly. The obvious checks pass — the components are online, basic connectivity works. You need to think in systems, not symptoms.",
+     "prompt": "Using the systems anatomy method (whole → cut open → step through → pull apart), how would you systematically trace a failure in Incident Response?",
+     "choices": [
+      "Walk the full journey: start from the trigger, verify each handoff in sequence, check dependencies at every step, and isolate where the flow breaks — then examine that specific layer",
+      "Restart all components — Incident Response issues are always fixed by restarting",
+      "Check the most common cause from memory and apply that fix immediately",
+      "Escalate to senior support — Incident Response is too complex to troubleshoot systematically"
+     ],
+     "answer": 0,
+     "why": "The correct answer is A. Systems thinking means tracing the living flow: (1) Whole: what is Incident Response supposed to do end-to-end? (2) Cut open: what are the layers/stages? (3) Step through: verify each handoff — where does the expected output diverge from actual? (4) Pull apart: isolate the broken layer and examine it in detail. This method works for any Incident Response failure in Sre Platform.",
+     "hint": "Don't jump to the fix. First map the journey, then find where it breaks.",
+     "objectives": [
+      "Apply systems anatomy to Incident Response",
+      "Trace failures through layered dependencies",
+      "Distinguish symptoms from root causes"
+     ],
+     "mins": 15,
+     "evidence": [
+      [
+       "System Status",
+       "All Incident Response components report 'online'. Basic health checks pass."
+      ],
+      [
+       "User Report",
+       "Functionality is broken despite green status indicators. The failure is in the flow, not the components."
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "id": "start-here",
+   "name": "Start Here: How to Master This Bootcamp",
+   "description": "Orientation, study strategy, and what SRE interviews and assessments actually test.",
+   "icon": "compass",
+   "scenarios": []
+  },
+  {
+   "id": "chaos-engineering",
+   "name": "Chaos Engineering & Resilience Testing",
+   "description": "Hypothesis-driven failure injection, blast-radius control, game days, and chaos in CI/CD.",
+   "icon": "flask",
+   "scenarios": [
+    {
+     "id": "sreplat-chaos-first",
+     "title": "First chaos experiment",
+     "domain_id": "chaos-engineering",
+     "situation": "Leadership approved chaos engineering. The team wants to start with 'kill a production region' to prove value.",
+     "objectives": [
+      "Chaos safety progression"
+     ],
+     "evidence": [
+      [
+       "proposal",
+       "experiment 1: terminate all prod instances in us-east"
+      ],
+      [
+       "maturity",
+       "no prior experiments; runbooks untested"
+      ]
+     ],
+     "prompt": "What is the correct starting point?",
+     "choices": [
+      "Start small and staged: kill single pods in staging with a written hypothesis and abort conditions; graduate scope only after clean passes",
+      "Run the region kill — big bang proves the most",
+      "Skip to production single-AZ after one staging test",
+      "Do tabletop exercises instead of real injection"
+     ],
+     "answer": 0,
+     "hint": "What validates the safety process before the blast radius grows?",
+     "why": "Chaos without safety progression is just causing outages: untested runbooks + region-scale fault = uncontained incident. The discipline is hypothesis → small blast radius → abort conditions → graduated scope. Staging pod-kills validate the tooling and process; production comes later. Choice 2 is reckless. Choice 3 skips grades. Choice 4 (tabletops only) never tests reality. Correct: staged progression from small/safe.",
+     "mins": 6
+    },
+    {
+     "id": "sreplat-chaos-hypothesis",
+     "title": "Hypothesis vs havoc",
+     "domain_id": "chaos-engineering",
+     "situation": "An engineer runs weekly 'chaos Fridays' killing random pods. Nothing is written down; findings aren't tracked.",
+     "objectives": [
+      "Hypothesis-driven chaos"
+     ],
+     "evidence": [
+      [
+       "practice",
+       "random pod kills, no hypothesis, no steady-state definition"
+      ],
+      [
+       "result",
+       "6 months, zero documented learnings"
+      ]
+     ],
+     "prompt": "What needs to change?",
+     "choices": [
+      "Every experiment gets a written card: steady-state, hypothesis, blast radius, abort conditions — and results feed the backlog",
+      "Kill more interesting things (databases, DNS)",
+      "Run chaos daily instead of weekly",
+      "Stop chaos; it clearly doesn't work here"
+     ],
+     "answer": 0,
+     "hint": "After a random pod kill, what did the team learn?",
+     "why": "Without a hypothesis there's nothing to learn: random kills that the system survives teach nothing, and ones it doesn't survive are just outages. The experiment card converts breaking into learning — steady-state defines 'normal', the hypothesis states the belief, results confirm or refute it, and refutations become backlog items. Choices 2/3 scale up the havoc without adding learning. Choice 4 blames the practice for the missing discipline. Correct: hypothesis-driven cards with tracked outcomes.",
+     "mins": 5
+    },
+    {
+     "id": "sreplat-chaos-abort",
+     "title": "The experiment that became an incident",
+     "domain_id": "chaos-engineering",
+     "situation": "A latency-injection experiment had no abort hook. Steady state broke at minute 3; the engineer noticed at minute 25. Users were affected.",
+     "objectives": [
+      "Abort conditions",
+      "Safeguards"
+     ],
+     "evidence": [
+      [
+       "timeline",
+       "fault injected 10:00; errors > 5% from 10:03; noticed 10:25; halted 10:27"
+      ],
+      [
+       "config",
+       "no automated abort; manual monitoring only"
+      ]
+     ],
+     "prompt": "What is the required safeguard?",
+     "choices": [
+      "Automated abort hooks on steady-state deviation (errors > threshold for N min → auto-halt) plus a manual kill switch — at least two independent abort paths",
+      "Shorter experiments",
+      "More careful engineers watching dashboards",
+      "Only run experiments at 3am when traffic is low"
+     ],
+     "answer": 0,
+     "hint": "What stops the experiment when the human isn't watching?",
+     "why": "Manual monitoring is a single point of failure — attention lapses, and 22 minutes of user impact resulted. Automated abort on the same SLI the hypothesis references stops the experiment the moment steady state breaks; the manual kill switch is the backup. Choice 2 helps but doesn't bound damage. Choice 3 is the 'be more careful' anti-pattern. Choice 4 reduces blast radius by timing but keeps the missing safeguard. Correct: automated abort + manual kill switch.",
+     "mins": 6
+    },
+    {
+     "id": "sreplat-chaos-gameday",
+     "title": "Game day with no debrief",
+     "domain_id": "chaos-engineering",
+     "situation": "The team ran an AZ-failure game day. It went well, everyone had fun, and no action items were recorded.",
+     "objectives": [
+      "Game day debriefs"
+     ],
+     "evidence": [
+      [
+       "event",
+       "AZ failover game day: recovered in 18 min"
+      ],
+      [
+       "follow-up",
+       "no debrief held; no action items"
+      ]
+     ],
+     "prompt": "What was missing?",
+     "choices": [
+      "The debrief: structured review of surprises and gaps, producing tracked action items — the debrief is the product of the game day",
+      "A harder scenario next time",
+      "More participants",
+      "Longer game day duration"
+     ],
+     "answer": 0,
+     "hint": "What is the durable output of a game day?",
+     "why": "The value of a game day isn't the rehearsal — it's the surprises surfaced ('the runbook's third step is wrong', 'we didn't know who decides failback'). Without a debrief capturing them as tracked action items, the same surprises recur in the real incident. Choices 2/3/4 optimize the event, not the learning. Correct: mandatory debrief with action items.",
+     "mins": 5
+    },
+    {
+     "id": "sreplat-chaos-dep",
+     "title": "Dependency failure drill",
+     "domain_id": "chaos-engineering",
+     "situation": "Checkout depends on a fraud-check API. Nobody has tested what happens when fraud-check is slow or down.",
+     "objectives": [
+      "Dependency fault injection"
+     ],
+     "evidence": [
+      [
+       "arch",
+       "checkout → fraud-check (synchronous, 2s timeout, no fallback)"
+      ],
+      [
+       "risk",
+       "fraud-check outage = checkout outage"
+      ]
+     ],
+     "prompt": "What experiment do you design?",
+     "choices": [
+      "Inject latency then full failure into fraud-check in staging: hypothesis is that timeouts + fallback (or graceful degradation) keep checkout serving",
+      "Kill checkout pods to test recovery",
+      "Load-test fraud-check to its limit",
+      "Add a second fraud-check vendor"
+     ],
+     "answer": 0,
+     "hint": "Which architectural bet is currently untested?",
+     "why": "The architectural bet is 'checkout survives fraud-check degradation' — currently untested, and the 2s synchronous call with no fallback suggests the bet is wrong. Fault injection directly tests it: latency first (does p99 blow up?), then failure (does checkout collapse?). Choice 1's result dictates the fix (timeouts, circuit breaker, fallback). Choices 2/3 test the wrong thing. Choice 4 (second vendor) is a possible fix, but you experiment first to know what needs fixing. Correct: dependency fault injection.",
+     "mins": 6
+    },
+    {
+     "id": "sreplat-chaos-ci",
+     "title": "Resilience gate in the pipeline",
+     "domain_id": "chaos-engineering",
+     "situation": "A deploy removed a retry wrapper; checkout started failing when inventory was slow. Code review missed it; tests didn't cover it.",
+     "objectives": [
+      "Chaos in CI/CD"
+     ],
+     "evidence": [
+      [
+       "cause",
+       "PR removed retry logic; no test asserted resilience"
+      ],
+      [
+       "impact",
+       "30 min of checkout errors during inventory slowness"
+      ]
+     ],
+     "prompt": "What systemic fix prevents recurrence?",
+     "choices": [
+      "A chaos gate in CI: inject dependency latency/failure during integration tests and assert graceful degradation — the PR fails if resilience regresses",
+      "More careful code reviews",
+      "A wiki page on retry best practices",
+      "Ban removing retry logic"
+     ],
+     "answer": 0,
+     "hint": "What would have caught this PR automatically?",
+     "why": "Reviews and wiki pages don't catch what tests don't assert. A CI chaos gate makes resilience a build property: every PR is tested against dependency failure, and regressions fail the build in minutes. Choice 2/3 rely on human vigilance. Choice 4 is unenforceable. Correct: automated resilience gate in the pipeline.",
+     "mins": 6
+    },
+    {
+     "id": "sreplat-chaos-blast",
+     "title": "Unscoped experiment",
+     "domain_id": "chaos-engineering",
+     "situation": "An experiment configured 'kill 30% of pods' without a namespace selector ran against the production cluster instead of staging.",
+     "objectives": [
+      "Blast radius scoping"
+     ],
+     "evidence": [
+      [
+       "config",
+       "target: '30% of pods' — no cluster/namespace specified"
+      ],
+      [
+       "result",
+       "production checkout pods killed; 12 min incident"
+      ]
+     ],
+     "prompt": "What controls prevent this?",
+     "choices": [
+      "Mandatory scoping (cluster + namespace selectors), environment separation (separate chaos tooling/credentials per env), and config review before run",
+      "Fewer chaos experiments",
+      "Only run chaos in staging forever",
+      "Blame the engineer who ran it"
+     ],
+     "answer": 0,
+     "hint": "What in the config allowed prod to be targeted?",
+     "why": "The fault wasn't wrong — the targeting was. Mandatory scoping fields, separate credentials per environment (staging chaos tooling physically cannot address prod), and a second pair of eyes on the config are the systemic fixes. Choice 2/3 abandon the practice. Choice 4 is blame culture. Correct: scoping + environment separation + review.",
+     "mins": 6
+    }
+   ]
+  },
+  {
+   "id": "multi-region",
+   "name": "Multi-Region & Disaster Recovery",
+   "description": "Active-active vs active-passive, replication, traffic steering, failover drills, RTO/RPO.",
+   "icon": "globe",
+   "scenarios": [
+    {
+     "id": "sreplat-mr-rto",
+     "title": "Choosing the DR topology",
+     "domain_id": "multi-region",
+     "situation": "The business requires checkout RTO 15 min, RPO 1 min. The team proposes active-passive with monthly failover drills.",
+     "objectives": [
+      "Topology selection",
+      "RTO/RPO design"
+     ],
+     "evidence": [
+      [
+       "requirements",
+       "RTO 15 min, RPO 1 min"
+      ],
+      [
+       "proposal",
+       "active-passive, async replication (lag ~2 min), monthly drills"
+      ]
+     ],
+     "prompt": "Does the proposal meet the requirements?",
+     "choices": [
+      "No: async lag (~2 min) already exceeds the 1-min RPO, and 15-min RTO needs automated, well-drilled failover — this needs sync replication (or single-writer shards) and more frequent drills",
+      "Yes, active-passive with monthly drills is sufficient",
+      "Yes, but switch to weekly drills",
+      "No — only active-active can do 15-min RTO"
+     ],
+     "answer": 0,
+     "hint": "What is the RPO floor set by the replication lag?",
+     "why": "Two gaps: the 2-minute replication lag violates RPO 1 min by itself (need sync replication or bounded-lag single-writer), and monthly drills won't sustain 15-minute RTOs (need automation + frequent drills). Choice 2/3 accept the RPO violation. Choice 4 overstates — well-automated active-passive can hit 15-min RTO. Correct: fix replication for RPO, automate + drill frequently for RTO.",
+     "mins": 7
+    },
+    {
+     "id": "sreplat-mr-splitbrain",
+     "title": "Split-brain during partition",
+     "domain_id": "multi-region",
+     "situation": "A network partition isolated us-east. Both regions accepted writes for 20 minutes. Now there are conflicting orders with the same IDs.",
+     "objectives": [
+      "Partition handling",
+      "Conflict resolution"
+     ],
+     "evidence": [
+      [
+       "event",
+       "20-min partition; dual-writer; conflicting order IDs"
+      ],
+      [
+       "design",
+       "multi-writer, no fencing, no conflict strategy"
+      ]
+     ],
+     "prompt": "What should the design have included?",
+     "choices": [
+      "Quorum/fencing (only the majority partition writes) or single-writer-per-shard; plus a defined conflict-resolution strategy for anything multi-writer",
+      "Faster partition repair",
+      "Manual reconciliation after every partition",
+      "Bigger network pipes"
+     ],
+     "answer": 0,
+     "hint": "What stops the minority partition from accepting writes?",
+     "why": "Without fencing, a partition creates two divergent truths — reconciliation is then manual and lossy. Quorum (minority partition stops writing) or single-writer-per-shard (writers never conflict) prevents divergence structurally; where multi-writer is unavoidable, a defined resolution strategy (LWW/CRDT) bounds the damage. Choice 2/4 don't prevent dual-writes. Choice 3 accepts regular data corruption as operations. Correct: fencing/quorum or single-writer design.",
+     "mins": 7
+    },
+    {
+     "id": "sreplat-mr-dns",
+     "title": "DNS failover too slow",
+     "domain_id": "multi-region",
+     "situation": "Region failover relies on DNS with 5-min TTL. During the last failover, 40% of clients kept hitting the dead region for 30+ minutes.",
+     "objectives": [
+      "Traffic steering"
+     ],
+     "evidence": [
+      [
+       "config",
+       "DNS failover, TTL 300s"
+      ],
+      [
+       "observed",
+       "40% of traffic on dead region 30 min after cutover"
+      ]
+     ],
+     "prompt": "What is the correct fix?",
+     "choices": [
+      "Anycast IPs with health-checked load balancing for fast steering; keep DNS as backup, not the primary mechanism",
+      "Lower TTL to 10 seconds",
+      "Tell customers to flush DNS",
+      "Add more DNS providers"
+     ],
+     "answer": 0,
+     "hint": "Who actually honors your TTL?",
+     "why": "Clients and resolvers ignore TTLs routinely — 30 minutes of stale traffic proves it. Anycast moves traffic at the routing layer in seconds-to-minutes regardless of client DNS behavior. Choice 2 helps marginally but doesn't fix non-compliant resolvers. Choice 3/4 are not real solutions. Correct: anycast + health checks as the steering mechanism.",
+     "mins": 6
+    },
+    {
+     "id": "sreplat-mr-failback",
+     "title": "Failover worked; failback didn't",
+     "domain_id": "multi-region",
+     "situation": "The team failed over to us-west cleanly. Failing back to us-east corrupted data: replication had been one-directional and nobody re-synced.",
+     "objectives": [
+      "Failback planning"
+     ],
+     "evidence": [
+      [
+       "drill",
+       "failover tested; failback never tested"
+      ],
+      [
+       "result",
+       "data loss on return to primary"
+      ]
+     ],
+     "prompt": "What is the lesson?",
+     "choices": [
+      "Drill the full cycle including failback: re-establish replication in reverse, verify sync, then shift traffic — failback is a second failover, not an undo",
+      "Never fail back; stay in us-west",
+      "Fail back faster next time",
+      "Use bidirectional replication always"
+     ],
+     "answer": 0,
+     "hint": "What happened to the writes made in us-west during the outage?",
+     "why": "Failback is not 'undo' — during the outage, us-west accumulated writes that us-east lacks. Returning without re-syncing (reverse replication, verification) discards them. The drill must cover the full cycle: over, back, verified. Choice 2 avoids the problem by abandoning the primary. Choice 3 speeds up the data loss. Choice 4 (always bidirectional) adds conflict complexity for a drill problem. Correct: test and procedure-ize failback.",
+     "mins": 6
+    },
+    {
+     "id": "sreplat-mr-lag",
+     "title": "Replication lag alert nobody owns",
+     "domain_id": "multi-region",
+     "situation": "Replication lag hit 45 minutes last night. No alert fired; the morning report just shows stale data in the secondary region.",
+     "objectives": [
+      "Replication monitoring"
+     ],
+     "evidence": [
+      [
+       "metrics",
+       "lag 45 min, undetected for 9 hours"
+      ],
+      [
+       "alerts",
+       "none on replication lag"
+      ]
+     ],
+     "prompt": "What is the correct fix?",
+     "choices": [
+      "Alert on replication lag with thresholds tied to RPO (warn at 50% of RPO, page near 100%), owned by the data team, with a runbook",
+      "Increase replication bandwidth",
+      "Accept lag as normal for async replication",
+      "Fail over to the secondary to 'catch up'"
+     ],
+     "answer": 0,
+     "hint": "What does 45 minutes of lag mean for your stated RPO?",
+     "why": "Lag is the RPO made visible — unmonitored lag means the RPO is a fiction. Thresholds derive from the RPO (warn at half, page near full), with an owner and runbook. Choice 2 may help but doesn't detect. Choice 3 accepts unbounded staleness. Choice 4 is nonsense — failing over to a 45-min-stale replica. Correct: RPO-derived lag alerting with ownership.",
+     "mins": 6
+    },
+    {
+     "id": "sreplat-mr-tier",
+     "title": "One DR plan for everything",
+     "domain_id": "multi-region",
+     "situation": "The company applies the same DR design (active-active, sync replication) to checkout, the internal wiki, and the staging environment.",
+     "objectives": [
+      "DR tiering"
+     ],
+     "evidence": [
+      [
+       "cost",
+       "DR spend: 3x the primary infrastructure"
+      ],
+      [
+       "needs",
+       "wiki RTO could be 24h; nobody asked"
+      ]
+     ],
+     "prompt": "What is the correct approach?",
+     "choices": [
+      "Tier by RTO/RPO: Tier 0 (checkout) gets the expensive design; Tier 2 (wiki) gets backups; each tier's design justified by signed-off numbers",
+      "Keep uniform DR — simplicity is worth it",
+      "Drop DR for everything except checkout",
+      "Move the wiki to active-active too, for consistency"
+     ],
+     "answer": 0,
+     "hint": "What RTO does the wiki actually need — and what does its DR cost?",
+     "why": "Uniform gold-plating burns 3x spend protecting a wiki nobody needs in 15 minutes. Tiering matches cost to requirement: expensive designs only where the business signed off on tight RTO/RPO. Choice 2 pays triple for uniformity. Choice 3 swings to zero protection without analysis. Choice 4 doubles down. Correct: tiered DR from written requirements.",
+     "mins": 6
+    },
+    {
+     "id": "sreplat-mr-drillscore",
+     "title": "Drill without measurements",
+     "domain_id": "multi-region",
+     "situation": "The team 'successfully' failed over last quarter. Nobody recorded how long it took or how much data was lost.",
+     "objectives": [
+      "Drill measurement"
+     ],
+     "evidence": [
+      [
+       "report",
+       "'failover successful' — no timings, no data-loss figure"
+      ],
+      [
+       "targets",
+       "RTO 15 min, RPO 1 min (unstated whether met)"
+      ]
+     ],
+     "prompt": "What is missing?",
+     "choices": [
+      "Measured RTO/RPO achieved vs targets, plus a surprise log feeding action items — a drill without measurements can't prove the targets",
+      "A bigger drill scope",
+      "More frequent drills",
+      "Executive attendance"
+     ],
+     "answer": 0,
+     "hint": "How do you know the 15-min RTO was met?",
+     "why": "'Successful' without numbers is theater: did it take 12 minutes or 47? Was data loss 30 seconds or 10 minutes? The scorecard (achieved RTO/RPO vs target, surprises → actions) is what justifies confidence — or exposes the gap. Choices 2/3/4 improve the event, not the evidence. Correct: measure every drill against the targets.",
+     "mins": 5
+    }
+   ]
+  },
+  {
+   "id": "cost-optimization",
+   "name": "Cost Optimization for Reliable Systems",
+   "description": "Cost visibility, rightsizing, autoscaling economics, spot capacity, SLO-aware tradeoffs.",
+   "icon": "coins",
+   "scenarios": [
+    {
+     "id": "sreplat-cost-tag",
+     "title": "The unattributable bill",
+     "domain_id": "cost-optimization",
+     "situation": "The cloud bill grew 40% in a quarter. 60% of resources are untagged; nobody knows which team owns the growth.",
+     "objectives": [
+      "Cost allocation"
+     ],
+     "evidence": [
+      [
+       "bill",
+       "+40% quarter over quarter"
+      ],
+      [
+       "tags",
+       "60% of spend unattributable"
+      ]
+     ],
+     "prompt": "What is the first step?",
+     "choices": [
+      "Enforce tagging (team/service/environment) via policy — block untagged provisioning — then attribute and showback per team",
+      "Negotiate a bigger discount with the provider",
+      "Cut 20% of instances arbitrarily",
+      "Move to a cheaper provider"
+     ],
+     "answer": 0,
+     "hint": "Who can cut spend they can't see?",
+     "why": "Unattributable spend can't be optimized — you can't ask a team to cut what you can't show them. Tagging enforcement (policy-as-code blocking untagged deploys) plus showback reports creates accountability; the actual waste reveals itself once visible. Choices 2/4 change pricing, not behavior. Choice 3 cuts blind. Correct: attribute first, then optimize.",
+     "mins": 5
+    },
+    {
+     "id": "sreplat-cost-right",
+     "title": "Rightsizing the over-provisioned fleet",
+     "domain_id": "cost-optimization",
+     "situation": "A service requests 8 CPU / 32GB per pod; p95 usage over 90 days is 1.2 CPU / 4GB. 200 pods.",
+     "objectives": [
+      "Rightsizing"
+     ],
+     "evidence": [
+      [
+       "alloc",
+       "8 CPU / 32 GB requested"
+      ],
+      [
+       "used",
+       "p95: 1.2 CPU / 4 GB over 90 days"
+      ]
+     ],
+     "prompt": "What is the correct action?",
+     "choices": [
+      "Rightsize toward measured p95 plus buffer (e.g., 2 CPU / 8 GB), roll out gradually with monitoring, and re-check after the change",
+      "Leave it — headroom is good",
+      "Cut to exactly p95 (1.2 CPU / 4 GB)",
+      "Double the pods and halve the size"
+     ],
+     "answer": 0,
+     "hint": "What does the 90-day p95 tell you about the other 85% of allocated capacity?",
+     "why": "The fleet runs at ~15% of request — clear waste. Sizing to p95 + buffer keeps peaks safe while reclaiming most of the waste; gradual rollout with monitoring catches the unexpected. Choice 2 defends 6x over-provisioning as 'headroom'. Choice 3 removes all buffer — the next p99.9 spike OOMs. Choice 4 is churn without analysis. Correct: measured rightsizing with buffer, rolled out safely.",
+     "mins": 6
+    },
+    {
+     "id": "sreplat-cost-idle",
+     "title": "Idle non-prod environments",
+     "domain_id": "cost-optimization",
+     "situation": "40 dev environments run 24/7 at full size. Usage logs show activity 9am-6pm weekdays only.",
+     "objectives": [
+      "Scale-to-zero"
+     ],
+     "evidence": [
+      [
+       "fleet",
+       "40 envs x 24/7"
+      ],
+      [
+       "usage",
+       "active ~45 h/week of 168 h"
+      ]
+     ],
+     "prompt": "What is the highest-ROI move?",
+     "choices": [
+      "Scheduled scale-to-zero: nights and weekends off, auto-up on first morning access — ~73% compute savings with zero performance risk",
+      "Rightsize each environment",
+      "Move dev to spot instances",
+      "Ask developers to shut down manually"
+     ],
+     "answer": 0,
+     "hint": "What fraction of the week is anyone using these environments?",
+     "why": "The environments sit idle 73% of the week — scheduled shutdown captures nearly three-quarters of the cost with no architectural risk and no performance tradeoff. Rightsizing (choice 2) trims the active 27%, a smaller win. Spot (choice 3) helps but keeps idle spend. Manual shutdown (choice 4) never happens consistently. Correct: automated schedule.",
+     "mins": 5
+    },
+    {
+     "id": "sreplat-cost-spot",
+     "title": "Spot for the stateful singleton",
+     "domain_id": "cost-optimization",
+     "situation": "To save money, the team moved the primary database to spot VMs. Last night a reclamation caused 40 minutes of downtime.",
+     "objectives": [
+      "Spot suitability"
+     ],
+     "evidence": [
+      [
+       "change",
+       "primary DB on spot instances"
+      ],
+      [
+       "incident",
+       "reclamation → 40 min outage"
+      ]
+     ],
+     "prompt": "What is the correct policy?",
+     "choices": [
+      "Spot for interruptible workloads (stateless tiers, batch, CI); stateful singletons and primaries stay on on-demand/reserved",
+      "Add faster failover so reclamations don't hurt",
+      "Use spot but with diversfied instance types",
+      "Accept the risk; the savings are worth it"
+     ],
+     "answer": 0,
+     "hint": "What does the spot contract promise — and can a primary DB accept it?",
+     "why": "Spot's contract is 'we can take this back with notice' — a primary database cannot tolerate that. The savings on the DB are dwarfed by 40 minutes of outage. Spot belongs on stateless/burst/batch capacity with graceful handling; the data layer stays on stable capacity. Choices 2/3 mitigate but don't fix the category error. Choice 4 prices the outage at zero. Correct: workload-appropriate placement.",
+     "mins": 6
+    },
+    {
+     "id": "sreplat-cost-unit",
+     "title": "Totals vs unit economics",
+     "domain_id": "cost-optimization",
+     "situation": "The bill is flat at $200k/mo while traffic doubled. Finance wants a 20% cut; engineering says 'we're already efficient'.",
+     "objectives": [
+      "Unit economics"
+     ],
+     "evidence": [
+      [
+       "bill",
+       "$200k/mo, flat for 6 months"
+      ],
+      [
+       "traffic",
+       "2x over the same period"
+      ]
+     ],
+     "prompt": "How do you resolve the debate?",
+     "choices": [
+      "Unit economics: cost per 1k requests halved as traffic doubled — efficiency is improving; a blind 20% cut risks the SLOs achieving it",
+      "Cut 20% across the board as finance asks",
+      "Refuse any cuts; reliability is priceless",
+      "Cut the monitoring budget (it's 'overhead')"
+     ],
+     "answer": 0,
+     "hint": "What happened to cost per request while the total stayed flat?",
+     "why": "Flat totals with doubled traffic means unit cost halved — the team is genuinely efficient, and blind cuts would likely breach the SLOs that efficiency supports. Unit economics reframes the conversation from 'spend less' to 'spend per unit', and any cut proposal must name which reliability tier it degrades. Choice 2/4 cut blind. Choice 3 refuses engagement. Correct: decide on unit economics with SLO impact explicit.",
+     "mins": 6
+    },
+    {
+     "id": "sreplat-cost-slo",
+     "title": "Cheapest path that keeps the SLO",
+     "domain_id": "cost-optimization",
+     "situation": "Two designs both meet the 99.9% SLO: A costs $30k/mo (multi-AZ, sync), B costs $12k/mo (multi-AZ, async + tested failover).",
+     "objectives": [
+      "SLO-aware spending"
+     ],
+     "evidence": [
+      [
+       "A",
+       "$30k/mo, sync replication"
+      ],
+      [
+       "B",
+       "$12k/mo, async + drilled failover; both meet 99.9%"
+      ]
+     ],
+     "prompt": "Which do you choose and why?",
+     "choices": [
+      "B: both meet the SLO, so the cheaper design wins — reliability beyond the SLO has no user-visible value; document the choice and the failover drill cadence",
+      "A: more reliability is always better",
+      "A: sync is simpler to reason about",
+      "B, but skip the drills to save more"
+     ],
+     "answer": 0,
+     "hint": "What do users feel differently between A and B?",
+     "why": "The SLO is the contract: once met, extra nines are invisible to users but very visible on the bill. B meets the SLO at 40% of the cost — the rational choice, with the drill cadence as the load-bearing assumption (documented and scheduled). Choice 2/3 pay $18k/mo for nothing users feel. Choice 4 removes the assumption B depends on. Correct: cheapest SLO-meeting design, with its assumptions explicit.",
+     "mins": 6
+    },
+    {
+     "id": "sreplat-cost-burn",
+     "title": "Error budget as spending permission",
+     "domain_id": "cost-optimization",
+     "situation": "Off-peak, checkout runs 12 replicas for a 99.95% SLO; the error budget is 90% full. Traffic is 10% of peak.",
+     "objectives": [
+      "Budget-driven tradeoffs"
+     ],
+     "evidence": [
+      [
+       "state",
+       "12 replicas, 10% traffic, budget 90% remaining"
+      ],
+      [
+       "proposal",
+       "drop to 6 replicas off-peak"
+      ]
+     ],
+     "prompt": "Is the proposal sound?",
+     "choices": [
+      "Yes, if modeled: 6 replicas still meet the SLO at 10% traffic with headroom, and the full budget gives room to revert — a deliberate, reversible tradeoff",
+      "No — never reduce reliability spending",
+      "Yes — cut to 2 replicas, budget is full",
+      "No — replica count must never change"
+     ],
+     "answer": 0,
+     "hint": "What is a full error budget for, if not deliberate tradeoffs?",
+     "why": "A full error budget is permission to take measured risks: the proposal is sound if the math holds (6 replicas × headroom ≥ 10% traffic peaks) and it's reversible (scale back up on budget burn). Choice 2 treats all reliability spend as sacred. Choice 3 skips the modeling — 2 replicas has no headroom. Choice 4 freezes operations. Correct: modeled, reversible, budget-aware tradeoff.",
+     "mins": 6
+    }
+   ]
+  },
+  {
+   "id": "progressive-delivery",
+   "name": "Progressive Delivery & Safe Rollouts",
+   "description": "Canary analysis, blue-green, feature flags, automated rollback, deployment freezes.",
+   "icon": "rocket",
+   "scenarios": [
+    {
+     "id": "sreplat-pd-canary",
+     "title": "Canary with no analysis",
+     "domain_id": "progressive-delivery",
+     "situation": "Deploys shift 5% traffic to the new version for 30 minutes while someone 'watches the dashboard', then proceed. A bad deploy still reached 100% last week.",
+     "objectives": [
+      "Automated canary analysis"
+     ],
+     "evidence": [
+      [
+       "process",
+       "5% for 30 min, human watches dashboard"
+      ],
+      [
+       "incident",
+       "regression missed; full rollout of bad version"
+      ]
+     ],
+     "prompt": "What is the fix?",
+     "choices": [
+      "Automated analysis: metric comparisons (error rate, p99) vs baseline with pass/fail thresholds and auto-rollback — humans don't reliably spot 0.2% regressions",
+      "Longer canary (2 hours)",
+      "Bigger canary (25%)",
+      "More experienced dashboard watchers"
+     ],
+     "answer": 0,
+     "hint": "Can a human reliably see a 0.2% regression at 5% traffic?",
+     "why": "Humans watching dashboards miss slow-burn regressions — 0.2% error increases don't look alarming at 5% traffic. Automated statistical comparison against baseline catches what eyes miss, and auto-rollback removes the hesitation. Longer/bigger (choices 2/3) without analysis just exposes more users to the bad version. Choice 4 doesn't fix human pattern-matching limits. Correct: automated analysis with auto-rollback.",
+     "mins": 6
+    },
+    {
+     "id": "sreplat-pd-flag",
+     "title": "The flag with no owner",
+     "domain_id": "progressive-delivery",
+     "situation": "The codebase has 340 feature flags. Nobody knows which are safe to remove; a cleanup attempt broke checkout (a 'dead' flag was still load-bearing).",
+     "objectives": [
+      "Flag hygiene"
+     ],
+     "evidence": [
+      [
+       "inventory",
+       "340 flags; 60% older than a year; owners unknown"
+      ],
+      [
+       "incident",
+       "removed 'unused' flag → checkout down"
+      ]
+     ],
+     "prompt": "What is the systemic fix?",
+     "choices": [
+      "Flag lifecycle policy: every flag gets an owner + expiry date at creation; quarterly audits; removal via the same canary process as code changes",
+      "Delete all flags older than a year",
+      "Freeze new flag creation",
+      "Move flags to config files"
+     ],
+     "answer": 0,
+     "hint": "What distinguishes a live flag from a dead one today?",
+     "why": "The incident came from missing lifecycle, not from flags themselves: no owner, no expiry, removal without process. The policy makes flags temporary by default (owner + expiry at creation), audits catch stragglers, and removal goes through canary like any change. Choice 2 repeats the incident at scale. Choice 3 blocks a legitimate tool. Choice 4 changes the storage, not the lifecycle. Correct: lifecycle policy with ownership and expiry.",
+     "mins": 6
+    },
+    {
+     "id": "sreplat-pd-rollback",
+     "title": "Rollback that didn't",
+     "domain_id": "progressive-delivery",
+     "situation": "During an incident the team 'rolled back' the deploy, but errors continued: the bad config flag stayed at its new value.",
+     "objectives": [
+      "Atomic rollback units"
+     ],
+     "evidence": [
+      [
+       "action",
+       "code rolled back to 1.4.1; flag new_checkout stayed true"
+      ],
+      [
+       "result",
+       "errors continued for 40 more minutes"
+      ]
+     ],
+     "prompt": "What is the correct rollback design?",
+     "choices": [
+      "Rollback the whole unit — code + config + flags — as one atomic operation; verify error budget recovers after",
+      "Roll back code faster next time",
+      "Never use flags with deploys",
+      "Roll forward with a fix instead"
+     ],
+     "answer": 0,
+     "hint": "Which combinations of code+flag were ever tested together?",
+     "why": "The deploy's unit was code+config+flag; rolling back only code left the system in a state that never existed in testing (old code + new flag). Atomic rollback of the full unit restores a known-good combination. Choice 2 speeds up the partial fix. Choice 3 discards flags' value. Choice 4 (roll forward) is legitimate when a fix is ready in minutes, but the rollback design must still be atomic for when it isn't. Correct: whole-unit rollback.",
+     "mins": 6
+    },
+    {
+     "id": "sreplat-pd-freeze",
+     "title": "The freeze everyone violates",
+     "domain_id": "progressive-delivery",
+     "situation": "A holiday deploy freeze exists 'on paper'. Three teams deployed during it last year; one caused the holiday outage.",
+     "objectives": [
+      "Freeze enforcement"
+     ],
+     "evidence": [
+      [
+       "policy",
+       "freeze announced by email"
+      ],
+      [
+       "reality",
+       "3 violations; 1 caused the outage"
+      ]
+     ],
+     "prompt": "What makes the freeze real?",
+     "choices": [
+      "Narrow scope (risky changes only), a defined emergency exception path, and pipeline enforcement that blocks prod deploys during the window",
+      "Stricter emails from leadership",
+      "Freezing all changes including safe ones",
+      "Punishing violators"
+     ],
+     "answer": 0,
+     "hint": "Why did teams feel they needed to violate it?",
+     "why": "Email freezes leak because they're unenforced and overbroad. The working design: freeze only risky changes (so teams don't need to violate it for safe work), give emergencies a legitimate path (approval + extra validation), and enforce in the pipeline (the deploy job refuses). Choices 2/4 are theater. Choice 3 makes violations more likely, not fewer. Correct: scoped + exception path + automated enforcement.",
+     "mins": 6
+    },
+    {
+     "id": "sreplat-pd-compat",
+     "title": "Rolling deploy meets breaking change",
+     "domain_id": "progressive-delivery",
+     "situation": "A rolling deploy shipped v2 API while v1 instances still served. v2 clients hit v1 instances and errored for 20 minutes.",
+     "objectives": [
+      "Version compatibility"
+     ],
+     "evidence": [
+      [
+       "deploy",
+       "rolling: v1 and v2 coexisted 20 min"
+      ],
+      [
+       "error",
+       "v2 clients → v1 instances → 500s"
+      ]
+     ],
+     "prompt": "What is the required discipline?",
+     "choices": [
+      "Backward/forward compatibility during coexistence: v2 clients must tolerate v1 responses (or traffic must pin versions); contract tested in CI",
+      "Deploy faster so coexistence is shorter",
+      "Switch to blue-green",
+      "Deploy at 3am when traffic is low"
+     ],
+     "answer": 0,
+     "hint": "What versions coexist during a rolling deploy — and what must hold between them?",
+     "why": "Rolling deploys guarantee version coexistence — the system must be designed for it. v2 clients need to handle v1 responses (or the router pins clients to matching versions); CI should test the mixed-version matrix. Choice 2 shortens but doesn't eliminate the window. Choice 3 changes strategy without fixing the contract gap (blue-green has its own coexistence issues with state). Choice 4 hides it. Correct: version-tolerant contracts, tested.",
+     "mins": 6
+    },
+    {
+     "id": "sreplat-pd-killswitch",
+     "title": "No kill switch on the risky launch",
+     "domain_id": "progressive-delivery",
+     "situation": "A new recommendation engine launched to 100% with no flag. It degraded checkout latency; the only mitigation was a full rollback (25 min).",
+     "objectives": [
+      "Kill switches"
+     ],
+     "evidence": [
+      [
+       "launch",
+       "100% rollout, no flag, no gradual ramp"
+      ],
+      [
+       "mitigation",
+       "full rollback: 25 min"
+      ]
+     ],
+     "prompt": "What should the launch have included?",
+     "choices": [
+      "A kill switch (feature flag) plus gradual rollout: instant disable in seconds when latency degraded, instead of a 25-min rollback",
+      "More load testing before launch",
+      "A faster rollback pipeline",
+      "Launching at low-traffic hours"
+     ],
+     "answer": 0,
+     "hint": "How long should 'turn off the new thing' take?",
+     "why": "The 25-minute mitigation was the real failure: with a kill switch, the team disables the feature in seconds and investigates calmly. Gradual rollout would have limited the blast radius to a small % first. Choices 2/4 reduce risk but don't bound mitigation time. Choice 3 helps but rollback will always be slower than a flag flip. Correct: flag-gated gradual launch with kill switch.",
+     "mins": 5
+    },
+    {
+     "id": "sreplat-pd-schema",
+     "title": "Deploy vs migration ordering",
+     "domain_id": "progressive-delivery",
+     "situation": "A deploy ran a migration dropping a column the old code still reads. During the rolling deploy, old instances crashed.",
+     "objectives": [
+      "Expand/contract"
+     ],
+     "evidence": [
+      [
+       "change",
+       "DROP COLUMN email in the same deploy as code removal"
+      ],
+      [
+       "incident",
+       "old instances queried the dropped column → crashes"
+      ]
+     ],
+     "prompt": "What is the safe sequence?",
+     "choices": [
+      "Expand/contract: deploy code that doesn't need the column → migrate/drop → deploy cleanup; each step independently safe and reversible",
+      "Run migrations before deploys, always",
+      "Run migrations after deploys, always",
+      "Take downtime for schema changes"
+     ],
+     "answer": 0,
+     "hint": "Which code versions are live when the column disappears?",
+     "why": "The crash came from ordering: schema changed while old code was live. Expand/contract separates the phases so old code never sees a schema it can't handle and new code never needs a column that's gone — each step deployable and reversible alone. 'Migrations first' (choice 2) breaks old code the same way; 'after' (choice 3) breaks new code instead. Downtime (choice 4) is sometimes acceptable but unnecessary here. Correct: expand/contract sequencing.",
+     "mins": 6
+    }
+   ]
+  },
+  {
+   "id": "change-safety",
+   "name": "Change Safety & Configuration Management",
+   "description": "Safe config changes, schema migrations, change review, and blast-radius control.",
+   "icon": "shield",
+   "scenarios": [
+    {
+     "id": "sreplat-cs-config",
+     "title": "The 'just config' outage",
+     "domain_id": "change-safety",
+     "situation": "An engineer hand-edited a timeout value in production ('just config, no review needed'). The value had a wrong unit; checkout timed out fleet-wide.",
+     "objectives": [
+      "Config as code"
+     ],
+     "evidence": [
+      [
+       "change",
+       "hand-edited prod config: timeout 5000 (ms assumed, s parsed)"
+      ],
+      [
+       "impact",
+       "fleet-wide checkout timeouts, 35 min"
+      ]
+     ],
+     "prompt": "What is the systemic fix?",
+     "choices": [
+      "Config as code: versioned, reviewed, CI-validated (schema + units), staged rollout — the same pipeline as code changes",
+      "More training on units",
+      "Restrict prod access to seniors",
+      "Longer incident reviews"
+     ],
+     "answer": 0,
+     "hint": "Which safety nets did the hand-edit bypass?",
+     "why": "Hand-edits bypass every safety net — no review caught the unit error, no validation rejected it, no staging caught it. Config-as-code puts the change through review, schema/unit validation in CI, and staged rollout; the wrong unit fails validation or the canary, not the fleet. Choices 2/3/4 address the human, not the missing process. Correct: config through the same pipeline as code.",
+     "mins": 6
+    },
+    {
+     "id": "sreplat-cs-migration",
+     "title": "Unthrottled backfill",
+     "domain_id": "change-safety",
+     "situation": "A backfill updating 200M rows ran unthrottled on the primary. Replication lagged 2 hours; reads went stale; the on-call killed it halfway.",
+     "objectives": [
+      "Safe migrations"
+     ],
+     "evidence": [
+      [
+       "job",
+       "single UPDATE over 200M rows, no batching"
+      ],
+      [
+       "impact",
+       "2h replication lag, stale reads, killed mid-run"
+      ]
+     ],
+     "prompt": "What is the correct pattern?",
+     "choices": [
+      "Batched, throttled backfill (e.g., 10k rows/batch with sleep), on a replica-friendly schedule, resumable from a watermark — plus a prod-sized dry run first",
+      "Bigger primary to absorb backfills",
+      "Run backfills at 3am only",
+      "Split into two 100M updates"
+     ],
+     "answer": 0,
+     "hint": "What bounds the backfill's impact on live traffic?",
+     "why": "The backfill saturated the primary's replication stream. Batching with throttling bounds the impact per unit time; the watermark makes kills resumable instead of restart-from-zero; the dry run on prod-sized data predicts duration. Choice 2 buys hardware for a process bug. Choice 3 just moves the saturation. Choice 4 is still unthrottled. Correct: batched, throttled, resumable.",
+     "mins": 6
+    },
+    {
+     "id": "sreplat-cs-cab",
+     "title": "The rubber-stamp CAB",
+     "domain_id": "change-safety",
+     "situation": "The change advisory board reviews 200 changes/week in a 1-hour meeting. Last month's outage came from a change the CAB 'approved'.",
+     "objectives": [
+      "Risk-based change review"
+     ],
+     "evidence": [
+      [
+       "process",
+       "200 changes, 60 min → 18 seconds per change"
+      ],
+      [
+       "outcome",
+       "approved change caused outage"
+      ]
+     ],
+     "prompt": "What is the fix?",
+     "choices": [
+      "Risk-based tiers: pre-approve standard changes (auto), async review for normal, deep review only for high-risk — and measure whether reviewed changes still cause incidents",
+      "Longer CAB meetings",
+      "More CAB members",
+      "Require CAB approval for all changes including emergency"
+     ],
+     "answer": 0,
+     "hint": "How much real scrutiny fits in 18 seconds?",
+     "why": "18 seconds per change is not review — it's theater that adds delay without safety. Tiering focuses human attention where it matters (high-risk changes get real scrutiny; standard ones flow), and measuring incident-rate-by-tier keeps the process honest. Choices 2/3 scale the theater. Choice 4 blocks emergency mitigation. Correct: risk-based review with feedback metrics.",
+     "mins": 6
+    },
+    {
+     "id": "sreplat-cs-blast",
+     "title": "Underestimated blast radius",
+     "domain_id": "change-safety",
+     "situation": "A 'small' queue-config change was rolled out fleet-wide at once. It poisoned all workers; the whole pipeline stopped.",
+     "objectives": [
+      "Blast radius control"
+     ],
+     "evidence": [
+      [
+       "change",
+       "queue config, fleet-wide simultaneous rollout"
+      ],
+      [
+       "impact",
+       "100% of workers poisoned"
+      ]
+     ],
+     "prompt": "What should the rollout have looked like?",
+     "choices": [
+      "Staged rollout: canary on 5% of workers, automated health checks, gradual expansion — with the blast radius stated in the change record",
+      "More testing in staging",
+      "Smaller config changes",
+      "Peer review of the config"
+     ],
+     "answer": 0,
+     "hint": "What fraction of the fleet needed to see this change first?",
+     "why": "The change wasn't wrong — the rollout was: 100% simultaneous exposure turned a config bug into a total outage. Staged rollout bounds the damage to the canary slice, where automated checks catch it. Stating the radius in the change record forces the author to think about it. Choices 2/4 help but don't bound production exposure. Choice 3 is avoidance. Correct: staged rollout with declared blast radius.",
+     "mins": 5
+    },
+    {
+     "id": "sreplat-cs-drift",
+     "title": "The 2am hand-edit",
+     "domain_id": "change-safety",
+     "situation": "A 2am hand-edit fixed an incident. Six months later nobody remembers it; a routine re-deploy reverted it and the incident recurred.",
+     "objectives": [
+      "Drift detection",
+      "GitOps"
+     ],
+     "evidence": [
+      [
+       "edit",
+       "manual prod fix, never committed"
+      ],
+      [
+       "recurrence",
+       "re-deploy reverted the fix; same incident again"
+      ]
+     ],
+     "prompt": "What closes the loop?",
+     "choices": [
+      "GitOps: repo as source of truth with drift detection alerting on divergence; the 2am fix gets committed (or explicitly adopted) within 24h",
+      "Forbid all manual edits including emergencies",
+      "Better incident documentation",
+      "Longer postmortems"
+     ],
+     "answer": 0,
+     "hint": "How would anyone know the running config differs from the repo?",
+     "why": "Emergency hand-edits are sometimes necessary — the failure was never reconciling it with the source of truth. Drift detection surfaces divergence automatically; the 24h commit rule makes reconciliation routine. Choice 2 would have prolonged the original incident. Choice 3/4 document but don't detect. Correct: detect drift, reconcile fast.",
+     "mins": 6
+    },
+    {
+     "id": "sreplat-cs-secrets",
+     "title": "Secrets in the config repo",
+     "domain_id": "change-safety",
+     "situation": "An audit found production database passwords committed in the config repo's history. The repo is cloned widely.",
+     "objectives": [
+      "Secret management"
+     ],
+     "evidence": [
+      [
+       "finding",
+       "prod credentials in git history"
+      ],
+      [
+       "exposure",
+       "repo cloned by 200+ engineers + CI systems"
+      ]
+     ],
+     "prompt": "What is the remediation?",
+     "choices": [
+      "Rotate all exposed secrets immediately; purge history (or accept it as burned and move on); config references vault paths, never values — plus pre-commit secret scanning",
+      "Delete the commits from history and move on",
+      "Make the repo private",
+      "Encrypt the secrets in the repo"
+     ],
+     "answer": 0,
+     "hint": "Who has already seen the secret — and what must happen first?",
+     "why": "Exposed secrets are burned: rotate first (deleting history doesn't un-see them). Going forward, configs hold references (vault://...) not values, and pre-commit scanning blocks recurrence. Choice 2 alone leaves live credentials compromised. Choice 3 doesn't un-expose. Choice 4 (encrypted in repo) still distributes ciphertext widely and complicates rotation. Correct: rotate, reference, scan.",
+     "mins": 6
+    },
+    {
+     "id": "sreplat-cs-template",
+     "title": "The change template nobody fills",
+     "domain_id": "change-safety",
+     "situation": "A change template exists (blast radius, detection, rollback fields) but most changes ship with it blank.",
+     "objectives": [
+      "Change process adoption"
+     ],
+     "evidence": [
+      [
+       "template",
+       "fields exist; 80% submitted blank"
+      ],
+      [
+       "culture",
+       "'paperwork slows us down'"
+      ]
+     ],
+     "prompt": "What makes it work?",
+     "choices": [
+      "Make it cheap and enforced: 4 fields, 5 minutes, required by the pipeline for significant changes — plus show it catching a bad change early (social proof)",
+      "More template fields for thoroughness",
+      "Manager sign-off on every change",
+      "Remove the template"
+     ],
+     "answer": 0,
+     "hint": "Is the template cheaper than the incidents it prevents?",
+     "why": "Blank templates mean the cost exceeds the perceived value. Four required fields enforced by tooling (not culture) make it cheap; one visible 'this template caught a bad rollout' story makes it valued. Choices 2/3 raise the cost. Choice 4 surrenders. Correct: minimal, enforced, proven valuable.",
+     "mins": 5
+    }
+   ]
+  },
+  {
+   "id": "capstone-build",
+   "name": "Capstone: Design a Production-Ready Platform",
+   "description": "Guided hands-on project: SLOs, observability, incident runbooks, and a reliability review.",
+   "icon": "trophy",
+   "scenarios": []
+  },
+  {
+   "id": "mock-assessment",
+   "name": "Mock Assessment",
+   "description": "Timed mixed-domain assessment assembled from scenarios across all domains.",
+   "icon": "timer",
+   "scenarios": []
   }
  ],
  "lessons": [
@@ -1083,6 +2364,1266 @@
    "pitfalls": [
     "Common trap: toil is just a synonym for hard work.",
     "Common trap: count lines of automation code."
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "title": "From Static Diagrams to Living Systems",
+   "domain_id": "systems-anatomy",
+   "concepts": [
+    "A textbook diagram shows you one part in isolation — a living systems view shows you how all parts of Sre Platform move together in sequence",
+    "The four-step systems anatomy method: (1) See the whole in context, (2) Cut it open to reveal layers, (3) Walk through the process step-by-step, (4) Pull apart into labeled pieces",
+    "Apply this to any system in this course: start with the trigger action, trace through every component it touches, watch the data flow",
+    "Interview/exam power: when asked 'how does X work?', narrate the journey — 'it starts here, then...'. This demonstrates senior-level systems thinking"
+   ],
+   "example": {
+    "lang": "text",
+    "code": "TRIGGER event occurs\n  → First system receives it (see the handoff)\n  → Processing happens in sequence (watch each step)\n  → State changes propagate (follow the ripple)\n  → Final outcome delivered\n\nEach arrow is a living handoff, not a static box.",
+    "walkthrough": "This is the 'jet engine cutaway' for your field: instead of memorizing isolated facts, you see the entire flow as a moving sequence. Practice narrating this journey out loud."
+   },
+   "pitfalls": [
+    "Memorizing terms without understanding the processes they participate in",
+    "Drawing architecture diagrams as boxes without showing the data flow between them",
+    "Answering 'how does X work?' with a definition instead of walking through the sequence"
+   ],
+   "try_it": "Pick any process in this course. Write out the full journey from trigger to outcome, naming every system touched."
+  },
+  {
+   "title": "Anatomy of SLIs/SLOs",
+   "domain_id": "systems-anatomy",
+   "concepts": [
+    "SLIs/SLOs is a multi-step process within SLIs/SLOs: trace the full sequence from initiation to completion",
+    "See it as a journey: identify the trigger, follow each handoff, watch state change at every step",
+    "Every step depends on the previous — a failure at any point breaks the chain. Map these dependencies",
+    "Connect SLIs/SLOs to the broader SLIs/SLOs ecosystem — nothing operates in isolation"
+   ],
+   "example": {
+    "lang": "text",
+    "code": "Step 1: Initiation\n  SLIs/SLOs begins — what triggers it?\n\nStep 2: Processing\n  Data flows through — what transforms it?\n\nStep 3: Handoff\n  Result passes to next system — what is the interface?\n\nStep 4: Completion\n  Final state reached — how do you verify?",
+    "walkthrough": "Apply the four-step anatomy method to SLIs/SLOs. Draw it as a flowing sequence, not a static diagram."
+   },
+   "pitfalls": [
+    "Treating SLIs/SLOs as an isolated component instead of part of a living flow",
+    "Skipping the dependency mapping — not asking 'what does this step need from the previous?'",
+    "Memorizing the steps without understanding WHY each one exists"
+   ],
+   "try_it": "Whiteboard the full SLIs/SLOs flow from memory. Label every handoff and dependency."
+  },
+  {
+   "title": "Anatomy of Incident Response",
+   "domain_id": "systems-anatomy",
+   "concepts": [
+    "Incident Response is a multi-step process within Incident Response: trace the full sequence from initiation to completion",
+    "See it as a journey: identify the trigger, follow each handoff, watch state change at every step",
+    "Every step depends on the previous — a failure at any point breaks the chain. Map these dependencies",
+    "Connect Incident Response to the broader Incident Response ecosystem — nothing operates in isolation"
+   ],
+   "example": {
+    "lang": "text",
+    "code": "Step 1: Initiation\n  Incident Response begins — what triggers it?\n\nStep 2: Processing\n  Data flows through — what transforms it?\n\nStep 3: Handoff\n  Result passes to next system — what is the interface?\n\nStep 4: Completion\n  Final state reached — how do you verify?",
+    "walkthrough": "Apply the four-step anatomy method to Incident Response. Draw it as a flowing sequence, not a static diagram."
+   },
+   "pitfalls": [
+    "Treating Incident Response as an isolated component instead of part of a living flow",
+    "Skipping the dependency mapping — not asking 'what does this step need from the previous?'",
+    "Memorizing the steps without understanding WHY each one exists"
+   ],
+   "try_it": "Whiteboard the full Incident Response flow from memory. Label every handoff and dependency."
+  },
+  {
+   "title": "Anatomy of Toil & Automation",
+   "domain_id": "systems-anatomy",
+   "concepts": [
+    "Toil & Automation is a multi-step process within Toil & Automation: trace the full sequence from initiation to completion",
+    "See it as a journey: identify the trigger, follow each handoff, watch state change at every step",
+    "Every step depends on the previous — a failure at any point breaks the chain. Map these dependencies",
+    "Connect Toil & Automation to the broader Toil & Automation ecosystem — nothing operates in isolation"
+   ],
+   "example": {
+    "lang": "text",
+    "code": "Step 1: Initiation\n  Toil & Automation begins — what triggers it?\n\nStep 2: Processing\n  Data flows through — what transforms it?\n\nStep 3: Handoff\n  Result passes to next system — what is the interface?\n\nStep 4: Completion\n  Final state reached — how do you verify?",
+    "walkthrough": "Apply the four-step anatomy method to Toil & Automation. Draw it as a flowing sequence, not a static diagram."
+   },
+   "pitfalls": [
+    "Treating Toil & Automation as an isolated component instead of part of a living flow",
+    "Skipping the dependency mapping — not asking 'what does this step need from the previous?'",
+    "Memorizing the steps without understanding WHY each one exists"
+   ],
+   "try_it": "Whiteboard the full Toil & Automation flow from memory. Label every handoff and dependency."
+  },
+  {
+   "domain_id": "start-here",
+   "title": "Welcome: how this CBT is built",
+   "concepts": [
+    "This bootcamp is organized into domains (SLIs/SLOs, incident response, observability, capacity, platform design, toil automation, chaos, multi-region, cost, delivery, change safety), each with lessons, scenario drills, and hands-on labs.",
+    "Lessons teach concepts with worked examples; scenarios put you in realistic incidents and reviews and ask for the best action; labs have you run commands yourself.",
+    "The mock-assessment domain assembles scenarios from every domain into a timed run — save it for the end of each study cycle.",
+    "SRE is a practice, not a tool list: every domain connects back to the core loop — define reliability targets, measure, respond, and eliminate toil."
+   ],
+   "example": {
+    "lang": "text",
+    "code": "An SRE's week in one loop:\n1. SLOs say checkout is at 99.9% (target: 99.95%)\n2. Burn-rate alert fires on elevated 5xx\n3. Incident: mitigate, then fix\n4. Postmortem → automate the manual step that hurt\n5. Error budget recovered → ship features again",
+    "walkthrough": "Walkthrough: this is the operating rhythm the whole bootcamp teaches. Each domain owns one step: slis-slos defines the targets, observability detects, incident-response mitigates, toil-automation removes the manual pain."
+   },
+   "pitfalls": [
+    "Jumping to the mock assessment before doing the lessons",
+    "Collecting tools instead of practicing the loop",
+    "Skipping labs — scenarios test recognition, labs test doing"
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "start-here",
+   "title": "Study strategy: spaced, mixed, and applied",
+   "concepts": [
+    "Spaced repetition beats cramming: revisit each domain 1 day, 3 days, and 7 days after first contact. The domain order is your review schedule.",
+    "Interleave domains: after incident response, do observability scenarios before moving on. Mixing forces discrimination — exactly what interviews test.",
+    "Every lesson ends with a try-it prompt: actually run the commands. Writing a PromQL query or an SLO policy from memory builds durable skill; re-reading does not.",
+    "Track your misses: when a scenario's 'why' surprises you, re-do that domain's lab before moving on."
+   ],
+   "example": {
+    "lang": "text",
+    "code": "Study loop:\nDay 1: Lessons + scenarios for one domain\nDay 2: Labs for that domain + 5 scenarios from the previous domain\nDay 7: Mock assessment mixing all domains so far",
+    "walkthrough": "Walkthrough: the loop alternates learning (lessons), application (scenarios), and doing (labs), with built-in spaced review. Adjust the pace, not the pattern."
+   },
+   "pitfalls": [
+    "Reading all lessons first, scenarios 'later'",
+    "Doing scenarios once and never revisiting misses",
+    "Confusing familiarity with ability"
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "start-here",
+   "title": "What SRE interviews actually test",
+   "concepts": [
+    "Interviewers test judgment under ambiguity: 'your SLO is burning, the dashboard is green — what do you do?' They want a method, not a tool name.",
+    "The five classic deep-dives: designing SLIs/SLOs for a new service, debugging a production incident live, capacity planning math, postmortem facilitation, and a toil-elimination story.",
+    "Expect 'tell me about an incident' — prepare two stories with the full arc: detection, mitigation, root cause, action items, and what automation came out of it.",
+    "System design rounds probe tradeoffs: consistency vs availability, cost vs reliability, velocity vs safety. Name the tradeoff explicitly, then choose with reasons."
+   ],
+   "example": {
+    "lang": "text",
+    "code": "Interview answer shape (STAR for incidents):\nS: checkout 5xx spiked to 8% during a deploy\nT: restore SLO, find cause\nA: halted rollout, rolled back, traced to a config flag\nR: MTTR 22 min; flag-validation check added to CI",
+    "walkthrough": "Walkthrough: interviewers score the method (detect → mitigate → learn) and the follow-through (what changed so it can't recur). Rehearse two incidents in this shape until they're fluent."
+   },
+   "pitfalls": [
+    "Answering with tool names instead of methods",
+    "Incident stories with no follow-up action",
+    "Hiding tradeoffs instead of naming them"
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "start-here",
+   "title": "The SRE mental model: error budgets govern everything",
+   "concepts": [
+    "Reliability is a product feature with a budget: the error budget (1 - SLO) is how much unreliability you can 'spend' on velocity. Budget spent → slow down; budget healthy → ship.",
+    "Every domain serves this model: SLIs measure, alerts protect the budget, incidents spend it, postmortems explain the spend, toil automation reduces the cost of reliability work.",
+    "SRE is not 'ops with a new title': it's applying software engineering to operations — automation, testing, and design over manual heroics.",
+    "When in doubt, ask: 'what does this do to the error budget?' It's the tiebreaker for alert thresholds, launch decisions, and toil prioritization."
+   ],
+   "example": {
+    "lang": "text",
+    "code": "Error budget math: 99.9% SLO over 30 days = 43.2 minutes of downtime budget.\nBurn 40 min in week 1 → freeze risky launches.\nBurn 5 min all month → ship aggressively.",
+    "walkthrough": "Walkthrough: the budget converts philosophical debates ('are we reliable enough?') into arithmetic. All the practices in this bootcamp exist to measure the budget accurately and spend it deliberately."
+   },
+   "pitfalls": [
+    "Treating 100% reliability as the goal (it's infinitely expensive)",
+    "Spending budget with no policy for what happens at zero",
+    "Confusing SLOs (internal targets) with SLAs (contractual promises)"
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "slis-slos",
+   "title": "Choosing good SLIs: the golden signals",
+   "concepts": [
+    "Good SLIs measure what users feel: request success rate, latency percentiles, and for storage-like systems, durability and throughput. Pick 2-4 per service, not 20.",
+    "Latency SLIs use percentiles (p99), not averages — averages hide the slow tail that users actually complain about.",
+    "Express SLIs as ratios: good_events / total_events. Ratios compose across replicas and regions; raw counts don't.",
+    "Bad SLI smells: server-side metrics users never see (CPU), 100% targets (no budget for change), and SLIs nobody alerts on (unowned)."
+   ],
+   "example": {
+    "lang": "promql",
+    "code": "sum(rate(http_requests_total{status=~\"5..\"}[5m])) / sum(rate(http_requests_total[5m]))",
+    "walkthrough": "Walkthrough: the ratio form gives 'fraction of bad requests' directly — the SLI. Alert on its burn rate, not on the raw count, so the alert scales with traffic."
+   },
+   "pitfalls": [
+    "Averaging latencies instead of percentiles",
+    "SLIs on CPU/disk that users never feel",
+    "More than a handful of SLIs per service"
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "slis-slos",
+   "title": "SLO targets and error budget policy",
+   "concepts": [
+    "Choose SLOs from user expectations and business cost, not aspiration: 99.9% vs 99.99% is a 10x cost difference for the last 0.09%.",
+    "The error budget is the enforcement mechanism: define what happens at 50%, 100% consumption — feature freeze, launch review, paging policy changes.",
+    "Window matters: 30-day rolling windows smooth noise; shorter windows react faster. Use both (long for policy, short for alerting).",
+    "Document SLOs where engineers decide: the policy page should say exactly who can spend the budget and what 'exhausted' triggers."
+   ],
+   "example": {
+    "lang": "text",
+    "code": "SLO: 99.9% of requests succeed over 30d → budget = 43.2 min.\nPolicy: budget < 50% → normal velocity.\nBudget exhausted → feature freeze until recovered.",
+    "walkthrough": "Walkthrough: the policy turns the SLO from a dashboard decoration into a governance tool. Without the freeze clause, budgets are just numbers nobody acts on."
+   },
+   "pitfalls": [
+    "Copying 99.99% because it sounds good",
+    "No policy attached to the budget",
+    "Changing SLOs without telling stakeholders"
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "slis-slos",
+   "title": "Burn-rate alerting done right",
+   "concepts": [
+    "Alert on burn rate (how fast you're consuming budget), not on raw error counts: 1% errors for an hour means different things at different traffic levels.",
+    "Multi-window burn alerts: fast-burn (1h window, page) catches sudden cliffs; slow-burn (6h/3d, ticket) catches gradual leaks. Both reference the same budget.",
+    "Set burn-rate thresholds from the budget: e.g., page when consuming 2% of monthly budget per hour; ticket at lower rates.",
+    "Burn-rate alerts self-tune to traffic: they stay quiet during low-traffic nights and fire proportionally during peaks — the end of 'alert at 3am for 5 errors'."
+   ],
+   "example": {
+    "lang": "promql",
+    "code": "# fast-burn: 14.4x budget consumption over 1h\nsum(rate(http_errors[1h])) / sum(rate(http_requests[1h])) > 0.001 * 14.4",
+    "walkthrough": "Walkthrough: the threshold is expressed as a multiple of the budgeted error rate, so the same alert works if traffic doubles. Tune the multiplier from past incidents, not from gut feel."
+   },
+   "pitfalls": [
+    "Alerting on raw error counts",
+    "Single-window alerts (flappy or blind)",
+    "Thresholds copied from another service's budget"
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "slis-slos",
+   "title": "SLAs vs SLOs: contracts vs engineering targets",
+   "concepts": [
+    "SLOs are internal engineering targets; SLAs are contractual promises to customers with consequences (credits, penalties). Never set an SLA tighter than your SLO.",
+    "Keep a gap: if the SLA is 99.9%, run an internal SLO of 99.95% — the buffer absorbs measurement error and gives early warning.",
+    "SLA measurement must be defined in the contract: which probe, which window, which exclusions (maintenance? client errors?). Ambiguity becomes disputes.",
+    "Report SLA compliance from the same SLI pipeline as SLOs — two measurement systems will disagree at the worst moment."
+   ],
+   "example": {
+    "lang": "text",
+    "code": "Contract: 99.9% monthly availability, 5-min probe, excludes scheduled maintenance.\nInternal SLO: 99.95% → 21.6 min buffer before SLA breach.",
+    "walkthrough": "Walkthrough: the buffer is the point — the internal SLO fires while there's still room to recover before contractual consequences. Same data pipeline, two thresholds, no argument about whose numbers are right."
+   },
+   "pitfalls": [
+    "SLA equal to SLO (no buffer)",
+    "SLA measured by a different system than SLOs",
+    "Vague exclusions in the contract"
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "incident-response",
+   "title": "Incident roles: commander, comms, and ops",
+   "concepts": [
+    "Every incident needs three roles: Incident Commander (decides, coordinates), Communications (status updates, stakeholders), Operations (hands on keyboard). One person can hold two hats; nobody holds all three effectively.",
+    "The IC's job is coordination, not heroics: keep the timeline, assign tasks, make the rollback call. The best IC often touches nothing technical.",
+    "Rotate the IC role deliberately — incidents are training. A team where only seniors can command has a bus-factor problem.",
+    "Declare roles out loud at kickoff ('I'm IC, Priya has comms') — ambiguity about who's deciding is how incidents get longer."
+   ],
+   "example": {
+    "lang": "text",
+    "code": "Incident kickoff script (first 2 minutes):\n1. 'I'm IC. Who has comms? Who's on ops?'\n2. 'What do we know? What's the user impact?'\n3. 'Ops: check the last deploy. Comms: draft the first update.'",
+    "walkthrough": "Walkthrough: two minutes of structure prevents thirty minutes of five people debugging the same thing. The script makes role clarity the default, not a personality trait."
+   },
+   "pitfalls": [
+    "Senior engineer IC-ing and debugging simultaneously",
+    "No named comms → stakeholders ping engineers mid-fix",
+    "IC role never rotating off the same two people"
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "incident-response",
+   "title": "Mitigation before root cause",
+   "concepts": [
+    "The incident priority order: mitigate user impact first, understand second. Roll back the deploy before you understand why it broke.",
+    "Keep a mitigation playbook per service: rollback command, feature-flag kill switch, traffic shift, scale-up — each one copy-paste ready.",
+    "Timebox diagnosis: if the cause isn't found in N minutes, mitigate anyway (rollback, failover) and investigate from the stable state.",
+    "Mitigation decisions need pre-authorization: the IC must be allowed to roll back without a change ticket at 3am. Get this in writing before the incident."
+   ],
+   "example": {
+    "lang": "bash",
+    "code": "# mitigation runbook excerpt\nkubectl rollout undo deployment/checkout\n# or: flag kill\ncurl -X POST flags/api -d '{\"new_checkout\": false}'",
+    "walkthrough": "Walkthrough: both mitigations are single commands because they were prepared, not improvised. The IC's hardest call — 'roll back now' — is easy when the command is already written and pre-authorized."
+   },
+   "pitfalls": [
+    "Debugging for an hour while users are down",
+    "Mitigation steps that require improvisation",
+    "Needing approval to roll back during an incident"
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "incident-response",
+   "title": "Communication during incidents",
+   "concepts": [
+    "Status updates on a fixed cadence (every 15-30 min) even when there's nothing new: 'still investigating, next update at :45' beats silence.",
+    "Separate channels: war room for responders, status page for customers, exec channel for leadership — engineers shouldn't write customer comms mid-debug.",
+    "Lead with user impact, not technical detail: 'checkout is erroring for 8% of users; we've rolled back and errors are falling' — not 'pod OOMKilled'.",
+    "Timestamp everything in the timeline: detection, mitigation steps, comms sent. The timeline is the postmortem's raw material."
+   ],
+   "example": {
+    "lang": "text",
+    "code": "Update template:\n[14:32] IMPACT: checkout 5xx at 8%, started 14:15\nMITIGATION: rolled back deploy 1.4.2 → 1.4.1 at 14:30, errors falling\nNEXT: update at 15:00 or sooner",
+    "walkthrough": "Walkthrough: impact first, mitigation second, next-update time always. Stakeholders stop pinging when they trust the cadence — the template earns that trust."
+   },
+   "pitfalls": [
+    "Silence until the fix is found",
+    "Technical jargon in customer updates",
+    "No written timeline — postmortem from memory"
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "incident-response",
+   "title": "Severity levels and escalation",
+   "concepts": [
+    "Define severities by user impact, not by which system broke: SEV1 = core function down for many users; SEV2 = degraded; SEV3 = minor. Write the definitions down.",
+    "Each severity maps to response expectations: SEV1 pages immediately with IC+comms; SEV3 becomes a ticket. Calibrate from past incidents, not theory.",
+    "Escalation is not failure: define when to pull in more teams (blast radius growing, expertise missing) and make it frictionless — a single command or button.",
+    "Review severity assignments in postmortems: systematic over-severing burns out on-call; under-severing delays response. Tune the definitions quarterly."
+   ],
+   "example": {
+    "lang": "yaml",
+    "code": "severity:\n  SEV1: 'core user journey broken; page IC+comms+ops now'\n  SEV2: 'degraded or workaround exists; respond in 30m'\n  SEV3: 'minor/cosmetic; ticket, next business day'",
+    "walkthrough": "Walkthrough: impact-based definitions let anyone — including the newest on-call — classify correctly at 3am. The response mapping removes the 'is this page-worthy?' hesitation."
+   },
+   "pitfalls": [
+    "Severities defined by system, not user impact",
+    "Escalation requiring manager approval",
+    "Never revisiting severity definitions"
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "observability",
+   "title": "Metrics, logs, traces: which signal for which question",
+   "concepts": [
+    "Metrics answer 'how much/how many over time' (rates, percentiles) — cheap, aggregatable, the basis of SLIs and alerts.",
+    "Logs answer 'what happened in this specific request' — high-cardinality detail, expensive at scale; structure them (JSON) and sample aggressively.",
+    "Traces answer 'where did the time go across services' — the only signal that follows a request through a distributed system.",
+    "Rule: metrics for detection, traces for localization, logs for root cause. An observability gap usually means one of the three is missing for the failing path."
+   ],
+   "example": {
+    "lang": "text",
+    "code": "Incident workflow:\n1. Metric alert: p99 latency 4x baseline (detection)\n2. Trace: 90% of time in inventory-service DB query (localization)\n3. Logs: slow query text + params for that trace id (root cause)",
+    "walkthrough": "Walkthrough: each signal hands off to the next. Teams that only have metrics get stuck at 'something is slow'; traces turn 'something' into a service and a span."
+   },
+   "pitfalls": [
+    "Logs as the alerting source (slow, expensive)",
+    "No trace sampling strategy (either drowning or blind)",
+    "Metrics with unbounded label cardinality"
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "observability",
+   "title": "Cardinality: the cost that kills monitoring",
+   "concepts": [
+    "Every unique label-value combination creates a new time series: user_id or request_id as a label = cardinality explosion = dead Prometheus.",
+    "Keep labels to bounded dimensions (service, region, status code, endpoint template — never raw URL or user id). High-cardinality detail belongs in logs/traces.",
+    "Symptoms: Prometheus OOM, query timeouts, ingestion lag. The fix is label discipline, occasionally sharding — never 'more RAM' as the plan.",
+    "Enforce with CI: a cardinality budget check on recording rules and dashboards catches explosions before they ship."
+   ],
+   "example": {
+    "lang": "promql",
+    "code": "# BAD: http_requests_total{user_id=\"...\"}  → millions of series\n# GOOD: http_requests_total{endpoint=\"/checkout\", status=\"500\"}",
+    "walkthrough": "Walkthrough: endpoint templates and status codes are bounded (hundreds of series); user ids are unbounded (millions). The good version answers every SLI question; the bad version answers them while killing the monitoring system."
+   },
+   "pitfalls": [
+    "user_id/request_id as metric labels",
+    "No cardinality review on new dashboards",
+    "Scaling Prometheus vertically instead of fixing labels"
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "observability",
+   "title": "Dashboards that survive incidents",
+   "concepts": [
+    "Design dashboards for the incident reader: top = user-facing health (SLIs, error budget), middle = golden signals per service, bottom = infra details. Inverted pyramids waste the critical first minute.",
+    "Every dashboard needs time-range and service/region variables — hardcoded dashboards multiply into unmaintainable dozens.",
+    "Annotate deploys and config changes on dashboards: the 'what changed?' overlay answers the most common incident question visually.",
+    "Dashboard hygiene: quarterly review, delete the unused, fix the broken. A dashboard nobody trusts is worse than none — it slows people down."
+   ],
+   "example": {
+    "lang": "text",
+    "code": "Incident dashboard layout:\n[SLI: success rate] [Error budget remaining]\n[p99 latency] [Request rate]\n--- per service: golden signals ---\n| deploy annotations overlay |",
+    "walkthrough": "Walkthrough: the reader's eye lands on user impact first. Deploy annotations turn 'did something change?' from a Slack question into a glance. Variables keep one dashboard serving all services."
+   },
+   "pitfalls": [
+    "Vanity dashboards nobody opens in incidents",
+    "Hardcoded service names duplicated 40 times",
+    "Missing deploy annotations"
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "observability",
+   "title": "Alert design: symptoms over causes",
+   "concepts": [
+    "Alert on symptoms users feel (error budget burning, latency SLO violated), not on causes (CPU 90%, disk 80%) — causes become runbook steps, not pages.",
+    "Every alert needs: a runbook link, a severity, and an owner. An alert without a runbook is a puzzle delivered at 3am.",
+    "Page on 'needs human action now'; ticket everything else. If an alert fires and the response is 'watch it', it's not page-worthy — retune it.",
+    "Measure alert quality: pages per on-call shift, % actionable, time-to-acknowledge. Alert fatigue is a reliability bug — fix it like one."
+   ],
+   "example": {
+    "lang": "yaml",
+    "code": "alert: CheckoutBurnRate\nsymptom: 'error budget burning 14x'\nseverity: page\nrunbook: 'https://runbooks/checkout-burn'\n# NOT: 'CPU > 90%' with no runbook",
+    "walkthrough": "Walkthrough: the symptom alert fires only when users are affected; the runbook tells the responder exactly what to check. CPU alerts become dashboard panels or tickets — signal without the 3am page."
+   },
+   "pitfalls": [
+    "Paging on CPU/disk thresholds",
+    "Alerts with no runbook or owner",
+    "Never measuring alert actionability"
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "capacity-performance",
+   "title": "Load testing that predicts production",
+   "concepts": [
+    "Load test the critical user journeys, not just endpoints: checkout flow under 2x peak, with realistic data shapes and cache states.",
+    "Test to breaking at least once per quarter: find the actual bottleneck (it's never where you guessed) and document the breaking point.",
+    "Soak tests catch what spike tests miss: connection leaks, slow memory growth, log disk filling — run 24h+ at sustained load before big events.",
+    "Make load tests reproducible: versioned scripts, seeded data, recorded results. 'We load tested once' without artifacts is folklore."
+   ],
+   "example": {
+    "lang": "bash",
+    "code": "# k6: ramp to 2x peak, hold, then spike to breaking\nk6 run --vus 500 --duration 30m load/checkout.js\n# record: p99, error %, saturation metrics → capacity log",
+    "walkthrough": "Walkthrough: the ramp finds the knee (latency climbs), the hold checks stability, the spike finds the cliff. Recording all three into a capacity log turns each test into planning data."
+   },
+   "pitfalls": [
+    "Testing endpoints instead of user journeys",
+    "Never testing to breaking (unknown limits)",
+    "One-off tests with no recorded artifacts"
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "capacity-performance",
+   "title": "Autoscaling: policies that don't flap",
+   "concepts": [
+    "Scale on the bottleneck signal (request queue depth, p99 latency), not just CPU — CPU scales fine until the real constraint is connections or downstream latency.",
+    "Set scale-up aggressive and scale-down conservative: cooldowns and stabilization windows prevent flapping (the expensive oscillate-up-down cycle).",
+    "Test scaling under load, not in theory: a policy that needs 5 minutes to add capacity is useless against a 2-minute spike — know your scale-up latency.",
+    "Autoscaling is not capacity planning: it handles variance; the baseline still needs deliberate provisioning for known peaks."
+   ],
+   "example": {
+    "lang": "yaml",
+    "code": "autoscale:\n  metric: queue_depth  # bottleneck signal\n  scale_up: '+3 pods when depth > 100 for 1m'\n  scale_down: '-1 pod when depth < 20 for 15m'  # conservative",
+    "walkthrough": "Walkthrough: asymmetric cooldowns (fast up, slow down) absorb spikes without oscillation. The metric choice is the whole game — queue depth reflects user-visible pressure; CPU often doesn't."
+   },
+   "pitfalls": [
+    "Scaling on CPU for a connection-bound service",
+    "Symmetric fast scale-down (flapping)",
+    "Assuming autoscaling replaces capacity planning"
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "capacity-performance",
+   "title": "Performance budgets in CI",
+   "concepts": [
+    "Performance budgets make latency a build breaker: p99 < 800ms, bundle < 500KB, queries < 50ms — checked on every PR like unit tests.",
+    "Budget the critical path: assign per-component budgets (API 200ms, DB 100ms) so regressions point at the owner immediately.",
+    "Measure in CI against production-like data: budgets tested on 10-row fixtures catch nothing. Seed realistic volumes.",
+    "Ratchet budgets down over time: each quarter, tighten by what you achieved. Budgets that never move become wallpaper."
+   ],
+   "example": {
+    "lang": "yaml",
+    "code": "# CI performance gate\nperf_budget:\n  p99_checkout: '< 800ms'\n  db_query_p99: '< 50ms'\n  on_breach: 'fail the build, assign to PR author'",
+    "walkthrough": "Walkthrough: the budget fails the build, not a human reviewer — regressions get caught at authoring time when they're cheapest to fix. Per-component budgets end the 'whose latency is this?' debate."
+   },
+   "pitfalls": [
+    "Budgets measured on toy data",
+    "One global budget with no component breakdown",
+    "Budgets that alert but never block"
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "capacity-performance",
+   "title": "Capacity planning math",
+   "concepts": [
+    "Capacity planning is arithmetic: peak RPS × cost-per-request (CPU-ms, memory) × headroom factor = required capacity. Measure cost-per-request under load; don't guess.",
+    "Headroom covers variance and failure: N+1 (survive one zone loss), plus growth buffer (6-12 months). Write the assumptions down — they're the first thing to revisit.",
+    "Model the dependencies too: your service scales, but does the database connection pool? The downstream API quota? Capacity plans die at the unmodeled dependency.",
+    "Revisit quarterly or after 20% traffic changes. A capacity plan is a living document with an expiry date, not a one-time spreadsheet."
+   ],
+   "example": {
+    "lang": "text",
+    "code": "Example: 2000 peak RPS × 25ms CPU = 50 cores needed.\nN+1 across 3 zones → 75 cores provisioned.\n+40% growth buffer → 105 cores. Document, revisit quarterly.",
+    "walkthrough": "Walkthrough: each line is a checkable assumption — cost-per-request measured, zone redundancy explicit, growth buffer sized. When traffic shifts, you update the inputs, not redo the philosophy."
+   },
+   "pitfalls": [
+    "Guessing cost-per-request",
+    "Forgetting downstream dependencies",
+    "One-time capacity spreadsheet, never revisited"
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "platform-design",
+   "title": "Platform as a product: treating developers as customers",
+   "concepts": [
+    "A platform team ships a product whose users are developers: onboarding time, self-service success rate, and developer NPS are its SLIs.",
+    "Paved roads beat mandates: make the secure, observable, reliable path the easiest path (golden templates, scaffolding), and engineers will choose it voluntarily.",
+    "Measure adoption, not just availability: a platform nobody uses is a failed product regardless of its uptime.",
+    "Run the platform like a product: roadmap, changelog, office hours, deprecation policy. Internal users deserve the same respect as external ones."
+   ],
+   "example": {
+    "lang": "text",
+    "code": "Platform SLIs:\n- time-to-first-deploy for a new service (< 1 day)\n- % services on paved-road templates\n- self-service success rate (no ticket needed)",
+    "walkthrough": "Walkthrough: these SLIs measure developer experience, not infrastructure. If time-to-first-deploy is 3 weeks, the platform is failing its users no matter how reliable the clusters are."
+   },
+   "pitfalls": [
+    "Mandating instead of paving the road",
+    "No product discipline (roadmap, changelog)",
+    "Measuring uptime but not adoption"
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "platform-design",
+   "title": "Golden paths and service templates",
+   "concepts": [
+    "Golden-path templates encode organizational knowledge: new services get logging, metrics, tracing, alerts, CI/CD, and security scanning by default — not by remembering.",
+    "Templates are versioned and updated centrally: a logging-library CVE fix rolls out by bumping the template, not by 40 teams remembering.",
+    "Allow escape hatches: the golden path covers 80%; document the supported way to diverge for the 20% with unusual needs.",
+    "Template sprawl is the failure mode: 15 templates = no standard. Consolidate ruthlessly; 2-3 golden paths beat 15 half-maintained ones."
+   ],
+   "example": {
+    "lang": "bash",
+    "code": "# scaffold a new service on the golden path\nplatform new-service --template web-api --name checkout\n# → repo + CI + dashboards + alerts + runbook stub",
+    "walkthrough": "Walkthrough: one command produces a production-ready skeleton. The new team starts from the organization's accumulated reliability knowledge instead of a blank repo and a wiki page."
+   },
+   "pitfalls": [
+    "Blank-repo onboarding ('read the wiki')",
+    "15 templates, none maintained",
+    "No escape hatch — teams fork secretly"
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "platform-design",
+   "title": "Multi-tenancy and noisy neighbors",
+   "concepts": [
+    "Multi-tenant platforms need isolation at every layer: CPU/memory (cgroups, quotas), noisy-neighbor protection (rate limits per tenant), and blast-radius limits (one tenant can't take down the control plane).",
+    "Set quotas from measured usage, not guesses: profile tenant consumption, set defaults at p90, and make increases self-service with guardrails.",
+    "Fairness mechanisms (weighted fair queuing, per-tenant concurrency limits) matter more than raw capacity — one abusive tenant degrades everyone otherwise.",
+    "Test tenancy under adversarial conditions: chaos experiments that simulate a noisy neighbor validate the isolation before a real one does."
+   ],
+   "example": {
+    "lang": "yaml",
+    "code": "tenant_quota:\n  cpu: '4 cores (p90 measured)'\n  concurrency: '200 req/s per tenant'\n  burst: '2x for 60s, then throttle'",
+    "walkthrough": "Walkthrough: quotas derived from measured p90 keep honest tenants unaffected while the burst allowance absorbs legitimate spikes. The throttle protects everyone else when one tenant misbehaves."
+   },
+   "pitfalls": [
+    "No per-tenant limits (one bad tenant ruins all)",
+    "Quotas guessed, never measured",
+    "Isolation tested only in theory"
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "platform-design",
+   "title": "API design for platform surfaces",
+   "concepts": [
+    "Platform APIs are contracts with every team: version them, document them, deprecate with notice. Breaking changes need migration paths, not just changelogs.",
+    "Design for the common case: the 80% workflow should be one call; advanced options exist but don't clutter the happy path.",
+    "Idempotency is non-negotiable for provisioning APIs: retries must be safe. Every mutating endpoint takes an idempotency key or is naturally idempotent.",
+    "Dogfood relentlessly: the platform team's own tooling uses the same APIs. Pain the team feels gets fixed; pain only users feel gets backloged."
+   ],
+   "example": {
+    "lang": "bash",
+    "code": "# idempotent provisioning: safe to retry\ncurl -X PUT platform/api/v1/services/checkout \\\n  -H 'Idempotency-Key: deploy-1.4.2' -d @spec.json",
+    "walkthrough": "Walkthrough: the idempotency key makes 'did it go through?' retries safe — the second call returns the first call's result instead of creating a duplicate. Versioning in the path keeps v1 stable while v2 evolves."
+   },
+   "pitfalls": [
+    "Unversioned platform APIs",
+    "Non-idempotent provisioning endpoints",
+    "Platform team bypassing its own APIs"
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "toil-automation",
+   "title": "Identifying and measuring toil",
+   "concepts": [
+    "Toil is manual, repetitive, automatable, tactical work without enduring value: ticket-driven deploys, manual scaling, hand-written firewall rules.",
+    "Not all manual work is toil: novel incident response and one-off migrations are engineering; doing them the tenth time by hand is toil.",
+    "Measure it: % of on-call time spent on toil, toil tickets per week, manual deploy count. What gets measured gets prioritized.",
+    "Cap it: the SRE book's 50% rule — no more than half of SRE time on operations work, and toil specifically should trend toward zero."
+   ],
+   "example": {
+    "lang": "text",
+    "code": "Toil audit (monthly):\n- manual deploys: 34 → automate the top 3 flows\n- cert renewals by hand: 6 → ACME automation\n- toil hours/on-call shift: 6h → target < 2h",
+    "walkthrough": "Walkthrough: the audit converts complaints into a backlog with counts. 'Automate the top 3 flows' is a sprint-sized goal; 'reduce toil' is a wish."
+   },
+   "pitfalls": [
+    "Calling all ops work toil (it's not)",
+    "No measurement — toil is 'just how it is'",
+    "Automating without measuring first (automating the wrong thing)"
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "toil-automation",
+   "title": "Automating safely: the toil-elimination playbook",
+   "concepts": [
+    "Automate in order: document the manual runbook first (automation of an undocumented process bakes in bugs), then script it, then schedule it, then delete the manual path.",
+    "Every automation needs the same reliability as the system it manages: idempotent, logged, monitored, with a manual escape hatch.",
+    "Start with the highest-frequency toil: automation ROI = frequency × pain × error-rate. A weekly 2-hour painful task beats a yearly 10-minute one.",
+    "Celebrate deletion: removing the manual runbook (not just adding the script) is the actual toil reduction — otherwise you maintain two paths."
+   ],
+   "example": {
+    "lang": "bash",
+    "code": "# automation checklist per task\n# [ ] runbook documented  [ ] script idempotent\n# [ ] dry-run mode  [ ] monitoring + alerts\n# [ ] manual runbook archived (the real win)",
+    "walkthrough": "Walkthrough: the checklist prevents the classic failure — a script that works once, then rots, while the team quietly goes back to doing it by hand. Archiving the manual path forces commitment."
+   },
+   "pitfalls": [
+    "Automating undocumented processes",
+    "Scripts without dry-run or monitoring",
+    "Keeping the manual path 'just in case' forever"
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "toil-automation",
+   "title": "Self-service: the toil multiplier",
+   "concepts": [
+    "The highest-leverage automation is self-service: let developers provision environments, run load tests, and roll back without filing tickets.",
+    "Self-service needs guardrails, not gates: quotas, templates, and automated policy checks replace the human approver.",
+    "Measure ticket deflection: % of requests completed self-service vs ticketed. The goal is the ticket queue shrinking, not the platform team feeling busy.",
+    "Start with the top 3 ticket types: they usually cover 70%+ of volume. Automate those before the exotic ones."
+   ],
+   "example": {
+    "lang": "text",
+    "code": "Top tickets last quarter:\n1. 'provision dev env' (212) → self-service button\n2. 'increase quota' (98) → auto-approve under limit\n3. 'rotate secret' (61) → one-click rotation",
+    "walkthrough": "Walkthrough: three automations address 371 tickets — the queue visibly shrinks, and the platform team reclaims the hours. Ticket data tells you exactly what to build next."
+   },
+   "pitfalls": [
+    "Automating rare exotic requests first",
+    "Self-service without guardrails (chaos)",
+    "No ticket-deflection metric"
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "toil-automation",
+   "title": "Runbooks as code",
+   "concepts": [
+    "Runbooks should be executable where possible: scripts with --dry-run, not wiki pages describing clicks. The runbook IS the automation's first draft.",
+    "Structure: symptoms → diagnosis commands (copy-paste) → mitigation commands (copy-paste) → escalation criteria. Every command tested quarterly.",
+    "Link runbooks from alerts: the alert fires, the responder clicks through, the commands are right there. No searching the wiki at 3am.",
+    "Treat runbook drift as a bug: if the runbook's commands don't match current reality, file it like an outage — someone will need it at the worst time."
+   ],
+   "example": {
+    "lang": "bash",
+    "code": "# runbook: checkout-burn (executable)\n./runbooks/checkout-burn.sh --diagnose   # copy-paste triage\n./runbooks/checkout-burn.sh --mitigate     # rollback + flag kill",
+    "walkthrough": "Walkthrough: the runbook is a script with modes, linked from the alert. Diagnose and mitigate are tested commands, not prose. Quarterly testing keeps them honest."
+   },
+   "pitfalls": [
+    "Wiki-only runbooks with untested commands",
+    "Runbooks not linked from alerts",
+    "Runbook drift ignored until an incident"
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "chaos-engineering",
+   "title": "Chaos principles: hypothesis over havoc",
+   "concepts": [
+    "Chaos engineering is hypothesis-driven: 'we believe killing one AZ keeps checkout under 1% errors' — then you test it. Random breaking without a hypothesis is just vandalism.",
+    "Every experiment states: steady-state definition, hypothesis, method, blast radius, and abort conditions — in writing, before running.",
+    "Start in staging, graduate to production: staging proves the tooling; only production proves the resilience (staging never matches prod's weirdness).",
+    "The goal is finding weaknesses before users do: a failed experiment is a success — it found the lie in your mental model."
+   ],
+   "example": {
+    "lang": "text",
+    "code": "Experiment card:\nHypothesis: losing 1 AZ keeps checkout errors < 1%\nSteady state: 0.1% errors, p99 < 600ms\nBlast radius: staging AZ-a only\nAbort: errors > 2% for 2 min → auto-halt",
+    "walkthrough": "Walkthrough: the card makes the experiment reviewable and safe. The abort condition is the difference between chaos engineering and an outage you caused on purpose."
+   },
+   "pitfalls": [
+    "Breaking things without a hypothesis",
+    "First experiment in production",
+    "No written abort conditions"
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "chaos-engineering",
+   "title": "Blast radius control and safeguards",
+   "concepts": [
+    "Blast radius is the core safety discipline: namespace-scoped faults, percentage-based traffic impact, time-boxed experiments, and automatic halt on steady-state deviation.",
+    "Layer safeguards: experiment-time limits, monitoring hooks that abort, and manual kill switches — at least two independent abort paths.",
+    "Run experiments during business hours with the owning team present: the point is learning together, not surprising on-call at 2am.",
+    "Scope progressively: single pod → single AZ → region — each level only after the previous passes cleanly."
+   ],
+   "example": {
+    "lang": "yaml",
+    "code": "experiment:\n  fault: 'kill 30% of checkout pods in staging'\n  duration: '10m'\n  abort_when: 'error_rate > 2% for 2m'\n  kill_switch: 'chaos halt exp-042'",
+    "walkthrough": "Walkthrough: every safety property is explicit and automatable. The abort hook watches the same SLI the hypothesis is about — if steady state breaks, the experiment stops itself."
+   },
+   "pitfalls": [
+    "Unscoped faults ('kill random pods')",
+    "Experiments at 2am without the team",
+    "One abort path (or none)"
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "chaos-engineering",
+   "title": "Game days: rehearsing the real thing",
+   "concepts": [
+    "Game days are scheduled, facilitated failure rehearsals: the team practices the incident response for a scenario (AZ loss, DB failover) in a controlled window.",
+    "Structure: scenario brief, roles assigned (including observers), inject the failure, respond for real, then debrief — the debrief is the product.",
+    "Invite stakeholders: game days build organizational muscle memory and surface the 'we assumed the runbook worked' gaps safely.",
+    "Cadence: quarterly per critical service. The scenarios rotate through your top risks; each game day retires one 'we hope this works'."
+   ],
+   "example": {
+    "lang": "text",
+    "code": "Game day plan (DB failover):\n09:00 brief + roles | 09:15 inject primary failure\n09:15-10:30 respond (real runbooks, real pages)\n10:30 debrief: what surprised us? → action items",
+    "walkthrough": "Walkthrough: responding 'for real' (real pages, real runbooks) is what builds muscle memory. The debrief converts surprises into backlog items — that's the ROI."
+   },
+   "pitfalls": [
+    "Tabletop-only rehearsals (no real injection)",
+    "No debrief or untracked action items",
+    "Game days only after incidents (reactive)"
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "chaos-engineering",
+   "title": "Fault injection: what to break and how",
+   "concepts": [
+    "The standard fault catalog: pod/container kills, network latency/loss/partition, CPU/memory pressure, disk fill, DNS failure, clock skew, dependency failure.",
+    "Match faults to architecture risks: if you depend on one AZ, partition it; if you cache aggressively, kill the cache; if DNS is critical, break DNS.",
+    "Dependency failure injection is the highest-value: kill the payments mock and watch whether checkout degrades gracefully or collapses.",
+    "Keep a fault library versioned with the platform: new dependencies get new fault scenarios in the same PR."
+   ],
+   "example": {
+    "lang": "bash",
+    "code": "# example: 200ms latency into inventory-service (staging)\nchaos inject network-delay --target inventory --latency 200ms --duration 10m\n# hypothesis: checkout p99 stays < 1s via timeouts+fallbacks",
+    "walkthrough": "Walkthrough: the fault targets a specific architectural bet (timeouts and fallbacks protect checkout). If p99 blows past 1s, the bet was wrong — found in staging, not by users."
+   },
+   "pitfalls": [
+    "Only killing pods (the least interesting fault)",
+    "Faults unrelated to architectural risks",
+    "Ad-hoc faults with no library or versioning"
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "chaos-engineering",
+   "title": "Chaos in CI/CD: continuous resilience",
+   "concepts": [
+    "Shift chaos left: run small fault injections as CI stages (kill a dependency container during integration tests) so resilience is tested on every PR.",
+    "Gate promotions on resilience: canary analysis that includes a fault-injection step — the release only proceeds if the service degrades gracefully.",
+    "Keep CI chaos fast and scoped: seconds-long, single-fault, in ephemeral environments. Slow chaos belongs in scheduled game days.",
+    "Track resilience as a metric: % of services passing chaos gates, mean time to detect injected faults. What gets measured gets fixed."
+   ],
+   "example": {
+    "lang": "yaml",
+    "code": "ci_pipeline:\n  - integration_tests\n  - chaos_gate: 'kill redis; assert checkout still serves (degraded OK)'\n  - promote_to_prod  # only if gate passes",
+    "walkthrough": "Walkthrough: the gate makes resilience a release requirement, not a quarterly aspiration. A PR that breaks graceful degradation fails the build — feedback in minutes, not months."
+   },
+   "pitfalls": [
+    "Chaos only as quarterly events",
+    "Slow/flaky chaos gates blocking all merges",
+    "No resilience metrics tracked"
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "multi-region",
+   "title": "Active-active vs active-passive: choosing the topology",
+   "concepts": [
+    "Active-passive: one region serves, another waits (cheaper, simpler, but failover is a rare event — rare events fail). Active-active: all regions serve (complex, but failover is routine).",
+    "The deciding factors: RTO/RPO requirements, data consistency needs, cost tolerance, and operational maturity. Don't build active-active for a 4-hour RTO.",
+    "Active-passive's trap: the standby rots (config drift, untested failover). If you choose it, fail over regularly — scheduled drills, not hope.",
+    "Hybrid is common: active-active for stateless services, active-passive for the stateful core. Match topology to statefulness."
+   ],
+   "example": {
+    "lang": "text",
+    "code": "Decision guide:\nRTO < 5 min + strong consistency needs → active-active (hard)\nRTO 1h, RPO 15 min → active-passive + tested drills\nStateless edge → active-active; single DB → passive replica",
+    "walkthrough": "Walkthrough: the topology follows the requirements, not the hype. Most teams overestimate their RTO needs and underestimate active-active's consistency cost."
+   },
+   "pitfalls": [
+    "Active-passive with untested failover",
+    "Active-active for a 4-hour RTO (paying complexity for nothing)",
+    "One topology for stateless and stateful alike"
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "multi-region",
+   "title": "Data replication and consistency tradeoffs",
+   "concepts": [
+    "Replication lag is the RPO floor: async replication with 30s lag means up to 30s of data loss on failover — measure it, alert on it, design for it.",
+    "Synchronous replication gives zero data loss but adds cross-region latency to every write — the CAP tradeoff made concrete.",
+    "Conflict resolution for multi-writer: last-writer-wins (simple, lossy), CRDTs (correct for counters/sets), or single-writer-per-shard (avoid conflicts by design).",
+    "Test replication under partition: split-brain handling (fencing, quorum) is where multi-region designs actually fail."
+   ],
+   "example": {
+    "lang": "text",
+    "code": "Replication choices:\nasync (lag 5-30s): RPO minutes, writes fast\nsync: RPO zero, writes pay RTT\nsingle-writer shards: no conflicts, failover moves writers",
+    "walkthrough": "Walkthrough: each choice is a point on the consistency-latency-cost triangle. Single-writer-per-shard is the pragmatic sweet spot for many workloads — conflicts avoided structurally, not resolved cleverly."
+   },
+   "pitfalls": [
+    "Assuming async replication has no lag",
+    "Multi-writer without a conflict strategy",
+    "Never testing partition behavior"
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "multi-region",
+   "title": "DNS and traffic steering",
+   "concepts": [
+    "DNS failover is slow and cached: TTLs are suggestions, clients ignore them. Don't rely on DNS alone for fast failover.",
+    "Anycast + health-checked load balancers steer traffic in seconds-to-minutes: the reliable pattern for active-active and fast active-passive.",
+    "Gradual traffic shifting (10% → 50% → 100%) validates the receiving region before full cutover — the same discipline as canary deploys.",
+    "Keep a documented 'big red button': the exact commands to shift 100% traffic, tested in drills, executable by the IC without approval chains."
+   ],
+   "example": {
+    "lang": "bash",
+    "code": "# traffic shift runbook (tested monthly)\nplatform traffic set --region us-east --weight 0\nplatform traffic set --region us-west --weight 100\n# verify: error budget stable for 10m before declaring done",
+    "walkthrough": "Walkthrough: the runbook shifts weight, then verifies via the error budget — not via 'it looks fine'. Monthly testing keeps it working; untested runbooks are fiction."
+   },
+   "pitfalls": [
+    "DNS-only failover for 5-minute RTO",
+    "100% cutover without gradual validation",
+    "Traffic-shift runbook never tested"
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "multi-region",
+   "title": "Failover drills: proving it works",
+   "concepts": [
+    "Drill the full failover: traffic shift, data promotion, verification, and failback — the failback is where most teams discover the real bugs.",
+    "Drill in production during business hours with the team present: staging failovers prove the tooling, production failovers prove the system.",
+    "Measure the drill: actual RTO achieved vs target, data loss vs RPO, surprises found. A drill without measurements is theater.",
+    "Game-day the failure modes, not just the happy path: fail over with a lagging replica, with a partial region outage, during a deploy."
+   ],
+   "example": {
+    "lang": "text",
+    "code": "Drill scorecard:\nRTO target 15m → achieved 22m (gap: DNS cache)\nRPO target 5m → achieved 3m\nSurprises: 2 (failback script bug, stale runbook)\n→ action items filed",
+    "walkthrough": "Walkthrough: the scorecard is the deliverable — it quantifies the gap between belief and reality and converts surprises into fixes. The DNS-cache finding alone justified the drill."
+   },
+   "pitfalls": [
+    "Drilling only the happy path",
+    "No failback testing",
+    "Drill results not measured or tracked"
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "multi-region",
+   "title": "RTO/RPO: defining and designing to them",
+   "concepts": [
+    "RTO (how long can we be down) and RPO (how much data can we lose) are business decisions with price tags — get them in writing from stakeholders, per tier of service.",
+    "Tier your services: checkout gets RTO 15m/RPO 1m; the internal wiki gets RTO 24h/RPO 24h. Uniform DR for everything is unaffordable.",
+    "Design backwards from the numbers: RPO 1m rules out async replication with 5m lag; RTO 15m rules out manual runbooks.",
+    "Review annually or after architecture changes: the numbers drift as the business and system evolve. Stale RTO/RPOs produce wrong designs."
+   ],
+   "example": {
+    "lang": "text",
+    "code": "DR tiers:\nTier 0 (checkout): RTO 15m, RPO 1m → active-active, sync replication\nTier 1 (catalog): RTO 2h, RPO 15m → active-passive, async\nTier 2 (wiki): RTO 24h, RPO 24h → backups",
+    "walkthrough": "Walkthrough: tiers convert one impossible requirement ('never down') into three affordable designs. Each tier's architecture is justified by its numbers — and the numbers are signed off, not assumed."
+   },
+   "pitfalls": [
+    "One RTO/RPO for everything",
+    "RTO/RPO assumed, never signed off",
+    "Architecture that can't meet the stated numbers"
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "cost-optimization",
+   "title": "Cost visibility: allocation and showback",
+   "concepts": [
+    "You can't optimize what you can't attribute: tag every resource (team, service, environment) and allocate shared costs (network, control plane) by a documented rule.",
+    "Showback (reporting costs to teams) changes behavior before chargeback (billing teams) is ever needed — visibility alone kills the most waste.",
+    "Unit economics: cost per request, per active user, per GB stored. Totals hide efficiency; unit costs reveal it and track it over time.",
+    "Review cadence: monthly cost reviews per team, with the top-10 cost drivers and their trends. Surprises get investigated, not just observed."
+   ],
+   "example": {
+    "lang": "bash",
+    "code": "# unit economics from billing data\ncost_per_1k_requests = monthly_bill / (requests / 1000)\n# track trend: is efficiency improving as we scale?",
+    "walkthrough": "Walkthrough: unit cost trending down with scale = healthy; flat or rising = investigate. The metric turns cost from a finance complaint into an engineering signal."
+   },
+   "pitfalls": [
+    "Untagged resources (unattributable spend)",
+    "Totals without unit economics",
+    "Cost reviewed never or only at budget crises"
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "cost-optimization",
+   "title": "Rightsizing: matching capacity to reality",
+   "concepts": [
+    "Rightsize from measured utilization, not requests: p95 CPU/memory over 30 days vs allocated. Consistently at 15% of request = waste.",
+    "Watch the real bottlenecks: rightsizing CPU while the service is memory-bound changes nothing. Profile all dimensions.",
+    "Automate the recommendation loop: weekly rightsizing reports with one-click apply, and guardrails (don't go below observed p99 + buffer).",
+    "Revisit after architecture changes: a caching layer or query optimization changes the footprint — old sizes become new waste."
+   ],
+   "example": {
+    "lang": "text",
+    "code": "Rightsizing rule:\nif p95_cpu < 30% of request for 30d → recommend -50%\nif p99_memory > 85% of limit → recommend +25%\nNever below p99 observed + 20% buffer.",
+    "walkthrough": "Walkthrough: the rule is conservative by design — it trims clear waste without risking the peaks. Automation with guardrails beats quarterly manual reviews."
+   },
+   "pitfalls": [
+    "Rightsizing from requests instead of utilization",
+    "Ignoring non-CPU bottlenecks",
+    "One-time rightsizing, never repeated"
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "cost-optimization",
+   "title": "Autoscaling economics",
+   "concepts": [
+    "Autoscaling saves money only if the baseline is right: scaling 10→20 handles variance; running 20 static when 5 would do wastes regardless of scaling.",
+    "Scale-to-zero for idle workloads (dev environments nights/weekends, batch-only services): the biggest win is often turning things off, not scaling them.",
+    "Mind the cost of scaling itself: frequent scale events churn (image pulls, warm-up latency) — and some pricing models charge per scaling action.",
+    "Bin-pack with node autoscaling: pod autoscaling without cluster autoscaling just spreads waste across more nodes."
+   ],
+   "example": {
+    "lang": "yaml",
+    "code": "schedule:\n  dev_env: 'scale to 0 at 19:00, up at 08:00 weekdays'\n  batch_workers: 'scale to 0 when queue empty > 30m'\n# estimated savings: 62% of non-prod compute",
+    "walkthrough": "Walkthrough: scheduled scale-to-zero is the simplest high-ROI cost move — no performance risk, just calendar arithmetic. Queue-driven scaling handles the batch side."
+   },
+   "pitfalls": [
+    "Autoscaling a bloated baseline",
+    "No scale-to-zero for idle environments",
+    "Pod autoscaling without cluster autoscaling"
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "cost-optimization",
+   "title": "Spot and preemptible capacity",
+   "concepts": [
+    "Spot/preemptible VMs are 60-90% cheaper with one catch: they can be reclaimed with minutes of notice. Use them where interruption is tolerable.",
+    "Good fits: stateless web tiers (behind load balancers), batch jobs (checkpointed), CI runners. Bad fits: single-writer databases, stateful singletons.",
+    "Design for preemption: graceful shutdown handlers, checkpointing, mixed instance policies (some on-demand base + spot burst).",
+    "Diversify across instance types and zones: a diversified spot fleet survives single-pool reclamations without visible impact."
+   ],
+   "example": {
+    "lang": "yaml",
+    "code": "node_pool:\n  base: '3 on-demand (always)'\n  burst: 'spot, diversified across 4 types x 3 zones'\n  interruption: 'drain in 120s, reschedule automatically'",
+    "walkthrough": "Walkthrough: the on-demand base guarantees minimum capacity; spot provides cheap elasticity. Diversification means one reclaimed pool is a non-event, not an outage."
+   },
+   "pitfalls": [
+    "Stateful singletons on spot",
+    "No graceful-shutdown handling",
+    "Single instance type (one reclamation = outage)"
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "cost-optimization",
+   "title": "SLO-aware cost tradeoffs",
+   "concepts": [
+    "Reliability has a price curve: 99% → 99.9% is cheap-ish; 99.99% → 99.999% is very expensive. Spend where the SLO demands it, not uniformly.",
+    "Tier spending by service criticality: checkout gets multi-AZ + sync replication; the internal dashboard gets one AZ and best-effort.",
+    "Error budgets are spending permission: a healthy budget means you can trade some reliability for cost (fewer replicas off-peak); an exhausted budget means you can't.",
+    "Present cost/reliability as explicit options to stakeholders: '99.99% costs $X, 99.9% costs $Y' — let the business choose with eyes open."
+   ],
+   "example": {
+    "lang": "text",
+    "code": "Tradeoff sheet:\ncheckout 99.95%: multi-AZ, $12k/mo\ncatalog 99.9%: multi-AZ async, $4k/mo\ninternal tools 99%: single AZ, $800/mo\nTotal: $16.8k vs $38k for 'everything 99.95%'",
+    "walkthrough": "Walkthrough: tiering cuts the bill by more than half with zero impact on what users actually need. The sheet makes the tradeoff a business decision, not an engineering argument."
+   },
+   "pitfalls": [
+    "Uniform reliability spending everywhere",
+    "Cost cuts that silently breach SLOs",
+    "Never pricing the reliability tiers"
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "progressive-delivery",
+   "title": "Canary analysis: automated judgment",
+   "concepts": [
+    "Canary: shift a small % of traffic to the new version and compare metrics (error rate, latency) against the baseline automatically — promote or roll back on data.",
+    "Choose canary size and duration deliberately: 5% for 30 min catches most regressions; longer for low-traffic services (need statistical significance).",
+    "Automate the analysis (not just the traffic shift): metric queries with pass/fail thresholds, auto-rollback on breach. Manual canary-watching doesn't scale.",
+    "Canary the risky dimensions: new code paths, config changes, dependency upgrades — not every typo fix needs the full ceremony."
+   ],
+   "example": {
+    "lang": "yaml",
+    "code": "canary:\n  steps: [5%, 25%, 50%, 100%]\n  analysis: 'error_rate < baseline+0.1% AND p99 < baseline*1.2 for 10m'\n  on_breach: 'automatic rollback, page owning team'",
+    "walkthrough": "Walkthrough: each step must pass the statistical comparison before proceeding; a breach rolls back without human hesitation. The thresholds are relative to baseline, so they adapt to traffic."
+   },
+   "pitfalls": [
+    "Traffic shifting without automated analysis",
+    "Canary too small/short for statistical significance",
+    "Manual 'watch the dashboard' canaries"
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "progressive-delivery",
+   "title": "Blue-green and rolling strategies",
+   "concepts": [
+    "Blue-green: two identical environments, switch traffic at once — instant rollback (switch back), but double the infrastructure and tricky with stateful migrations.",
+    "Rolling: replace instances gradually — no extra infra, but old and new versions coexist (must be backward/forward compatible).",
+    "The coexistence requirement is the hidden contract: rolling deploys demand version-tolerant APIs and expand/contract migrations. Plan for it.",
+    "Choose by rollback needs: need instant rollback → blue-green; need efficiency → rolling; need safety data → canary. Many teams combine (rolling canary)."
+   ],
+   "example": {
+    "lang": "text",
+    "code": "Strategy picker:\nstateless API, instant rollback needed → blue-green\nstateful, cost-sensitive → rolling + expand/contract\nneed regression data → canary analysis",
+    "walkthrough": "Walkthrough: the strategy follows the constraints. The expand/contract note is critical — rolling deploys with breaking schema changes fail regardless of strategy."
+   },
+   "pitfalls": [
+    "Blue-green with a database that can't be duplicated",
+    "Rolling deploys with breaking API changes",
+    "No rollback plan for the chosen strategy"
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "progressive-delivery",
+   "title": "Feature flags: decoupling deploy from release",
+   "concepts": [
+    "Flags separate deployment (code is live) from release (users see it): deploy anytime, release gradually, kill instantly when things break.",
+    "Flag hygiene: every flag has an owner and an expiry/removal date. Permanent flags become configuration debt — audit quarterly, delete ruthlessly.",
+    "Use flags for: gradual rollouts (% of users), kill switches (new dependency), A/B experiments, and operational toggles (disable expensive feature under load).",
+    "Flag evaluation must be fast and local: no network call per request. SDKs cache flag state; design for the flag service being down (safe defaults)."
+   ],
+   "example": {
+    "lang": "bash",
+    "code": "# kill switch: disable new checkout flow instantly\nflags set checkout_v2 --enabled false --reason 'incident 4521'\n# no deploy needed; propagates in seconds",
+    "walkthrough": "Walkthrough: the kill switch is the fastest mitigation available — seconds, no pipeline. That's why every risky launch gets one. The expiry date prevents the flag graveyard."
+   },
+   "pitfalls": [
+    "Flags without owners or removal dates",
+    "Flag evaluation requiring a network call",
+    "No kill switch on risky launches"
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "progressive-delivery",
+   "title": "Automated rollback: making it boring",
+   "concepts": [
+    "Rollback must be a single command, tested monthly, executable by the IC without approval — if it's hard, people won't do it, and incidents get longer.",
+    "Automate the triggers: canary breach, SLO burn spike post-deploy, health-check failures — rollback starts before a human finishes reading the alert.",
+    "Rollback the whole unit: code + config + flags together. Rolling back code while the new config stays is how 'we rolled back and it's still broken' happens.",
+    "Practice rollbacks in game days: the team should have muscle memory for the command, not a wiki page they've never opened."
+   ],
+   "example": {
+    "lang": "bash",
+    "code": "# one-command rollback (tested monthly)\nplatform rollback checkout --to 1.4.1  # code+config+flags\n# verify: error budget stops burning within 5m",
+    "walkthrough": "Walkthrough: the atomic unit (code+config+flags) prevents the partial-rollback trap. Monthly testing keeps it working; the verification step confirms it actually helped."
+   },
+   "pitfalls": [
+    "Rollback requiring five manual steps",
+    "Code rolled back, config left behind",
+    "Rollback never tested until the incident"
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "progressive-delivery",
+   "title": "Deployment windows and freeze discipline",
+   "concepts": [
+    "Freeze risky changes during critical periods (holidays, big launches, financial close): the cost of a bad deploy then dwarfs any feature's value.",
+    "Define 'risky' precisely: production data migrations, infra changes, new dependencies — not 'all merges'. Overbroad freezes just build a deploy backlog bomb.",
+    "Emergency process for the freeze: who can approve a break-glass deploy, and what extra validation it needs. Freezes without exceptions get violated.",
+    "Automate freeze enforcement in the pipeline: the deploy job checks the freeze calendar. Human-discipline freezes leak."
+   ],
+   "example": {
+    "lang": "yaml",
+    "code": "freeze_calendar:\n  - '2026-11-25 to 2026-11-30: holiday freeze (no prod deploys)'\n  - exceptions: 'VP approval + canary 2x duration'\n  - enforcement: 'pipeline blocks merges to prod branch'",
+    "walkthrough": "Walkthrough: the calendar, the exception path, and the enforcement are all explicit. Narrow scope (risky changes only) keeps the freeze credible; automation keeps it real."
+   },
+   "pitfalls": [
+    "Freezing everything including safe changes",
+    "No exception process (guaranteed violations)",
+    "Freeze enforced by asking nicely"
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "change-safety",
+   "title": "Config changes: the leading cause of outages",
+   "concepts": [
+    "Config changes cause more outages than code deploys: they're reviewed less, tested less, and often applied by hand. Treat config as code.",
+    "Version, review, and test config changes like code: PRs, CI validation (schema checks, dry-run), staged rollout — no direct edits in production.",
+    "Validate before applying: schema validation, diff review, canary on one host/region first. 'It's just config' is the famous last words.",
+    "Keep config changes small and reversible: one change per commit, with the previous version one command away."
+   ],
+   "example": {
+    "lang": "bash",
+    "code": "# config change pipeline (not a wiki edit)\ngit commit -m 'raise checkout timeout 2s->5s' config/checkout.yaml\nci validate-config && canary --region staging && rollout --steps 10%",
+    "walkthrough": "Walkthrough: the config change gets the full pipeline — validation, canary, gradual rollout. The blast radius of a bad timeout value is one canary region, not the fleet."
+   },
+   "pitfalls": [
+    "Hand-editing production config",
+    "Config changes without review or validation",
+    "Bulk config changes in one commit"
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "change-safety",
+   "title": "Safe schema migrations: expand and contract",
+   "concepts": [
+    "Expand/contract: (1) expand — add the new column/table, deploy code that writes both; (2) migrate data; (3) contract — deploy code reading the new, drop the old. Never breaking, always rollback-safe.",
+    "Each phase is independently deployable and reversible: at no point does old code see a schema it can't handle.",
+    "Online migration tools (pt-online-schema-change, gh-ost style) avoid long table locks on big tables — test the migration's duration on a prod-sized copy first.",
+    "Backfill in batches with throttling: a backfill that saturates the primary is a self-inflicted outage."
+   ],
+   "example": {
+    "lang": "text",
+    "code": "Expand/contract for renaming email→contact_email:\n1. ADD contact_email; deploy writes both\n2. backfill in 10k batches, throttled\n3. deploy reads contact_email; DROP email",
+    "walkthrough": "Walkthrough: every step is safe to roll back — old code ignores the new column, new code tolerates the old. The batch-throttled backfill protects production performance."
+   },
+   "pitfalls": [
+    "Breaking renames in one deploy",
+    "Unthrottled backfills on the primary",
+    "Skipping the dual-write phase"
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "change-safety",
+   "title": "Change review: CABs that actually work",
+   "concepts": [
+    "Change review should catch risky changes, not rubber-stamp all changes: risk-based review — standard changes pre-approved, high-risk changes get scrutiny.",
+    "The review asks four questions: what's the blast radius? how do we detect failure? how do we roll back? who's watching?",
+    "Automate the standard: if the change matches a pre-approved pattern (flag flip within limits, routine cert rotation), it shouldn't wait for a meeting.",
+    "Measure the CAB: % of incidents caused by reviewed changes (if high, the review isn't working), change lead time (if high, the review is too heavy)."
+   ],
+   "example": {
+    "lang": "text",
+    "code": "Change classes:\nstandard (pre-approved): flag flips, cert rotations → auto\nnormal: reviewed async within 4h\nemergency: break-glass + retro review within 24h",
+    "walkthrough": "Walkthrough: risk-based classes keep the process proportional. The emergency path with retro review means safety never blocks a 3am mitigation — it just gets examined after."
+   },
+   "pitfalls": [
+    "Reviewing every change equally (bottleneck)",
+    "No emergency path",
+    "Never measuring whether review prevents incidents"
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "change-safety",
+   "title": "Blast-radius analysis for every change",
+   "concepts": [
+    "Before any significant change, enumerate the blast radius: which services, which users, which regions — and what the worst case looks like.",
+    "Reduce the radius structurally: staged rollouts, feature flags, regional isolation, bulkheads between tenants. Small radius = safe to move fast.",
+    "The change template forces the analysis: 'blast radius' is a required field, not an optional thought. Empty = change doesn't ship.",
+    "Learn from escapes: every incident caused by a change gets its blast-radius analysis reviewed — was the radius underestimated, or the rollout too aggressive?"
+   ],
+   "example": {
+    "lang": "text",
+    "code": "Change template fields:\n- blast radius: 'checkout service, us-west canary 5%'\n- detection: 'burn-rate alert, 5 min'\n- rollback: 'platform rollback checkout (1 cmd)'\n- watcher: 'on-call + owning team in war room'",
+    "walkthrough": "Walkthrough: four fields, five minutes to fill, and the change is reviewable. The template turns 'be careful' into a concrete artifact."
+   },
+   "pitfalls": [
+    "Changes with no stated blast radius",
+    "Rollouts wider than the analysis justified",
+    "No learning loop from change-caused incidents"
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "change-safety",
+   "title": "Configuration validation and drift detection",
+   "concepts": [
+    "Validate config at every stage: schema check in CI, dry-run apply in staging, conformance check post-deploy. Invalid config should never reach production.",
+    "Detect drift: continuously compare running config against the declared source of truth. Drift means someone hand-edited — find it and reconcile.",
+    "GitOps closes the loop: the repo is the truth, the agent converges reality to it, drift alerts fire on divergence. Manual edits get reverted or adopted deliberately.",
+    "Keep secrets out of config: references (vault paths), not values. A config repo with embedded secrets is a breach waiting for a clone."
+   ],
+   "example": {
+    "lang": "bash",
+    "code": "# drift detection (hourly)\nconfig diff --live vs --repo  # alerts on divergence\n# secrets as references:\ndb_password: 'vault://prod/db/password'  # not the value",
+    "walkthrough": "Walkthrough: drift detection catches the 2am hand-edit before it becomes folklore. Secret references keep the config repo shareable and safe."
+   },
+   "pitfalls": [
+    "No validation between repo and production",
+    "Undetected manual edits (drift)",
+    "Secrets embedded in config files"
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "capstone-build",
+   "title": "Capstone part 1: SLOs and architecture",
+   "concepts": [
+    "Project: design the reliability architecture for 'ShopFast' checkout — the artifact is a design doc plus working configs, interview-ready.",
+    "Deliverable 1: SLIs/SLOs for checkout (success rate, latency p99) with a written error-budget policy: what happens at 50% and 100% consumption.",
+    "Deliverable 2: architecture sketch showing regions, replication topology, traffic steering, and the RTO/RPO each choice supports.",
+    "Grading: SLOs tied to user impact (not CPU), budget policy with teeth, topology justified by RTO/RPO numbers."
+   ],
+   "example": {
+    "lang": "yaml",
+    "code": "slo:\n  checkout_success: '99.95% over 30d'\n  checkout_p99: '< 800ms over 30d'\nbudget_policy:\n  exhausted: 'feature freeze until recovered'\n  at_50pct: 'launch review required'",
+    "walkthrough": "Walkthrough: the policy is the deliverable as much as the numbers — it proves you can govern reliability, not just measure it. Every later part references these SLOs."
+   },
+   "pitfalls": [
+    "SLOs on infrastructure metrics",
+    "Budget with no enforcement clause",
+    "Topology chosen before RTO/RPO"
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "capstone-build",
+   "title": "Capstone part 2: observability and incident readiness",
+   "concepts": [
+    "Deliverable: dashboards (SLI-first layout), burn-rate alerts with runbook links, and a mitigation runbook (rollback + flag kill, one command each).",
+    "Write the incident kickoff script for ShopFast: roles, first-5-minutes checklist, comms template, severity definitions.",
+    "Run a game day: inject a failure in staging, respond with your runbooks, and hold a blameless debrief producing at least 3 action items.",
+    "Grading: alerts on symptoms with runbooks, runbooks executable (not prose), game day debrief with tracked actions."
+   ],
+   "example": {
+    "lang": "bash",
+    "code": "# capstone verification checklist\n./runbooks/shopfast-burn.sh --diagnose   # works?\nplatform rollback shopfast --dry-run      # one command?\n# game day debrief → 3+ action items filed",
+    "walkthrough": "Walkthrough: the checklist proves readiness is real, not documented. The game day is the capstone's centerpiece — responding for real is what the interview stories come from."
+   },
+   "pitfalls": [
+    "Alerts without runbooks",
+    "Runbooks never executed",
+    "Skipping the game day"
+   ],
+   "try_it": "Work through this in the Terminal tab →"
+  },
+  {
+   "domain_id": "capstone-build",
+   "title": "Capstone part 3: delivery safety and cost review",
+   "concepts": [
+    "Deliverable: a progressive-delivery plan for ShopFast (canary stages, analysis queries, auto-rollback) plus a change-safety checklist for schema migrations.",
+    "Cost review: unit economics (cost per 1k checkouts), rightsizing pass on the design, and a tiered reliability-spending sheet.",
+    "Present: 10-minute walkthrough — SLOs, one incident story from the game day, one cost tradeoff, and what you'd do with 3 more months.",
+    "Grading: canary with automated analysis, expand/contract migration plan, cost tiers justified — decisions and tradeoffs, not tool names."
+   ],
+   "example": {
+    "lang": "text",
+    "code": "Capstone presentation outline:\n1. SLOs + budget policy (2 min)\n2. Game-day incident story (3 min)\n3. Delivery safety demo (2 min)\n4. Cost/reliability tradeoffs (2 min)\n5. Next 3 months (1 min)",
+    "walkthrough": "Walkthrough: the outline forces narrative over inventory — each section is a decision you made and can defend. This is the interview story portfolio."
+   },
+   "pitfalls": [
+    "Presenting tools instead of decisions",
+    "No cost analysis ('reliability at any price')",
+    "No game-day story to tell"
    ],
    "try_it": "Work through this in the Terminal tab →"
   }
@@ -1599,6 +4140,265 @@
    ],
    "success_message": "Case directory built — findings extracted and verified.",
    "title": "Build an incident case file"
+  },
+  {
+   "id": "sre-platform-lab-9",
+   "title": "Burn-rate alert rule",
+   "objective": "Write a multi-window burn-rate alert rule and validate its syntax.",
+   "steps": [
+    "Open the Terminal tab for this bootcamp.",
+    "Create a file burn-rule.yaml with a fast-burn (1h) and slow-burn (6h) alert on the checkout error ratio, thresholds as multiples of the budgeted rate.",
+    "Type exactly: promtool check rules burn-rule.yaml — expect SUCCESS.",
+    "Explain in one sentence why two windows are better than one."
+   ],
+   "checks": [
+    {
+     "command_pattern": "promtool\\s+check\\s+rules",
+     "expect_contains": "SUCCESS",
+     "hint": "Validate the rule file with promtool check rules."
+    }
+   ],
+   "success_message": "Burn-rate alerting verified: fast and slow windows protecting the same budget."
+  },
+  {
+   "id": "sre-platform-lab-10",
+   "title": "Incident kickoff drill",
+   "objective": "Run a simulated incident kickoff: assign roles, declare impact, and produce the first status update.",
+   "steps": [
+    "Open the Terminal tab for this bootcamp.",
+    "Read the injected incident brief in the lab notes (checkout 5xx spike).",
+    "Type exactly: echo 'IC: you; COMMS: partner; OPS: partner' > roles.txt — declare roles out loud in your own words too.",
+    "Draft the first status update following the template (impact, mitigation, next-update time) into update1.txt.",
+    "State the mitigation-first decision you would make in the first 5 minutes."
+   ],
+   "checks": [
+    {
+     "command_pattern": "echo.*roles",
+     "expect_contains": "IC",
+     "hint": "Declare the three incident roles into roles.txt."
+    }
+   ],
+   "success_message": "Incident command verified: roles declared, comms templated, mitigation prioritized."
+  },
+  {
+   "id": "sre-platform-lab-11",
+   "title": "Trace-driven localization",
+   "objective": "Use a trace to localize latency to a service and span, then identify the root-cause log.",
+   "steps": [
+    "Open the Terminal tab for this bootcamp.",
+    "Query the trace backend for the slowest checkout trace in the last hour (lab dataset).",
+    "Identify the span consuming >80% of the trace duration and name the service.",
+    "Pull the logs for that trace id and quote the root-cause line.",
+    "Write the metric→trace→log handoff in one sentence."
+   ],
+   "checks": [
+    {
+     "command_pattern": "trace",
+     "expect_contains": "trace",
+     "hint": "Query the trace for the slowest checkout request."
+    }
+   ],
+   "success_message": "Localization verified: metric detected, trace localized, logs explained."
+  },
+  {
+   "id": "sre-platform-lab-12",
+   "title": "Cardinality audit",
+   "objective": "Audit a Prometheus metric set for cardinality risk and fix the offending label.",
+   "steps": [
+    "Open the Terminal tab for this bootcamp.",
+    "Run the provided cardinality query counting series per metric; identify the top offender.",
+    "Confirm the offending label is unbounded (user_id or equivalent).",
+    "Rewrite the recording rule/dashboard query without the unbounded label and re-check the series count.",
+    "State the bounded-label rule in your own words."
+   ],
+   "checks": [
+    {
+     "command_pattern": "count by",
+     "expect_contains": "count",
+     "hint": "Count series grouped by metric name to find the offender."
+    }
+   ],
+   "success_message": "Cardinality discipline verified: unbounded labels removed, series count collapsed."
+  },
+  {
+   "id": "sre-platform-lab-13",
+   "title": "Load test to breaking",
+   "objective": "Run a load test that finds the service's actual breaking point and record it in the capacity log.",
+   "steps": [
+    "Open the Terminal tab for this bootcamp.",
+    "Run the k6 script against the lab checkout service: ramp 10 min, hold 10 min, then spike until errors.",
+    "Record the knee (latency climbs) and the cliff (errors spike) with their RPS values.",
+    "Append the results to capacity-log.md with date and config.",
+    "Name the bottleneck component the test revealed."
+   ],
+   "checks": [
+    {
+     "command_pattern": "k6 run",
+     "expect_contains": "k6",
+     "hint": "Run the k6 load script against the lab service."
+    }
+   ],
+   "success_message": "Breaking point found and logged: capacity planning now has real numbers."
+  },
+  {
+   "id": "sre-platform-lab-14",
+   "title": "Autoscaling policy that doesn't flap",
+   "objective": "Configure asymmetric autoscaling (fast up, slow down) on the bottleneck signal and observe stability.",
+   "steps": [
+    "Open the Terminal tab for this bootcamp.",
+    "Identify the bottleneck signal from the previous lab (queue depth, not CPU).",
+    "Apply the autoscale policy: scale up on 1-min breach, scale down only after 15-min calm.",
+    "Run a spike-and-drop load pattern and confirm no flapping occurred.",
+    "Explain why the cooldowns are asymmetric."
+   ],
+   "checks": [
+    {
+     "command_pattern": "kubectl autoscale|platform autoscale",
+     "expect_contains": "autoscale",
+     "hint": "Apply the autoscaling policy to the lab deployment."
+    }
+   ],
+   "success_message": "Autoscaling verified: absorbs spikes without oscillation."
+  },
+  {
+   "id": "sre-platform-lab-15",
+   "title": "Golden-path service scaffolding",
+   "objective": "Scaffold a new service from the golden-path template and verify it ships with observability built in.",
+   "steps": [
+    "Open the Terminal tab for this bootcamp.",
+    "Type exactly: platform new-service --template web-api --name labshop (or the lab equivalent).",
+    "Verify the generated repo contains: Dockerfile, CI pipeline, dashboard JSON, alert rules, runbook stub.",
+    "Deploy it to the lab cluster and confirm its metrics appear in the dashboard.",
+    "Time the whole flow and compare against 'blank repo + wiki'."
+   ],
+   "checks": [
+    {
+     "command_pattern": "new-service",
+     "expect_contains": "labshop",
+     "hint": "Scaffold the labshop service from the web-api template."
+    }
+   ],
+   "success_message": "Golden path verified: production-ready skeleton in minutes, not weeks."
+  },
+  {
+   "id": "sre-platform-lab-16",
+   "title": "Toil audit",
+   "objective": "Measure on-call toil for a simulated week and build the automation backlog from the data.",
+   "steps": [
+    "Open the Terminal tab for this bootcamp.",
+    "Review the provided week of on-call tickets in the lab dataset.",
+    "Classify each as toil vs engineering work; total the toil hours.",
+    "Rank the top 3 toil sources by frequency x pain and write the automation proposal for #1.",
+    "State the toil % of the week and the target."
+   ],
+   "checks": [
+    {
+     "command_pattern": "toil",
+     "expect_contains": "toil",
+     "hint": "Write your toil classification and totals to the lab notes."
+    }
+   ],
+   "success_message": "Toil measured and backlog built: automation now has data, not complaints."
+  },
+  {
+   "id": "sre-platform-lab-17",
+   "title": "Executable runbook",
+   "objective": "Convert a wiki runbook into an executable script with diagnose and mitigate modes, linked from an alert.",
+   "steps": [
+    "Open the Terminal tab for this bootcamp.",
+    "Read the wiki runbook for checkout-burn in the lab notes.",
+    "Write checkout-burn.sh with --diagnose (triage commands) and --mitigate (rollback + flag kill) modes plus --dry-run.",
+    "Test --dry-run and --diagnose against the lab environment.",
+    "Link the script path in the alert annotation and explain why linkage matters."
+   ],
+   "checks": [
+    {
+     "command_pattern": "checkout-burn.sh --dry-run",
+     "expect_contains": "dry-run",
+     "hint": "Test the runbook script in dry-run mode."
+    }
+   ],
+   "success_message": "Runbook as code verified: executable, tested, and linked from the alert."
+  },
+  {
+   "id": "sre-platform-lab-18",
+   "title": "Chaos experiment card + abort",
+   "objective": "Write a chaos experiment card and execute a scoped fault with an automated abort hook.",
+   "steps": [
+    "Open the Terminal tab for this bootcamp.",
+    "Write exp-001.md: hypothesis, steady-state, blast radius (staging namespace only), abort conditions.",
+    "Apply the experiment with the abort hook watching the error-rate SLI.",
+    "Confirm the fault injected and the abort hook armed (show the config).",
+    "Halt the experiment via the kill switch and record the result vs hypothesis."
+   ],
+   "checks": [
+    {
+     "command_pattern": "chaos.*halt|kill.*switch",
+     "expect_contains": "halt",
+     "hint": "Halt the experiment with the kill switch and record the outcome."
+    }
+   ],
+   "success_message": "Chaos discipline verified: hypothesis-driven, scoped, abortable."
+  },
+  {
+   "id": "sre-platform-lab-19",
+   "title": "Canary deploy with automated analysis",
+   "objective": "Run a canary deploy with automated metric analysis and observe an auto-rollback on breach.",
+   "steps": [
+    "Open the Terminal tab for this bootcamp.",
+    "Deploy the canary version at 5% with the analysis query comparing error rate and p99 to baseline.",
+    "Watch the automated analysis evaluate each step.",
+    "Trigger the bad canary (provided) and confirm automatic rollback fired.",
+    "Quote the analysis result that caused the rollback."
+   ],
+   "checks": [
+    {
+     "command_pattern": "canary",
+     "expect_contains": "canary",
+     "hint": "Start the canary deploy with automated analysis."
+    }
+   ],
+   "success_message": "Progressive delivery verified: bad canary rolled back by data, not by humans."
+  },
+  {
+   "id": "sre-platform-lab-20",
+   "title": "Feature-flag kill switch",
+   "objective": "Put a risky code path behind a flag and practice the kill-switch mitigation.",
+   "steps": [
+    "Open the Terminal tab for this bootcamp.",
+    "Create the flag lab_checkout_v2 with owner and expiry date set.",
+    "Enable for 10% of lab traffic; verify the flag evaluation is local (no per-request network call).",
+    "Simulate the incident: flip the flag off and time the mitigation.",
+    "Record the mitigation time vs the full-rollback time from lab 19."
+   ],
+   "checks": [
+    {
+     "command_pattern": "flags set",
+     "expect_contains": "false",
+     "hint": "Flip the kill-switch flag off to mitigate."
+    }
+   ],
+   "success_message": "Kill switch verified: mitigation in seconds, not a 25-minute rollback."
+  },
+  {
+   "id": "sre-platform-lab-21",
+   "title": "Capstone checkpoint: reliability review",
+   "objective": "Assemble the capstone part-2 deliverables: dashboard, burn-rate alerts with runbooks, and the game-day plan.",
+   "steps": [
+    "Open the Terminal tab for this bootcamp.",
+    "Verify your SLI dashboard layout follows the incident-reader order (SLIs top, details bottom).",
+    "Confirm every alert links to an executable runbook (from lab 17).",
+    "Write the game-day plan: scenario, roles, timeline, debrief template.",
+    "Self-grade against the rubric and list the gaps to close."
+   ],
+   "checks": [
+    {
+     "command_pattern": "review",
+     "expect_contains": "review",
+     "hint": "Write your self-review against the capstone rubric."
+    }
+   ],
+   "success_message": "Capstone checkpoint verified: observability and incident readiness are demonstrable, not just documented."
   }
  ],
  "foundations": [
@@ -2088,6 +4888,168 @@
    "lesson_ref": "c-toil-automation",
    "caption": "Automate toil; keep engineering creative.",
    "alt": "Toil vs Automation. Shows: Toil defined, 50% cap, Automate, Measure."
+  },
+  {
+   "id": "sre-platform-slis-slos-d1",
+   "kind": "diagram",
+   "title": "SLIs/SLOs — traps vs moves",
+   "svg": "assets/diagrams/sre-platform-slis-slos-d1.svg",
+   "lesson_ref": "c-slis-slos",
+   "caption": "Traps on the left, winning moves on the right — watch each pair land and keep the contrast in mind. Error budget = 1 − SLO = 0.1% of the window. The error budget is a joint policy: product gets launch velocity while budget remains; enginee…",
+   "alt": "Animated diagram: SLIs/SLOs — traps vs moves."
+  },
+  {
+   "id": "sre-platform-slis-slos-d2",
+   "kind": "diagram",
+   "title": "SLIs/SLOs — concept contract",
+   "svg": "assets/diagrams/sre-platform-slis-slos-d2.svg",
+   "lesson_ref": "c-slis-slos",
+   "caption": "The concept contract for SLIs/SLOs — each key idea, what it means, and where it pays off. Error budget = 1 − SLO = 0.1% of the window. The error budget is a joint policy: product gets launch velocity while budget remains; enginee…",
+   "alt": "Animated diagram: SLIs/SLOs — concept contract."
+  },
+  {
+   "id": "sre-platform-slis-slos-d3",
+   "kind": "diagram",
+   "title": "SLIs/SLOs — build order",
+   "svg": "assets/diagrams/sre-platform-slis-slos-d3.svg",
+   "lesson_ref": "c-slis-slos",
+   "caption": "Watch SLIs/SLOs assemble stage by stage — nodes pop in sequence so the progression reads as a build order. Error budget = 1 − SLO = 0.1% of the window. The error budget is a joint policy: product gets launch velocity while budget remains; enginee…",
+   "alt": "Animated diagram: SLIs/SLOs — build order."
+  },
+  {
+   "id": "sre-platform-incident-response-d1",
+   "kind": "diagram",
+   "title": "Incident Response — concept contract",
+   "svg": "assets/diagrams/sre-platform-incident-response-d1.svg",
+   "lesson_ref": "c-incident-response",
+   "caption": "The concept contract for Incident Response — each key idea, what it means, and where it pays off. Incident declaration: the incident commander coordinates (not necessarily the fixer), comms owns status updates — this structure prevents 1…",
+   "alt": "Animated diagram: Incident Response — concept contract."
+  },
+  {
+   "id": "sre-platform-incident-response-d2",
+   "kind": "diagram",
+   "title": "Incident Response — ideas at a glance",
+   "svg": "assets/diagrams/sre-platform-incident-response-d2.svg",
+   "lesson_ref": "c-incident-response",
+   "caption": "Incident Response at a glance: core ideas on the left, the traps that bite practitioners on the right. Incident declaration: the incident commander coordinates (not necessarily the fixer), comms owns status updates — this structure prevents 1…",
+   "alt": "Animated diagram: Incident Response — ideas at a glance."
+  },
+  {
+   "id": "sre-platform-incident-response-d3",
+   "kind": "diagram",
+   "title": "Incident Response — knowledge stack",
+   "svg": "assets/diagrams/sre-platform-incident-response-d3.svg",
+   "lesson_ref": "c-incident-response",
+   "caption": "The Incident Response stack builds top-down, one layer at a time — from the highest abstraction down to the ground truth. Incident declaration: the incident commander coordinates (not necessarily the fixer), comms owns status updates — this structure prevents 1…",
+   "alt": "Animated diagram: Incident Response — knowledge stack."
+  },
+  {
+   "id": "sre-platform-observability-d1",
+   "kind": "diagram",
+   "title": "Observability — ideas at a glance",
+   "svg": "assets/diagrams/sre-platform-observability-d1.svg",
+   "lesson_ref": "c-observability",
+   "caption": "Observability at a glance: core ideas on the left, the traps that bite practitioners on the right. Three pillars: mature observability correlates all three (exemplars link metrics to traces, trace IDs in logs).",
+   "alt": "Animated diagram: Observability — ideas at a glance."
+  },
+  {
+   "id": "sre-platform-observability-d2",
+   "kind": "diagram",
+   "title": "Observability — traps vs moves",
+   "svg": "assets/diagrams/sre-platform-observability-d2.svg",
+   "lesson_ref": "c-observability",
+   "caption": "Traps on the left, winning moves on the right — watch each pair land and keep the contrast in mind. Three pillars: mature observability correlates all three (exemplars link metrics to traces, trace IDs in logs).",
+   "alt": "Animated diagram: Observability — traps vs moves."
+  },
+  {
+   "id": "sre-platform-observability-d3",
+   "kind": "diagram",
+   "title": "Observability — build order",
+   "svg": "assets/diagrams/sre-platform-observability-d3.svg",
+   "lesson_ref": "c-observability",
+   "caption": "Watch Observability assemble stage by stage — nodes pop in sequence so the progression reads as a build order. Three pillars: mature observability correlates all three (exemplars link metrics to traces, trace IDs in logs).",
+   "alt": "Animated diagram: Observability — build order."
+  },
+  {
+   "id": "sre-platform-capacity-performance-d1",
+   "kind": "diagram",
+   "title": "Capacity & Performance — build order",
+   "svg": "assets/diagrams/sre-platform-capacity-performance-d1.svg",
+   "lesson_ref": "c-capacity-performance",
+   "caption": "Watch Capacity & Performance assemble stage by stage — nodes pop in sequence so the progression reads as a build order. Capacity planning: model peak (not average) load, project growth, maintain headroom for failure (N+1: full load sustainable minus one failu…",
+   "alt": "Animated diagram: Capacity & Performance — build order."
+  },
+  {
+   "id": "sre-platform-capacity-performance-d2",
+   "kind": "diagram",
+   "title": "Capacity & Performance — knowledge stack",
+   "svg": "assets/diagrams/sre-platform-capacity-performance-d2.svg",
+   "lesson_ref": "c-capacity-performance",
+   "caption": "The Capacity & Performance stack builds top-down, one layer at a time — from the highest abstraction down to the ground truth. Capacity planning: model peak (not average) load, project growth, maintain headroom for failure (N+1: full load sustainable minus one failu…",
+   "alt": "Animated diagram: Capacity & Performance — knowledge stack."
+  },
+  {
+   "id": "sre-platform-capacity-performance-d3",
+   "kind": "diagram",
+   "title": "Capacity & Performance — traps vs moves",
+   "svg": "assets/diagrams/sre-platform-capacity-performance-d3.svg",
+   "lesson_ref": "c-capacity-performance",
+   "caption": "Traps on the left, winning moves on the right — watch each pair land and keep the contrast in mind. Capacity planning: model peak (not average) load, project growth, maintain headroom for failure (N+1: full load sustainable minus one failu…",
+   "alt": "Animated diagram: Capacity & Performance — traps vs moves."
+  },
+  {
+   "id": "sre-platform-platform-design-d1",
+   "kind": "diagram",
+   "title": "Platform Design — traps vs moves",
+   "svg": "assets/diagrams/sre-platform-platform-design-d1.svg",
+   "lesson_ref": "c-platform-design",
+   "caption": "Traps on the left, winning moves on the right — watch each pair land and keep the contrast in mind. Golden paths make the secure, reliable way the EASY way: templated services with baked-in scanning, logging, SLOs, and deploy pipelines.",
+   "alt": "Animated diagram: Platform Design — traps vs moves."
+  },
+  {
+   "id": "sre-platform-platform-design-d2",
+   "kind": "diagram",
+   "title": "Platform Design — concept contract",
+   "svg": "assets/diagrams/sre-platform-platform-design-d2.svg",
+   "lesson_ref": "c-platform-design",
+   "caption": "The concept contract for Platform Design — each key idea, what it means, and where it pays off. Golden paths make the secure, reliable way the EASY way: templated services with baked-in scanning, logging, SLOs, and deploy pipelines.",
+   "alt": "Animated diagram: Platform Design — concept contract."
+  },
+  {
+   "id": "sre-platform-platform-design-d3",
+   "kind": "diagram",
+   "title": "Platform Design — build order",
+   "svg": "assets/diagrams/sre-platform-platform-design-d3.svg",
+   "lesson_ref": "c-platform-design",
+   "caption": "Watch Platform Design assemble stage by stage — nodes pop in sequence so the progression reads as a build order. Golden paths make the secure, reliable way the EASY way: templated services with baked-in scanning, logging, SLOs, and deploy pipelines.",
+   "alt": "Animated diagram: Platform Design — build order."
+  },
+  {
+   "id": "sre-platform-toil-automation-d1",
+   "kind": "diagram",
+   "title": "Toil & Automation — concept contract",
+   "svg": "assets/diagrams/sre-platform-toil-automation-d1.svg",
+   "lesson_ref": "c-toil-automation",
+   "caption": "The concept contract for Toil & Automation — each key idea, what it means, and where it pays off. Toil definition: google's SRE rule: max 50% of anyone's time on toil; beyond that the team must spend the surplus eliminating toil (automat…",
+   "alt": "Animated diagram: Toil & Automation — concept contract."
+  },
+  {
+   "id": "sre-platform-toil-automation-d2",
+   "kind": "diagram",
+   "title": "Toil & Automation — ideas at a glance",
+   "svg": "assets/diagrams/sre-platform-toil-automation-d2.svg",
+   "lesson_ref": "c-toil-automation",
+   "caption": "Toil & Automation at a glance: core ideas on the left, the traps that bite practitioners on the right. Toil definition: google's SRE rule: max 50% of anyone's time on toil; beyond that the team must spend the surplus eliminating toil (automat…",
+   "alt": "Animated diagram: Toil & Automation — ideas at a glance."
+  },
+  {
+   "id": "sre-platform-toil-automation-d3",
+   "kind": "diagram",
+   "title": "Toil & Automation — knowledge stack",
+   "svg": "assets/diagrams/sre-platform-toil-automation-d3.svg",
+   "lesson_ref": "c-toil-automation",
+   "caption": "The Toil & Automation stack builds top-down, one layer at a time — from the highest abstraction down to the ground truth. Toil definition: google's SRE rule: max 50% of anyone's time on toil; beyond that the team must spend the surplus eliminating toil (automat…",
+   "alt": "Animated diagram: Toil & Automation — knowledge stack."
   }
  ],
  "resources": {
@@ -2338,6 +5300,76 @@
    "pages": 8,
    "animated": true,
    "verifiedUtc": "2026-10-09T05:27:58Z"
+  },
+  {
+   "title": "Terraform — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-terraform.pdf",
+   "source": "Interstitium Labs",
+   "blurb": "Infrastructure as code — HCL, state, plans, modules, and declarative cloud provisioning.",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:56:41Z"
+  },
+  {
+   "title": "Docker, In Depth — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-docker-deep.pdf",
+   "source": "Interstitium Labs",
+   "blurb": "Images, layers, and runtimes — Dockerfile best practices, build cache, multi-stage builds, and the OCI standard.",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:56:41Z"
+  },
+  {
+   "title": "GitOps — Visual Guide",
+   "url": "https://interstitiumlabs.dev/assets/pdfs/bbg-gitops.pdf",
+   "source": "Interstitium Labs",
+   "blurb": "Git as the source of truth — declarative infra, pull-based deploys, drift detection, and the operator pattern.",
+   "pages": 8,
+   "animated": true,
+   "verifiedUtc": "2026-10-09T05:56:41Z"
+  }
+ ],
+ "topicTheme": "steampunk",
+ "topic": "cloud-devops",
+ "videos": [
+  {
+   "title": "Error Budgets: Failure, Quantified",
+   "url": "/assets/videos/bc-3b1b-srep-slo.mp4",
+   "source": "Interstitium Labs",
+   "blurb": "Error budgets: 99.9% allows 43 minutes of monthly downtime — spend it on velocity or hoard it, but the budget is the policy. Reliability is a budget, not a virtue. (Preview — narration coming; voiceover pending TTS restore.)",
+   "durationMin": 1,
+   "order": 1,
+   "preview": true,
+   "captionsUrl": "/assets/videos/bc-3b1b-srep-slo.vtt",
+   "narrationUrl": "/assets/videos/bc-3b1b-srep-slo.narration.md",
+   "verifiedUtc": "2026-10-09T08:32:34Z",
+   "httpStatus": 200
+  },
+  {
+   "title": "Observability: The Three Pillars",
+   "url": "/assets/videos/bc-bbg-srep-observability.mp4",
+   "source": "Interstitium Labs",
+   "blurb": "Observability: metrics for the vital signs, logs for the story, traces for the journey — correlated by request ID. Three pillars, one incident narrative. (Preview — narration coming; voiceover pending TTS restore.)",
+   "durationMin": 1,
+   "order": 2,
+   "preview": true,
+   "captionsUrl": "/assets/videos/bc-bbg-srep-observability.vtt",
+   "narrationUrl": "/assets/videos/bc-bbg-srep-observability.narration.md",
+   "verifiedUtc": "2026-10-09T08:32:34Z",
+   "httpStatus": 200
+  },
+  {
+   "title": "Incident: The First Hour",
+   "url": "/assets/videos/bc-story-srep-incident.mp4",
+   "source": "Interstitium Labs",
+   "blurb": "The first hour: detect and declare, mitigate the bleeding, communicate status, then understand. Mitigate first, understand second — the users care about the fix, not the root cause. (Preview — narration coming; voiceover pending TTS restore.)",
+   "durationMin": 1,
+   "order": 3,
+   "preview": true,
+   "captionsUrl": "/assets/videos/bc-story-srep-incident.vtt",
+   "narrationUrl": "/assets/videos/bc-story-srep-incident.narration.md",
+   "verifiedUtc": "2026-10-09T08:32:34Z",
+   "httpStatus": 200
   }
  ]
 }
