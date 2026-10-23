@@ -2,6 +2,28 @@
 """Strict button audit: require direct wiring evidence per button."""
 import os, re
 
+def _script_spans(html):
+    """(start, end, body) for each <script>...</script> block, found by
+    scanning (regexes cannot match end-tag variants like </script >
+    reliably). Case-insensitive; tolerates attributes on both tags."""
+    low = html.lower()
+    spans, i = [], 0
+    while True:
+        start = low.find("<script", i)
+        if start < 0:
+            break
+        open_end = low.find(">", start)
+        if open_end < 0:
+            break
+        close = low.find("</script", open_end)
+        if close < 0:
+            break
+        close_end = low.find(">", close)
+        end = close_end + 1 if close_end >= 0 else len(html)
+        spans.append((start, end, html[open_end + 1:close]))
+        i = end
+    return spans
+
 ROOT = os.path.expanduser("~/workspace/cbt-individual/tl-infra-assessment-prep")
 dead, ok = [], 0
 
@@ -14,13 +36,13 @@ for dirpath, _, filenames in sorted(os.walk(ROOT)):
         path = os.path.join(dirpath, f)
         rel = os.path.relpath(path, ROOT)
         html = open(path, encoding="utf-8", errors="replace").read()
-        scripts = " ".join(re.findall(r"<script[^>]*>(.*?)</script>", html, re.S | re.I))
+        scripts = " ".join(body for _, _, body in _script_spans(html))
         # remove dynamically-generated HTML strings from scripts for static-button matching
         for m in re.finditer(r"<button\b([^>]*)>(.*?)</button>", html, re.S | re.I):
             attrs, inner = m.group(1), m.group(2).strip()[:60].replace("\n", " ")
             line = html[:m.start()].count("\n") + 1
             # skip buttons that are inside <script> template strings (dynamically created)
-            scr_ranges = [(mm.start(), mm.end()) for mm in re.finditer(r"<script[^>]*>.*?</script>", html, re.S | re.I)]
+            scr_ranges = [(start, end) for start, end, _ in _script_spans(html)]
             if any(s <= m.start() < e for s, e in scr_ranges):
                 continue
             wired = False

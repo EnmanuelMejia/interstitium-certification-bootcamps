@@ -2,6 +2,28 @@
 """Button audit: every <button> must have onclick / addEventListener / delegated data-* handler."""
 import os, re
 
+def _script_spans(html):
+    """(start, end, body) for each <script>...</script> block, found by
+    scanning (regexes cannot match end-tag variants like </script >
+    reliably). Case-insensitive; tolerates attributes on both tags."""
+    low = html.lower()
+    spans, i = [], 0
+    while True:
+        start = low.find("<script", i)
+        if start < 0:
+            break
+        open_end = low.find(">", start)
+        if open_end < 0:
+            break
+        close = low.find("</script", open_end)
+        if close < 0:
+            break
+        close_end = low.find(">", close)
+        end = close_end + 1 if close_end >= 0 else len(html)
+        spans.append((start, end, html[open_end + 1:close]))
+        i = end
+    return spans
+
 ROOT = os.path.expanduser("~/workspace/cbt-individual/tl-infra-assessment-prep")
 dead = []
 ok_count = 0
@@ -15,7 +37,7 @@ for dirpath, _, filenames in sorted(os.walk(ROOT)):
         path = os.path.join(dirpath, f)
         rel = os.path.relpath(path, ROOT)
         html = open(path, encoding="utf-8", errors="replace").read()
-        scripts = " ".join(re.findall(r"<script[^>]*>(.*?)</script>", html, re.S | re.I))
+        scripts = " ".join(body for _, _, body in _script_spans(html))
         has_delegation = re.search(r"addEventListener\s*\(\s*['\"]click['\"]", scripts)
         # find buttons
         for m in re.finditer(r"<button\b([^>]*)>(.*?)</button>", html, re.S | re.I):
