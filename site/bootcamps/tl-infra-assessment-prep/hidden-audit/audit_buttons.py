@@ -15,7 +15,7 @@ for dirpath, _, filenames in sorted(os.walk(ROOT)):
         path = os.path.join(dirpath, f)
         rel = os.path.relpath(path, ROOT)
         html = open(path, encoding="utf-8", errors="replace").read()
-        scripts = " ".join(re.findall(r"<script[^>]*>(.*?)</script>", html, re.S | re.I))
+        scripts = " ".join(re.findall(r"<script[^>]*>(.*?)</script\s*>", html, re.S | re.I))
         has_delegation = re.search(r"addEventListener\s*\(\s*['\"]click['\"]", scripts)
         # find buttons
         for m in re.finditer(r"<button\b([^>]*)>(.*?)</button>", html, re.S | re.I):

@@ -14,13 +14,13 @@ for dirpath, _, filenames in sorted(os.walk(ROOT)):
         path = os.path.join(dirpath, f)
         rel = os.path.relpath(path, ROOT)
         html = open(path, encoding="utf-8", errors="replace").read()
-        scripts = " ".join(re.findall(r"<script[^>]*>(.*?)</script>", html, re.S | re.I))
+        scripts = " ".join(re.findall(r"<script[^>]*>(.*?)</script\s*>", html, re.S | re.I))
         # remove dynamically-generated HTML strings from scripts for static-button matching
         for m in re.finditer(r"<button\b([^>]*)>(.*?)</button>", html, re.S | re.I):
             attrs, inner = m.group(1), m.group(2).strip()[:60].replace("\n", " ")
             line = html[:m.start()].count("\n") + 1
             # skip buttons that are inside <script> template strings (dynamically created)
-            scr_ranges = [(mm.start(), mm.end()) for mm in re.finditer(r"<script[^>]*>.*?</script>", html, re.S | re.I)]
+            scr_ranges = [(mm.start(), mm.end()) for mm in re.finditer(r"<script[^>]*>.*?</script\s*>", html, re.S | re.I)]
             if any(s <= m.start() < e for s, e in scr_ranges):
                 continue
             wired = False
