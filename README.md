@@ -6,7 +6,7 @@
 
 # Interstitium Labs — Certification Bootcamp Catalog
 
-An enterprise-grade platform of **671 interactive, adaptive certification-prep bootcamps** — 27,868 scored scenarios and 12,326 lessons across the full Interstitium Labs catalog of 31 courses: programming languages, web frameworks, developer tooling, CompTIA, AWS, Microsoft/Azure, Oracle, databases, Linux, cloud-native, security, government/NSA programs, data/AI, and career tracks.
+An enterprise-grade platform of **683 interactive, adaptive certification-prep bootcamps** — part of the full Interstitium Labs catalog of **720 programs across 37 academies**: programming languages, web frameworks, developer tooling, CompTIA, AWS, Microsoft/Azure, Oracle, databases, Linux, cloud-native, security, government/NSA programs, data/AI, and career tracks.
 
 **Live hub:** https://enmanueldmejia.com/bootcamps/
 
